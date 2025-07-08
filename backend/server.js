@@ -40,7 +40,7 @@ import { requestLogger, errorLogger } from './middleware/logger.js';
 import { updateSessionActivity, checkSessionExpiry, detectDevice } from './middleware/sessionMiddleware.js';
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Rate limiting - temporarily increased for development
 const limiter = rateLimit({
