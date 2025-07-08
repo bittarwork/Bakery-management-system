@@ -22,7 +22,6 @@ import {
   formatDateTime,
   getLocalizedText,
 } from "../../utils/formatters";
-import { usePreferences } from "../../contexts/PreferencesContext";
 
 const StoreDetailsModal = ({ store, isOpen, onClose }) => {
   if (!isOpen || !store) return null;
@@ -73,8 +72,6 @@ const StoreDetailsModal = ({ store, isOpen, onClose }) => {
 
   const status = getStoreStatus(store);
   const paymentMethod = getPaymentMethodInfo(store.payment_method);
-
-  const { preferences } = usePreferences();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

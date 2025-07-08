@@ -12,11 +12,8 @@ import {
   BarChart3,
 } from "lucide-react";
 import { formatCurrency, getLocalizedText } from "../../utils/formatters";
-import { usePreferences } from "../../contexts/PreferencesContext";
 
 const OrdersAdvancedStats = ({ statistics, className = "" }) => {
-  const { preferences } = usePreferences();
-
   // حساب النسب المئوية للتغيير
   const getPercentageChange = (current, previous) => {
     if (!previous || previous === 0) return 0;
@@ -39,7 +36,7 @@ const OrdersAdvancedStats = ({ statistics, className = "" }) => {
   };
 
   const getStatCards = () => {
-    const language = preferences?.general?.language || "ar";
+    const language = "ar"; // Default language
 
     const cards = {
       ar: [

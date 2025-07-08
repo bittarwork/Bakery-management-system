@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { validationResult } from 'express-validator';
 import User from '../models/User.js';
-import UserPreferences from '../models/UserPreferences.js';
+
 
 // Helper function to generate JWT token
 const generateToken = (userId) => {
@@ -71,8 +71,7 @@ export const register = async (req, res) => {
             is_active: true
         });
 
-        // Create default preferences
-        await UserPreferences.createDefaultForUser(user.id);
+
 
         // Generate tokens
         const token = generateToken(user.id);
@@ -355,8 +354,7 @@ export const getProfile = async (req, res) => {
         const user = await User.findByPk(req.userId, {
             attributes: { exclude: ['password_hash'] },
             include: [{
-                model: UserPreferences,
-                as: 'preferences'
+
             }]
         });
 
@@ -371,7 +369,7 @@ export const getProfile = async (req, res) => {
             success: true,
             data: {
                 user: user.toJSON(),
-                preferences: user.preferences ? user.preferences.getFormattedPreferences() : null
+
             }
         });
     } catch (error) {

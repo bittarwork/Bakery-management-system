@@ -30,7 +30,7 @@ import {
   formatStatus,
   getLocalizedText,
 } from "../../utils/formatters";
-import { usePreferences } from "../../contexts/PreferencesContext";
+
 import {
   getOrderStatusOptions,
   getPaymentStatusOptions,
@@ -46,7 +46,6 @@ const OrderCard = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const { preferences } = usePreferences();
 
   const statusOptions = getOrderStatusOptions();
   const paymentStatusOptions = getPaymentStatusOptions();
@@ -149,7 +148,7 @@ const OrderCard = ({
     order.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
 
   const getNextStatusAction = () => {
-    const language = preferences?.general?.language || "ar";
+    const language = "ar"; // Default language
 
     const actions = {
       ar: {

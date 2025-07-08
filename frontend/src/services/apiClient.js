@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance
 const apiClient = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001/api',
     timeout: parseInt(import.meta.env.VITE_API_TIMEOUT) || 30000,
     withCredentials: true, // For cookies (refresh token)
     headers: {

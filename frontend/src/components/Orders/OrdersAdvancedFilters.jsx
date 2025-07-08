@@ -15,7 +15,7 @@ import {
   Save,
   BookOpen,
 } from "lucide-react";
-import { usePreferences } from "../../contexts/PreferencesContext";
+
 import { getLocalizedText, formatStatus } from "../../utils/formatters";
 
 const OrdersAdvancedFilters = ({
@@ -30,8 +30,6 @@ const OrdersAdvancedFilters = ({
   onDeletePreset,
   className = "",
 }) => {
-  const { preferences } = usePreferences();
-
   // Ensure stores is always an array
   const safeStores = Array.isArray(stores) ? stores : [];
   const safeUsers = Array.isArray(users) ? users : [];
@@ -65,8 +63,57 @@ const OrdersAdvancedFilters = ({
     });
   }, [filters]);
 
+  const getLocalizedText = (key) => {
+    const language = "ar"; // Default language
+
+    const translations = {
+      ar: {
+        filter: "تصفية",
+        reset: "إعادة تعيين",
+        advanced: "متقدم",
+        apply: "تطبيق",
+        all_stores: "جميع المتاجر",
+        search: "بحث...",
+        date_from: "من تاريخ",
+        date_to: "إلى تاريخ",
+        amount_min: "أقل مبلغ",
+        amount_max: "أكبر مبلغ",
+        saved_filters: "الفلاتر المحفوظة",
+        save_preset: "حفظ إعداد",
+        export: "تصدير",
+        import_error: "خطأ في استيراد الإعدادات المحفوظة",
+        preset_name: "اسم الإعداد",
+        save: "حفظ",
+        clear_all: "مسح الكل",
+        active_filters: "الفلاتر النشطة",
+      },
+      en: {
+        filter: "Filter",
+        reset: "Reset",
+        advanced: "Advanced",
+        apply: "Apply",
+        all_stores: "All Stores",
+        search: "Search...",
+        date_from: "From Date",
+        date_to: "To Date",
+        amount_min: "Min Amount",
+        amount_max: "Max Amount",
+        saved_filters: "Saved Filters",
+        save_preset: "Save Preset",
+        export: "Export",
+        import_error: "Error importing saved settings",
+        preset_name: "Preset Name",
+        save: "Save",
+        clear_all: "Clear All",
+        active_filters: "Active Filters",
+      },
+    };
+
+    return translations[language]?.[key] || key;
+  };
+
   const getStatusOptions = () => {
-    const language = preferences?.general?.language || "ar";
+    const language = "ar"; // Default language
 
     const options = {
       ar: [
@@ -91,7 +138,7 @@ const OrdersAdvancedFilters = ({
   };
 
   const getPaymentStatusOptions = () => {
-    const language = preferences?.general?.language || "ar";
+    const language = "ar"; // Default language
 
     const options = {
       ar: [
@@ -114,7 +161,7 @@ const OrdersAdvancedFilters = ({
   };
 
   const getQuickFilters = () => {
-    const language = preferences?.general?.language || "ar";
+    const language = "ar"; // Default language
 
     const filters = {
       ar: [

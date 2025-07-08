@@ -35,7 +35,7 @@ import {
   formatDateTime,
   getLocalizedText,
 } from "../../utils/formatters";
-import { usePreferences } from "../../contexts/PreferencesContext";
+
 import ordersAPI from "../../services/ordersAPI";
 
 const OrderDetailsModal = ({
@@ -50,7 +50,6 @@ const OrderDetailsModal = ({
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
-  const { preferences } = usePreferences();
 
   useEffect(() => {
     if (isOpen && orderId) {
@@ -208,7 +207,7 @@ const OrderDetailsModal = ({
 
   // Helper function to generate order summary for sharing
   const generateOrderSummary = (order) => {
-    const language = preferences?.general?.language || "ar";
+    const language = "ar"; // Default language
 
     const statusLabels = {
       ar: {

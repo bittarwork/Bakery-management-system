@@ -36,7 +36,7 @@ import storesAPI from "../../services/storesAPI";
 
 // Utils
 import { useToastContext } from "../../components/common";
-import { usePreferences } from "../../contexts/PreferencesContext";
+
 import {
   formatCurrency,
   formatDate,
@@ -46,7 +46,6 @@ import {
 
 const AdvancedOrdersManagementPage = () => {
   // Preferences
-  const { preferences } = usePreferences();
 
   // State Management
   const [orders, setOrders] = useState([]);
@@ -527,7 +526,7 @@ const AdvancedOrdersManagementPage = () => {
   };
 
   const generateCSVContent = (ordersData) => {
-    const language = preferences?.general?.language || "ar";
+    const language = "ar"; // Default language
 
     // CSV Headers based on language
     const headers =
@@ -637,7 +636,7 @@ const AdvancedOrdersManagementPage = () => {
         exportDate: new Date().toISOString(),
         totalOrders: ordersData.length,
         appliedFilters: filters,
-        language: preferences?.general?.language || "ar",
+        language: "ar", // Default language
       },
       orders: ordersData.map((order) => ({
         ...order,

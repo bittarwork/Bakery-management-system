@@ -22,7 +22,11 @@ class MyApp extends StatelessWidget {
         BlocProvider(
           create: (_) => OrdersCubit(
             DistributorApi(
+<<<<<<< HEAD
               baseUrl: 'http://10.0.2.2:5001/api',
+=======
+              baseUrl: 'http://localhost:5001/api',
+>>>>>>> f68e61f1a693859de1b61ea509f212e488b7517c
               token: 'YOUR_JWT_TOKEN',
             ),
           ),
@@ -30,7 +34,11 @@ class MyApp extends StatelessWidget {
         BlocProvider(
           create: (_) => ReturnsCubit(
             DistributorApi(
+<<<<<<< HEAD
               baseUrl: 'http://10.0.2.2:5001/api',
+=======
+              baseUrl: 'http://localhost:5001/api',
+>>>>>>> f68e61f1a693859de1b61ea509f212e488b7517c
               token: 'YOUR_JWT_TOKEN',
             ),
           ),

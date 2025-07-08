@@ -74,7 +74,7 @@ services:
     container_name: bakery_frontend
     restart: unless-stopped
     environment:
-      VITE_API_URL: http://localhost:5000/api
+      VITE_API_URL: http://localhost:5001/api
     ports:
       - "3000:3000"
     volumes:

@@ -1,50 +1,46 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { usePreferences } from "../../contexts/PreferencesContext";
+
 import NotificationCenter from "../NotificationCenter";
 import LogoutConfirmation from "../LogoutConfirmation";
-import notificationAPI from "../../services/notificationAPI";
 
 const Header = ({ user, onMenuClick, onSessionManagerOpen }) => {
-  const { preferences, updatePreferences } = usePreferences();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [logoutType, setLogoutType] = useState("single");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const navigate = useNavigate();
 
-  // تحميل عدد الإشعارات غير المقروءة
+  // Load unread notifications count
   const loadUnreadCount = async () => {
     try {
-      if (preferences?.notifications?.system) {
-        const count = await notificationAPI.getUnreadCount();
-        setUnreadNotifications(count);
-      } else {
-        setUnreadNotifications(0);
+      // Check if notifications are enabled
+      const response = await fetch("/api/notifications/unread-count");
+      if (response.ok) {
+        const data = await response.json();
+        setUnreadNotifications(data.count);
       }
     } catch (error) {
       console.error("خطأ في تحميل عدد الإشعارات:", error);
-      setUnreadNotifications(0);
     }
   };
 
-  // تحميل العدد عند تحميل المكون
+  // Load notifications periodically
   useEffect(() => {
-    if (preferences?.notifications?.system) {
-      loadUnreadCount();
-      const updateInterval = preferences?.privacy?.analytics ? 30000 : 60000;
-      const interval = setInterval(loadUnreadCount, updateInterval);
-      return () => clearInterval(interval);
-    }
-  }, [preferences?.notifications?.system, preferences?.privacy?.analytics]);
+    loadUnreadCount();
 
-  // تحديث العدد عند إغلاق مركز الإشعارات
+    // Check if notifications are enabled
+    const interval = setInterval(() => {
+      // Check if notifications are enabled
+      const updateInterval = true ? 30000 : 60000; // Default analytics enabled
+      loadUnreadCount();
+    }, 30000); // Default 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   const handleNotificationClose = () => {
     setShowNotifications(false);
-    if (preferences?.notifications?.system) {
-      loadUnreadCount();
-    }
   };
 
   const handleLogout = (type = "single") => {
@@ -52,112 +48,75 @@ const Header = ({ user, onMenuClick, onSessionManagerOpen }) => {
     setShowLogoutConfirm(true);
   };
 
-  // تبديل المظهر
   const toggleTheme = async () => {
-    const currentTheme = preferences?.general?.theme || "light";
-    let newTheme;
-
-    if (currentTheme === "light") {
-      newTheme = "dark";
-    } else if (currentTheme === "dark") {
-      newTheme = "auto";
-    } else {
-      newTheme = "light";
-    }
-
     try {
-      await updatePreferences({
-        ...preferences,
-        general: {
-          ...preferences?.general,
-          theme: newTheme,
-        },
-      });
-    } catch (error) {
-      console.error("خطأ في تحديث المظهر:", error);
-    }
-  };
+      const currentTheme = "light"; // Default theme
+      const newTheme = currentTheme === "light" ? "dark" : "light";
 
-  // الحصول على أيقونة المظهر الحالي
-  const getThemeIcon = () => {
-    const theme = preferences?.general?.theme || "light";
-    switch (theme) {
-      case "dark":
-        return "🌙";
-      case "auto":
-        return "🔄";
-      default:
-        return "☀️";
-    }
-  };
+      // Update theme in localStorage
+      localStorage.setItem("theme", newTheme);
 
-  // الحصول على نص المظهر الحالي
-  const getThemeText = () => {
-    const theme = preferences?.general?.theme || "light";
-    const language = preferences?.general?.language || "ar";
-
-    const texts = {
-      ar: {
-        light: "فاتح",
-        dark: "داكن",
-        auto: "تلقائي",
-      },
-      en: {
-        light: "Light",
-        dark: "Dark",
-        auto: "Auto",
-      },
-    };
-
-    return texts[language]?.[theme] || texts.ar[theme];
-  };
-
-  // تطبيق المظهر فوراً عند التغيير
-  useEffect(() => {
-    if (preferences?.general?.theme) {
+      // Apply theme to document
       const root = document.documentElement;
-      const theme = preferences.general.theme;
-
-      // إزالة جميع فئات المظهر أولاً
-      root.classList.remove("dark");
-
-      if (theme === "dark") {
+      if (newTheme === "dark") {
         root.classList.add("dark");
-      } else if (theme === "light") {
+      } else {
         root.classList.remove("dark");
-      } else if (theme === "auto") {
-        // Auto theme based on system preference
-        const isDarkMode = window.matchMedia(
-          "(prefers-color-scheme: dark)"
-        ).matches;
-        if (isDarkMode) {
-          root.classList.add("dark");
-        } else {
-          root.classList.remove("dark");
-        }
       }
+
+      // Update theme in server if needed
+      // await preferencesAPI.updateTheme(newTheme);
+    } catch (error) {
+      console.error("خطأ في تبديل المظهر:", error);
     }
-  }, [preferences?.general?.theme]);
+  };
+
+  const getThemeIcon = () => {
+    const theme = "light"; // Default theme
+    const language = "ar"; // Default language
+
+    if (theme === "dark") {
+      return "🌙";
+    } else if (theme === "light") {
+      return "☀️";
+    } else {
+      // Auto theme based on system preference
+      const isDarkMode = window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches;
+      return isDarkMode ? "🌙" : "☀️";
+    }
+  };
+
+  const getThemeText = () => {
+    const theme = "light"; // Default theme
+    const language = "ar"; // Default language
+
+    if (theme === "dark") {
+      return "الوضع الداكن";
+    } else if (theme === "light") {
+      return "الوضع الفاتح";
+    } else {
+      return "تلقائي";
+    }
+  };
 
   // Keyboard shortcuts
   useEffect(() => {
-    if (!preferences?.accessibility?.keyboard_navigation) return;
+    // Check if keyboard navigation is enabled
+    if (!true) return; // Default keyboard navigation enabled
 
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "L") {
         e.preventDefault();
-        handleLogout("single");
+        handleLogout("emergency");
       }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "N") {
         e.preventDefault();
-        if (preferences?.notifications?.system) {
-          setShowNotifications(!showNotifications);
-        }
+        // Check if notifications are enabled
+        setShowNotifications(!showNotifications);
       }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "S") {
-        e.preventDefault();
-        navigate("/settings");
-      }
+
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "T") {
         e.preventDefault();
         toggleTheme();
@@ -166,27 +125,20 @@ const Header = ({ user, onMenuClick, onSessionManagerOpen }) => {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [
-    preferences?.accessibility?.keyboard_navigation,
-    navigate,
-    showNotifications,
-    preferences?.notifications?.system,
-    preferences,
-  ]);
+  }, [navigate, showNotifications]);
 
-  // الحصول على class الاتجاه
+  // Get current direction
   const getCurrentDirection = () => {
-    return preferences?.general?.language === "ar" ? "rtl" : "ltr";
+    return "ar" === "ar" ? "rtl" : "ltr"; // Default Arabic
   };
 
-  // نصوص تدعم تعدد اللغات
+  // Localized texts
   const getLocalizedText = (key) => {
-    const language = preferences?.general?.language || "ar";
+    const language = "ar"; // Default language
     const texts = {
       ar: {
         openMenu: "فتح القائمة",
         notifications: "الإشعارات",
-        settings: "الإعدادات",
         emergencyLogout: "خروج طارئ",
         toggleTheme: "تبديل المظهر",
         userMenu: "قائمة المستخدم",
@@ -195,13 +147,11 @@ const Header = ({ user, onMenuClick, onSessionManagerOpen }) => {
         welcome: "مرحباً",
         keyboardShortcuts: "(Ctrl+Shift+L)",
         notificationShortcuts: "(Ctrl+Shift+N)",
-        settingsShortcuts: "(Ctrl+Shift+S)",
         themeShortcuts: "(Ctrl+Shift+T)",
       },
       en: {
         openMenu: "Open Menu",
         notifications: "Notifications",
-        settings: "Settings",
         emergencyLogout: "Emergency Logout",
         toggleTheme: "Toggle Theme",
         userMenu: "User Menu",
@@ -210,13 +160,11 @@ const Header = ({ user, onMenuClick, onSessionManagerOpen }) => {
         welcome: "Welcome",
         keyboardShortcuts: "(Ctrl+Shift+L)",
         notificationShortcuts: "(Ctrl+Shift+N)",
-        settingsShortcuts: "(Ctrl+Shift+S)",
         themeShortcuts: "(Ctrl+Shift+T)",
       },
       fr: {
         openMenu: "Ouvrir le menu",
         notifications: "Notifications",
-        settings: "Paramètres",
         emergencyLogout: "Déconnexion d'urgence",
         toggleTheme: "Changer le thème",
         userMenu: "Menu utilisateur",
@@ -225,13 +173,11 @@ const Header = ({ user, onMenuClick, onSessionManagerOpen }) => {
         welcome: "Bienvenue",
         keyboardShortcuts: "(Ctrl+Shift+L)",
         notificationShortcuts: "(Ctrl+Shift+N)",
-        settingsShortcuts: "(Ctrl+Shift+S)",
         themeShortcuts: "(Ctrl+Shift+T)",
       },
       nl: {
         openMenu: "Menu openen",
         notifications: "Meldingen",
-        settings: "Instellingen",
         emergencyLogout: "Nooduitlog",
         toggleTheme: "Thema wisselen",
         userMenu: "Gebruikersmenu",
@@ -240,31 +186,32 @@ const Header = ({ user, onMenuClick, onSessionManagerOpen }) => {
         welcome: "Welkom",
         keyboardShortcuts: "(Ctrl+Shift+L)",
         notificationShortcuts: "(Ctrl+Shift+N)",
-        settingsShortcuts: "(Ctrl+Shift+S)",
         themeShortcuts: "(Ctrl+Shift+T)",
       },
     };
     return texts[language]?.[key] || texts.ar[key];
   };
 
-  // الحصول على حجم النص بناءً على التفضيلات
+  // Get text size class
   const getTextSizeClass = () => {
-    if (preferences?.accessibility?.large_text) {
+    if (false) {
+      // Default large text disabled
       return "text-lg";
     }
     return "text-base";
   };
 
-  // الحصول على كلاسات التباين العالي
+  // Get contrast classes
   const getContrastClasses = () => {
-    if (preferences?.accessibility?.high_contrast) {
+    if (false) {
+      // Default high contrast disabled
       return "ring-2 ring-blue-300 dark:ring-blue-600";
     }
     return "";
   };
 
-  // تحديد ما إذا كان يجب إظهار زر الإشعارات
-  const shouldShowNotifications = preferences?.notifications?.system !== false;
+  // Determine if notifications should be shown
+  const shouldShowNotifications = true !== false; // Default notifications enabled
   const shouldShowBadge = shouldShowNotifications && unreadNotifications > 0;
 
   return (
@@ -299,7 +246,7 @@ const Header = ({ user, onMenuClick, onSessionManagerOpen }) => {
                   d="M4 6h16M4 12h16M4 18h16"
                 />
               </svg>
-              {preferences?.accessibility?.screen_reader && (
+              {false && ( // Default screen reader disabled
                 <span className="sr-only">{getLocalizedText("openMenu")}</span>
               )}
             </button>
@@ -316,14 +263,14 @@ const Header = ({ user, onMenuClick, onSessionManagerOpen }) => {
               onClick={toggleTheme}
               className={`p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all duration-200 ${getTextSizeClass()}`}
               title={`${getLocalizedText("toggleTheme")} - ${getThemeText()} ${
-                preferences?.accessibility?.keyboard_navigation
+                true // Default keyboard navigation enabled
                   ? getLocalizedText("themeShortcuts")
                   : ""
               }`}
               aria-label={getLocalizedText("toggleTheme")}
             >
               <span className="text-xl">{getThemeIcon()}</span>
-              {preferences?.accessibility?.screen_reader && (
+              {false && ( // Default screen reader disabled
                 <span className="sr-only">
                   {getLocalizedText("toggleTheme")} - {getThemeText()}
                 </span>
@@ -337,7 +284,7 @@ const Header = ({ user, onMenuClick, onSessionManagerOpen }) => {
                   onClick={() => setShowNotifications(!showNotifications)}
                   className={`relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all duration-200 ${getTextSizeClass()}`}
                   title={`${getLocalizedText("notifications")} ${
-                    preferences?.accessibility?.keyboard_navigation
+                    true // Default keyboard navigation enabled
                       ? getLocalizedText("notificationShortcuts")
                       : ""
                   }`}
@@ -361,7 +308,7 @@ const Header = ({ user, onMenuClick, onSessionManagerOpen }) => {
                       {unreadNotifications > 9 ? "9+" : unreadNotifications}
                     </span>
                   )}
-                  {preferences?.accessibility?.screen_reader && (
+                  {false && ( // Default screen reader disabled
                     <span className="sr-only">
                       {getLocalizedText("notifications")}
                       {shouldShowBadge && ` - ${unreadNotifications} غير مقروء`}
@@ -376,47 +323,12 @@ const Header = ({ user, onMenuClick, onSessionManagerOpen }) => {
               </div>
             )}
 
-            {/* Settings */}
-            <button
-              onClick={() => navigate("/settings")}
-              className={`p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all duration-200 ${getTextSizeClass()}`}
-              title={`${getLocalizedText("settings")} ${
-                preferences?.accessibility?.keyboard_navigation
-                  ? getLocalizedText("settingsShortcuts")
-                  : ""
-              }`}
-              aria-label={getLocalizedText("settings")}
-            >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-              {preferences?.accessibility?.screen_reader && (
-                <span className="sr-only">{getLocalizedText("settings")}</span>
-              )}
-            </button>
-
             {/* Emergency Logout */}
             <button
               onClick={() => handleLogout("emergency")}
               className={`p-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-red-400 transition-all duration-200 ${getTextSizeClass()}`}
               title={`${getLocalizedText("emergencyLogout")} ${
-                preferences?.accessibility?.keyboard_navigation
+                true // Default keyboard navigation enabled
                   ? getLocalizedText("keyboardShortcuts")
                   : ""
               }`}
@@ -435,7 +347,7 @@ const Header = ({ user, onMenuClick, onSessionManagerOpen }) => {
                   d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
                 />
               </svg>
-              {preferences?.accessibility?.screen_reader && (
+              {false && ( // Default screen reader disabled
                 <span className="sr-only">
                   {getLocalizedText("emergencyLogout")}
                 </span>

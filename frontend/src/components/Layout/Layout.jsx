@@ -3,12 +3,10 @@ import { Outlet } from "react-router-dom";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import SessionManager from "../SessionManager";
-import { usePreferences } from "../../contexts";
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sessionManagerOpen, setSessionManagerOpen] = useState(false);
-  const { preferences } = usePreferences();
 
   const handleMenuClick = () => {
     setSidebarOpen(!sidebarOpen);
@@ -27,10 +25,9 @@ const Layout = () => {
   };
 
   // Apply theme classes
-  const themeClasses =
-    preferences?.general?.theme === "dark"
-      ? "bg-gray-900 text-white"
-      : "bg-gray-50 text-gray-900";
+  const themeClasses = false // Default light theme
+    ? "bg-gray-900 text-white"
+    : "bg-gray-50 text-gray-900";
 
   return (
     <div className={`flex h-screen ${themeClasses}`} dir="rtl">

@@ -3,7 +3,6 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
 import authAPI from "../../services/authAPI";
 import sessionAPI from "../../services/sessionAPI";
-import preferencesAPI from "../../services/preferencesAPI";
 
 const EnhancedLogin = ({ onLogin }) => {
   const navigate = useNavigate();

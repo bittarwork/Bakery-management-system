@@ -4,7 +4,7 @@ import { Store } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import StoresList from "./StoresList";
 import StoresDashboard from "./StoresDashboard";
-import { usePreferences } from "../../contexts/PreferencesContext";
+
 import { getLocalizedText } from "../../utils/formatters";
 
 const tabClass = (selected) =>
@@ -16,21 +16,18 @@ const tabClass = (selected) =>
 
 const StoresPage = () => {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const { preferences } = usePreferences();
 
-  // Sync default tab with user preference
+  // Default tab selection
   useEffect(() => {
-    if (preferences?.display?.default_view) {
-      const view = preferences.display.default_view;
-      // table / list = index 0 (القائمة), grid = index 0 as list, map preference could be custom
-      if (view === "grid") {
-        setSelectedIndex(0);
-      } else if (view === "table" || view === "list") {
-        setSelectedIndex(0);
-      }
-      // in future: 'map' to index 1
+    const view = "grid"; // Default view
+    // table / list = index 0 (القائمة), grid = index 0 as list, map preference could be custom
+    if (view === "grid") {
+      setSelectedIndex(0);
+    } else if (view === "table" || view === "list") {
+      setSelectedIndex(0);
     }
-  }, [preferences]);
+    // in future: 'map' to index 1
+  }, []);
 
   const t = (key, ar, en) => getLocalizedText(key, ar, en);
 
