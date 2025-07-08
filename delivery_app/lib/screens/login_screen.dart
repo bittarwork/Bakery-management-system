@@ -3,8 +3,32 @@ import 'orders_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubits/orders_cubit.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    // استدعاء جلب الطلبات من API
+    await context.read<OrdersCubit>().fetchOrders();
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => const OrdersScreen()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +56,7 @@ class LoginScreen extends StatelessWidget {
               ),
             ),
             TextField(
+              controller: _emailController,
               decoration: const InputDecoration(
                 labelText: 'البريد الإلكتروني',
                 border: OutlineInputBorder(),
@@ -40,6 +65,7 @@ class LoginScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             TextField(
+              controller: _passwordController,
               decoration: const InputDecoration(
                 labelText: 'كلمة المرور',
                 border: OutlineInputBorder(),
@@ -50,13 +76,7 @@ class LoginScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () async {
-                  // استدعاء جلب الطلبات من API
-                  await context.read<OrdersCubit>().fetchOrders();
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (context) => const OrdersScreen()),
-                  );
-                },
+                onPressed: _login,
                 child: const Text('تسجيل الدخول'),
               ),
             ),
