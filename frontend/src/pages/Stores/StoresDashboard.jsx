@@ -14,10 +14,8 @@ import { Button } from "../../components/common";
 import { getStoreStatistics } from "../../services/storesAPI";
 import { formatCurrency, getLocalizedText } from "../../utils/formatters";
 import toast from "react-hot-toast";
-import { usePreferences } from "../../contexts/PreferencesContext";
 
 const StoresDashboard = () => {
-  const { preferences } = usePreferences();
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedStore, setSelectedStore] = useState(null);

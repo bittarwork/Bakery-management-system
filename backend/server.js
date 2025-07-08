@@ -27,7 +27,7 @@ import distributionRoutes from './routes/distribution.js';
 import paymentRoutes from './routes/payments.js';
 import reportRoutes from './routes/reports.js';
 import sessionRoutes from './routes/sessionRoutes.js';
-import preferencesRoutes from './routes/preferencesRoutes.js';
+
 import notificationRoutes from './routes/notifications.js';
 
 // Import models and database initialization
@@ -125,7 +125,7 @@ app.use(checkSessionExpiry);
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/sessions', sessionRoutes);
-app.use('/api/preferences', preferencesRoutes);
+
 app.use('/api/stores', storeRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);

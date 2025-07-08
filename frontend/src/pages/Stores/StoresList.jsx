@@ -33,10 +33,8 @@ import { Button } from "../../components/common";
 import { getStores, deleteStore } from "../../services/storesAPI";
 import { formatCurrency, getLocalizedText } from "../../utils/formatters";
 import toast from "react-hot-toast";
-import { usePreferences } from "../../contexts/PreferencesContext";
 
 const StoresList = () => {
-  const { preferences } = usePreferences();
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -53,7 +51,7 @@ const StoresList = () => {
   });
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: preferences?.display?.items_per_page || 12,
+    limit: 12, // Default items per page
     total: 0,
     totalPages: 0,
   });
@@ -88,16 +86,14 @@ const StoresList = () => {
     loadStores();
   }, [filters, pagination.page]);
 
+  // Update pagination when needed
   useEffect(() => {
-    // Update page size when user preference changes
-    if (preferences?.display?.items_per_page) {
-      setPagination((prev) => ({
-        ...prev,
-        limit: preferences.display.items_per_page,
-        page: 1,
-      }));
-    }
-  }, [preferences?.display?.items_per_page]);
+    setPagination((prev) => ({
+      ...prev,
+      limit: 20, // Default items per page
+      page: 1,
+    }));
+  }, []);
 
   // Handle store deletion
   const handleDeleteStore = (store) => {

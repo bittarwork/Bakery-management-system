@@ -23,7 +23,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { formatCurrency, getLocalizedText } from "../../utils/formatters";
-import { usePreferences } from "../../contexts/PreferencesContext";
+
 import { useAuthStore } from "../../store/authStore";
 import { createOrder } from "../../services/ordersAPI";
 import { getStores } from "../../services/storesAPI";
@@ -31,7 +31,7 @@ import { getProducts } from "../../services/productsAPI";
 
 const CreateOrderModal = ({ isOpen, onClose, onSuccess }) => {
   // Preferences and Auth
-  const { preferences } = usePreferences();
+
   const { isAuthenticated, token } = useAuthStore();
 
   // Enhanced state management

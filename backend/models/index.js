@@ -5,7 +5,7 @@ import Product from './Product.js';
 import Order from './Order.js';
 import OrderItem from './OrderItem.js';
 import UserSession from './UserSession.js';
-import UserPreferences from './UserPreferences.js';
+
 import Notification from './Notification.js';
 
 // Import other models as we create them
@@ -33,13 +33,12 @@ const defineAssociations = () => {
     // User associations
     User.hasMany(Order, { foreignKey: 'created_by', as: 'orders' });
     User.hasMany(UserSession, { foreignKey: 'user_id', as: 'sessions' });
-    User.hasOne(UserPreferences, { foreignKey: 'user_id', as: 'preferences' });
+
 
     // UserSession associations
     UserSession.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
-    // UserPreferences associations
-    UserPreferences.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
 
     // Notification associations
     Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
@@ -77,7 +76,7 @@ const initializeModels = async () => {
             Order,
             OrderItem,
             UserSession,
-            UserPreferences,
+
             Notification
         };
     } catch (error) {
@@ -94,7 +93,6 @@ export {
     Order,
     OrderItem,
     UserSession,
-    UserPreferences,
     Notification,
     initializeModels
 };
@@ -107,7 +105,6 @@ export default {
     Order,
     OrderItem,
     UserSession,
-    UserPreferences,
     Notification,
     initializeModels
 }; 

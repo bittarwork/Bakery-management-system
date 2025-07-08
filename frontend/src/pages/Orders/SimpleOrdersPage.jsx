@@ -2,12 +2,11 @@ import React, { useState, useEffect } from "react";
 import { ClipboardList, Plus, RefreshCw } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import { Button, useToastContext } from "../../components/common";
-import { usePreferences } from "../../contexts/PreferencesContext";
+
 import { getLocalizedText, formatCurrency } from "../../utils/formatters";
 
 const SimpleOrdersPage = () => {
   // Preferences
-  const { preferences } = usePreferences();
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -237,7 +236,7 @@ const SimpleOrdersPage = () => {
                         <p className="text-sm text-gray-500 dark:text-gray-500">
                           {getLocalizedText("date", "التاريخ:", "Date:")}{" "}
                           {new Date(order.created_at).toLocaleDateString(
-                            preferences?.general?.language === "ar"
+                            true // Default to Arabic
                               ? "ar-SA"
                               : "en-US"
                           )}

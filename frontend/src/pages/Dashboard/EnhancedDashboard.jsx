@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import preferencesAPI from "../../services/preferencesAPI";
 import sessionAPI from "../../services/sessionAPI";
 import { useToastContext } from "../../components/common";
 
@@ -52,22 +51,19 @@ const EnhancedDashboard = () => {
   };
 
   const getWidgetsByPreference = () => {
-    if (!preferences?.dashboard?.widgets) {
-      return ["orders", "products", "payments", "reports"];
-    }
-    return preferences.dashboard.widgets;
+    return ["orders", "products", "payments", "reports"]; // Default widgets
   };
 
   const getColumnCount = () => {
-    return preferences?.dashboard?.columns || 2;
+    return 2; // Default columns
   };
 
   const isCompactView = () => {
-    return preferences?.dashboard?.compact || false;
+    return false; // Default compact view
   };
 
   const formatCurrency = (amount) => {
-    const currency = preferences?.general?.currency || "EUR";
+    const currency = "EUR"; // Default currency
     return new Intl.NumberFormat("en-GB", {
       style: "currency",
       currency: currency,
@@ -75,8 +71,8 @@ const EnhancedDashboard = () => {
   };
 
   const formatDate = (date) => {
-    const format = preferences?.general?.date_format || "DD/MM/YYYY";
-    const timeFormat = preferences?.general?.time_format || "24h";
+    const format = "DD/MM/YYYY"; // Default date format
+    const timeFormat = "24h"; // Default time format
 
     const options = {
       year: "numeric",
@@ -91,7 +87,7 @@ const EnhancedDashboard = () => {
   };
 
   const getThemeClasses = () => {
-    const theme = preferences?.general?.theme || "light";
+    const theme = "light"; // Default theme
     return {
       background: theme === "dark" ? "bg-gray-900" : "bg-gray-50",
       card:
@@ -513,35 +509,6 @@ const EnhancedDashboard = () => {
                 <span className={`font-bold text-green-600`}>96%</span>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Customization Hint */}
-        <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-          <div className="flex items-center">
-            <svg
-              className="h-5 w-5 text-blue-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <p className="mr-3 text-sm text-blue-800">
-              يمكنك تخصيص هذه اللوحة من خلال
-              <a
-                href="/settings"
-                className="font-medium underline hover:no-underline"
-              >
-                {" "}
-                إعدادات التفضيلات
-              </a>
-            </p>
           </div>
         </div>
       </div>
