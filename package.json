@@ -1,0 +1,26 @@
+{
+  "name": "bakery-management-system",
+  "version": "1.0.0",
+  "description": "نظام إدارة قسم التوزيع - مخبز بلجيكا",
+  "scripts": {
+    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "start:backend": "cd backend && npm start",
+    "build:frontend": "cd frontend && npm run build",
+    "build": "npm run build:frontend"
+  },
+  "keywords": [
+    "bakery",
+    "management",
+    "distribution",
+    "react",
+    "nodejs"
+  ],
+  "author": "Bakery Belgium Team",
+  "license": "PRIVATE",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

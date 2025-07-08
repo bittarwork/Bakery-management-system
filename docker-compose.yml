@@ -1,0 +1,94 @@
+version: "3.8"
+
+services:
+  # قاعدة البيانات MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: bakery_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: bakery_db
+      MYSQL_USER: bakery_user
+      MYSQL_PASSWORD: bakery_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./database/seeders/sample_data.sql:/docker-entrypoint-initdb.d/02-sample_data.sql
+    networks:
+      - bakery_network
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  # phpMyAdmin لإدارة قاعدة البيانات
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: bakery_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: rootpassword
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+    networks:
+      - bakery_network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bakery_backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: bakery_db
+      DB_USER: bakery_user
+      DB_PASSWORD: bakery_password
+      JWT_SECRET: your-super-secret-jwt-key-here
+      PORT: 5000
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - mysql
+    networks:
+      - bakery_network
+    command: npm run dev
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bakery_frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:5000/api
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - bakery_network
+    command: npm run dev
+
+volumes:
+  mysql_data:
+
+networks:
+  bakery_network:
+    driver: bridge
