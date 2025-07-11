@@ -91,15 +91,23 @@ export const connectDB = async () => {
             console.log('✅ Database connection established successfully.');
         }
 
-        // Sync models in development
-        if (env === 'development') {
-            await sequelize.sync({ alter: true });
-            if (process.env.NODE_ENV !== 'test') {
-                console.log('✅ Database models synchronized.');
-            }
-        }
+        // Sync models in development - DISABLED FOR NEW DATABASE STRUCTURE
+        // if (env === 'development') {
+        //     await sequelize.sync({ alter: true });
+        //     if (process.env.NODE_ENV !== 'test') {
+        //         console.log('✅ Database models synchronized.');
+        //     }
+        // }
     } catch (error) {
         console.error('❌ Unable to connect to the database:', error);
+
+        // If MySQL connection fails, suggest installation
+        if (error.parent && error.parent.code === 'ETIMEDOUT') {
+            console.log('💡 Tip: Make sure MySQL is running and accessible.');
+            console.log('   - Install XAMPP: https://www.apachefriends.org/download.html');
+            console.log('   - Or check QUICK_FIX.md for detailed setup instructions');
+        }
+
         throw error;
     }
 };

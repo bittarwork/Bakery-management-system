@@ -64,11 +64,11 @@ export const register = async (req, res) => {
         const user = await User.create({
             username,
             email,
-            password_hash: password, // Will be hashed by the model
+            password: password, // Will be hashed by the model
             full_name,
             phone,
             role,
-            is_active: true
+            status: 'active'
         });
 
 
@@ -98,7 +98,10 @@ export const register = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Register error:', error);
+        console.error('[AUTH] User registration failed:', error.message);
+        if (process.env.NODE_ENV === 'development') {
+            console.error('[AUTH] Full error:', error);
+        }
         res.status(500).json({
             success: false,
             message: 'خطأ في الخادم'
@@ -155,7 +158,10 @@ export const login = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Login error:', error);
+        console.error('[AUTH] User login failed:', error.message);
+        if (process.env.NODE_ENV === 'development') {
+            console.error('[AUTH] Full error:', error);
+        }
 
         if (error.message === 'Invalid credentials') {
             return res.status(401).json({
@@ -184,7 +190,7 @@ export const logout = async (req, res) => {
             message: 'تم تسجيل الخروج بنجاح'
         });
     } catch (error) {
-        console.error('Logout error:', error);
+        console.error('[AUTH] User logout failed:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في الخادم'
@@ -198,7 +204,7 @@ export const logout = async (req, res) => {
 export const getMe = async (req, res) => {
     try {
         const user = await User.findByPk(req.userId, {
-            attributes: { exclude: ['password_hash'] }
+            attributes: { exclude: ['password'] }
         });
 
         if (!user) {
@@ -213,7 +219,7 @@ export const getMe = async (req, res) => {
             data: user
         });
     } catch (error) {
-        console.error('GetMe error:', error);
+        console.error('[AUTH] Get user profile failed:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في الخادم'
@@ -230,7 +236,7 @@ export const refreshToken = async (req, res) => {
 
         // Debug logging in development only
         if (process.env.NODE_ENV === 'development') {
-            console.log('🔄 Refresh token request - cookies:', Object.keys(req.cookies));
+            console.log('[AUTH] Refresh token request - cookies:', Object.keys(req.cookies));
         }
 
         if (!refreshToken) {
@@ -254,7 +260,7 @@ export const refreshToken = async (req, res) => {
         const user = await User.findOne({
             where: {
                 id: decoded.userId,
-                is_active: true
+                status: 'active'
             }
         });
 
@@ -277,7 +283,7 @@ export const refreshToken = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Refresh token error:', error);
+        console.error('[AUTH] Refresh token failed:', error.message);
 
         if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
             return res.status(401).json({
@@ -329,7 +335,7 @@ export const changePassword = async (req, res) => {
         }
 
         // Update password
-        user.password_hash = newPassword;
+        user.password = newPassword;
         await user.save();
 
         res.json({
@@ -338,7 +344,7 @@ export const changePassword = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Change password error:', error);
+        console.error('[AUTH] Change password failed:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في الخادم'
@@ -352,10 +358,7 @@ export const changePassword = async (req, res) => {
 export const getProfile = async (req, res) => {
     try {
         const user = await User.findByPk(req.userId, {
-            attributes: { exclude: ['password_hash'] },
-            include: [{
-
-            }]
+            attributes: { exclude: ['password'] }
         });
 
         if (!user) {
@@ -368,12 +371,11 @@ export const getProfile = async (req, res) => {
         res.json({
             success: true,
             data: {
-                user: user.toJSON(),
-
+                user: user.toJSON()
             }
         });
     } catch (error) {
-        console.error('GetProfile error:', error);
+        console.error('[AUTH] Get profile failed:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في الخادم'
@@ -436,7 +438,7 @@ export const updateProfile = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Update profile error:', error);
+        console.error('[AUTH] Update profile failed:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في الخادم'

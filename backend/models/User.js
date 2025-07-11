@@ -107,15 +107,19 @@ const User = sequelize.define('User', {
     ],
     hooks: {
         beforeCreate: async (user) => {
-            if (user.password_hash) {
-                const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 12;
-                user.password_hash = await bcrypt.hash(user.password_hash, saltRounds);
+            if (user.password) {
+                const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 10;
+                user.password_hash = await bcrypt.hash(user.password, saltRounds);
+                user.setDataValue('password_hash', user.password_hash);
+                delete user.dataValues.password; // Remove the plain password
             }
         },
         beforeUpdate: async (user) => {
-            if (user.changed('password_hash')) {
-                const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 12;
-                user.password_hash = await bcrypt.hash(user.password_hash, saltRounds);
+            if (user.password && user.changed('password')) {
+                const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 10;
+                user.password_hash = await bcrypt.hash(user.password, saltRounds);
+                user.setDataValue('password_hash', user.password_hash);
+                delete user.dataValues.password; // Remove the plain password
             }
         }
     }
@@ -129,6 +133,7 @@ User.prototype.comparePassword = async function (candidatePassword) {
 User.prototype.toJSON = function () {
     const values = Object.assign({}, this.get());
     delete values.password_hash;
+    delete values.password;
     return values;
 };
 
@@ -151,6 +156,35 @@ User.findByCredentials = async function (username, password) {
     }
 
     return user;
+};
+
+User.findByEmail = async function (email) {
+    return await User.findOne({
+        where: {
+            email: email,
+            is_active: true
+        }
+    });
+};
+
+User.getActiveDistributors = async function () {
+    return await User.findAll({
+        where: {
+            role: 'distributor',
+            is_active: true
+        },
+        order: [['full_name', 'ASC']]
+    });
+};
+
+User.getUsersByRole = async function (role) {
+    return await User.findAll({
+        where: {
+            role: role,
+            is_active: true
+        },
+        order: [['full_name', 'ASC']]
+    });
 };
 
 export default User; 

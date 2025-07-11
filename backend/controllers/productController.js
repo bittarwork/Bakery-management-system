@@ -12,7 +12,9 @@ export const getProducts = async (req, res) => {
             page = 1,
             limit = 10,
             search = '',
-            is_active = null,
+            status = null,
+            category = null,
+            is_featured = null,
             sortBy = 'name',
             sortOrder = 'ASC'
         } = req.query;
@@ -21,14 +23,26 @@ export const getProducts = async (req, res) => {
 
         // تطبيق فلتر البحث
         if (search) {
-            whereClause.name = {
-                [Op.like]: `%${search}%`
-            };
+            whereClause[Op.or] = [
+                { name: { [Op.like]: `%${search}%` } },
+                { description: { [Op.like]: `%${search}%` } },
+                { barcode: { [Op.like]: `%${search}%` } }
+            ];
         }
 
         // تطبيق فلتر الحالة
-        if (is_active !== null) {
-            whereClause.is_active = is_active === 'true';
+        if (status !== null) {
+            whereClause.status = status;
+        }
+
+        // تطبيق فلتر الفئة
+        if (category !== null) {
+            whereClause.category = category;
+        }
+
+        // تطبيق فلتر المنتجات المميزة
+        if (is_featured !== null) {
+            whereClause.is_featured = is_featured === 'true';
         }
 
         const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -58,7 +72,7 @@ export const getProducts = async (req, res) => {
             message: 'تم جلب المنتجات بنجاح'
         });
     } catch (error) {
-        console.error('Error fetching products:', error);
+        console.error('[PRODUCTS] Failed to fetch products:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في جلب المنتجات',
@@ -89,7 +103,7 @@ export const getProduct = async (req, res) => {
             message: 'تم جلب المنتج بنجاح'
         });
     } catch (error) {
-        console.error('Error fetching product:', error);
+        console.error('[PRODUCTS] Failed to fetch product:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في جلب المنتج',
@@ -112,7 +126,29 @@ export const createProduct = async (req, res) => {
             });
         }
 
-        const { name, description, unit, price, cost, is_active } = req.body;
+        const {
+            name,
+            description,
+            category = 'other',
+            unit,
+            price_eur,
+            price_syp,
+            cost_eur,
+            cost_syp,
+            stock_quantity = 0,
+            minimum_stock = 0,
+            barcode,
+            is_featured = false,
+            status = 'active',
+            image_url,
+            weight_grams,
+            shelf_life_days,
+            storage_conditions,
+            supplier_info,
+            nutritional_info,
+            allergen_info,
+            created_by_name
+        } = req.body;
 
         // التحقق من عدم وجود منتج بنفس الاسم
         const existingProduct = await Product.findOne({
@@ -126,13 +162,43 @@ export const createProduct = async (req, res) => {
             });
         }
 
+        // التحقق من عدم وجود منتج بنفس الباركود
+        if (barcode) {
+            const existingBarcode = await Product.findOne({
+                where: { barcode }
+            });
+
+            if (existingBarcode) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'يوجد منتج بهذا الباركود مسبقاً'
+                });
+            }
+        }
+
         const product = await Product.create({
             name,
             description,
+            category,
             unit,
-            price,
-            cost,
-            is_active: is_active !== undefined ? is_active : true
+            price_eur: price_eur || 0,
+            price_syp: price_syp || 0,
+            cost_eur: cost_eur || 0,
+            cost_syp: cost_syp || 0,
+            stock_quantity,
+            minimum_stock,
+            barcode,
+            is_featured,
+            status,
+            image_url,
+            weight_grams,
+            shelf_life_days,
+            storage_conditions,
+            supplier_info,
+            nutritional_info,
+            allergen_info,
+            created_by: req.userId,
+            created_by_name
         });
 
         res.status(201).json({
@@ -141,7 +207,7 @@ export const createProduct = async (req, res) => {
             message: 'تم إنشاء المنتج بنجاح'
         });
     } catch (error) {
-        console.error('Error creating product:', error);
+        console.error('[PRODUCTS] Failed to create product:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في إنشاء المنتج',
@@ -165,7 +231,28 @@ export const updateProduct = async (req, res) => {
         }
 
         const { id } = req.params;
-        const { name, description, unit, price, cost, is_active } = req.body;
+        const {
+            name,
+            description,
+            category,
+            unit,
+            price_eur,
+            price_syp,
+            cost_eur,
+            cost_syp,
+            stock_quantity,
+            minimum_stock,
+            barcode,
+            is_featured,
+            status,
+            image_url,
+            weight_grams,
+            shelf_life_days,
+            storage_conditions,
+            supplier_info,
+            nutritional_info,
+            allergen_info
+        } = req.body;
 
         const product = await Product.findByPk(id);
 
@@ -193,14 +280,46 @@ export const updateProduct = async (req, res) => {
             }
         }
 
-        await product.update({
-            name: name || product.name,
-            description: description !== undefined ? description : product.description,
-            unit: unit || product.unit,
-            price: price !== undefined ? price : product.price,
-            cost: cost !== undefined ? cost : product.cost,
-            is_active: is_active !== undefined ? is_active : product.is_active
-        });
+        // التحقق من عدم وجود منتج آخر بنفس الباركود
+        if (barcode && barcode !== product.barcode) {
+            const existingBarcode = await Product.findOne({
+                where: {
+                    barcode,
+                    id: { [Op.ne]: id }
+                }
+            });
+
+            if (existingBarcode) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'يوجد منتج بهذا الباركود مسبقاً'
+                });
+            }
+        }
+
+        const updateData = {};
+        if (name !== undefined) updateData.name = name;
+        if (description !== undefined) updateData.description = description;
+        if (category !== undefined) updateData.category = category;
+        if (unit !== undefined) updateData.unit = unit;
+        if (price_eur !== undefined) updateData.price_eur = price_eur;
+        if (price_syp !== undefined) updateData.price_syp = price_syp;
+        if (cost_eur !== undefined) updateData.cost_eur = cost_eur;
+        if (cost_syp !== undefined) updateData.cost_syp = cost_syp;
+        if (stock_quantity !== undefined) updateData.stock_quantity = stock_quantity;
+        if (minimum_stock !== undefined) updateData.minimum_stock = minimum_stock;
+        if (barcode !== undefined) updateData.barcode = barcode;
+        if (is_featured !== undefined) updateData.is_featured = is_featured;
+        if (status !== undefined) updateData.status = status;
+        if (image_url !== undefined) updateData.image_url = image_url;
+        if (weight_grams !== undefined) updateData.weight_grams = weight_grams;
+        if (shelf_life_days !== undefined) updateData.shelf_life_days = shelf_life_days;
+        if (storage_conditions !== undefined) updateData.storage_conditions = storage_conditions;
+        if (supplier_info !== undefined) updateData.supplier_info = supplier_info;
+        if (nutritional_info !== undefined) updateData.nutritional_info = nutritional_info;
+        if (allergen_info !== undefined) updateData.allergen_info = allergen_info;
+
+        await product.update(updateData);
 
         res.json({
             success: true,
@@ -208,7 +327,7 @@ export const updateProduct = async (req, res) => {
             message: 'تم تحديث المنتج بنجاح'
         });
     } catch (error) {
-        console.error('Error updating product:', error);
+        console.error('[PRODUCTS] Failed to update product:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في تحديث المنتج',
@@ -243,7 +362,7 @@ export const deleteProduct = async (req, res) => {
             message: 'تم حذف المنتج بنجاح'
         });
     } catch (error) {
-        console.error('Error deleting product:', error);
+        console.error('[PRODUCTS] Failed to delete product:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في حذف المنتج',
@@ -268,17 +387,18 @@ export const toggleProductStatus = async (req, res) => {
             });
         }
 
+        const newStatus = product.status === 'active' ? 'inactive' : 'active';
         await product.update({
-            is_active: !product.is_active
+            status: newStatus
         });
 
         res.json({
             success: true,
             data: product,
-            message: `تم ${product.is_active ? 'تفعيل' : 'إلغاء تفعيل'} المنتج بنجاح`
+            message: `تم ${newStatus === 'active' ? 'تفعيل' : 'إلغاء تفعيل'} المنتج بنجاح`
         });
     } catch (error) {
-        console.error('Error toggling product status:', error);
+        console.error('[PRODUCTS] Failed to toggle product status:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في تحديث حالة المنتج',
@@ -300,7 +420,7 @@ export const getProductStatistics = async (req, res) => {
             message: 'تم جلب الإحصائيات بنجاح'
         });
     } catch (error) {
-        console.error('Error fetching product statistics:', error);
+        console.error('[PRODUCTS] Failed to fetch statistics:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في جلب الإحصائيات',
@@ -331,7 +451,7 @@ export const searchProducts = async (req, res) => {
             message: 'تم البحث بنجاح'
         });
     } catch (error) {
-        console.error('Error searching products:', error);
+        console.error('[PRODUCTS] Product search failed:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في البحث',
@@ -342,24 +462,44 @@ export const searchProducts = async (req, res) => {
 
 // دالة مساعدة للحصول على إحصائيات المنتجات
 const getProductStats = async () => {
-    const [totalProducts, activeProducts, priceRange] = await Promise.all([
+    const [totalProducts, activeProducts, priceRange, categoryStats] = await Promise.all([
         Product.count(),
-        Product.count({ where: { is_active: true } }),
-        Product.getPriceRange()
+        Product.count({ where: { status: 'active' } }),
+        Product.getPriceRange(),
+        Product.getProductStatistics()
     ]);
 
-    const averageMargin = await Product.findOne({
+    const averageMarginEur = await Product.findOne({
         attributes: [
-            [sequelize.fn('AVG', sequelize.literal('price - cost')), 'avg_margin']
+            [sequelize.fn('AVG', sequelize.literal('price_eur - cost_eur')), 'avg_margin_eur']
         ],
-        where: { is_active: true }
+        where: { status: 'active' }
+    });
+
+    const averageMarginSyp = await Product.findOne({
+        attributes: [
+            [sequelize.fn('AVG', sequelize.literal('price_syp - cost_syp')), 'avg_margin_syp']
+        ],
+        where: { status: 'active' }
+    });
+
+    const lowStockCount = await Product.count({
+        where: {
+            status: 'active',
+            stock_quantity: {
+                [Op.lte]: sequelize.col('minimum_stock')
+            }
+        }
     });
 
     return {
         total: totalProducts,
         active: activeProducts,
         inactive: totalProducts - activeProducts,
+        low_stock: lowStockCount,
         priceRange,
-        averageMargin: Math.round(parseFloat(averageMargin?.dataValues?.avg_margin || 0) * 100) / 100
+        averageMarginEur: Math.round(parseFloat(averageMarginEur?.dataValues?.avg_margin_eur || 0) * 100) / 100,
+        averageMarginSyp: Math.round(parseFloat(averageMarginSyp?.dataValues?.avg_margin_syp || 0) * 100) / 100,
+        categoryStats
     };
 }; 

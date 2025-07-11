@@ -85,6 +85,30 @@ router.get('/', protect, async (req, res) => {
     }
 });
 
+// الحصول على عدد الإشعارات غير المقروءة
+router.get('/unread-count', protect, async (req, res) => {
+    try {
+        const unreadCount = await Notification.count({
+            where: {
+                userId: req.user.id,
+                isRead: false
+            }
+        });
+
+        res.json({
+            success: true,
+            count: unreadCount
+        });
+    } catch (error) {
+        console.error('خطأ في جلب عدد الإشعارات غير المقروءة:', error);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في جلب عدد الإشعارات غير المقروءة',
+            count: 0
+        });
+    }
+});
+
 // تعيين إشعار كمقروء
 router.patch('/:id/read', protect, async (req, res) => {
     try {

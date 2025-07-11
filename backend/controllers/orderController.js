@@ -67,6 +67,19 @@ export const getOrders = async (req, res) => {
             }
         }
 
+        if (req.query.priority) {
+            whereClause.priority = req.query.priority;
+            filters.priority = req.query.priority;
+        }
+
+        if (req.query.distributor_id) {
+            const distributorId = parseInt(req.query.distributor_id);
+            if (!isNaN(distributorId) && distributorId > 0) {
+                whereClause.assigned_distributor_id = distributorId;
+                filters.distributor_id = distributorId;
+            }
+        }
+
         if (req.query.date_from || req.query.date_to) {
             whereClause.order_date = {};
             if (req.query.date_from && req.query.date_from.trim()) {
@@ -114,7 +127,7 @@ export const getOrders = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error fetching orders:', error);
+        console.error('[ORDERS] Failed to fetch orders:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في جلب الطلبات',
@@ -173,7 +186,7 @@ export const getOrder = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error fetching order:', error);
+        console.error('[ORDERS] Failed to fetch order:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في جلب الطلب',
@@ -202,74 +215,95 @@ export const createOrder = async (req, res) => {
             });
         }
 
-        // Check if store exists
-        const store = await Store.findByPk(createOrderRequest.store_id);
+        const { store_id, items, notes, priority = 'medium', scheduled_delivery_date } = req.body;
+
+        // Verify store exists
+        const store = await Store.findByPk(store_id);
         if (!store) {
             await transaction.rollback();
             return res.status(404).json({
                 success: false,
-                message: 'المتجر غير موجود'
+                message: 'المحل غير موجود'
             });
         }
 
         // Generate order number
-        const orderNumber = Order.generateOrderNumber(createOrderRequest.store_id, createOrderRequest.order_date);
+        const orderNumber = await Order.generateOrderNumber();
 
-        // Calculate totals from items first
-        let calculatedTotalAmount = 0;
-        let orderItemsData = [];
+        // Calculate totals
+        let totalAmountEur = 0;
+        let totalAmountSyp = 0;
+        let totalCostEur = 0;
+        let totalCostSyp = 0;
 
-        if (createOrderRequest.items && createOrderRequest.items.length > 0) {
-            // Validate products exist
-            const productIds = createOrderRequest.items.map(item => item.product_id);
-            const products = await Product.findAll({
-                where: { id: productIds },
-                transaction
-            });
-
-            if (products.length !== productIds.length) {
+        // Validate items and calculate totals
+        const validatedItems = [];
+        for (const item of items) {
+            const product = await Product.findByPk(item.product_id);
+            if (!product) {
                 await transaction.rollback();
-                return res.status(400).json({
+                return res.status(404).json({
                     success: false,
-                    message: 'بعض المنتجات غير موجودة'
+                    message: `المنتج ${item.product_id} غير موجود`
                 });
             }
 
-            // Calculate totals from items
-            orderItemsData = createOrderRequest.getOrderItems();
-            calculatedTotalAmount = orderItemsData.reduce((sum, item) => sum + item.final_price, 0);
+            const quantity = parseInt(item.quantity);
+            if (quantity <= 0) {
+                await transaction.rollback();
+                return res.status(400).json({
+                    success: false,
+                    message: `الكمية يجب أن تكون أكبر من صفر للمنتج ${product.name}`
+                });
+            }
+
+            const itemTotalEur = product.price_eur * quantity;
+            const itemTotalSyp = product.price_syp * quantity;
+            const itemCostEur = product.cost_eur * quantity;
+            const itemCostSyp = product.cost_syp * quantity;
+
+            totalAmountEur += itemTotalEur;
+            totalAmountSyp += itemTotalSyp;
+            totalCostEur += itemCostEur;
+            totalCostSyp += itemCostSyp;
+
+            validatedItems.push({
+                product_id: item.product_id,
+                quantity,
+                unit_price_eur: product.price_eur,
+                unit_price_syp: product.price_syp,
+                total_price_eur: itemTotalEur,
+                total_price_syp: itemTotalSyp,
+                product_name: product.name,
+                product_unit: product.unit
+            });
         }
 
-        // Use calculated total or ensure minimum value
-        const finalTotalAmount = Math.max(calculatedTotalAmount, 0.01); // Minimum 0.01 to avoid validation error
-        const discountAmount = Math.min(createOrderRequest.discount_amount, finalTotalAmount); // Ensure discount doesn't exceed total
-        const finalAmount = Math.max(finalTotalAmount - discountAmount, 0.01); // Minimum 0.01
-
-        // Create order with calculated values
-        const orderData = {
-            store_id: createOrderRequest.store_id,
-            order_date: createOrderRequest.order_date,
-            delivery_date: createOrderRequest.delivery_date,
-            total_amount: finalTotalAmount,
-            discount_amount: discountAmount,
-            final_amount: finalAmount,
-            notes: createOrderRequest.notes,
+        // Create order
+        const order = await Order.create({
             order_number: orderNumber,
+            store_id,
+            total_amount_eur: totalAmountEur,
+            total_amount_syp: totalAmountSyp,
+            total_cost_eur: totalCostEur,
+            total_cost_syp: totalCostSyp,
+            commission_eur: (totalAmountEur - totalCostEur) * 0.1, // 10% commission
+            commission_syp: (totalAmountSyp - totalCostSyp) * 0.1,
             status: ORDER_STATUS.DRAFT,
             payment_status: PAYMENT_STATUS.PENDING,
-            created_by: req.user.id
-        };
+            priority,
+            scheduled_delivery_date: scheduled_delivery_date || null,
+            notes,
+            created_by: req.user.id,
+            created_by_name: req.user.full_name || req.user.username
+        }, { transaction });
 
-        const order = await Order.create(orderData, { transaction });
-
-        // Create order items if provided
-        if (orderItemsData.length > 0) {
-            const orderItemsWithOrderId = orderItemsData.map(item => ({
-                ...item,
-                order_id: order.id
-            }));
-
-            await OrderItem.bulkCreate(orderItemsWithOrderId, { transaction });
+        // Create order items
+        for (const item of validatedItems) {
+            await OrderItem.create({
+                order_id: order.id,
+                ...item
+            }, { transaction });
         }
 
         await transaction.commit();
@@ -278,7 +312,7 @@ export const createOrder = async (req, res) => {
         const completeOrder = await Order.findByPk(order.id, {
             include: [
                 { model: Store, as: 'store' },
-                { model: User, as: 'creator' },
+                { model: User, as: 'creator', attributes: ['id', 'full_name', 'username'] },
                 {
                     model: OrderItem,
                     as: 'items',
@@ -291,13 +325,25 @@ export const createOrder = async (req, res) => {
 
         res.status(201).json({
             success: true,
-            message: 'تم إنشاء الطلب بنجاح',
-            data: orderResponse
+            data: orderResponse,
+            message: 'تم إنشاء الطلب بنجاح'
         });
 
     } catch (error) {
         await transaction.rollback();
-        console.error('Error creating order:', error);
+        console.error('[ORDERS] Failed to create order:', error.message);
+
+        if (error.name === 'SequelizeValidationError') {
+            return res.status(400).json({
+                success: false,
+                message: 'بيانات غير صحيحة',
+                errors: error.errors.map(e => ({
+                    field: e.path,
+                    message: e.message
+                }))
+            });
+        }
+
         res.status(500).json({
             success: false,
             message: 'خطأ في إنشاء الطلب',
@@ -310,141 +356,148 @@ export const createOrder = async (req, res) => {
 // @route   PUT /api/orders/:id
 // @access  Private
 export const updateOrder = async (req, res) => {
+    const transaction = await sequelize.transaction();
+
     try {
-        const { id } = req.params;
-        const {
-            store_id,
-            order_date,
-            delivery_date,
-            items,
-            discount_amount,
-            notes,
-            status
-        } = req.body;
+        const orderId = parseInt(req.params.id);
+        const { items, notes, priority, scheduled_delivery_date } = req.body;
 
-        const transaction = await sequelize.transaction();
+        const order = await Order.findByPk(orderId, {
+            include: [
+                { model: OrderItem, as: 'items' }
+            ]
+        });
 
-        try {
-            // البحث عن الطلب
-            const order = await Order.findByPk(id, {
-                include: [{
-                    model: OrderItem,
-                    as: 'items'
-                }]
+        if (!order) {
+            await transaction.rollback();
+            return res.status(404).json({
+                success: false,
+                message: 'الطلب غير موجود'
             });
+        }
 
-            if (!order) {
-                await transaction.rollback();
-                return res.status(404).json({
-                    success: false,
-                    message: 'الطلب غير موجود'
-                });
-            }
+        // Check permissions
+        if (req.user.role !== 'admin' && req.user.role !== 'manager' && order.created_by !== req.user.id) {
+            await transaction.rollback();
+            return res.status(403).json({
+                success: false,
+                message: 'غير مصرح لك بتحديث هذا الطلب'
+            });
+        }
 
-            // التحقق من إمكانية التعديل
-            if (!order.canBeModified()) {
-                await transaction.rollback();
-                return res.status(400).json({
-                    success: false,
-                    message: 'لا يمكن تعديل هذا الطلب في الحالة الحالية'
-                });
-            }
+        // Can only update draft orders
+        if (order.status !== ORDER_STATUS.DRAFT) {
+            await transaction.rollback();
+            return res.status(400).json({
+                success: false,
+                message: 'لا يمكن تحديث الطلب بعد تأكيده'
+            });
+        }
 
-            // حذف عناصر الطلب القديمة
+        // Update order items if provided
+        if (items && items.length > 0) {
+            // Delete existing items
             await OrderItem.destroy({
-                where: { order_id: id },
+                where: { order_id: orderId },
                 transaction
             });
 
-            // إعادة حساب المبلغ الإجمالي
-            let totalAmount = 0;
-            const orderItemsData = [];
+            // Calculate new totals
+            let totalAmountEur = 0;
+            let totalAmountSyp = 0;
+            let totalCostEur = 0;
+            let totalCostSyp = 0;
 
-            if (items && items.length > 0) {
-                const productIds = items.map(item => item.product_id);
-                const products = await Product.findAll({
-                    where: {
-                        id: { [Op.in]: productIds },
-                        is_active: true
-                    }
-                });
-
-                for (const item of items) {
-                    const product = products.find(p => p.id === item.product_id);
-                    const unitPrice = item.unit_price || product.price;
-                    const totalPrice = parseFloat(item.quantity) * parseFloat(unitPrice);
-                    const itemDiscountAmount = parseFloat(item.discount_amount) || 0;
-                    const finalPrice = totalPrice - itemDiscountAmount;
-
-                    totalAmount += finalPrice;
-
-                    orderItemsData.push({
-                        order_id: id,
-                        product_id: item.product_id,
-                        quantity: item.quantity,
-                        unit_price: unitPrice,
-                        total_price: totalPrice,
-                        discount_amount: itemDiscountAmount,
-                        final_price: finalPrice,
-                        gift_quantity: item.gift_quantity || 0,
-                        gift_reason: item.gift_reason || null,
-                        notes: item.notes || null
+            // Validate and create new items
+            for (const item of items) {
+                const product = await Product.findByPk(item.product_id);
+                if (!product) {
+                    await transaction.rollback();
+                    return res.status(404).json({
+                        success: false,
+                        message: `المنتج ${item.product_id} غير موجود`
                     });
                 }
 
-                // إنشاء عناصر الطلب الجديدة
-                await OrderItem.bulkCreate(orderItemsData, { transaction });
+                const quantity = parseInt(item.quantity);
+                if (quantity <= 0) {
+                    await transaction.rollback();
+                    return res.status(400).json({
+                        success: false,
+                        message: `الكمية يجب أن تكون أكبر من صفر للمنتج ${product.name}`
+                    });
+                }
+
+                const itemTotalEur = product.price_eur * quantity;
+                const itemTotalSyp = product.price_syp * quantity;
+                const itemCostEur = product.cost_eur * quantity;
+                const itemCostSyp = product.cost_syp * quantity;
+
+                totalAmountEur += itemTotalEur;
+                totalAmountSyp += itemTotalSyp;
+                totalCostEur += itemCostEur;
+                totalCostSyp += itemCostSyp;
+
+                await OrderItem.create({
+                    order_id: orderId,
+                    product_id: item.product_id,
+                    quantity,
+                    unit_price_eur: product.price_eur,
+                    unit_price_syp: product.price_syp,
+                    total_price_eur: itemTotalEur,
+                    total_price_syp: itemTotalSyp,
+                    product_name: product.name,
+                    product_unit: product.unit
+                }, { transaction });
             }
 
-            const finalAmount = totalAmount - parseFloat(discount_amount || 0);
-
-            // تحديث الطلب
+            // Update order totals
             await order.update({
-                store_id: store_id || order.store_id,
-                order_date: order_date || order.order_date,
-                delivery_date: delivery_date || order.delivery_date,
-                total_amount: totalAmount,
-                discount_amount: parseFloat(discount_amount || 0),
-                final_amount: finalAmount,
-                notes: notes !== undefined ? notes : order.notes,
-                status: status || order.status
+                total_amount_eur: totalAmountEur,
+                total_amount_syp: totalAmountSyp,
+                total_cost_eur: totalCostEur,
+                total_cost_syp: totalCostSyp,
+                commission_eur: (totalAmountEur - totalCostEur) * 0.1,
+                commission_syp: (totalAmountSyp - totalCostSyp) * 0.1
             }, { transaction });
-
-            await transaction.commit();
-
-            // جلب الطلب المحدث مع العلاقات
-            const updatedOrder = await Order.findByPk(id, {
-                include: [
-                    {
-                        model: Store,
-                        as: 'store',
-                        attributes: ['id', 'name', 'phone', 'address']
-                    },
-                    {
-                        model: OrderItem,
-                        as: 'items',
-                        include: [{
-                            model: Product,
-                            as: 'product',
-                            attributes: ['id', 'name', 'unit']
-                        }]
-                    }
-                ]
-            });
-
-            res.json({
-                success: true,
-                data: updatedOrder,
-                message: 'تم تحديث الطلب بنجاح'
-            });
-
-        } catch (error) {
-            await transaction.rollback();
-            throw error;
         }
 
+        // Update other order fields
+        const updateData = {};
+        if (notes !== undefined) updateData.notes = notes;
+        if (priority !== undefined) updateData.priority = priority;
+        if (scheduled_delivery_date !== undefined) updateData.scheduled_delivery_date = scheduled_delivery_date;
+
+        if (Object.keys(updateData).length > 0) {
+            await order.update(updateData, { transaction });
+        }
+
+        await transaction.commit();
+
+        // Fetch updated order with relations
+        const updatedOrder = await Order.findByPk(orderId, {
+            include: [
+                { model: Store, as: 'store' },
+                { model: User, as: 'creator', attributes: ['id', 'full_name', 'username'] },
+                {
+                    model: OrderItem,
+                    as: 'items',
+                    include: [{ model: Product, as: 'product' }]
+                }
+            ]
+        });
+
+        const orderResponse = new OrderResponse(updatedOrder, true, true, true);
+
+        res.json({
+            success: true,
+            data: orderResponse,
+            message: 'تم تحديث الطلب بنجاح'
+        });
+
     } catch (error) {
-        console.error('Error in updateOrder:', error);
+        await transaction.rollback();
+        console.error('[ORDERS] Failed to update order:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في تحديث الطلب',
@@ -462,7 +515,7 @@ export const deleteOrder = async (req, res) => {
     try {
         const orderId = parseInt(req.params.id);
 
-        const order = await Order.findByPk(orderId, { transaction });
+        const order = await Order.findByPk(orderId);
 
         if (!order) {
             await transaction.rollback();
@@ -481,12 +534,12 @@ export const deleteOrder = async (req, res) => {
             });
         }
 
-        // Check if order can be deleted
-        if (!order.canBeCancelled()) {
+        // Can only delete draft orders
+        if (order.status !== ORDER_STATUS.DRAFT) {
             await transaction.rollback();
             return res.status(400).json({
                 success: false,
-                message: 'لا يمكن حذف هذا الطلب'
+                message: 'لا يمكن حذف الطلب بعد تأكيده'
             });
         }
 
@@ -508,7 +561,7 @@ export const deleteOrder = async (req, res) => {
 
     } catch (error) {
         await transaction.rollback();
-        console.error('Error deleting order:', error);
+        console.error('[ORDERS] Failed to delete order:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في حذف الطلب',
@@ -525,15 +578,6 @@ export const updateOrderStatus = async (req, res) => {
         const orderId = parseInt(req.params.id);
         const { status } = req.body;
 
-        // التحقق من صحة orderId
-        if (isNaN(orderId) || orderId <= 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'معرف الطلب غير صحيح'
-            });
-        }
-
-        // التحقق من صحة الحالة
         if (!status || !Object.values(ORDER_STATUS).includes(status)) {
             return res.status(400).json({
                 success: false,
@@ -551,10 +595,10 @@ export const updateOrderStatus = async (req, res) => {
         }
 
         // Check permissions
-        if (req.user.role !== 'admin' && req.user.role !== 'manager' && order.created_by !== req.user.id) {
+        if (req.user.role !== 'admin' && req.user.role !== 'manager') {
             return res.status(403).json({
                 success: false,
-                message: 'غير مصرح لك بتعديل هذا الطلب'
+                message: 'غير مصرح لك بتحديث حالة الطلب'
             });
         }
 
@@ -562,38 +606,21 @@ export const updateOrderStatus = async (req, res) => {
         if (!isStatusUpdateAllowed(order.status, status)) {
             return res.status(400).json({
                 success: false,
-                message: 'لا يمكن تحديث الحالة من ' + order.status + ' إلى ' + status
+                message: `لا يمكن تغيير حالة الطلب من ${order.status} إلى ${status}`
             });
         }
 
-        // تحديث الحالة
-        order.status = status;
-        order.updated_at = new Date();
-        await order.save();
-
-        // جلب الطلب مع العلاقات
-        const updatedOrder = await Order.findByPk(orderId, {
-            include: [
-                { model: Store, as: 'store' },
-                { model: User, as: 'creator', attributes: ['id', 'full_name', 'username'] },
-                {
-                    model: OrderItem,
-                    as: 'items',
-                    include: [{ model: Product, as: 'product' }]
-                }
-            ]
-        });
-
-        const orderResponse = new OrderResponse(updatedOrder, true, true, true);
+        // Update order status
+        await order.update({ status });
 
         res.json({
             success: true,
-            message: 'تم تحديث حالة الطلب بنجاح',
-            data: orderResponse
+            data: { order_id: orderId, status },
+            message: 'تم تحديث حالة الطلب بنجاح'
         });
 
     } catch (error) {
-        console.error('Error updating order status:', error);
+        console.error('[ORDERS] Failed to update order status:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في تحديث حالة الطلب',
@@ -610,6 +637,13 @@ export const updatePaymentStatus = async (req, res) => {
         const orderId = parseInt(req.params.id);
         const { payment_status } = req.body;
 
+        if (!payment_status || !Object.values(PAYMENT_STATUS).includes(payment_status)) {
+            return res.status(400).json({
+                success: false,
+                message: 'حالة الدفع غير صحيحة'
+            });
+        }
+
         const order = await Order.findByPk(orderId);
 
         if (!order) {
@@ -619,26 +653,25 @@ export const updatePaymentStatus = async (req, res) => {
             });
         }
 
-        // Check permissions (only admin and manager can update payment status)
+        // Check permissions
         if (req.user.role !== 'admin' && req.user.role !== 'manager') {
             return res.status(403).json({
                 success: false,
-                message: 'غير مصرح لك بتعديل حالة الدفع'
+                message: 'غير مصرح لك بتحديث حالة الدفع'
             });
         }
 
-        await order.updatePaymentStatus(payment_status);
-
-        const orderResponse = new OrderResponse(order);
+        // Update payment status
+        await order.update({ payment_status });
 
         res.json({
             success: true,
-            message: 'تم تحديث حالة الدفع بنجاح',
-            data: orderResponse
+            data: { order_id: orderId, payment_status },
+            message: 'تم تحديث حالة الدفع بنجاح'
         });
 
     } catch (error) {
-        console.error('Error updating payment status:', error);
+        console.error('[ORDERS] Failed to update payment status:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في تحديث حالة الدفع',
@@ -652,54 +685,53 @@ export const updatePaymentStatus = async (req, res) => {
 // @access  Private
 export const getTodayOrders = async (req, res) => {
     try {
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date();
+        const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
 
         const orders = await Order.findAll({
             where: {
-                order_date: today
+                created_at: {
+                    [Op.between]: [startOfDay, endOfDay]
+                }
             },
             include: [
-                {
-                    model: Store,
-                    as: 'store',
-                    attributes: ['id', 'name', 'phone', 'address']
-                },
+                { model: Store, as: 'store' },
+                { model: User, as: 'creator', attributes: ['id', 'full_name', 'username'] },
                 {
                     model: OrderItem,
                     as: 'items',
-                    include: [{
-                        model: Product,
-                        as: 'product',
-                        attributes: ['id', 'name', 'unit']
-                    }]
+                    include: [{ model: Product, as: 'product', attributes: ['id', 'name', 'unit'] }]
                 }
             ],
             order: [['created_at', 'DESC']]
         });
 
-        const statistics = {
+        const stats = {
             total_orders: orders.length,
-            total_amount: orders.reduce((sum, order) => sum + parseFloat(order.final_amount), 0),
-            by_status: {
-                draft: orders.filter(o => o.status === 'draft').length,
-                confirmed: orders.filter(o => o.status === 'confirmed').length,
-                in_progress: orders.filter(o => o.status === 'in_progress').length,
-                delivered: orders.filter(o => o.status === 'delivered').length,
-                cancelled: orders.filter(o => o.status === 'cancelled').length
-            }
+            total_amount_eur: orders.reduce((sum, order) => sum + parseFloat(order.total_amount_eur || 0), 0),
+            total_amount_syp: orders.reduce((sum, order) => sum + parseFloat(order.total_amount_syp || 0), 0),
+            by_status: {}
         };
+
+        // Group by status
+        orders.forEach(order => {
+            if (!stats.by_status[order.status]) {
+                stats.by_status[order.status] = 0;
+            }
+            stats.by_status[order.status]++;
+        });
 
         res.json({
             success: true,
             data: {
-                orders,
-                statistics
-            },
-            message: 'تم جلب طلبات اليوم بنجاح'
+                orders: orders.map(order => new OrderResponse(order, true, false, false)),
+                stats
+            }
         });
 
     } catch (error) {
-        console.error('Error in getTodayOrders:', error);
+        console.error('[ORDERS] Failed to fetch today orders:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في جلب طلبات اليوم',
@@ -713,69 +745,16 @@ export const getTodayOrders = async (req, res) => {
 // @access  Private
 export const getOrderStatistics = async (req, res) => {
     try {
-        const { date_from, date_to } = req.query;
-
-        const dateFrom = date_from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        const dateTo = date_to || new Date().toISOString().split('T')[0];
-
-        const totalsByDate = await Order.getTotalsByDate(dateFrom, dateTo);
-
-        const overallStats = await Order.findOne({
-            attributes: [
-                [sequelize.fn('COUNT', sequelize.col('id')), 'total_orders'],
-                [sequelize.fn('SUM', sequelize.col('final_amount')), 'total_amount'],
-                [sequelize.fn('AVG', sequelize.col('final_amount')), 'avg_amount']
-            ],
-            where: {
-                order_date: {
-                    [Op.between]: [dateFrom, dateTo]
-                },
-                status: {
-                    [Op.ne]: 'cancelled'
-                }
-            }
-        });
-
-        const statusDistribution = await Order.findAll({
-            attributes: [
-                'status',
-                [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
-                [sequelize.fn('SUM', sequelize.col('final_amount')), 'amount']
-            ],
-            where: {
-                order_date: {
-                    [Op.between]: [dateFrom, dateTo]
-                }
-            },
-            group: ['status']
-        });
+        const stats = await Order.getOrderStatistics();
 
         res.json({
             success: true,
-            data: {
-                overall: {
-                    total_orders: parseInt(overallStats?.dataValues?.total_orders) || 0,
-                    total_amount: parseFloat(overallStats?.dataValues?.total_amount) || 0,
-                    avg_amount: Math.round(parseFloat(overallStats?.dataValues?.avg_amount) * 100) / 100 || 0
-                },
-                daily_totals: totalsByDate,
-                status_distribution: statusDistribution.reduce((acc, item) => {
-                    acc[item.status] = {
-                        count: parseInt(item.dataValues.count),
-                        amount: parseFloat(item.dataValues.amount) || 0
-                    };
-                    return acc;
-                }, {}),
-                date_range: {
-                    from: dateFrom,
-                    to: dateTo
-                }
-            },
-            message: 'تم جلب إحصائيات الطلبات بنجاح'
+            data: stats,
+            message: 'تم جلب الإحصائيات بنجاح'
         });
 
     } catch (error) {
-        console.error('Error in getOrderStatistics:', error);
+        console.error('[ORDERS] Failed to fetch order statistics:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في جلب إحصائيات الطلبات',
@@ -784,46 +763,14 @@ export const getOrderStatistics = async (req, res) => {
     }
 };
 
-// @desc    تصدير الطلبات إلى Excel
+// @desc    تصدير الطلبات
 // @route   GET /api/orders/export
 // @access  Private
 export const exportOrders = async (req, res) => {
     try {
-        // Build where clause from query parameters (exclude page and limit)
-        const whereClause = {};
-
-        if (req.query.status) {
-            whereClause.status = req.query.status;
-        }
-
-        if (req.query.payment_status) {
-            whereClause.payment_status = req.query.payment_status;
-        }
-
-        if (req.query.store_id) {
-            const storeId = parseInt(req.query.store_id);
-            if (!isNaN(storeId) && storeId > 0) {
-                whereClause.store_id = storeId;
-            }
-        }
-
-        if (req.query.date_from || req.query.date_to) {
-            whereClause.order_date = {};
-            if (req.query.date_from) {
-                whereClause.order_date[Op.gte] = req.query.date_from;
-            }
-            if (req.query.date_to) {
-                whereClause.order_date[Op.lte] = req.query.date_to;
-            }
-        }
-
-        // Add user-based filtering
-        if (req.user.role !== 'admin' && req.user.role !== 'manager') {
-            whereClause.created_by = req.user.id;
-        }
+        const { format = 'csv' } = req.query;
 
         const orders = await Order.findAll({
-            where: whereClause,
             include: [
                 { model: Store, as: 'store' },
                 { model: User, as: 'creator', attributes: ['id', 'full_name', 'username'] },
@@ -836,58 +783,36 @@ export const exportOrders = async (req, res) => {
             order: [['created_at', 'DESC']]
         });
 
-        // التحقق من وجود بيانات
-        if (orders.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'لا توجد طلبات للتصدير'
+        if (format === 'csv') {
+            // Generate CSV content
+            const csvContent = orders.map(order => ({
+                order_number: order.order_number,
+                store_name: order.store?.name || '',
+                total_amount_eur: order.total_amount_eur,
+                total_amount_syp: order.total_amount_syp,
+                status: order.status,
+                payment_status: order.payment_status,
+                created_at: order.created_at,
+                created_by: order.creator?.full_name || order.creator?.username || ''
+            }));
+
+            res.setHeader('Content-Type', 'text/csv');
+            res.setHeader('Content-Disposition', 'attachment; filename="orders.csv"');
+
+            // Simple CSV conversion
+            const csvHeader = Object.keys(csvContent[0] || {}).join(',') + '\n';
+            const csvRows = csvContent.map(row => Object.values(row).join(',')).join('\n');
+
+            res.send(csvHeader + csvRows);
+        } else {
+            res.json({
+                success: true,
+                data: orders.map(order => new OrderResponse(order, true, true, true))
             });
         }
 
-        // Prepare data for CSV export (simple format)
-        const csvData = orders.map(order => {
-            const orderDate = new Date(order.order_date);
-            const deliveryDate = order.delivery_date ? new Date(order.delivery_date) : null;
-            const createdDate = new Date(order.created_at);
-
-            return {
-                'رقم الطلب': order.order_number,
-                'المتجر': order.store?.name || '',
-                'تاريخ الطلب': orderDate.toLocaleDateString('en-GB'), // DD/MM/YYYY format
-                'تاريخ التسليم': deliveryDate ? deliveryDate.toLocaleDateString('en-GB') : '',
-                'الحالة': order.status,
-                'حالة الدفع': order.payment_status,
-                'المبلغ الإجمالي': order.total_amount,
-                'الخصم': order.discount_amount,
-                'المبلغ النهائي': order.final_amount,
-                'عدد المنتجات': order.items?.length || 0,
-                'الكمية الإجمالية': order.items?.reduce((sum, item) => sum + parseInt(item.quantity), 0) || 0,
-                'ملاحظات': order.notes || '',
-                'منشئ الطلب': order.creator?.full_name || '',
-                'تاريخ الإنشاء': createdDate.toLocaleDateString('en-GB')
-            };
-        });
-
-        // Convert to CSV format
-        const headers = Object.keys(csvData[0]);
-        const csvContent = [
-            headers.join(','),
-            ...csvData.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
-        ].join('\n');
-
-        // Set response headers for file download
-        const today = new Date();
-        const filename = `orders_${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}.csv`;
-
-        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-
-        // Add BOM for proper Arabic display in Excel
-        res.write('\ufeff');
-        res.end(csvContent);
-
     } catch (error) {
-        console.error('Error exporting orders:', error);
+        console.error('[ORDERS] Failed to export orders:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في تصدير الطلبات',

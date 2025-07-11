@@ -52,4 +52,18 @@ export const errorHandler = (err, req, res, next) => {
         error: error.message || 'Server Error',
         ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
     });
+};
+
+import { validationResult } from 'express-validator';
+
+export const handleValidationErrors = (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(422).json({
+            success: false,
+            message: 'خطأ في التحقق من صحة البيانات',
+            errors: errors.array()
+        });
+    }
+    next();
 }; 

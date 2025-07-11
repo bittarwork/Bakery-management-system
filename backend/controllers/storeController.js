@@ -27,23 +27,41 @@ export const getStores = async (req, res) => {
         }
 
         // Status filter
-        if (req.query.is_active !== undefined) {
-            whereClause.is_active = req.query.is_active === 'true';
-            filters.is_active = req.query.is_active;
+        if (req.query.status) {
+            whereClause.status = req.query.status;
+            filters.status = req.query.status;
         }
 
-        // Payment method filter
-        if (req.query.payment_method) {
-            whereClause.payment_method = req.query.payment_method;
-            filters.payment_method = req.query.payment_method;
+        // Category filter
+        if (req.query.category) {
+            whereClause.category = req.query.category;
+            filters.category = req.query.category;
         }
 
-        // Region filter
-        if (req.query.region_id) {
-            const regionId = parseInt(req.query.region_id);
-            if (!isNaN(regionId) && regionId > 0) {
-                whereClause.region_id = regionId;
-                filters.region_id = regionId;
+        // Store type filter
+        if (req.query.store_type) {
+            whereClause.store_type = req.query.store_type;
+            filters.store_type = req.query.store_type;
+        }
+
+        // Size category filter
+        if (req.query.size_category) {
+            whereClause.size_category = req.query.size_category;
+            filters.size_category = req.query.size_category;
+        }
+
+        // Payment terms filter
+        if (req.query.payment_terms) {
+            whereClause.payment_terms = req.query.payment_terms;
+            filters.payment_terms = req.query.payment_terms;
+        }
+
+        // Assigned distributor filter
+        if (req.query.assigned_distributor_id) {
+            const distributorId = parseInt(req.query.assigned_distributor_id);
+            if (!isNaN(distributorId) && distributorId > 0) {
+                whereClause.assigned_distributor_id = distributorId;
+                filters.assigned_distributor_id = distributorId;
             }
         }
 
@@ -53,15 +71,9 @@ export const getStores = async (req, res) => {
             const lng = parseFloat(req.query.lng);
             const radius = parseFloat(req.query.radius); // in kilometers
 
-            // Calculate bounding box for initial filtering
-            const latDelta = radius / 111.32; // 1 degree lat ≈ 111.32 km
-            const lngDelta = radius / (111.32 * Math.cos(lat * Math.PI / 180));
-
-            whereClause.latitude = {
-                [Op.between]: [lat - latDelta, lat + latDelta]
-            };
-            whereClause.longitude = {
-                [Op.between]: [lng - lngDelta, lng + lngDelta]
+            // Filter stores with GPS coordinates
+            whereClause.gps_coordinates = {
+                [Op.ne]: null
             };
 
             filters.lat = lat;
@@ -81,13 +93,15 @@ export const getStores = async (req, res) => {
                         [
                             sequelize.literal(`
                                 CASE 
-                                    WHEN latitude IS NOT NULL AND longitude IS NOT NULL THEN
+                                    WHEN gps_coordinates IS NOT NULL 
+                                    AND JSON_EXTRACT(gps_coordinates, '$.latitude') IS NOT NULL 
+                                    AND JSON_EXTRACT(gps_coordinates, '$.longitude') IS NOT NULL THEN
                                         6371 * acos(
                                             cos(radians(${parseFloat(req.query.lat)})) * 
-                                            cos(radians(latitude)) * 
-                                            cos(radians(longitude) - radians(${parseFloat(req.query.lng)})) + 
+                                            cos(radians(CAST(JSON_EXTRACT(gps_coordinates, '$.latitude') AS DECIMAL(10,8)))) * 
+                                            cos(radians(CAST(JSON_EXTRACT(gps_coordinates, '$.longitude') AS DECIMAL(11,8))) - radians(${parseFloat(req.query.lng)})) + 
                                             sin(radians(${parseFloat(req.query.lat)})) * 
-                                            sin(radians(latitude))
+                                            sin(radians(CAST(JSON_EXTRACT(gps_coordinates, '$.latitude') AS DECIMAL(10,8))))
                                         )
                                     ELSE NULL
                                 END
@@ -128,7 +142,7 @@ export const getStores = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error fetching stores:', error);
+        console.error('[STORES] Failed to fetch stores:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في جلب المحلات',
@@ -159,13 +173,15 @@ export const getStore = async (req, res) => {
                         [
                             sequelize.literal(`
                                 CASE 
-                                    WHEN latitude IS NOT NULL AND longitude IS NOT NULL THEN
+                                    WHEN gps_coordinates IS NOT NULL 
+                                    AND JSON_EXTRACT(gps_coordinates, '$.latitude') IS NOT NULL 
+                                    AND JSON_EXTRACT(gps_coordinates, '$.longitude') IS NOT NULL THEN
                                         6371 * acos(
                                             cos(radians(${parseFloat(req.query.lat)})) * 
-                                            cos(radians(latitude)) * 
-                                            cos(radians(longitude) - radians(${parseFloat(req.query.lng)})) + 
+                                            cos(radians(CAST(JSON_EXTRACT(gps_coordinates, '$.latitude') AS DECIMAL(10,8)))) * 
+                                            cos(radians(CAST(JSON_EXTRACT(gps_coordinates, '$.longitude') AS DECIMAL(11,8))) - radians(${parseFloat(req.query.lng)})) + 
                                             sin(radians(${parseFloat(req.query.lat)})) * 
-                                            sin(radians(latitude))
+                                            sin(radians(CAST(JSON_EXTRACT(gps_coordinates, '$.latitude') AS DECIMAL(10,8))))
                                         )
                                     ELSE NULL
                                 END
@@ -190,7 +206,7 @@ export const getStore = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error fetching store:', error);
+        console.error('[STORES] Failed to fetch store:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في جلب المحل',
@@ -227,131 +243,26 @@ export const createStore = async (req, res) => {
             phone,
             email,
             address,
-            latitude,
-            longitude,
-            region_id,
-            payment_method,
-            credit_limit,
-            gift_policy,
-            notes
-        } = req.body;
-
-        // Validate coordinates if provided
-        if (latitude && longitude) {
-            const lat = parseFloat(latitude);
-            const lng = parseFloat(longitude);
-
-            if (lat < -90 || lat > 90) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'خط العرض يجب أن يكون بين -90 و 90'
-                });
-            }
-
-            if (lng < -180 || lng > 180) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'خط الطول يجب أن يكون بين -180 و 180'
-                });
-            }
-
-            // Check if coordinates are within Belgium bounds (approximate)
-            const belgiumBounds = {
-                north: 51.5,
-                south: 49.5,
-                east: 6.4,
-                west: 2.5
-            };
-
-            if (lat < belgiumBounds.south || lat > belgiumBounds.north ||
-                lng < belgiumBounds.west || lng > belgiumBounds.east) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'الموقع يجب أن يكون ضمن حدود بلجيكا'
-                });
-            }
-        }
-
-        const store = await Store.create({
-            name,
-            owner_name,
-            phone,
-            email,
-            address,
-            latitude: latitude ? parseFloat(latitude) : null,
-            longitude: longitude ? parseFloat(longitude) : null,
-            region_id: region_id ? parseInt(region_id) : null,
-            payment_method: payment_method || 'cash',
-            credit_limit: credit_limit ? parseFloat(credit_limit) : 0,
-            gift_policy: gift_policy || null,
-            notes
-        });
-
-        res.status(201).json({
-            success: true,
-            message: 'تم إنشاء المحل بنجاح',
-            data: store
-        });
-
-    } catch (error) {
-        console.error('Error creating store:', error);
-        res.status(500).json({
-            success: false,
-            message: 'خطأ في إنشاء المحل',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-    }
-};
-
-// @desc    تحديث محل
-// @route   PUT /api/stores/:id
-// @access  Private (Admin/Manager only)
-export const updateStore = async (req, res) => {
-    try {
-        // Check permissions
-        if (req.user.role !== 'admin' && req.user.role !== 'manager') {
-            return res.status(403).json({
-                success: false,
-                message: 'غير مصرح لك بتعديل المحلات'
-            });
-        }
-
-        const storeId = parseInt(req.params.id);
-
-        if (isNaN(storeId) || storeId <= 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'معرف المحل غير صحيح'
-            });
-        }
-
-        const store = await Store.findByPk(storeId);
-
-        if (!store) {
-            return res.status(404).json({
-                success: false,
-                message: 'المحل غير موجود'
-            });
-        }
-
-        const {
-            name,
-            owner_name,
-            phone,
-            email,
-            address,
-            latitude,
-            longitude,
-            region_id,
-            payment_method,
-            credit_limit,
-            gift_policy,
+            category = 'grocery',
+            store_type = 'retail',
+            size_category = 'small',
+            gps_coordinates,
+            payment_terms = 'cash',
+            credit_limit_eur = 0,
+            credit_limit_syp = 0,
+            assigned_distributor_id,
+            opening_hours,
+            contact_person,
+            tax_number,
+            business_license,
             notes,
-            is_active
+            status = 'active'
         } = req.body;
 
-        // Validate coordinates if provided
-        if (latitude !== undefined && longitude !== undefined) {
+        // Validate GPS coordinates if provided
+        if (gps_coordinates) {
+            const { latitude, longitude } = gps_coordinates;
+
             if (latitude && longitude) {
                 const lat = parseFloat(latitude);
                 const lng = parseFloat(longitude);
@@ -369,50 +280,186 @@ export const updateStore = async (req, res) => {
                         message: 'خط الطول يجب أن يكون بين -180 و 180'
                     });
                 }
+            }
+        }
 
-                // Check Belgium bounds
-                const belgiumBounds = {
-                    north: 51.5,
-                    south: 49.5,
-                    east: 6.4,
-                    west: 2.5
-                };
+        // Check for duplicate store name
+        const existingStore = await Store.findOne({
+            where: { name }
+        });
 
-                if (lat < belgiumBounds.south || lat > belgiumBounds.north ||
-                    lng < belgiumBounds.west || lng > belgiumBounds.east) {
+        if (existingStore) {
+            return res.status(409).json({
+                success: false,
+                message: 'يوجد محل بهذا الاسم مسبقاً'
+            });
+        }
+
+        const store = await Store.create({
+            name,
+            owner_name,
+            phone,
+            email,
+            address,
+            category,
+            store_type,
+            size_category,
+            gps_coordinates,
+            payment_terms,
+            credit_limit_eur,
+            credit_limit_syp,
+            assigned_distributor_id,
+            opening_hours,
+            contact_person,
+            tax_number,
+            business_license,
+            notes,
+            status,
+            created_by: req.userId
+        });
+
+        res.status(201).json({
+            success: true,
+            data: store,
+            message: 'تم إنشاء المحل بنجاح'
+        });
+
+    } catch (error) {
+        console.error('[STORES] Failed to create store:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في إنشاء المحل',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// @desc    تحديث محل
+// @route   PUT /api/stores/:id
+// @access  Private (Admin/Manager only)
+export const updateStore = async (req, res) => {
+    try {
+        // Check permissions
+        if (req.user.role !== 'admin' && req.user.role !== 'manager') {
+            return res.status(403).json({
+                success: false,
+                message: 'غير مصرح لك بتحديث المحلات'
+            });
+        }
+
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                message: 'بيانات غير صحيحة',
+                errors: errors.array()
+            });
+        }
+
+        const storeId = parseInt(req.params.id);
+        const {
+            name,
+            owner_name,
+            phone,
+            email,
+            address,
+            category,
+            store_type,
+            size_category,
+            gps_coordinates,
+            payment_terms,
+            credit_limit_eur,
+            credit_limit_syp,
+            assigned_distributor_id,
+            opening_hours,
+            contact_person,
+            tax_number,
+            business_license,
+            notes,
+            status
+        } = req.body;
+
+        const store = await Store.findByPk(storeId);
+
+        if (!store) {
+            return res.status(404).json({
+                success: false,
+                message: 'المحل غير موجود'
+            });
+        }
+
+        // Check for duplicate store name (excluding current store)
+        if (name && name !== store.name) {
+            const existingStore = await Store.findOne({
+                where: {
+                    name,
+                    id: { [Op.ne]: storeId }
+                }
+            });
+
+            if (existingStore) {
+                return res.status(409).json({
+                    success: false,
+                    message: 'يوجد محل بهذا الاسم مسبقاً'
+                });
+            }
+        }
+
+        // Validate GPS coordinates if provided
+        if (gps_coordinates) {
+            const { latitude, longitude } = gps_coordinates;
+
+            if (latitude && longitude) {
+                const lat = parseFloat(latitude);
+                const lng = parseFloat(longitude);
+
+                if (lat < -90 || lat > 90) {
                     return res.status(400).json({
                         success: false,
-                        message: 'الموقع يجب أن يكون ضمن حدود بلجيكا'
+                        message: 'خط العرض يجب أن يكون بين -90 و 90'
+                    });
+                }
+
+                if (lng < -180 || lng > 180) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'خط الطول يجب أن يكون بين -180 و 180'
                     });
                 }
             }
         }
 
-        // Update store
-        await store.update({
-            name: name !== undefined ? name : store.name,
-            owner_name: owner_name !== undefined ? owner_name : store.owner_name,
-            phone: phone !== undefined ? phone : store.phone,
-            email: email !== undefined ? email : store.email,
-            address: address !== undefined ? address : store.address,
-            latitude: latitude !== undefined ? (latitude ? parseFloat(latitude) : null) : store.latitude,
-            longitude: longitude !== undefined ? (longitude ? parseFloat(longitude) : null) : store.longitude,
-            region_id: region_id !== undefined ? (region_id ? parseInt(region_id) : null) : store.region_id,
-            payment_method: payment_method !== undefined ? payment_method : store.payment_method,
-            credit_limit: credit_limit !== undefined ? parseFloat(credit_limit) : store.credit_limit,
-            gift_policy: gift_policy !== undefined ? gift_policy : store.gift_policy,
-            notes: notes !== undefined ? notes : store.notes,
-            is_active: is_active !== undefined ? is_active : store.is_active
-        });
+        const updateData = {};
+        if (name !== undefined) updateData.name = name;
+        if (owner_name !== undefined) updateData.owner_name = owner_name;
+        if (phone !== undefined) updateData.phone = phone;
+        if (email !== undefined) updateData.email = email;
+        if (address !== undefined) updateData.address = address;
+        if (category !== undefined) updateData.category = category;
+        if (store_type !== undefined) updateData.store_type = store_type;
+        if (size_category !== undefined) updateData.size_category = size_category;
+        if (gps_coordinates !== undefined) updateData.gps_coordinates = gps_coordinates;
+        if (payment_terms !== undefined) updateData.payment_terms = payment_terms;
+        if (credit_limit_eur !== undefined) updateData.credit_limit_eur = credit_limit_eur;
+        if (credit_limit_syp !== undefined) updateData.credit_limit_syp = credit_limit_syp;
+        if (assigned_distributor_id !== undefined) updateData.assigned_distributor_id = assigned_distributor_id;
+        if (opening_hours !== undefined) updateData.opening_hours = opening_hours;
+        if (contact_person !== undefined) updateData.contact_person = contact_person;
+        if (tax_number !== undefined) updateData.tax_number = tax_number;
+        if (business_license !== undefined) updateData.business_license = business_license;
+        if (notes !== undefined) updateData.notes = notes;
+        if (status !== undefined) updateData.status = status;
+
+        await store.update(updateData);
 
         res.json({
             success: true,
-            message: 'تم تحديث المحل بنجاح',
-            data: store
+            data: store,
+            message: 'تم تحديث المحل بنجاح'
         });
 
     } catch (error) {
-        console.error('Error updating store:', error);
+        console.error('[STORES] Failed to update store:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في تحديث المحل',
@@ -435,14 +482,6 @@ export const deleteStore = async (req, res) => {
         }
 
         const storeId = parseInt(req.params.id);
-
-        if (isNaN(storeId) || storeId <= 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'معرف المحل غير صحيح'
-            });
-        }
-
         const store = await Store.findByPk(storeId);
 
         if (!store) {
@@ -452,15 +491,20 @@ export const deleteStore = async (req, res) => {
             });
         }
 
-        // Check if store has orders
-        const orderCount = await Order.count({
-            where: { store_id: storeId }
+        // Check for active orders before deletion
+        const activeOrders = await Order.count({
+            where: {
+                store_id: storeId,
+                status: {
+                    [Op.in]: ['pending', 'processing', 'shipped']
+                }
+            }
         });
 
-        if (orderCount > 0) {
+        if (activeOrders > 0) {
             return res.status(400).json({
                 success: false,
-                message: 'لا يمكن حذف المحل لأنه يحتوي على طلبات'
+                message: 'لا يمكن حذف المحل لوجود طلبات نشطة مرتبطة به'
             });
         }
 
@@ -472,7 +516,7 @@ export const deleteStore = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error deleting store:', error);
+        console.error('[STORES] Failed to delete store:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في حذف المحل',
@@ -486,39 +530,34 @@ export const deleteStore = async (req, res) => {
 // @access  Private
 export const getNearbyStores = async (req, res) => {
     try {
-        const { lat, lng, radius = 10 } = req.query;
+        const { lat, lng, radius = 10, limit = 20 } = req.query;
 
         if (!lat || !lng) {
             return res.status(400).json({
                 success: false,
-                message: 'خط العرض وخط الطول مطلوبان'
+                message: 'يجب تحديد خط العرض وخط الطول'
             });
         }
 
         const latitude = parseFloat(lat);
         const longitude = parseFloat(lng);
-        const searchRadius = parseFloat(radius);
+        const radiusKm = parseFloat(radius);
+        const limitNum = parseInt(limit);
 
-        if (isNaN(latitude) || isNaN(longitude) || isNaN(searchRadius)) {
+        // Validate coordinates
+        if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
             return res.status(400).json({
                 success: false,
                 message: 'إحداثيات غير صحيحة'
             });
         }
 
-        // Calculate bounding box for initial filtering
-        const latDelta = searchRadius / 111.32;
-        const lngDelta = searchRadius / (111.32 * Math.cos(latitude * Math.PI / 180));
-
         const stores = await Store.findAll({
             where: {
-                latitude: {
-                    [Op.between]: [latitude - latDelta, latitude + latDelta]
+                gps_coordinates: {
+                    [Op.ne]: null
                 },
-                longitude: {
-                    [Op.between]: [longitude - lngDelta, longitude + lngDelta]
-                },
-                is_active: true
+                status: 'active'
             },
             attributes: {
                 include: [
@@ -526,23 +565,24 @@ export const getNearbyStores = async (req, res) => {
                         sequelize.literal(`
                             6371 * acos(
                                 cos(radians(${latitude})) * 
-                                cos(radians(latitude)) * 
-                                cos(radians(longitude) - radians(${longitude})) + 
+                                cos(radians(CAST(JSON_EXTRACT(gps_coordinates, '$.latitude') AS DECIMAL(10,8)))) * 
+                                cos(radians(CAST(JSON_EXTRACT(gps_coordinates, '$.longitude') AS DECIMAL(11,8))) - radians(${longitude})) + 
                                 sin(radians(${latitude})) * 
-                                sin(radians(latitude))
+                                sin(radians(CAST(JSON_EXTRACT(gps_coordinates, '$.latitude') AS DECIMAL(10,8))))
                             )
                         `),
                         'distance'
                     ]
                 ]
             },
-            order: [[sequelize.literal('distance'), 'ASC']]
+            order: [[sequelize.literal('distance'), 'ASC']],
+            limit: limitNum
         });
 
-        // Filter by actual distance
+        // Filter by radius
         const nearbyStores = stores.filter(store => {
             const distance = store.dataValues.distance;
-            return distance !== null && distance <= searchRadius;
+            return distance !== null && distance <= radiusKm;
         });
 
         res.json({
@@ -550,13 +590,13 @@ export const getNearbyStores = async (req, res) => {
             data: {
                 stores: nearbyStores,
                 center: { lat: latitude, lng: longitude },
-                radius: searchRadius,
-                count: nearbyStores.length
+                radius: radiusKm,
+                total: nearbyStores.length
             }
         });
 
     } catch (error) {
-        console.error('Error fetching nearby stores:', error);
+        console.error('[STORES] Failed to fetch nearby stores:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في جلب المحلات القريبة',
@@ -570,76 +610,16 @@ export const getNearbyStores = async (req, res) => {
 // @access  Private
 export const getStoreStatistics = async (req, res) => {
     try {
-        const { region_id } = req.query;
-
-        // Base where clause for stores
-        const storeWhere = {};
-        if (region_id) {
-            storeWhere.region_id = parseInt(region_id);
-        }
-
-        // Get basic store statistics
-        const totalStores = await Store.count({
-            where: storeWhere
-        });
-
-        const activeStores = await Store.count({
-            where: { ...storeWhere, is_active: true }
-        });
-
-        const storesWithLocation = await Store.count({
-            where: {
-                ...storeWhere,
-                latitude: { [Op.not]: null },
-                longitude: { [Op.not]: null }
-            }
-        });
-
-        // Payment method distribution
-        const paymentMethodStats = await Store.findAll({
-            where: storeWhere,
-            attributes: [
-                'payment_method',
-                [sequelize.fn('COUNT', sequelize.col('id')), 'count']
-            ],
-            group: ['payment_method']
-        });
-
-        // Get top stores by name (simplified version without orders)
-        const topStores = await Store.findAll({
-            where: { ...storeWhere, is_active: true },
-            attributes: ['id', 'name', 'latitude', 'longitude', 'current_balance'],
-            order: [['current_balance', 'DESC']],
-            limit: 10
-        });
+        const stats = await Store.getStoreStatistics();
 
         res.json({
             success: true,
-            data: {
-                overview: {
-                    total_stores: totalStores,
-                    active_stores: activeStores,
-                    inactive_stores: totalStores - activeStores,
-                    stores_with_location: storesWithLocation,
-                    location_coverage: totalStores > 0 ? Math.round((storesWithLocation / totalStores) * 100) : 0
-                },
-                payment_methods: paymentMethodStats.reduce((acc, item) => {
-                    acc[item.payment_method] = parseInt(item.dataValues.count);
-                    return acc;
-                }, {}),
-                top_performing_stores: topStores.map(store => ({
-                    id: store.id,
-                    name: store.name,
-                    latitude: store.latitude,
-                    longitude: store.longitude,
-                    total_orders: 0, // Will be updated when orders are implemented
-                    total_revenue: parseFloat(store.current_balance) || 0
-                }))
-            }
+            data: stats,
+            message: 'تم جلب الإحصائيات بنجاح'
         });
 
     } catch (error) {
-        console.error('Error fetching store statistics:', error);
+        console.error('[STORES] Failed to fetch store statistics:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في جلب إحصائيات المحلات',
@@ -653,73 +633,38 @@ export const getStoreStatistics = async (req, res) => {
 // @access  Private
 export const getStoresMap = async (req, res) => {
     try {
-        const { region_id, is_active = 'true' } = req.query;
-
-        const whereClause = {
-            latitude: { [Op.not]: null },
-            longitude: { [Op.not]: null }
-        };
-
-        if (region_id) {
-            whereClause.region_id = parseInt(region_id);
-        }
-
-        if (is_active !== 'all') {
-            whereClause.is_active = is_active === 'true';
-        }
-
         const stores = await Store.findAll({
-            where: whereClause,
-            attributes: [
-                'id',
-                'name',
-                'owner_name',
-                'phone',
-                'address',
-                'latitude',
-                'longitude',
-                'payment_method',
-                'is_active',
-                'current_balance'
-            ],
-            order: [['name', 'ASC']]
+            where: {
+                gps_coordinates: {
+                    [Op.ne]: null
+                },
+                status: 'active'
+            },
+            attributes: ['id', 'name', 'owner_name', 'phone', 'address', 'category', 'gps_coordinates', 'store_type', 'size_category']
         });
 
-        // Belgium center coordinates
-        const mapCenter = {
-            lat: 50.8503,
-            lng: 4.3517
-        };
+        const mapData = stores.map(store => ({
+            id: store.id,
+            name: store.name,
+            owner_name: store.owner_name,
+            phone: store.phone,
+            address: store.address,
+            category: store.category,
+            store_type: store.store_type,
+            size_category: store.size_category,
+            coordinates: store.gps_coordinates
+        }));
 
         res.json({
             success: true,
             data: {
-                stores: stores.map(store => ({
-                    id: store.id,
-                    name: store.name,
-                    owner_name: store.owner_name,
-                    phone: store.phone,
-                    address: store.address,
-                    latitude: parseFloat(store.latitude),
-                    longitude: parseFloat(store.longitude),
-                    payment_method: store.payment_method,
-                    is_active: store.is_active,
-                    current_balance: parseFloat(store.current_balance),
-                    recent_orders: 0, // Will be updated when orders are implemented
-                    recent_revenue: 0 // Will be updated when orders are implemented
-                })),
-                center: mapCenter,
-                bounds: {
-                    north: 51.5,
-                    south: 49.5,
-                    east: 6.4,
-                    west: 2.5
-                }
+                stores: mapData,
+                total: mapData.length
             }
         });
 
     } catch (error) {
-        console.error('Error fetching stores map:', error);
+        console.error('[STORES] Failed to fetch stores map:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في جلب خريطة المحلات',

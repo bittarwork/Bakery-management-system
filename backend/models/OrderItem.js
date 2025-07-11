@@ -33,6 +33,10 @@ const OrderItem = sequelize.define('OrderItem', {
             }
         }
     },
+    product_name: {
+        type: DataTypes.STRING(255),
+        allowNull: false
+    },
     quantity: {
         type: DataTypes.INTEGER,
         allowNull: false,
@@ -46,67 +50,142 @@ const OrderItem = sequelize.define('OrderItem', {
             }
         }
     },
-    unit_price: {
+    unit_price_eur: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
-        validate: {
-            min: {
-                args: 0,
-                msg: 'سعر الوحدة لا يمكن أن يكون سالباً'
-            },
-            isDecimal: {
-                msg: 'سعر الوحدة يجب أن يكون رقماً صحيحاً'
-            }
-        }
-    },
-    total_price: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        validate: {
-            min: {
-                args: 0,
-                msg: 'إجمالي السعر لا يمكن أن يكون سالباً'
-            }
-        }
-    },
-    discount_amount: {
-        type: DataTypes.DECIMAL(10, 2),
         defaultValue: 0.00,
         validate: {
             min: {
                 args: 0,
-                msg: 'مبلغ الخصم لا يمكن أن يكون سالباً'
+                msg: 'سعر الوحدة باليورو لا يمكن أن يكون سالباً'
+            },
+            isDecimal: {
+                msg: 'سعر الوحدة باليورو يجب أن يكون رقماً صحيحاً'
             }
         }
     },
-    final_price: {
-        type: DataTypes.DECIMAL(10, 2),
+    unit_price_syp: {
+        type: DataTypes.DECIMAL(15, 2),
         allowNull: false,
+        defaultValue: 0.00,
         validate: {
             min: {
                 args: 0,
-                msg: 'السعر النهائي لا يمكن أن يكون سالباً'
+                msg: 'سعر الوحدة بالليرة لا يمكن أن يكون سالباً'
+            },
+            isDecimal: {
+                msg: 'سعر الوحدة بالليرة يجب أن يكون رقماً صحيحاً'
             }
         }
     },
-    gift_quantity: {
+    total_price_eur: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: false,
+        defaultValue: 0.00,
+        validate: {
+            min: {
+                args: 0,
+                msg: 'إجمالي السعر باليورو لا يمكن أن يكون سالباً'
+            }
+        }
+    },
+    total_price_syp: {
+        type: DataTypes.DECIMAL(20, 2),
+        allowNull: false,
+        defaultValue: 0.00,
+        validate: {
+            min: {
+                args: 0,
+                msg: 'إجمالي السعر بالليرة لا يمكن أن يكون سالباً'
+            }
+        }
+    },
+    discount_amount_eur: {
+        type: DataTypes.DECIMAL(15, 2),
+        defaultValue: 0.00,
+        validate: {
+            min: {
+                args: 0,
+                msg: 'مبلغ الخصم باليورو لا يمكن أن يكون سالباً'
+            }
+        }
+    },
+    discount_amount_syp: {
+        type: DataTypes.DECIMAL(20, 2),
+        defaultValue: 0.00,
+        validate: {
+            min: {
+                args: 0,
+                msg: 'مبلغ الخصم بالليرة لا يمكن أن يكون سالباً'
+            }
+        }
+    },
+    final_price_eur: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: false,
+        defaultValue: 0.00,
+        validate: {
+            min: {
+                args: 0,
+                msg: 'السعر النهائي باليورو لا يمكن أن يكون سالباً'
+            }
+        }
+    },
+    final_price_syp: {
+        type: DataTypes.DECIMAL(20, 2),
+        allowNull: false,
+        defaultValue: 0.00,
+        validate: {
+            min: {
+                args: 0,
+                msg: 'السعر النهائي بالليرة لا يمكن أن يكون سالباً'
+            }
+        }
+    },
+    unit: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+        comment: 'وحدة القياس (قطعة، كيلو، علبة، إلخ)'
+    },
+    product_category: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+        comment: 'فئة المنتج'
+    },
+    product_barcode: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+        comment: 'باركود المنتج'
+    },
+    delivered_quantity: {
         type: DataTypes.INTEGER,
         defaultValue: 0,
         validate: {
             min: {
                 args: 0,
-                msg: 'كمية الهدايا لا يمكن أن تكون سالبة'
+                msg: 'الكمية المسلمة لا يمكن أن تكون سالبة'
             }
         }
     },
-    gift_reason: {
-        type: DataTypes.STRING(100),
-        allowNull: true,
-        comment: 'سبب الهدية (وفاء، عميل مميز، إلخ)'
+    returned_quantity: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        validate: {
+            min: {
+                args: 0,
+                msg: 'الكمية المسترجعة لا يمكن أن تكون سالبة'
+            }
+        }
     },
-    notes: {
+    delivery_notes: {
         type: DataTypes.TEXT,
-        allowNull: true
+        allowNull: true,
+        comment: 'ملاحظات التوصيل'
+    },
+    return_reason: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+        comment: 'سبب الإرجاع'
     }
 }, {
     tableName: 'order_items',
@@ -126,77 +205,178 @@ const OrderItem = sequelize.define('OrderItem', {
         }
     ],
     validate: {
-        totalPriceCalculation() {
-            const calculated = parseFloat(this.quantity) * parseFloat(this.unit_price);
-            const total = parseFloat(this.total_price);
+        totalPriceCalculationEur() {
+            const calculated = parseFloat(this.quantity) * parseFloat(this.unit_price_eur);
+            const total = parseFloat(this.total_price_eur);
 
             if (Math.abs(calculated - total) > 0.01) {
-                throw new Error('إجمالي السعر غير صحيح');
+                throw new Error('إجمالي السعر باليورو غير صحيح');
             }
         },
-        finalPriceCalculation() {
-            const total = parseFloat(this.total_price) || 0;
-            const discount = parseFloat(this.discount_amount) || 0;
+        totalPriceCalculationSyp() {
+            const calculated = parseFloat(this.quantity) * parseFloat(this.unit_price_syp);
+            const total = parseFloat(this.total_price_syp);
+
+            if (Math.abs(calculated - total) > 0.01) {
+                throw new Error('إجمالي السعر بالليرة غير صحيح');
+            }
+        },
+        finalPriceCalculationEur() {
+            const total = parseFloat(this.total_price_eur) || 0;
+            const discount = parseFloat(this.discount_amount_eur) || 0;
             const calculated = total - discount;
 
-            if (Math.abs(calculated - parseFloat(this.final_price)) > 0.01) {
-                throw new Error('السعر النهائي غير صحيح');
+            if (Math.abs(calculated - parseFloat(this.final_price_eur)) > 0.01) {
+                throw new Error('السعر النهائي باليورو غير صحيح');
+            }
+        },
+        finalPriceCalculationSyp() {
+            const total = parseFloat(this.total_price_syp) || 0;
+            const discount = parseFloat(this.discount_amount_syp) || 0;
+            const calculated = total - discount;
+
+            if (Math.abs(calculated - parseFloat(this.final_price_syp)) > 0.01) {
+                throw new Error('السعر النهائي بالليرة غير صحيح');
+            }
+        },
+        deliveryQuantityValidation() {
+            const delivered = parseInt(this.delivered_quantity) || 0;
+            const returned = parseInt(this.returned_quantity) || 0;
+            const ordered = parseInt(this.quantity) || 0;
+
+            if (delivered + returned > ordered) {
+                throw new Error('الكمية المسلمة والمسترجعة لا يمكن أن تتجاوز الكمية المطلوبة');
             }
         }
     }
 });
 
 // Instance methods
-OrderItem.prototype.calculateTotalPrice = function () {
-    this.total_price = Math.round(parseFloat(this.quantity) * parseFloat(this.unit_price) * 100) / 100;
-    this.calculateFinalPrice();
-    return this.total_price;
+OrderItem.prototype.calculateTotalPriceEur = function () {
+    this.total_price_eur = Math.round(parseFloat(this.quantity) * parseFloat(this.unit_price_eur) * 100) / 100;
+    this.calculateFinalPriceEur();
+    return this.total_price_eur;
 };
 
-OrderItem.prototype.calculateFinalPrice = function () {
-    const total = parseFloat(this.total_price) || 0;
-    const discount = parseFloat(this.discount_amount) || 0;
-    this.final_price = Math.round((total - discount) * 100) / 100;
-    return this.final_price;
+OrderItem.prototype.calculateTotalPriceSyp = function () {
+    this.total_price_syp = Math.round(parseFloat(this.quantity) * parseFloat(this.unit_price_syp) * 100) / 100;
+    this.calculateFinalPriceSyp();
+    return this.total_price_syp;
 };
 
-OrderItem.prototype.applyDiscount = function (discountAmount) {
-    this.discount_amount = Math.max(0, parseFloat(discountAmount) || 0);
-    this.calculateFinalPrice();
+OrderItem.prototype.calculateTotalPrices = function () {
+    this.calculateTotalPriceEur();
+    this.calculateTotalPriceSyp();
     return this;
 };
 
-OrderItem.prototype.applyGift = function (giftQuantity, reason = null) {
-    this.gift_quantity = Math.max(0, parseInt(giftQuantity) || 0);
-    this.gift_reason = reason || 'هدية';
+OrderItem.prototype.calculateFinalPriceEur = function () {
+    const total = parseFloat(this.total_price_eur) || 0;
+    const discount = parseFloat(this.discount_amount_eur) || 0;
+    this.final_price_eur = Math.round((total - discount) * 100) / 100;
+    return this.final_price_eur;
+};
+
+OrderItem.prototype.calculateFinalPriceSyp = function () {
+    const total = parseFloat(this.total_price_syp) || 0;
+    const discount = parseFloat(this.discount_amount_syp) || 0;
+    this.final_price_syp = Math.round((total - discount) * 100) / 100;
+    return this.final_price_syp;
+};
+
+OrderItem.prototype.calculateFinalPrices = function () {
+    this.calculateFinalPriceEur();
+    this.calculateFinalPriceSyp();
+    return this;
+};
+
+OrderItem.prototype.applyDiscountEur = function (discountAmount) {
+    this.discount_amount_eur = Math.max(0, parseFloat(discountAmount) || 0);
+    this.calculateFinalPriceEur();
+    return this;
+};
+
+OrderItem.prototype.applyDiscountSyp = function (discountAmount) {
+    this.discount_amount_syp = Math.max(0, parseFloat(discountAmount) || 0);
+    this.calculateFinalPriceSyp();
     return this;
 };
 
 OrderItem.prototype.updateQuantity = function (newQuantity) {
     this.quantity = Math.max(1, parseInt(newQuantity) || 1);
-    this.calculateTotalPrice();
+    this.calculateTotalPrices();
     return this;
 };
 
-OrderItem.prototype.updateUnitPrice = function (newUnitPrice) {
-    this.unit_price = Math.max(0, parseFloat(newUnitPrice) || 0);
-    this.calculateTotalPrice();
+OrderItem.prototype.updateUnitPrices = function (newUnitPriceEur, newUnitPriceSyp) {
+    this.unit_price_eur = Math.max(0, parseFloat(newUnitPriceEur) || 0);
+    this.unit_price_syp = Math.max(0, parseFloat(newUnitPriceSyp) || 0);
+    this.calculateTotalPrices();
     return this;
 };
 
-OrderItem.prototype.getTotalQuantity = function () {
-    return parseInt(this.quantity) + parseInt(this.gift_quantity);
+OrderItem.prototype.markAsDelivered = function (deliveredQuantity = null) {
+    this.delivered_quantity = deliveredQuantity !== null ?
+        Math.max(0, parseInt(deliveredQuantity)) :
+        parseInt(this.quantity);
+    return this;
 };
 
-OrderItem.prototype.hasGift = function () {
-    return parseInt(this.gift_quantity) > 0;
+OrderItem.prototype.markAsReturned = function (returnedQuantity, reason = null) {
+    this.returned_quantity = Math.max(0, parseInt(returnedQuantity) || 0);
+    this.return_reason = reason;
+    return this;
 };
 
-OrderItem.prototype.getDiscountPercentage = function () {
-    if (parseFloat(this.total_price) === 0) return 0;
+OrderItem.prototype.getDeliveryStatus = function () {
+    const ordered = parseInt(this.quantity) || 0;
+    const delivered = parseInt(this.delivered_quantity) || 0;
+    const returned = parseInt(this.returned_quantity) || 0;
 
-    const discountPercentage = (parseFloat(this.discount_amount) / parseFloat(this.total_price)) * 100;
+    if (delivered === 0 && returned === 0) {
+        return 'pending';
+    } else if (delivered === ordered && returned === 0) {
+        return 'delivered';
+    } else if (delivered + returned === ordered) {
+        return 'completed';
+    } else {
+        return 'partial';
+    }
+};
+
+OrderItem.prototype.getDiscountPercentageEur = function () {
+    if (parseFloat(this.total_price_eur) === 0) return 0;
+
+    const discountPercentage = (parseFloat(this.discount_amount_eur) / parseFloat(this.total_price_eur)) * 100;
     return Math.round(discountPercentage * 100) / 100;
+};
+
+OrderItem.prototype.getDiscountPercentageSyp = function () {
+    if (parseFloat(this.total_price_syp) === 0) return 0;
+
+    const discountPercentage = (parseFloat(this.discount_amount_syp) / parseFloat(this.total_price_syp)) * 100;
+    return Math.round(discountPercentage * 100) / 100;
+};
+
+OrderItem.prototype.isFullyDelivered = function () {
+    return parseInt(this.delivered_quantity) === parseInt(this.quantity);
+};
+
+OrderItem.prototype.isPartiallyDelivered = function () {
+    const delivered = parseInt(this.delivered_quantity) || 0;
+    const ordered = parseInt(this.quantity) || 0;
+    return delivered > 0 && delivered < ordered;
+};
+
+OrderItem.prototype.hasReturns = function () {
+    return parseInt(this.returned_quantity) > 0;
+};
+
+OrderItem.prototype.getRemainingQuantity = function () {
+    const ordered = parseInt(this.quantity) || 0;
+    const delivered = parseInt(this.delivered_quantity) || 0;
+    const returned = parseInt(this.returned_quantity) || 0;
+    return Math.max(0, ordered - delivered - returned);
 };
 
 // Class methods

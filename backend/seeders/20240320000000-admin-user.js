@@ -3,11 +3,23 @@ import User from '../models/User.js';
 
 export const up = async () => {
     try {
-        // Create admin user
+        // Check if admin user already exists
+        const existingAdmin = await User.findOne({
+            where: {
+                username: 'admin'
+            }
+        });
+
+        if (existingAdmin) {
+            console.log('⚠️  Admin user already exists');
+            return;
+        }
+
+        // Create admin user (password will be hashed automatically by the model)
         await User.create({
             username: 'admin',
             email: 'admin@bakery.com',
-            password_hash: 'admin123',
+            password: 'admin123', // Will be hashed to password_hash by the model
             full_name: 'مدير النظام',
             role: 'admin',
             is_active: true

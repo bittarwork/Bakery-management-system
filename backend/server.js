@@ -27,11 +27,17 @@ import distributionRoutes from './routes/distribution.js';
 import paymentRoutes from './routes/payments.js';
 import reportRoutes from './routes/reports.js';
 import sessionRoutes from './routes/sessionRoutes.js';
-
 import notificationRoutes from './routes/notifications.js';
+import distributorRoutes from './routes/distributors.js';
+
+// Import Enhanced Routes
+import enhancedDistributionRoutes from './routes/enhancedDistribution.js';
+import enhancedStoreRoutes from './routes/enhancedStores.js';
+import enhancedPaymentRoutes from './routes/enhancedPayments.js';
 
 // Import models and database initialization
 import { initializeModels } from './models/index.js';
+import { initializeEnhancedSystem, healthCheck } from './utils/enhancedSystemSetup.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -133,14 +139,45 @@ app.use('/api/distribution', distributionRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/distributors', distributorRoutes);
 
-// Health check
-app.get('/api/health', (req, res) => {
-    res.status(200).json({
-        status: 'success',
-        message: 'Bakery Management System API is running',
-        timestamp: new Date().toISOString()
-    });
+// Enhanced System Routes
+app.use('/api/enhanced/distribution', enhancedDistributionRoutes);
+app.use('/api/enhanced/stores', enhancedStoreRoutes);
+app.use('/api/enhanced/payments', enhancedPaymentRoutes);
+
+// Health check with enhanced system status
+app.get('/api/health', async (req, res) => {
+    try {
+        const enhancedHealth = await healthCheck();
+        res.status(200).json({
+            status: 'success',
+            message: 'Bakery Management System API is running',
+            timestamp: new Date().toISOString(),
+            enhanced_system: enhancedHealth
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: 'System health check failed',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// Enhanced system health check endpoint
+app.get('/api/enhanced/health', async (req, res) => {
+    try {
+        const health = await healthCheck();
+        res.status(health.status === 'healthy' ? 200 : 503).json(health);
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: 'Enhanced system health check failed',
+            error: error.message
+        });
+    }
 });
 
 // Error handling middleware
@@ -151,23 +188,40 @@ app.use(errorHandler);
 // Start server
 const startServer = async () => {
     try {
-        // Initialize models and database
+        console.log('🍞 Bakery Management System - Enhanced Edition');
+        console.log('═'.repeat(50));
+
+        // Initialize original models and database first
+        console.log('🔧 Initializing original system...');
         await initializeModels();
+
+        // Initialize enhanced system
+        console.log('🚀 Initializing enhanced system...');
+        await initializeEnhancedSystem();
 
         app.listen(PORT, () => {
             if (process.env.NODE_ENV !== 'test') {
-                console.log('\n🍞 Bakery Management System API');
-                console.log('═'.repeat(40));
+                console.log('\n🎉 Enhanced Bakery Management System API');
+                console.log('═'.repeat(50));
                 console.log(`🚀 Server: http://localhost:${PORT}`);
                 console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
                 console.log(`🔗 API: http://localhost:${PORT}/api`);
                 console.log(`📊 Health: http://localhost:${PORT}/api/health`);
-                console.log('═'.repeat(40));
-                console.log('✅ Ready to accept requests!\n');
+                console.log(`🌟 Enhanced Health: http://localhost:${PORT}/api/enhanced/health`);
+                console.log('');
+                console.log('📋 Enhanced Endpoints:');
+                console.log(`   • Distribution: http://localhost:${PORT}/api/enhanced/distribution`);
+                console.log(`   • Stores: http://localhost:${PORT}/api/enhanced/stores`);
+                console.log(`   • Payments: http://localhost:${PORT}/api/enhanced/payments`);
+                console.log('');
+                console.log('💰 Currency Support: EUR (primary), SYP (secondary)');
+                console.log('🗓️ Date Format: Gregorian Calendar');
+                console.log('═'.repeat(50));
+                console.log('✅ Enhanced system ready to accept requests!\n');
             }
         });
     } catch (error) {
-        console.error('❌ Failed to start server:', error);
+        console.error('❌ Failed to start enhanced server:', error);
         process.exit(1);
     }
 };
