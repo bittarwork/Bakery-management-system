@@ -1,9 +1,9 @@
 [phases.setup]
-nixPkgs = ['nodejs_18', 'npm-9_x']
+nixPkgs = ['nodejs_18']
 
 [phases.install]
 dependsOn = ['setup']
-cmds = ['cd backend && npm install --omit=dev']
+cmds = ['cd backend && npm install --omit=dev --prefer-offline --no-audit --no-fund']
 
 [phases.build]
 dependsOn = ['install']
