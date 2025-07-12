@@ -4,7 +4,7 @@ import User from '../models/User.js';
 
 const createTestUser = async () => {
     try {
-        console.log('🔄 جاري إنشاء مستخدم للاختبار...');
+        console.log('🔄 Creating test user...');
 
         // Initialize database
         await initializeModels();
@@ -18,7 +18,7 @@ const createTestUser = async () => {
         });
 
         if (existingUser) {
-            console.log('⚠️ المستخدم موجود مسبقاً');
+            console.log('⚠️ User already exists');
             console.log('Email: admin@example.com');
             console.log('Password: password123');
             return;
@@ -35,17 +35,17 @@ const createTestUser = async () => {
             is_active: true
         });
 
-        console.log('✅ تم إنشاء المستخدم بنجاح!');
+        console.log('✅ Test user created successfully!');
         console.log('═'.repeat(40));
         console.log('📧 Email: admin@example.com');
         console.log('🔐 Password: password123');
         console.log('👤 Role: admin');
         console.log('🆔 ID:', user.id);
         console.log('═'.repeat(40));
-        console.log('يمكنك الآن تسجيل الدخول باستخدام هذه البيانات');
+        console.log('You can now login using these credentials');
 
     } catch (error) {
-        console.error('❌ خطأ في إنشاء المستخدم:', error);
+        console.error('❌ Error creating test user:', error);
     } finally {
         process.exit(0);
     }

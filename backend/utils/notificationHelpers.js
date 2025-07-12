@@ -12,7 +12,7 @@ export const createOrderNotification = async (userId, orderData) => {
     try {
         return await Notification.createOrderNotification(userId, orderData, 'new');
     } catch (error) {
-        console.error('خطأ في إنشاء إشعار الطلب:', error);
+        console.error('Error creating order notification:', error);
     }
 };
 
@@ -30,7 +30,7 @@ export const createOrderStatusNotification = async (userId, orderData, status) =
         const notificationType = statusMap[status] || 'updated';
         return await Notification.createOrderNotification(userId, orderData, notificationType);
     } catch (error) {
-        console.error('خطأ في إنشاء إشعار حالة الطلب:', error);
+        console.error('Error creating order status notification:', error);
     }
 };
 
@@ -46,7 +46,7 @@ export const createLowStockNotification = async (userId, productData) => {
             return await Notification.createInventoryNotification(userId, productData, 'low_stock');
         }
     } catch (error) {
-        console.error('خطأ في إنشاء إشعار المخزون:', error);
+        console.error('Error creating inventory notification:', error);
     }
 };
 
@@ -55,7 +55,7 @@ export const createRestockNotification = async (userId, productData) => {
     try {
         return await Notification.createInventoryNotification(userId, productData, 'restock');
     } catch (error) {
-        console.error('خطأ في إنشاء إشعار إعادة التعبئة:', error);
+        console.error('Error creating restock notification:', error);
     }
 };
 
@@ -64,7 +64,7 @@ export const createPaymentNotification = async (userId, paymentData, type = 'rec
     try {
         return await Notification.createPaymentNotification(userId, paymentData, type);
     } catch (error) {
-        console.error('خطأ في إنشاء إشعار الدفع:', error);
+        console.error('Error creating payment notification:', error);
     }
 };
 
@@ -73,7 +73,7 @@ export const createDeliveryNotification = async (userId, orderData, deliveryStat
     try {
         return await Notification.createDeliveryNotification(userId, orderData, deliveryStatus);
     } catch (error) {
-        console.error('خطأ في إنشاء إشعار التوصيل:', error);
+        console.error('Error creating delivery notification:', error);
     }
 };
 
@@ -82,7 +82,7 @@ export const createSystemNotification = async (userId, title, message, priority 
     try {
         return await Notification.createSystemNotification(userId, title, message, priority);
     } catch (error) {
-        console.error('خطأ في إنشاء إشعار النظام:', error);
+        console.error('Error creating system notification:', error);
     }
 };
 
@@ -91,7 +91,7 @@ export const createNewCustomerNotification = async (userId, customerData) => {
     try {
         return await Notification.createCustomerNotification(userId, customerData, 'new');
     } catch (error) {
-        console.error('خطأ في إنشاء إشعار العميل الجديد:', error);
+        console.error('Error creating new customer notification:', error);
     }
 };
 
@@ -122,7 +122,7 @@ export const createBroadcastNotification = async (title, message, type = 'system
 
         return await Notification.bulkCreate(notifications);
     } catch (error) {
-        console.error('خطأ في إنشاء الإشعار العام:', error);
+        console.error('Error creating broadcast notification:', error);
     }
 };
 
@@ -138,12 +138,12 @@ export const cleanupExpiredNotifications = async () => {
         });
 
         if (deletedCount > 0) {
-            console.log(`تم حذف ${deletedCount} إشعار منتهي الصلاحية`);
+            console.log(`Deleted ${deletedCount} expired notifications`);
         }
 
         return deletedCount;
     } catch (error) {
-        console.error('خطأ في تنظيف الإشعارات المنتهية الصلاحية:', error);
+        console.error('Error cleaning up expired notifications:', error);
     }
 };
 
@@ -163,12 +163,12 @@ export const cleanupOldNotifications = async (daysOld = 30) => {
         });
 
         if (deletedCount > 0) {
-            console.log(`تم حذف ${deletedCount} إشعار قديم (أكثر من ${daysOld} يوم)`);
+            console.log(`Deleted ${deletedCount} old notifications (older than ${daysOld} days)`);
         }
 
         return deletedCount;
     } catch (error) {
-        console.error('خطأ في تنظيف الإشعارات القديمة:', error);
+        console.error('Error cleaning up old notifications:', error);
     }
 };
 
@@ -191,7 +191,7 @@ export const getUserNotificationStats = async (userId) => {
 
         return stats;
     } catch (error) {
-        console.error('خطأ في جلب إحصائيات الإشعارات:', error);
+        console.error('Error fetching notification statistics:', error);
         return [];
     }
 };
@@ -214,7 +214,7 @@ export const markAllUserNotificationsAsRead = async (userId) => {
 
         return updatedCount;
     } catch (error) {
-        console.error('خطأ في تعيين جميع الإشعارات كمقروءة:', error);
+        console.error('Error marking all notifications as read:', error);
         return 0;
     }
 };
@@ -246,7 +246,7 @@ export const getHighPriorityNotifications = async (userId, limit = 5) => {
             ]
         });
     } catch (error) {
-        console.error('خطأ في جلب الإشعارات عالية الأولوية:', error);
+        console.error('Error fetching high priority notifications:', error);
         return [];
     }
 };
@@ -264,7 +264,7 @@ export const createCustomNotification = async (notificationData) => {
 
         return await Notification.createNotification(notificationData);
     } catch (error) {
-        console.error('خطأ في إنشاء الإشعار المخصص:', error);
+        console.error('Error creating custom notification:', error);
         throw error;
     }
 };

@@ -71,7 +71,7 @@ export const checkSessionExpiry = async (req, res, next) => {
 export const cleanupExpiredSessions = async () => {
     try {
         const result = await UserSession.cleanupExpired();
-        console.log(`تم تنظيف ${result[0]} جلسة منتهية الصلاحية`);
+        console.log(`Cleaned up ${result[0]} expired sessions`);
         return result[0];
     } catch (error) {
         console.error('Error cleaning up expired sessions:', error);

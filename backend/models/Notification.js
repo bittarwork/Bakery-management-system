@@ -182,7 +182,7 @@ Notification.createNotification = async function (data) {
 
         return notification;
     } catch (error) {
-        console.error('خطأ في إنشاء الإشعار:', error);
+        console.error('Error creating notification:', error);
         throw error;
     }
 };

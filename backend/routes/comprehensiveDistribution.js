@@ -1,5 +1,29 @@
 import express from 'express';
-import { protect, requireRole } from '../middleware/auth.js';
+import { protect, authorize } from '../middleware/auth.js';
+import {
+    getDistributorDailySchedule,
+    getStoreDeliveryDetails,
+    updateDeliveryQuantities,
+    completeDelivery,
+    recordPayment,
+    getVehicleInventory,
+    recordVehicleExpense,
+    submitDailyReport,
+    getDistributorHistory
+} from '../controllers/comprehensiveDistributionController.js';
+
+import {
+    getDailyOrdersForProcessing,
+    addManualOrder,
+    generateDistributionSchedules,
+    getLiveDistributionTracking,
+    getDistributorPerformance,
+    getDistributionAnalytics,
+    generateWeeklyReport,
+    assignStoreToDistributor,
+    updateStoreBalanceManually,
+    approveDistributorReport
+} from '../controllers/distributionManagerController.js';
 
 const router = express.Router();
 
@@ -13,7 +37,7 @@ router.use(protect);
 // @desc    Get daily distribution schedule for distributor
 // @route   GET /api/distribution/schedule/daily
 // @access  Private (Distributor)
-router.get('/schedule/daily', requireRole(['distributor', 'manager', 'admin']), async (req, res) => {
+router.get('/schedule/daily', authorize('distributor', 'manager', 'admin'), async (req, res) => {
     try {
         const { date } = req.query;
         const distributorId = req.user.role === 'distributor' ? req.user.id : req.query.distributor_id;
@@ -38,7 +62,7 @@ router.get('/schedule/daily', requireRole(['distributor', 'manager', 'admin']), 
 // @desc    Get store details for delivery
 // @route   GET /api/distribution/store/:storeId/details
 // @access  Private (Distributor)
-router.get('/store/:storeId/details', requireRole(['distributor', 'manager', 'admin']), async (req, res) => {
+router.get('/store/:storeId/details', authorize('distributor', 'manager', 'admin'), async (req, res) => {
     try {
         const { storeId } = req.params;
 
@@ -62,7 +86,7 @@ router.get('/store/:storeId/details', requireRole(['distributor', 'manager', 'ad
 // @desc    Update delivery quantities (modify order during delivery)
 // @route   PATCH /api/distribution/delivery/:deliveryId/quantities
 // @access  Private (Distributor)
-router.patch('/delivery/:deliveryId/quantities', requireRole(['distributor', 'manager', 'admin']), async (req, res) => {
+router.patch('/delivery/:deliveryId/quantities', authorize('distributor', 'manager', 'admin'), async (req, res) => {
     try {
         const { deliveryId } = req.params;
         const { quantities, notes } = req.body;
@@ -87,7 +111,7 @@ router.patch('/delivery/:deliveryId/quantities', requireRole(['distributor', 'ma
 // @desc    Record delivery completion
 // @route   POST /api/distribution/delivery/:deliveryId/complete
 // @access  Private (Distributor)
-router.post('/delivery/:deliveryId/complete', requireRole(['distributor', 'manager', 'admin']), async (req, res) => {
+router.post('/delivery/:deliveryId/complete', authorize('distributor', 'manager', 'admin'), async (req, res) => {
     try {
         const { deliveryId } = req.params;
         const { actualQuantities, gifts, damages, notes } = req.body;
@@ -118,7 +142,7 @@ router.post('/delivery/:deliveryId/complete', requireRole(['distributor', 'manag
 // @desc    Record payment from store
 // @route   POST /api/distribution/payment/record
 // @access  Private (Distributor)
-router.post('/payment/record', requireRole(['distributor', 'manager', 'admin']), async (req, res) => {
+router.post('/payment/record', authorize('distributor', 'manager', 'admin'), async (req, res) => {
     try {
         const {
             storeId,
@@ -163,7 +187,7 @@ router.post('/payment/record', requireRole(['distributor', 'manager', 'admin']),
 // @desc    Get current vehicle inventory
 // @route   GET /api/distribution/vehicle/inventory
 // @access  Private (Distributor)
-router.get('/vehicle/inventory', requireRole(['distributor', 'manager', 'admin']), async (req, res) => {
+router.get('/vehicle/inventory', authorize('distributor', 'manager', 'admin'), async (req, res) => {
     try {
         const distributorId = req.user.role === 'distributor' ? req.user.id : req.query.distributor_id;
 
@@ -187,7 +211,7 @@ router.get('/vehicle/inventory', requireRole(['distributor', 'manager', 'admin']
 // @desc    Record vehicle expense
 // @route   POST /api/distribution/expense/record
 // @access  Private (Distributor)
-router.post('/expense/record', requireRole(['distributor', 'manager', 'admin']), async (req, res) => {
+router.post('/expense/record', authorize('distributor', 'manager', 'admin'), async (req, res) => {
     try {
         const { type, amount, currency, description, receiptImage } = req.body;
 
@@ -218,7 +242,7 @@ router.post('/expense/record', requireRole(['distributor', 'manager', 'admin']),
 // @desc    Submit daily report
 // @route   POST /api/distribution/report/daily/submit
 // @access  Private (Distributor)
-router.post('/report/daily/submit', requireRole(['distributor', 'manager', 'admin']), async (req, res) => {
+router.post('/report/daily/submit', authorize('distributor', 'manager', 'admin'), async (req, res) => {
     try {
         const { date, summary, signature } = req.body;
 
@@ -247,7 +271,7 @@ router.post('/report/daily/submit', requireRole(['distributor', 'manager', 'admi
 // @desc    Get distributor history/archive
 // @route   GET /api/distribution/history
 // @access  Private (Distributor)
-router.get('/history', requireRole(['distributor', 'manager', 'admin']), async (req, res) => {
+router.get('/history', authorize('distributor', 'manager', 'admin'), async (req, res) => {
     try {
         const { dateFrom, dateTo, page = 1, limit = 10 } = req.query;
         const distributorId = req.user.role === 'distributor' ? req.user.id : req.query.distributor_id;
@@ -281,7 +305,7 @@ router.get('/history', requireRole(['distributor', 'manager', 'admin']), async (
 // @desc    Get daily orders for processing
 // @route   GET /api/distribution/manager/orders/daily
 // @access  Private (Manager/Admin)
-router.get('/manager/orders/daily', requireRole(['manager', 'admin']), async (req, res) => {
+router.get('/manager/orders/daily', authorize('manager', 'admin'), async (req, res) => {
     try {
         const { date } = req.query;
 
@@ -305,7 +329,7 @@ router.get('/manager/orders/daily', requireRole(['manager', 'admin']), async (re
 // @desc    Add manual order
 // @route   POST /api/distribution/manager/orders/add
 // @access  Private (Manager/Admin)
-router.post('/manager/orders/add', requireRole(['manager', 'admin']), async (req, res) => {
+router.post('/manager/orders/add', authorize('manager', 'admin'), async (req, res) => {
     try {
         const { storeId, products, notes } = req.body;
 
@@ -334,7 +358,7 @@ router.post('/manager/orders/add', requireRole(['manager', 'admin']), async (req
 // @desc    Generate distribution schedules
 // @route   POST /api/distribution/manager/schedules/generate
 // @access  Private (Manager/Admin)
-router.post('/manager/schedules/generate', requireRole(['manager', 'admin']), async (req, res) => {
+router.post('/manager/schedules/generate', authorize('manager', 'admin'), async (req, res) => {
     try {
         const { date, distributorAssignments } = req.body;
 
@@ -362,7 +386,7 @@ router.post('/manager/schedules/generate', requireRole(['manager', 'admin']), as
 // @desc    Get real-time distribution tracking
 // @route   GET /api/distribution/manager/tracking/live
 // @access  Private (Manager/Admin)
-router.get('/manager/tracking/live', requireRole(['manager', 'admin']), async (req, res) => {
+router.get('/manager/tracking/live', authorize('manager', 'admin'), async (req, res) => {
     try {
         const { date } = req.query;
 
@@ -386,7 +410,7 @@ router.get('/manager/tracking/live', requireRole(['manager', 'admin']), async (r
 // @desc    Get distributor performance
 // @route   GET /api/distribution/manager/performance
 // @access  Private (Manager/Admin)
-router.get('/manager/performance', requireRole(['manager', 'admin']), async (req, res) => {
+router.get('/manager/performance', authorize('manager', 'admin'), async (req, res) => {
     try {
         const { distributorId, period } = req.query;
 
@@ -410,7 +434,7 @@ router.get('/manager/performance', requireRole(['manager', 'admin']), async (req
 // @desc    Get advanced analytics
 // @route   GET /api/distribution/manager/analytics
 // @access  Private (Manager/Admin)
-router.get('/manager/analytics', requireRole(['manager', 'admin']), async (req, res) => {
+router.get('/manager/analytics', authorize('manager', 'admin'), async (req, res) => {
     try {
         const { period, filters } = req.query;
 
@@ -437,7 +461,7 @@ router.get('/manager/analytics', requireRole(['manager', 'admin']), async (req, 
 // @desc    Generate weekly report
 // @route   POST /api/distribution/manager/reports/weekly
 // @access  Private (Manager/Admin)
-router.post('/manager/reports/weekly', requireRole(['manager', 'admin']), async (req, res) => {
+router.post('/manager/reports/weekly', authorize('manager', 'admin'), async (req, res) => {
     try {
         const { weekStart, weekEnd, format } = req.body;
 
@@ -466,7 +490,7 @@ router.post('/manager/reports/weekly', requireRole(['manager', 'admin']), async 
 // @desc    Manage store assignments
 // @route   PATCH /api/distribution/manager/stores/assign
 // @access  Private (Manager/Admin)
-router.patch('/manager/stores/assign', requireRole(['manager', 'admin']), async (req, res) => {
+router.patch('/manager/stores/assign', authorize('manager', 'admin'), async (req, res) => {
     try {
         const { storeId, distributorId, zone } = req.body;
 
@@ -495,7 +519,7 @@ router.patch('/manager/stores/assign', requireRole(['manager', 'admin']), async 
 // @desc    Update store balance manually
 // @route   PATCH /api/distribution/manager/stores/:storeId/balance
 // @access  Private (Manager/Admin)
-router.patch('/manager/stores/:storeId/balance', requireRole(['manager', 'admin']), async (req, res) => {
+router.patch('/manager/stores/:storeId/balance', authorize('manager', 'admin'), async (req, res) => {
     try {
         const { storeId } = req.params;
         const { amount, currency, reason, notes } = req.body;
@@ -527,7 +551,7 @@ router.patch('/manager/stores/:storeId/balance', requireRole(['manager', 'admin'
 // @desc    Lock/approve distributor report
 // @route   PATCH /api/distribution/manager/reports/:reportId/approve
 // @access  Private (Manager/Admin)
-router.patch('/manager/reports/:reportId/approve', requireRole(['manager', 'admin']), async (req, res) => {
+router.patch('/manager/reports/:reportId/approve', authorize('manager', 'admin'), async (req, res) => {
     try {
         const { reportId } = req.params;
         const { approved, notes } = req.body;
@@ -553,82 +577,5 @@ router.patch('/manager/reports/:reportId/approve', requireRole(['manager', 'admi
         });
     }
 });
-
-// Helper functions (to be implemented in controllers)
-async function getDistributorDailySchedule(distributorId, date) {
-    // Implementation needed
-}
-
-async function getStoreDeliveryDetails(storeId) {
-    // Implementation needed
-}
-
-async function updateDeliveryQuantities(deliveryId, quantities, notes, distributorId) {
-    // Implementation needed
-}
-
-async function completeDelivery(deliveryId, data) {
-    // Implementation needed
-}
-
-async function recordPayment(paymentData) {
-    // Implementation needed
-}
-
-async function getVehicleInventory(distributorId) {
-    // Implementation needed
-}
-
-async function recordVehicleExpense(expenseData) {
-    // Implementation needed
-}
-
-async function submitDailyReport(reportData) {
-    // Implementation needed
-}
-
-async function getDistributorHistory(distributorId, options) {
-    // Implementation needed
-}
-
-async function getDailyOrdersForProcessing(date) {
-    // Implementation needed
-}
-
-async function addManualOrder(orderData) {
-    // Implementation needed
-}
-
-async function generateDistributionSchedules(data) {
-    // Implementation needed
-}
-
-async function getLiveDistributionTracking(date) {
-    // Implementation needed
-}
-
-async function getDistributorPerformance(distributorId, period) {
-    // Implementation needed
-}
-
-async function getDistributionAnalytics(options) {
-    // Implementation needed
-}
-
-async function generateWeeklyReport(data) {
-    // Implementation needed
-}
-
-async function assignStoreToDistributor(data) {
-    // Implementation needed
-}
-
-async function updateStoreBalanceManually(data) {
-    // Implementation needed
-}
-
-async function approveDistributorReport(data) {
-    // Implementation needed
-}
 
 export default router; 

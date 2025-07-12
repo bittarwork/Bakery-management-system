@@ -4,7 +4,7 @@ import User from '../models/User.js';
 
 const seedNotifications = async () => {
     try {
-        console.log('🔄 بدء إنشاء الإشعارات التجريبية...');
+        console.log('🔄 Starting to create sample notifications...');
 
         // تهيئة النماذج
         await initializeModels();
@@ -13,11 +13,11 @@ const seedNotifications = async () => {
         const user = await User.findOne();
 
         if (!user) {
-            console.log('❌ لا يوجد مستخدمين في النظام. يرجى إنشاء مستخدم أولاً.');
+            console.log('❌ No users found in the system. Please create a user first.');
             return;
         }
 
-        console.log(`📝 إنشاء إشعارات للمستخدم: ${user.username || user.email}`);
+        console.log(`📝 Creating notifications for user: ${user.username || user.email}`);
 
         // حذف الإشعارات الموجودة للمستخدم (للاختبار)
         await Notification.destroy({
@@ -202,7 +202,7 @@ const seedNotifications = async () => {
         // إنشاء الإشعارات
         const createdNotifications = await Notification.bulkCreate(sampleNotifications);
 
-        console.log(`✅ تم إنشاء ${createdNotifications.length} إشعار تجريبي بنجاح`);
+        console.log(`✅ Successfully created ${createdNotifications.length} sample notifications`);
 
         // إحصائيات الإشعارات المنشأة
         const stats = await Notification.findAll({
@@ -219,7 +219,7 @@ const seedNotifications = async () => {
             raw: true
         });
 
-        console.log('\n📊 إحصائيات الإشعارات:');
+        console.log('\n📊 Notification Statistics:');
         console.table(stats);
 
         const totalUnread = await Notification.count({
@@ -229,10 +229,10 @@ const seedNotifications = async () => {
             }
         });
 
-        console.log(`\n🔔 إجمالي الإشعارات غير المقروءة: ${totalUnread}`);
+        console.log(`\n🔔 Total unread notifications: ${totalUnread}`);
 
     } catch (error) {
-        console.error('❌ خطأ في إنشاء الإشعارات التجريبية:', error);
+        console.error('❌ Error creating sample notifications:', error);
     } finally {
         process.exit(0);
     }

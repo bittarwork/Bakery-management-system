@@ -18,22 +18,8 @@ try {
     dotenv.config();
 }
 
-// Import routes
-import authRoutes from './routes/authRoutes.js';
-import storeRoutes from './routes/stores.js';
-import productRoutes from './routes/products.js';
-import orderRoutes from './routes/orderRoutes.js';
-import distributionRoutes from './routes/distribution.js';
-import paymentRoutes from './routes/payments.js';
-import reportRoutes from './routes/reports.js';
-import sessionRoutes from './routes/sessionRoutes.js';
-import notificationRoutes from './routes/notifications.js';
-import distributorRoutes from './routes/distributors.js';
-
-// Import Enhanced Routes
-import enhancedDistributionRoutes from './routes/enhancedDistribution.js';
-import enhancedStoreRoutes from './routes/enhancedStores.js';
-import enhancedPaymentRoutes from './routes/enhancedPayments.js';
+// Import comprehensive routes
+import apiRoutes from './routes/index.js';
 
 // Import models and database initialization
 import { initializeModels } from './models/index.js';
@@ -69,7 +55,7 @@ const limiter = rateLimit({
 app.use(helmet());
 app.use(cors({
     origin: function (origin, callback) {
-        // قائمة الـ origins المسموح بها
+        // List of allowed origins
         const allowedOrigins = [
             process.env.FRONTEND_URL || 'http://localhost:3000',
             'http://localhost:5173', // Vite default port
@@ -85,13 +71,13 @@ app.use(cors({
             null
         ];
 
-        // السماح للطلبات بدون origin (مثل تطبيقات الموبايل)
+        // Allow requests without origin (like mobile apps)
         if (!origin) return callback(null, true);
 
         if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
-            // في بيئة التطوير، السماح لجميع الـ origins
+            // In development environment, allow all origins
             if (process.env.NODE_ENV === 'development') {
                 callback(null, true);
             } else {
@@ -128,23 +114,8 @@ app.use(detectDevice);
 app.use(updateSessionActivity);
 app.use(checkSessionExpiry);
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/sessions', sessionRoutes);
-
-app.use('/api/stores', storeRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/distribution', distributionRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/distributors', distributorRoutes);
-
-// Enhanced System Routes
-app.use('/api/enhanced/distribution', enhancedDistributionRoutes);
-app.use('/api/enhanced/stores', enhancedStoreRoutes);
-app.use('/api/enhanced/payments', enhancedPaymentRoutes);
+// Mount all API routes
+app.use('/api', apiRoutes);
 
 // Health check with enhanced system status
 app.get('/api/health', async (req, res) => {

@@ -21,24 +21,24 @@ import UserSession from '../models/UserSession.js';
 // Database Setup and Migration
 export const setupDatabase = async () => {
     try {
-        console.log('🔧 بدء إعداد قاعدة البيانات...');
+        console.log('🔧 Starting database setup...');
 
         // Test database connection
         await sequelize.authenticate();
-        console.log('✅ تم الاتصال بقاعدة البيانات بنجاح');
+        console.log('✅ Database connection established successfully');
 
         // Fix order_items table issue
-        console.log('🔧 إصلاح جدول order_items...');
+        console.log('🔧 Fixing order_items table...');
         await fixOrderItemsTable(sequelize.getQueryInterface(), sequelize);
 
         // Create/update original tables first - DISABLED FOR NEW DATABASE STRUCTURE
-        // console.log('🔧 إنشاء/تحديث الجداول الأصلية...');
+        // console.log('🔧 Creating/updating original tables...');
         // await sequelize.sync({ force: false });
 
-        console.log('✅ تم إعداد قاعدة البيانات بنجاح');
+        console.log('✅ Database setup completed successfully');
         return true;
     } catch (error) {
-        console.error('❌ خطأ في إعداد قاعدة البيانات:', error);
+        console.error('❌ Database setup error:', error);
         throw error;
     }
 };
@@ -46,29 +46,29 @@ export const setupDatabase = async () => {
 // Enhanced System Setup
 export const setupEnhancedSystem = async () => {
     try {
-        console.log('🚀 بدء إعداد النظام المحسن...');
+        console.log('🚀 Starting enhanced system setup...');
 
         // Setup database first
         await setupDatabase();
 
         // Create enhanced tables - DISABLED FOR NEW DATABASE STRUCTURE
-        // console.log('🔧 إنشاء الجداول المحسنة...');
+        // console.log('🔧 Creating enhanced tables...');
 
         // Create enhanced tables in correct order
         // await EnhancedUser.sync({ force: false });
-        // console.log('✅ تم إنشاء جدول المستخدمين المحسن');
+        // console.log('✅ Enhanced users table created successfully');
 
         // await EnhancedStore.sync({ force: false });
-        // console.log('✅ تم إنشاء جدول المحلات المحسن');
+        // console.log('✅ Enhanced stores table created successfully');
 
         // await EnhancedDistributionTrip.sync({ force: false });
-        // console.log('✅ تم إنشاء جدول رحلات التوزيع');
+        // console.log('✅ Distribution trips table created successfully');
 
         // await EnhancedStoreVisit.sync({ force: false });
-        // console.log('✅ تم إنشاء جدول زيارات المحلات');
+        // console.log('✅ Store visits table created successfully');
 
         // await EnhancedPayment.sync({ force: false });
-        // console.log('✅ تم إنشاء جدول المدفوعات المحسن');
+        // console.log('✅ Enhanced payments table created successfully');
 
         // Create additional tables for enhanced features
         // await createAdditionalTables();
@@ -76,10 +76,10 @@ export const setupEnhancedSystem = async () => {
         console.log('⚠️  Enhanced tables sync disabled - please create database manually');
         console.log('📋 Run: mysql -u root -p < database/create_complete_database.sql');
 
-        console.log('✅ تم إعداد النظام المحسن بنجاح');
+        console.log('✅ Enhanced system setup completed successfully');
         return true;
     } catch (error) {
-        console.error('❌ خطأ في إعداد النظام المحسن:', error);
+        console.error('❌ Enhanced system setup error:', error);
         throw error;
     }
 };
@@ -87,16 +87,16 @@ export const setupEnhancedSystem = async () => {
 // Create additional supporting tables
 const createAdditionalTables = async () => {
     try {
-        console.log('🔧 تخطي إنشاء الجداول الإضافية مؤقتاً...');
+        console.log('🔧 Skipping additional tables creation temporarily...');
 
         // Skip additional tables for now to focus on core functionality
         // const queryInterface = sequelize.getQueryInterface();
 
         // Will be implemented in future updates
 
-        console.log('✅ تم تخطي الجداول الإضافية بنجاح');
+        console.log('✅ Additional tables skipped successfully');
     } catch (error) {
-        console.error('❌ خطأ في إنشاء الجداول الإضافية:', error);
+        console.error('❌ Additional tables creation error:', error);
         throw error;
     }
 };
@@ -104,14 +104,14 @@ const createAdditionalTables = async () => {
 // Insert default system settings
 export const insertDefaultSettings = async () => {
     try {
-        console.log('🔧 تخطي إدراج الإعدادات الافتراضية مؤقتاً...');
+        console.log('🔧 Skipping default settings insertion temporarily...');
 
         // Skip default settings insertion for now
         // Will be handled through the admin interface later
 
-        console.log('✅ تم تخطي الإعدادات الافتراضية بنجاح');
+        console.log('✅ Default settings skipped successfully');
     } catch (error) {
-        console.error('❌ خطأ في إدراج الإعدادات الافتراضية:', error);
+        console.error('❌ Default settings insertion error:', error);
         throw error;
     }
 };
@@ -119,14 +119,14 @@ export const insertDefaultSettings = async () => {
 // Create sample data for testing
 export const createSampleData = async () => {
     try {
-        console.log('🔧 تخطي إنشاء البيانات التجريبية مؤقتاً...');
+        console.log('🔧 Skipping sample data creation temporarily...');
 
         // Skip sample data creation for now
         // Will be handled manually through the admin interface
 
-        console.log('✅ تم تخطي البيانات التجريبية بنجاح');
+        console.log('✅ Sample data skipped successfully');
     } catch (error) {
-        console.error('❌ خطأ في إنشاء البيانات التجريبية:', error);
+        console.error('❌ Sample data creation error:', error);
         throw error;
     }
 };
@@ -134,7 +134,7 @@ export const createSampleData = async () => {
 // Full system initialization
 export const initializeEnhancedSystem = async () => {
     try {
-        console.log('🚀 بدء تهيئة النظام المحسن الكامل...');
+        console.log('🚀 Starting complete enhanced system initialization...');
 
         // Step 1: Setup database and enhanced system
         await setupEnhancedSystem();
@@ -147,12 +147,12 @@ export const initializeEnhancedSystem = async () => {
             await createSampleData();
         }
 
-        console.log('🎉 تم تهيئة النظام المحسن بنجاح!');
-        console.log('📊 النظام جاهز للاستخدام');
+        console.log('🎉 Enhanced system initialized successfully!');
+        console.log('📊 System ready for use');
 
         return true;
     } catch (error) {
-        console.error('❌ خطأ في تهيئة النظام المحسن:', error);
+        console.error('❌ Enhanced system initialization error:', error);
         throw error;
     }
 };
@@ -176,7 +176,7 @@ export const healthCheck = async () => {
 
         return {
             status: 'healthy',
-            message: 'النظام المحسن يعمل بشكل صحيح',
+            message: 'Enhanced system is working correctly',
             tables_count: tables.length,
             enhanced_tables: existingTables.length,
             required_tables: requiredTables.length
@@ -184,7 +184,7 @@ export const healthCheck = async () => {
     } catch (error) {
         return {
             status: 'error',
-            message: 'خطأ في فحص صحة النظام',
+            message: 'System health check error',
             error: error.message
         };
     }
