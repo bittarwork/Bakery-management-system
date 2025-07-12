@@ -3,7 +3,7 @@ nixPkgs = ['nodejs_18']
 
 [phases.install]
 dependsOn = ['setup']
-cmds = ['cd backend && npm install --omit=dev --prefer-offline --no-audit --no-fund']
+cmds = ['cd backend && npm install --omit=dev --prefer-offline --no-audit --no-fund --silent']
 
 [phases.build]
 dependsOn = ['install']

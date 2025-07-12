@@ -5,21 +5,14 @@
   "type": "module",
   "main": "backend/server.js",
   "engines": {
-    "node": "18.x",
-    "npm": "9.x"
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   },
   "scripts": {
     "start": "cd backend && npm start",
     "dev": "cd backend && npm run dev",
-    "install": "cd backend && npm install",
-    "build": "cd backend && npm run build",
-    "deploy": "railway deploy",
-    "setup": "cd backend && npm run setup",
-    "test": "cd backend && npm test"
+    "build": "cd backend && npm run build"
   },
-  "workspaces": [
-    "backend"
-  ],
   "dependencies": {},
   "devDependencies": {},
   "keywords": [
