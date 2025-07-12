@@ -1,86 +1,83 @@
 import 'package:flutter/material.dart';
-import 'orders_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../cubits/orders_cubit.dart';
+import '../cubits/auth_cubit.dart';
+import 'home_screen.dart';
+import '../main.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends StatelessWidget {
   const LoginScreen({Key? key}) : super(key: key);
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
-}
-
-class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _login() async {
-    // استدعاء جلب الطلبات من API
-    await context.read<OrdersCubit>().fetchOrders();
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const OrdersScreen()),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('تسجيل دخول الموزع'),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Center(
+    final usernameController = TextEditingController();
+    final passwordController = TextEditingController();
+    return BlocProvider(
+      create: (_) => AuthCubit(),
+      child: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: SingleChildScrollView(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.asset(
-                    'assets/logo.png',
-                    height: 100,
-                    width: 100,
-                    fit: BoxFit.contain,
+                  const Text('تسجيل الدخول', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 32),
+                  TextField(
+                    controller: usernameController,
+                    decoration: const InputDecoration(
+                      labelText: 'اسم المستخدم',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'كلمة المرور',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                   const SizedBox(height: 24),
+                  BlocConsumer<AuthCubit, AuthState>(
+                    listener: (context, state) {
+                      if (state is AuthFailure) {
+                        rootScaffoldMessengerKey.currentState?.showSnackBar(
+                          SnackBar(content: Text(state.message)),
+                        );
+                      } else if (state is AuthSuccess) {
+                        rootScaffoldMessengerKey.currentState?.showSnackBar(
+                          const SnackBar(content: Text('تم تسجيل الدخول بنجاح!')),
+                        );
+                        // يمكنك هنا التنقل إلى الشاشة الرئيسية
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(builder: (_) => const HomeScreen()),
+                        );
+                      }
+                    },
+                    builder: (context, state) {
+                      if (state is AuthLoading) {
+                        return const CircularProgressIndicator();
+                      }
+                      return SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            BlocProvider.of<AuthCubit>(context).login(
+                              usernameController.text,
+                              passwordController.text,
+                            );
+                          },
+                          child: const Text('دخول'),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: 'البريد الإلكتروني',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(
-                labelText: 'كلمة المرور',
-                border: OutlineInputBorder(),
-              ),
-              obscureText: true,
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _login,
-                child: const Text('تسجيل الدخول'),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
