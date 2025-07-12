@@ -1,0 +1,60 @@
+# Frontend files (not needed for backend deployment)
+frontend/
+
+# Flutter app files
+delivery_app/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Development files
+.vscode/
+.idea/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Environment files (use Railway variables instead)
+.env
+.env.*
+backend/config.env
+backend/.env
+
+# Node modules will be installed by Railway
+backend/node_modules/
+
+# Storage and uploads
+backend/storage/logs/
+backend/storage/temp/
+backend/storage/uploads/
+
+# Database files
+database/
+*.sql
+*.db
+
+# Test files
+backend/tests/
+backend/coverage/
+
+# Build artifacts
+backend/dist/
+backend/build/
+
+# Lock files (npm ci will use package-lock.json)
+backend/package-lock.json
+
+# Deployment files
+docker-compose.yml
+Dockerfile*
+
+# Cache
+backend/.cache/
+backend/tmp/ 
