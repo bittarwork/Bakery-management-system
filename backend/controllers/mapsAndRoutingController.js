@@ -2,13 +2,28 @@ import mysql from 'mysql2/promise';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 
-// Database connection
-const db = mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'bakery_db'
-});
+// Database connection factory
+let db = null;
+
+const getDBConnection = async () => {
+    if (!db) {
+        try {
+            db = await mysql.createConnection({
+                host: process.env.DB_HOST || 'localhost',
+                user: process.env.DB_USER || 'root',
+                password: process.env.DB_PASSWORD || '',
+                database: process.env.DB_NAME || 'bakery_db',
+                connectTimeout: 10000,
+                acquireTimeout: 10000,
+                timeout: 10000
+            });
+        } catch (error) {
+            console.error('Database connection failed in mapsAndRoutingController:', error.message);
+            throw new Error('Database connection unavailable');
+        }
+    }
+    return db;
+};
 
 // Google Maps API configuration
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;

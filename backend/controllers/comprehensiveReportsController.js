@@ -5,13 +5,28 @@ import { createWriteStream } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 
-// Database connection
-const db = mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'bakery_db'
-});
+// Database connection factory
+let db = null;
+
+const getDBConnection = async () => {
+    if (!db) {
+        try {
+            db = await mysql.createConnection({
+                host: process.env.DB_HOST || 'localhost',
+                user: process.env.DB_USER || 'root',
+                password: process.env.DB_PASSWORD || '',
+                database: process.env.DB_NAME || 'bakery_db',
+                connectTimeout: 10000,
+                acquireTimeout: 10000,
+                timeout: 10000
+            });
+        } catch (error) {
+            console.error('Database connection failed in comprehensiveReportsController:', error.message);
+            throw new Error('Database connection unavailable');
+        }
+    }
+    return db;
+};
 
 // ==========================================
 // 📊 COMPREHENSIVE REPORTS SYSTEM (نظام التقارير الشامل)
@@ -29,7 +44,7 @@ export const generateDailyReport = async (date, options = {}) => {
         const { distributorId, includeDetails = true, format = 'json' } = options;
 
         // Get orders summary
-        const [ordersSummary] = await db.execute(`
+        const [ordersSummary] = await (await getDBConnection()).execute(`
             SELECT 
                 COUNT(*) as total_orders,
                 COUNT(DISTINCT store_id) as unique_stores,
@@ -45,7 +60,7 @@ export const generateDailyReport = async (date, options = {}) => {
         `, distributorId ? [reportDate, distributorId] : [reportDate]);
 
         // Get payments summary
-        const [paymentsSummary] = await db.execute(`
+        const [paymentsSummary] = await (await getDBConnection()).execute(`
             SELECT 
                 COUNT(*) as total_payments,
                 SUM(amount_eur) as collected_eur,
@@ -59,7 +74,7 @@ export const generateDailyReport = async (date, options = {}) => {
         `, distributorId ? [reportDate, distributorId] : [reportDate]);
 
         // Get distributor performance
-        const [distributorPerformance] = await db.execute(`
+        const [distributorPerformance] = await (await getDBConnection()).execute(`
             SELECT 
                 u.id as distributor_id,
                 u.full_name as distributor_name,
@@ -83,7 +98,7 @@ export const generateDailyReport = async (date, options = {}) => {
             [reportDate, reportDate, reportDate]);
 
         // Get top selling products
-        const [topProducts] = await db.execute(`
+        const [topProducts] = await (await getDBConnection()).execute(`
             SELECT 
                 p.id,
                 p.name as product_name,
@@ -103,7 +118,7 @@ export const generateDailyReport = async (date, options = {}) => {
         `, distributorId ? [reportDate, distributorId] : [reportDate]);
 
         // Get store performance
-        const [storePerformance] = await db.execute(`
+        const [storePerformance] = await (await getDBConnection()).execute(`
             SELECT 
                 s.id,
                 s.name as store_name,
@@ -127,7 +142,7 @@ export const generateDailyReport = async (date, options = {}) => {
         `, distributorId ? [reportDate, reportDate, distributorId] : [reportDate, reportDate]);
 
         // Get inventory status
-        const [inventoryStatus] = await db.execute(`
+        const [inventoryStatus] = await (await getDBConnection()).execute(`
             SELECT 
                 p.id,
                 p.name as product_name,
@@ -186,7 +201,7 @@ export const generateWeeklyReport = async (weekStart, weekEnd, options = {}) => 
         const { distributorId, format = 'json' } = options;
 
         // Get weekly trends
-        const [weeklyTrends] = await db.execute(`
+        const [weeklyTrends] = await (await getDBConnection()).execute(`
             SELECT 
                 DATE(o.order_date) as order_date,
                 DAYNAME(o.order_date) as day_name,
@@ -203,7 +218,7 @@ export const generateWeeklyReport = async (weekStart, weekEnd, options = {}) => 
         `, distributorId ? [weekStart, weekEnd, distributorId] : [weekStart, weekEnd]);
 
         // Get payment trends
-        const [paymentTrends] = await db.execute(`
+        const [paymentTrends] = await (await getDBConnection()).execute(`
             SELECT 
                 DATE(p.payment_date) as payment_date,
                 COUNT(p.id) as daily_payments,
@@ -218,7 +233,7 @@ export const generateWeeklyReport = async (weekStart, weekEnd, options = {}) => 
         `, distributorId ? [weekStart, weekEnd, distributorId] : [weekStart, weekEnd]);
 
         // Get distributor weekly performance
-        const [distributorWeekly] = await db.execute(`
+        const [distributorWeekly] = await (await getDBConnection()).execute(`
             SELECT 
                 u.id as distributor_id,
                 u.full_name as distributor_name,
@@ -247,7 +262,7 @@ export const generateWeeklyReport = async (weekStart, weekEnd, options = {}) => 
             [weekStart, weekEnd, weekStart, weekEnd, weekStart, weekEnd]);
 
         // Get category performance
-        const [categoryPerformance] = await db.execute(`
+        const [categoryPerformance] = await (await getDBConnection()).execute(`
             SELECT 
                 p.category,
                 COUNT(DISTINCT p.id) as products_sold,
@@ -265,7 +280,7 @@ export const generateWeeklyReport = async (weekStart, weekEnd, options = {}) => 
         `, distributorId ? [weekStart, weekEnd, distributorId] : [weekStart, weekEnd]);
 
         // Get store loyalty analysis
-        const [storeLoyalty] = await db.execute(`
+        const [storeLoyalty] = await (await getDBConnection()).execute(`
             SELECT 
                 s.id,
                 s.name as store_name,
@@ -350,7 +365,7 @@ export const generateMonthlyReport = async (month, year, options = {}) => {
         const monthEnd = new Date(year, month, 0).toISOString().split('T')[0];
 
         // Get monthly overview
-        const [monthlyOverview] = await db.execute(`
+        const [monthlyOverview] = await (await getDBConnection()).execute(`
             SELECT 
                 COUNT(DISTINCT o.id) as total_orders,
                 COUNT(DISTINCT o.store_id) as active_stores,
@@ -366,7 +381,7 @@ export const generateMonthlyReport = async (month, year, options = {}) => {
         `, distributorId ? [monthStart, monthEnd, distributorId] : [monthStart, monthEnd]);
 
         // Get weekly breakdown within month
-        const [weeklyBreakdown] = await db.execute(`
+        const [weeklyBreakdown] = await (await getDBConnection()).execute(`
             SELECT 
                 WEEK(o.order_date) - WEEK(?) + 1 as week_number,
                 COUNT(o.id) as weekly_orders,
@@ -381,7 +396,7 @@ export const generateMonthlyReport = async (month, year, options = {}) => {
         `, distributorId ? [monthStart, monthStart, monthEnd, distributorId] : [monthStart, monthStart, monthEnd]);
 
         // Get distributor monthly performance
-        const [distributorMonthly] = await db.execute(`
+        const [distributorMonthly] = await (await getDBConnection()).execute(`
             SELECT 
                 u.id as distributor_id,
                 u.full_name as distributor_name,
@@ -409,7 +424,7 @@ export const generateMonthlyReport = async (month, year, options = {}) => {
             [monthStart, monthEnd, monthStart, monthEnd, monthStart, monthEnd]);
 
         // Get product insights
-        const [productInsights] = await db.execute(`
+        const [productInsights] = await (await getDBConnection()).execute(`
             SELECT 
                 p.id,
                 p.name as product_name,
@@ -434,7 +449,7 @@ export const generateMonthlyReport = async (month, year, options = {}) => {
         const prevMonthStart = month === 1 ? `${year - 1}-12-01` : `${year}-${(month - 1).toString().padStart(2, '0')}-01`;
         const prevMonthEnd = month === 1 ? `${year - 1}-12-31` : new Date(year, month - 1, 0).toISOString().split('T')[0];
 
-        const [growthMetrics] = await db.execute(`
+        const [growthMetrics] = await (await getDBConnection()).execute(`
             SELECT 
                 COUNT(DISTINCT o.id) as prev_orders,
                 SUM(o.total_amount_eur) as prev_sales_eur,
@@ -525,7 +540,7 @@ export const generateAnalyticsReport = async (filters) => {
         }
 
         // Sales trend analysis
-        const [salesTrend] = await db.execute(`
+        const [salesTrend] = await (await getDBConnection()).execute(`
             SELECT 
                 DATE(o.order_date) as date,
                 COUNT(DISTINCT o.id) as orders,
@@ -540,7 +555,7 @@ export const generateAnalyticsReport = async (filters) => {
         `, params);
 
         // Store performance analysis
-        const [storeAnalysis] = await db.execute(`
+        const [storeAnalysis] = await (await getDBConnection()).execute(`
             SELECT 
                 s.id,
                 s.name as store_name,
@@ -559,7 +574,7 @@ export const generateAnalyticsReport = async (filters) => {
         `, params);
 
         // Product performance analysis
-        const [productAnalysis] = await db.execute(`
+        const [productAnalysis] = await (await getDBConnection()).execute(`
             SELECT 
                 p.id,
                 p.name as product_name,
@@ -579,7 +594,7 @@ export const generateAnalyticsReport = async (filters) => {
         `, params);
 
         // Time-based patterns
-        const [hourlyPattern] = await db.execute(`
+        const [hourlyPattern] = await (await getDBConnection()).execute(`
             SELECT 
                 HOUR(o.created_at) as hour,
                 COUNT(o.id) as order_count,
@@ -590,7 +605,7 @@ export const generateAnalyticsReport = async (filters) => {
             ORDER BY hour
         `, params);
 
-        const [dayPattern] = await db.execute(`
+        const [dayPattern] = await (await getDBConnection()).execute(`
             SELECT 
                 DAYNAME(o.order_date) as day_name,
                 DAYOFWEEK(o.order_date) as day_number,
@@ -604,7 +619,7 @@ export const generateAnalyticsReport = async (filters) => {
         `, params);
 
         // Summary statistics
-        const [summary] = await db.execute(`
+        const [summary] = await (await getDBConnection()).execute(`
             SELECT 
                 COUNT(DISTINCT o.id) as total_orders,
                 COUNT(DISTINCT o.store_id) as unique_stores,
@@ -773,7 +788,7 @@ export const exportToPDF = async (reportData, reportType) => {
  */
 export const saveReportToDatabase = async (reportData, reportType, generatedBy) => {
     try {
-        const [result] = await db.execute(`
+        const [result] = await (await getDBConnection()).execute(`
             INSERT INTO saved_reports 
             (report_type, report_data, filters, generated_by, generated_at)
             VALUES (?, ?, ?, ?, NOW())
