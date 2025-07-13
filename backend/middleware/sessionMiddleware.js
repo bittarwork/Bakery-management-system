@@ -146,7 +146,7 @@ export const sessionProtect = async (req, res, next) => {
         const user = await User.findOne({
             where: {
                 id: decoded.userId,
-                is_active: true
+                status: 'active'
             },
             attributes: { exclude: ['password'] }
         });

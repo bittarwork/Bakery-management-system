@@ -76,9 +76,9 @@ const User = sequelize.define('User', {
             }
         }
     },
-    is_active: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: true
+    status: {
+        type: DataTypes.ENUM('active', 'inactive', 'suspended', 'pending'),
+        defaultValue: 'active'
     },
     last_login: {
         type: DataTypes.DATE,
@@ -102,7 +102,7 @@ const User = sequelize.define('User', {
             fields: ['role']
         },
         {
-            fields: ['is_active']
+            fields: ['status']
         }
     ],
     hooks: {
@@ -139,7 +139,7 @@ User.findByCredentials = async function (username, password) {
     const user = await User.findOne({
         where: {
             username: username,
-            is_active: true
+            status: 'active'
         }
     });
 
@@ -159,7 +159,7 @@ User.findByEmail = async function (email) {
     return await User.findOne({
         where: {
             email: email,
-            is_active: true
+            status: 'active'
         }
     });
 };
@@ -168,7 +168,7 @@ User.getActiveDistributors = async function () {
     return await User.findAll({
         where: {
             role: 'distributor',
-            is_active: true
+            status: 'active'
         },
         order: [['full_name', 'ASC']]
     });
@@ -178,7 +178,7 @@ User.getUsersByRole = async function (role) {
     return await User.findAll({
         where: {
             role: role,
-            is_active: true
+            status: 'active'
         },
         order: [['full_name', 'ASC']]
     });

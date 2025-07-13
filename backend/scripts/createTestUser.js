@@ -32,7 +32,7 @@ const createTestUser = async () => {
             password: 'password123', // سيتم hash تلقائياً بواسطة beforeCreate hook
             role: 'admin',
             phone: '123456789',
-            is_active: true
+            status: 'active'
         });
 
         console.log('✅ Test user created successfully!');
