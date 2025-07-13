@@ -1,4 +1,4 @@
-import sequelize from '../config/database.js';
+import { Sequelize } from 'sequelize';
 import User from './User.js';
 import Store from './Store.js';
 import Product from './Product.js';
@@ -10,6 +10,50 @@ import Notification from './Notification.js';
 import Distributor from './Distributor.js';
 import DistributionTrip from './DistributionTrip.js';
 import StoreVisit from './StoreVisit.js';
+
+// Database connection factory
+let sequelize = null;
+
+const getSequelizeConnection = async () => {
+    if (!sequelize) {
+        try {
+            const config = {
+                username: process.env.DB_USER || 'root',
+                password: process.env.DB_PASSWORD || '',
+                database: process.env.DB_NAME || 'bakery_db',
+                host: process.env.DB_HOST || 'localhost',
+                port: process.env.DB_PORT || 3306,
+                dialect: 'mysql',
+                logging: false,
+                pool: {
+                    max: 5,
+                    min: 0,
+                    acquire: 30000,
+                    idle: 10000
+                },
+                timezone: '+02:00',
+                define: {
+                    charset: 'utf8mb4',
+                    collate: 'utf8mb4_unicode_ci',
+                    timestamps: true,
+                    underscored: true,
+                    freezeTableName: true
+                }
+            };
+
+            sequelize = new Sequelize(
+                config.database,
+                config.username,
+                config.password,
+                config
+            );
+        } catch (error) {
+            console.error('Database connection failed in models/index.js:', error.message);
+            throw new Error('Database connection unavailable');
+        }
+    }
+    return sequelize;
+};
 
 // Define associations here
 const defineAssociations = () => {
@@ -87,9 +131,12 @@ const initializeModels = async () => {
         // Define associations
         defineAssociations();
 
+        // Get database connection when needed
+        const db = await getSequelizeConnection();
+
         // Sync models with database - DISABLED FOR NEW DATABASE STRUCTURE
         // if (process.env.NODE_ENV === 'development') {
-        //     await sequelize.sync({ alter: true });
+        //     await db.sync({ alter: true });
         //     if (process.env.NODE_ENV !== 'test') {
         //         console.log('✅ Models synchronized with database');
         //     }
@@ -102,7 +149,7 @@ const initializeModels = async () => {
         }
 
         return {
-            sequelize,
+            sequelize: db,
             User,
             Store,
             Product,
@@ -122,7 +169,7 @@ const initializeModels = async () => {
 };
 
 export {
-    sequelize,
+    getSequelizeConnection,
     User,
     Store,
     Product,
@@ -138,7 +185,7 @@ export {
 };
 
 export default {
-    sequelize,
+    getSequelizeConnection,
     User,
     Store,
     Product,

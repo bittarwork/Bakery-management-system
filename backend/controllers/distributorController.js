@@ -1,6 +1,6 @@
 import { validationResult } from 'express-validator';
 import { Op } from 'sequelize';
-import { Distributor, User, DistributionTrip, Order, sequelize } from '../models/index.js';
+import { Distributor, User, DistributionTrip, Order, getSequelizeConnection } from '../models/index.js';
 
 // @desc    الحصول على جميع الموزعين
 // @route   GET /api/distributors

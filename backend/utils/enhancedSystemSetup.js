@@ -1,5 +1,49 @@
-import sequelize from '../config/database.js';
+import { Sequelize } from 'sequelize';
 import { up as fixOrderItemsTable } from '../migrations/fix-order-items-table.js';
+
+// Database connection factory for enhanced system
+let sequelize = null;
+
+const getSequelizeConnection = async () => {
+    if (!sequelize) {
+        try {
+            const config = {
+                username: process.env.DB_USER || 'root',
+                password: process.env.DB_PASSWORD || '',
+                database: process.env.DB_NAME || 'bakery_db',
+                host: process.env.DB_HOST || 'localhost',
+                port: process.env.DB_PORT || 3306,
+                dialect: 'mysql',
+                logging: false,
+                pool: {
+                    max: 5,
+                    min: 0,
+                    acquire: 30000,
+                    idle: 10000
+                },
+                timezone: '+02:00',
+                define: {
+                    charset: 'utf8mb4',
+                    collate: 'utf8mb4_unicode_ci',
+                    timestamps: true,
+                    underscored: true,
+                    freezeTableName: true
+                }
+            };
+
+            sequelize = new Sequelize(
+                config.database,
+                config.username,
+                config.password,
+                config
+            );
+        } catch (error) {
+            console.error('Database connection failed in enhancedSystemSetup:', error.message);
+            throw new Error('Database connection unavailable');
+        }
+    }
+    return sequelize;
+};
 
 // Import Enhanced Models
 import EnhancedUser from '../models/EnhancedUser.js';
@@ -24,12 +68,13 @@ export const setupDatabase = async () => {
         console.log('🔧 Starting database setup...');
 
         // Test database connection
-        await sequelize.authenticate();
+        const db = await getSequelizeConnection();
+        await db.authenticate();
         console.log('✅ Database connection established successfully');
 
         // Fix order_items table issue
         console.log('🔧 Fixing order_items table...');
-        await fixOrderItemsTable(sequelize.getQueryInterface(), sequelize);
+        await fixOrderItemsTable(db.getQueryInterface(), db);
 
         // Create/update original tables first - DISABLED FOR NEW DATABASE STRUCTURE
         // console.log('🔧 Creating/updating original tables...');
@@ -160,10 +205,11 @@ export const initializeEnhancedSystem = async () => {
 // Health check function
 export const healthCheck = async () => {
     try {
-        await sequelize.authenticate();
+        const db = await getSequelizeConnection();
+        await db.authenticate();
 
         // Check if enhanced tables exist
-        const tables = await sequelize.getQueryInterface().showAllTables();
+        const tables = await db.getQueryInterface().showAllTables();
         const requiredTables = [
             'enhanced_users',
             'enhanced_stores',
