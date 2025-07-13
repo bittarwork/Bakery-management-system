@@ -15,19 +15,19 @@ const Card = React.forwardRef(
     },
     ref
   ) => {
-    const baseClasses = "card";
+    const baseClasses = "bg-white rounded-xl shadow-sm border border-gray-200";
 
     const variantClasses = {
-      default: "",
-      glass: "card-glass",
-      elevated: "shadow-large",
-      bordered: "border-2 border-border/50",
+      default: "bg-white border-gray-200",
+      glass: "bg-white/5 backdrop-blur-xl border-white/10",
+      elevated: "shadow-lg",
+      bordered: "border-2 border-gray-300",
     };
 
     const classes = cn(
       baseClasses,
       variantClasses[variant],
-      hover && "hover:shadow-medium hover:scale-[1.01]",
+      hover && "hover:shadow-md hover:scale-[1.01] transition-all duration-200",
       interactive && "cursor-pointer",
       className
     );
@@ -65,7 +65,7 @@ const Card = React.forwardRef(
 const CardHeader = React.forwardRef(
   ({ children, className = "", ...props }, ref) => {
     return (
-      <div ref={ref} className={cn("card-header", className)} {...props}>
+      <div ref={ref} className={cn("p-6 pb-0", className)} {...props}>
         {children}
       </div>
     );
@@ -75,7 +75,7 @@ const CardHeader = React.forwardRef(
 const CardBody = React.forwardRef(
   ({ children, className = "", ...props }, ref) => {
     return (
-      <div ref={ref} className={cn("card-body", className)} {...props}>
+      <div ref={ref} className={cn("p-6", className)} {...props}>
         {children}
       </div>
     );
@@ -85,7 +85,7 @@ const CardBody = React.forwardRef(
 const CardFooter = React.forwardRef(
   ({ children, className = "", ...props }, ref) => {
     return (
-      <div ref={ref} className={cn("card-footer", className)} {...props}>
+      <div ref={ref} className={cn("p-6 pt-0", className)} {...props}>
         {children}
       </div>
     );

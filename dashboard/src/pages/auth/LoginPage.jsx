@@ -21,6 +21,7 @@ import {
 import { useAuthStore } from "../../stores/authStore";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
+import Logo from "../../components/ui/Logo";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -171,41 +172,6 @@ const LoginPage = () => {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Custom Bakery Logo Component
-  const BakeryLogo = () => (
-    <div className="relative">
-      <motion.div
-        initial={{ scale: 0, rotate: -180 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
-        className="w-20 h-20 bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-2xl relative overflow-hidden"
-      >
-        {/* Background pattern */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
-
-        {/* Main chef hat icon */}
-        <ChefHat className="w-10 h-10 text-white z-10" />
-
-        {/* Decorative elements */}
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center"
-        >
-          <Wheat className="w-3 h-3 text-white" />
-        </motion.div>
-
-        <motion.div
-          animate={{ rotate: -360 }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-          className="absolute -bottom-1 -left-1 w-5 h-5 bg-gradient-to-br from-pink-400 to-red-500 rounded-full flex items-center justify-center"
-        >
-          <Cookie className="w-2.5 h-2.5 text-white" />
-        </motion.div>
-      </motion.div>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
       {/* Subtle Background Elements */}
@@ -253,57 +219,33 @@ const LoginPage = () => {
           className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12 text-white"
         >
           {/* Logo */}
-          <BakeryLogo />
-
-          {/* Brand Name */}
-          <motion.h1
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.6 }}
-            className="text-4xl font-bold mt-8 mb-4 bg-gradient-to-r from-amber-300 via-orange-400 to-red-400 bg-clip-text text-transparent"
-          >
-            BakeMaster
-          </motion.h1>
+          <Logo size="2xl" animated={true} />
 
           {/* Tagline */}
           <motion.p
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.8 }}
-            className="text-lg text-gray-300 text-center max-w-sm leading-relaxed"
+            className="text-lg text-gray-300 text-center max-w-sm leading-relaxed mt-8"
           >
             نظام إدارة المخابز الاحترافي للأعمال الحديثة
           </motion.p>
 
-          {/* Decorative bakery icons */}
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 1.0 }}
-            className="mt-12 flex items-center gap-6 text-gray-400"
-          >
-            <motion.div
-              animate={{ y: [0, -5, 0] }}
-              transition={{ duration: 2, repeat: Infinity, delay: 0 }}
-              className="text-amber-400/60"
-            >
-              <ChefHat size={24} />
-            </motion.div>
-            <motion.div
-              animate={{ y: [0, -5, 0] }}
-              transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-              className="text-orange-400/60"
-            >
-              <Wheat size={20} />
-            </motion.div>
-            <motion.div
-              animate={{ y: [0, -5, 0] }}
-              transition={{ duration: 2, repeat: Infinity, delay: 1 }}
-              className="text-red-400/60"
-            >
-              <Cookie size={22} />
-            </motion.div>
-          </motion.div>
+          {/* Features */}
+          <div className="grid grid-cols-1 gap-4 text-center mt-12">
+            <div className="flex items-center space-x-3 rtl:space-x-reverse bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <Shield className="w-6 h-6 text-green-300" />
+              <span className="text-amber-100">حماية متقدمة للبيانات</span>
+            </div>
+            <div className="flex items-center space-x-3 rtl:space-x-reverse bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <Zap className="w-6 h-6 text-yellow-300" />
+              <span className="text-amber-100">أداء سريع وموثوق</span>
+            </div>
+            <div className="flex items-center space-x-3 rtl:space-x-reverse bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <Users className="w-6 h-6 text-blue-300" />
+              <span className="text-amber-100">إدارة شاملة للمستخدمين</span>
+            </div>
+          </div>
         </motion.div>
 
         {/* Right Side - Login Form */}
@@ -316,7 +258,7 @@ const LoginPage = () => {
           <div className="w-full max-w-md">
             {/* Mobile Logo */}
             <div className="lg:hidden flex justify-center mb-8">
-              <BakeryLogo />
+              <Logo size="xl" animated={true} />
             </div>
 
             {/* Form Header */}

@@ -71,16 +71,20 @@ app.use((req, res, next) => {
 
 app.use(cors({
     origin: function (origin, callback) {
-        // In development mode, allow all origins
-        if (process.env.NODE_ENV === 'development') {
-            console.log('Development mode - allowing all origins:', origin);
-            return callback(null, true);
-        }
-
-        // List of allowed origins for production
+        // List of allowed origins for production and development
         const allowedOrigins = [
             process.env.FRONTEND_URL || 'http://localhost:3000',
+            'http://localhost:3000', // React development server
+            'http://localhost:5173', // Vite default port
+            'http://localhost:4173', // Vite preview port
+            'http://127.0.0.1:3000',
+            'http://127.0.0.1:5173',
+            'http://127.0.0.1:4173',
+            // Production frontend domain
             'https://bakery-management-system-nine.vercel.app',
+            // Flutter development origins
+            'http://localhost:8080', // Flutter web development
+            'http://127.0.0.1:8080',
             // Mobile app origins (for development)
             'capacitor://localhost',
             'ionic://localhost',
@@ -103,8 +107,14 @@ app.use(cors({
             console.log('Origin allowed:', origin);
             callback(null, true);
         } else {
-            console.log('Origin not allowed:', origin);
-            callback(new Error(`Not allowed by CORS: ${origin}`));
+            // In development environment, allow all localhost origins
+            if (process.env.NODE_ENV === 'development' || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+                console.log('Development mode - allowing localhost origin:', origin);
+                callback(null, true);
+            } else {
+                console.log('Origin not allowed:', origin);
+                callback(new Error(`Not allowed by CORS: ${origin}`));
+            }
         }
     },
     credentials: true,
