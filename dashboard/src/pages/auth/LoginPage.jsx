@@ -6,7 +6,7 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const { login } = useAuthStore();
   const [formData, setFormData] = useState({
-    username: "",
+    usernameOrEmail: "",
     password: "",
   });
   const [error, setError] = useState("");
@@ -18,7 +18,7 @@ const LoginPage = () => {
     setIsLoading(true);
 
     try {
-      await login(formData.username, formData.password);
+      await login(formData.usernameOrEmail, formData.password);
       navigate("/dashboard");
     } catch (err) {
       setError(err.message || "Failed to login. Please try again.");
@@ -50,20 +50,20 @@ const LoginPage = () => {
 
         <div>
           <label
-            htmlFor="username"
+            htmlFor="usernameOrEmail"
             className="block text-sm font-medium text-gray-700"
           >
-            Username
+            Username or Email
           </label>
           <input
-            id="username"
-            name="username"
+            id="usernameOrEmail"
+            name="usernameOrEmail"
             type="text"
             required
-            value={formData.username}
+            value={formData.usernameOrEmail}
             onChange={handleChange}
             className="mt-1 input"
-            placeholder="Enter your username"
+            placeholder="Enter your username or email"
           />
         </div>
 

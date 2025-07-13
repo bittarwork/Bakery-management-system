@@ -135,10 +135,15 @@ User.prototype.toJSON = function () {
 };
 
 // Class methods
-User.findByCredentials = async function (username, password) {
+User.findByCredentials = async function (usernameOrEmail, password) {
+    const { Op } = await import('sequelize');
+
     const user = await User.findOne({
         where: {
-            username: username,
+            [Op.or]: [
+                { username: usernameOrEmail },
+                { email: usernameOrEmail }
+            ],
             status: 'active'
         }
     });
