@@ -108,14 +108,14 @@ const User = sequelize.define('User', {
     hooks: {
         beforeCreate: async (user) => {
             if (user.password) {
-                const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 10;
+                const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 12;
                 const hashedPassword = await bcrypt.hash(user.password, saltRounds);
                 user.setDataValue('password', hashedPassword);
             }
         },
         beforeUpdate: async (user) => {
             if (user.password && user.changed('password')) {
-                const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 10;
+                const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 12;
                 const hashedPassword = await bcrypt.hash(user.password, saltRounds);
                 user.setDataValue('password', hashedPassword);
             }
