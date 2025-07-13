@@ -3,13 +3,28 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 
-// Database connection
-const db = mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'bakery_db'
-});
+// Database connection factory
+let db = null;
+
+const getDBConnection = async () => {
+    if (!db) {
+        try {
+            db = await mysql.createConnection({
+                host: process.env.DB_HOST || 'localhost',
+                user: process.env.DB_USER || 'root',
+                password: process.env.DB_PASSWORD || '',
+                database: process.env.DB_NAME || 'bakery_db',
+                connectTimeout: 10000,
+                acquireTimeout: 10000,
+                timeout: 10000
+            });
+        } catch (error) {
+            console.error('Database connection failed in comprehensiveDistributionController:', error.message);
+            throw new Error('Database connection unavailable');
+        }
+    }
+    return db;
+};
 
 // ==========================================
 // 🚚 DISTRIBUTOR FUNCTIONS (عامل التوزيع)
@@ -26,7 +41,7 @@ export const getDistributorDailySchedule = async (distributorId, date) => {
         const scheduleDate = date || new Date().toISOString().split('T')[0];
 
         // Get distributor's daily schedule
-        const [scheduleRows] = await db.execute(`
+        const [scheduleRows] = await (await getDBConnection()).execute(`
             SELECT 
                 ds.id as schedule_id,
                 ds.schedule_date,
@@ -60,7 +75,7 @@ export const getDistributorDailySchedule = async (distributorId, date) => {
         const schedule = scheduleRows[0];
 
         // Get stores and orders for this schedule
-        const [storeRows] = await db.execute(`
+        const [storeRows] = await (await getDBConnection()).execute(`
             SELECT 
                 s.id as store_id,
                 s.name as store_name,
@@ -86,7 +101,7 @@ export const getDistributorDailySchedule = async (distributorId, date) => {
 
         // Get order items for each order
         const storeIds = storeRows.map(row => row.store_id);
-        const [itemRows] = await db.execute(`
+        const [itemRows] = await (await getDBConnection()).execute(`
             SELECT 
                 oi.order_id,
                 oi.product_id,
@@ -211,7 +226,7 @@ export const getDistributorDailySchedule = async (distributorId, date) => {
 export const getStoreDeliveryDetails = async (storeId) => {
     try {
         // Get store basic info
-        const [storeRows] = await db.execute(`
+        const [storeRows] = await (await getDBConnection()).execute(`
             SELECT 
                 s.*,
                 u.full_name as distributor_name,
@@ -228,7 +243,7 @@ export const getStoreDeliveryDetails = async (storeId) => {
         const store = storeRows[0];
 
         // Get recent payment history
-        const [paymentHistory] = await db.execute(`
+        const [paymentHistory] = await (await getDBConnection()).execute(`
             SELECT 
                 p.id,
                 p.amount_eur,
@@ -244,7 +259,7 @@ export const getStoreDeliveryDetails = async (storeId) => {
         `, [storeId]);
 
         // Get recent orders
-        const [orderHistory] = await db.execute(`
+        const [orderHistory] = await (await getDBConnection()).execute(`
             SELECT 
                 o.id,
                 o.order_number,
@@ -260,7 +275,7 @@ export const getStoreDeliveryDetails = async (storeId) => {
         `, [storeId]);
 
         // Get gift policy for this store
-        const [giftPolicies] = await db.execute(`
+        const [giftPolicies] = await (await getDBConnection()).execute(`
             SELECT 
                 gp.product_id,
                 gp.buy_quantity,
@@ -326,11 +341,11 @@ export const getStoreDeliveryDetails = async (storeId) => {
 export const updateDeliveryQuantities = async (deliveryId, quantities, notes, distributorId) => {
     try {
         // Start transaction
-        await db.beginTransaction();
+        await (await getDBConnection()).beginTransaction();
 
         // Update order items with new quantities
         for (const item of quantities) {
-            await db.execute(`
+            await (await getDBConnection()).execute(`
                 UPDATE order_items 
                 SET quantity = ?, 
                     total_price_eur = quantity * unit_price_eur,
@@ -341,7 +356,7 @@ export const updateDeliveryQuantities = async (deliveryId, quantities, notes, di
         }
 
         // Update order total
-        const [orderItems] = await db.execute(`
+        const [orderItems] = await (await getDBConnection()).execute(`
             SELECT 
                 SUM(total_price_eur) as total_eur,
                 SUM(total_price_syp) as total_syp
@@ -349,7 +364,7 @@ export const updateDeliveryQuantities = async (deliveryId, quantities, notes, di
             WHERE order_id = ?
         `, [deliveryId]);
 
-        await db.execute(`
+        await (await getDBConnection()).execute(`
             UPDATE orders 
             SET total_amount_eur = ?,
                 total_amount_syp = ?,
@@ -366,13 +381,13 @@ export const updateDeliveryQuantities = async (deliveryId, quantities, notes, di
         ]);
 
         // Log the change
-        await db.execute(`
+        await (await getDBConnection()).execute(`
             INSERT INTO delivery_logs 
             (order_id, distributor_id, action, details, created_at)
             VALUES (?, ?, 'quantity_update', ?, NOW())
         `, [deliveryId, distributorId, JSON.stringify({ quantities, notes })]);
 
-        await db.commit();
+        await (await getDBConnection()).commit();
 
         return {
             delivery_id: deliveryId,
@@ -382,7 +397,7 @@ export const updateDeliveryQuantities = async (deliveryId, quantities, notes, di
         };
 
     } catch (error) {
-        await db.rollback();
+        await (await getDBConnection()).rollback();
         console.error('Error updating delivery quantities:', error);
         throw new Error('خطأ في تحديث كميات التسليم');
     }
@@ -399,10 +414,10 @@ export const completeDelivery = async (deliveryId, data) => {
         const { actualQuantities, gifts, damages, notes, distributorId } = data;
 
         // Start transaction
-        await db.beginTransaction();
+        await (await getDBConnection()).beginTransaction();
 
         // Update order status
-        await db.execute(`
+        await (await getDBConnection()).execute(`
             UPDATE orders 
             SET status = 'delivered',
                 updated_at = NOW()
@@ -410,7 +425,7 @@ export const completeDelivery = async (deliveryId, data) => {
         `, [deliveryId]);
 
         // Record actual delivery quantities
-        await db.execute(`
+        await (await getDBConnection()).execute(`
             INSERT INTO delivery_records 
             (order_id, distributor_id, actual_quantities, gifts_given, damages_recorded, notes, delivery_date)
             VALUES (?, ?, ?, ?, ?, ?, NOW())
@@ -425,7 +440,7 @@ export const completeDelivery = async (deliveryId, data) => {
 
         // Update vehicle inventory
         for (const item of actualQuantities) {
-            await db.execute(`
+            await (await getDBConnection()).execute(`
                 UPDATE vehicle_inventory 
                 SET quantity = quantity - ?,
                     updated_at = NOW()
@@ -435,7 +450,7 @@ export const completeDelivery = async (deliveryId, data) => {
 
         // Record gifts in inventory
         for (const gift of gifts) {
-            await db.execute(`
+            await (await getDBConnection()).execute(`
                 UPDATE vehicle_inventory 
                 SET quantity = quantity - ?,
                     updated_at = NOW()
@@ -444,7 +459,7 @@ export const completeDelivery = async (deliveryId, data) => {
         }
 
         // Update store statistics
-        const [orderInfo] = await db.execute(`
+        const [orderInfo] = await (await getDBConnection()).execute(`
             SELECT store_id, total_amount_eur, total_amount_syp
             FROM orders
             WHERE id = ?
@@ -452,7 +467,7 @@ export const completeDelivery = async (deliveryId, data) => {
 
         const order = orderInfo[0];
 
-        await db.execute(`
+        await (await getDBConnection()).execute(`
             UPDATE stores 
             SET completed_orders = completed_orders + 1,
                 total_purchases_eur = total_purchases_eur + ?,
@@ -462,7 +477,7 @@ export const completeDelivery = async (deliveryId, data) => {
             WHERE id = ?
         `, [order.total_amount_eur, order.total_amount_syp, order.store_id]);
 
-        await db.commit();
+        await (await getDBConnection()).commit();
 
         return {
             delivery_id: deliveryId,
@@ -475,7 +490,7 @@ export const completeDelivery = async (deliveryId, data) => {
         };
 
     } catch (error) {
-        await db.rollback();
+        await (await getDBConnection()).rollback();
         console.error('Error completing delivery:', error);
         throw new Error('خطأ في إكمال التسليم');
     }
@@ -502,10 +517,10 @@ export const recordPayment = async (paymentData) => {
         } = paymentData;
 
         // Start transaction
-        await db.beginTransaction();
+        await (await getDBConnection()).beginTransaction();
 
         // Insert payment record
-        const [paymentResult] = await db.execute(`
+        const [paymentResult] = await (await getDBConnection()).execute(`
             INSERT INTO payments 
             (store_id, order_id, amount_eur, amount_syp, currency, payment_method, 
              payment_type, distribution_data, bank_details, notes, collected_by, payment_date)
@@ -528,7 +543,7 @@ export const recordPayment = async (paymentData) => {
 
         // Update store balance
         if (currency === 'EUR') {
-            await db.execute(`
+            await (await getDBConnection()).execute(`
                 UPDATE stores 
                 SET current_balance_eur = current_balance_eur - ?,
                     total_payments_eur = total_payments_eur + ?,
@@ -537,7 +552,7 @@ export const recordPayment = async (paymentData) => {
                 WHERE id = ?
             `, [amount, amount, storeId]);
         } else {
-            await db.execute(`
+            await (await getDBConnection()).execute(`
                 UPDATE stores 
                 SET current_balance_syp = current_balance_syp - ?,
                     total_payments_syp = total_payments_syp + ?,
@@ -549,7 +564,7 @@ export const recordPayment = async (paymentData) => {
 
         // Update order payment status if applicable
         if (orderId) {
-            await db.execute(`
+            await (await getDBConnection()).execute(`
                 UPDATE orders 
                 SET payment_status = 'paid',
                     updated_at = NOW()
@@ -557,7 +572,7 @@ export const recordPayment = async (paymentData) => {
             `, [orderId]);
         }
 
-        await db.commit();
+        await (await getDBConnection()).commit();
 
         return {
             payment_id: paymentId,
@@ -572,7 +587,7 @@ export const recordPayment = async (paymentData) => {
         };
 
     } catch (error) {
-        await db.rollback();
+        await (await getDBConnection()).rollback();
         console.error('Error recording payment:', error);
         throw new Error('خطأ في تسجيل الدفعة');
     }
@@ -585,7 +600,7 @@ export const recordPayment = async (paymentData) => {
  */
 export const getVehicleInventory = async (distributorId) => {
     try {
-        const [inventoryRows] = await db.execute(`
+        const [inventoryRows] = await (await getDBConnection()).execute(`
             SELECT 
                 vi.product_id,
                 vi.quantity,
@@ -635,7 +650,7 @@ export const recordVehicleExpense = async (expenseData) => {
     try {
         const { type, amount, currency, description, receiptImage, distributorId } = expenseData;
 
-        const [expenseResult] = await db.execute(`
+        const [expenseResult] = await (await getDBConnection()).execute(`
             INSERT INTO vehicle_expenses 
             (distributor_id, expense_type, amount_eur, amount_syp, currency, description, receipt_image, expense_date)
             VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
@@ -674,7 +689,7 @@ export const submitDailyReport = async (reportData) => {
     try {
         const { date, summary, signature, distributorId } = reportData;
 
-        const [reportResult] = await db.execute(`
+        const [reportResult] = await (await getDBConnection()).execute(`
             INSERT INTO daily_reports 
             (distributor_id, report_date, summary_data, signature, status, submitted_at)
             VALUES (?, ?, ?, ?, 'submitted', NOW())
@@ -719,7 +734,7 @@ export const getDistributorHistory = async (distributorId, options) => {
             params.push(dateTo);
         }
 
-        const [historyRows] = await db.execute(`
+        const [historyRows] = await (await getDBConnection()).execute(`
             SELECT 
                 dr.id,
                 dr.report_date,
@@ -736,7 +751,7 @@ export const getDistributorHistory = async (distributorId, options) => {
             LIMIT ? OFFSET ?
         `, [...params, limit, offset]);
 
-        const [countResult] = await db.execute(`
+        const [countResult] = await (await getDBConnection()).execute(`
             SELECT COUNT(*) as total
             FROM daily_reports dr
             ${whereConditions}

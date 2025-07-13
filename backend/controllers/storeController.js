@@ -1,6 +1,6 @@
 import { validationResult } from 'express-validator';
 import { Op } from 'sequelize';
-import { Store, Order, OrderItem, sequelize } from '../models/index.js';
+import { Store, Order, OrderItem, getSequelizeConnection } from '../models/index.js';
 
 // @desc    الحصول على جميع المحلات مع التصفية والبحث
 // @route   GET /api/stores

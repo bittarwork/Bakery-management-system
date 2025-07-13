@@ -34,7 +34,7 @@ const User = sequelize.define('User', {
             }
         }
     },
-    password_hash: {
+    password: {
         type: DataTypes.STRING,
         allowNull: false,
         validate: {
@@ -76,9 +76,9 @@ const User = sequelize.define('User', {
             }
         }
     },
-    is_active: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: true
+    status: {
+        type: DataTypes.ENUM('active', 'inactive', 'suspended', 'pending'),
+        defaultValue: 'active'
     },
     last_login: {
         type: DataTypes.DATE,
@@ -102,24 +102,22 @@ const User = sequelize.define('User', {
             fields: ['role']
         },
         {
-            fields: ['is_active']
+            fields: ['status']
         }
     ],
     hooks: {
         beforeCreate: async (user) => {
             if (user.password) {
-                const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 10;
-                user.password_hash = await bcrypt.hash(user.password, saltRounds);
-                user.setDataValue('password_hash', user.password_hash);
-                delete user.dataValues.password; // Remove the plain password
+                const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 12;
+                const hashedPassword = await bcrypt.hash(user.password, saltRounds);
+                user.setDataValue('password', hashedPassword);
             }
         },
         beforeUpdate: async (user) => {
             if (user.password && user.changed('password')) {
-                const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 10;
-                user.password_hash = await bcrypt.hash(user.password, saltRounds);
-                user.setDataValue('password_hash', user.password_hash);
-                delete user.dataValues.password; // Remove the plain password
+                const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 12;
+                const hashedPassword = await bcrypt.hash(user.password, saltRounds);
+                user.setDataValue('password', hashedPassword);
             }
         }
     }
@@ -127,22 +125,26 @@ const User = sequelize.define('User', {
 
 // Instance methods
 User.prototype.comparePassword = async function (candidatePassword) {
-    return await bcrypt.compare(candidatePassword, this.password_hash);
+    return await bcrypt.compare(candidatePassword, this.password);
 };
 
 User.prototype.toJSON = function () {
     const values = Object.assign({}, this.get());
-    delete values.password_hash;
     delete values.password;
     return values;
 };
 
 // Class methods
-User.findByCredentials = async function (username, password) {
+User.findByCredentials = async function (usernameOrEmail, password) {
+    const { Op } = await import('sequelize');
+
     const user = await User.findOne({
         where: {
-            username: username,
-            is_active: true
+            [Op.or]: [
+                { username: usernameOrEmail },
+                { email: usernameOrEmail }
+            ],
+            status: 'active'
         }
     });
 
@@ -162,7 +164,7 @@ User.findByEmail = async function (email) {
     return await User.findOne({
         where: {
             email: email,
-            is_active: true
+            status: 'active'
         }
     });
 };
@@ -171,7 +173,7 @@ User.getActiveDistributors = async function () {
     return await User.findAll({
         where: {
             role: 'distributor',
-            is_active: true
+            status: 'active'
         },
         order: [['full_name', 'ASC']]
     });
@@ -181,7 +183,7 @@ User.getUsersByRole = async function (role) {
     return await User.findAll({
         where: {
             role: role,
-            is_active: true
+            status: 'active'
         },
         order: [['full_name', 'ASC']]
     });

@@ -49,8 +49,8 @@ MOBILE_SESSION_TIMEOUT=3600000
 # ================================
 # 🌐 FRONTEND CONFIGURATION
 # ================================
-FRONTEND_URL=https://your-frontend-domain.com
-CORS_ORIGINS=https://your-frontend-domain.com,https://www.your-frontend-domain.com
+FRONTEND_URL=https://bakery-management-system-nine.vercel.app
+CORS_ORIGINS=https://bakery-management-system-nine.vercel.app
 
 # ================================
 # 📦 FILE UPLOAD CONFIGURATION

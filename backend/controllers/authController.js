@@ -124,10 +124,20 @@ export const login = async (req, res) => {
             });
         }
 
-        const { username, password } = req.body;
+        const { username, email, password } = req.body;
+
+        // Use username or email for login
+        const usernameOrEmail = username || email;
+
+        if (!usernameOrEmail || !password) {
+            return res.status(400).json({
+                success: false,
+                message: 'اسم المستخدم/البريد الإلكتروني وكلمة المرور مطلوبان'
+            });
+        }
 
         // Find user and validate credentials
-        const user = await User.findByCredentials(username, password);
+        const user = await User.findByCredentials(usernameOrEmail, password);
 
         // Update last login
         user.last_login = new Date();

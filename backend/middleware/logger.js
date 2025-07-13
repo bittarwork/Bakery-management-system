@@ -1,18 +1,9 @@
-import chalk from 'chalk';
-
 /**
  * Middleware لتسجيل الطلبات الواردة بطريقة احترافية
+ * Professional request logging middleware
  */
 
-// ألوان للحالات المختلفة
-const statusColors = {
-    2: chalk.green,      // 2xx - نجاح
-    3: chalk.cyan,       // 3xx - إعادة توجيه
-    4: chalk.yellow,     // 4xx - خطأ العميل
-    5: chalk.red         // 5xx - خطأ الخادم
-};
-
-// أيقونات للطرق المختلفة
+// Icons for different HTTP methods
 const methodIcons = {
     GET: '📖',
     POST: '📝',
@@ -21,7 +12,7 @@ const methodIcons = {
     DELETE: '🗑️'
 };
 
-// دالة لتنسيق الوقت
+// Format time function
 const formatTime = () => {
     return new Date().toLocaleString('en-GB', {
         timeZone: 'Europe/Brussels',
@@ -35,13 +26,13 @@ const formatTime = () => {
     });
 };
 
-// دالة لتنسيق مدة الاستجابة
+// Format response duration
 const formatDuration = (ms) => {
     if (ms < 1000) return `${ms}ms`;
     return `${(ms / 1000).toFixed(2)}s`;
 };
 
-// دالة لاستخراج معلومات المستخدم
+// Extract user information
 const getUserInfo = (req) => {
     if (req.user) {
         return `${req.user.full_name} (${req.user.role})`;
@@ -49,7 +40,7 @@ const getUserInfo = (req) => {
     return 'غير مُسجل';
 };
 
-// دالة لتنسيق حجم البيانات
+// Format data size
 const formatSize = (bytes) => {
     if (!bytes) return '0B';
     const sizes = ['B', 'KB', 'MB', 'GB'];
@@ -57,7 +48,7 @@ const formatSize = (bytes) => {
     return `${(bytes / Math.pow(1024, i)).toFixed(1)}${sizes[i]}`;
 };
 
-// دالة لاستخراج IP الحقيقي
+// Extract real IP address
 const getRealIP = (req) => {
     return req.headers['x-forwarded-for'] ||
         req.headers['x-real-ip'] ||
@@ -68,7 +59,7 @@ const getRealIP = (req) => {
 };
 
 /**
- * Middleware الرئيسي للتسجيل
+ * Main logging middleware
  */
 export const requestLogger = (req, res, next) => {
     const startTime = Date.now();
@@ -78,62 +69,53 @@ export const requestLogger = (req, res, next) => {
     const userAgent = req.headers['user-agent'] || 'Unknown';
     const ip = getRealIP(req);
 
-    // تسجيل بداية الطلب
+    // Log request start
     const methodIcon = methodIcons[method] || '📄';
-    const methodColor = method === 'GET' ? chalk.blue :
-        method === 'POST' ? chalk.green :
-            method === 'PUT' ? chalk.yellow :
-                method === 'PATCH' ? chalk.orange :
-                    method === 'DELETE' ? chalk.red : chalk.white;
 
-    console.log(chalk.gray(`[${timestamp}]`) +
-        ` ${methodIcon} ` +
-        (methodColor ? methodColor.bold(`${method}`) : chalk.white.bold(`${method}`)) +
-        ` ${chalk.cyan(url)} ` +
-        chalk.gray(`from ${ip ? ip.replace('::ffff:', '') : 'unknown'}`));
+    console.log(`[${timestamp}] ${methodIcon} ${method} ${url} from ${ip ? ip.replace('::ffff:', '') : 'unknown'}`);
 
-    // تسجيل معلومات إضافية للطلبات المهمة
+    // Log additional information for important requests
     if (method !== 'GET' && req.body && Object.keys(req.body).length > 0) {
         const bodySize = JSON.stringify(req.body).length;
-        console.log(chalk.gray(`    📦 Body: ${formatSize(bodySize)}`));
+        console.log(`    📦 Body: ${formatSize(bodySize)}`);
     }
 
-    // Override للـ res.json لتسجيل الاستجابة
+    // Override res.json to log response
     const originalJson = res.json;
     res.json = function (data) {
         const duration = Date.now() - startTime;
         const statusCode = res.statusCode;
         const statusClass = Math.floor(statusCode / 100);
-        const statusColor = statusColors[statusClass] || chalk.white;
 
-        // تسجيل الاستجابة
-        console.log(chalk.gray(`[${formatTime()}]`) +
-            ` ${methodIcon} ` +
-            (methodColor ? methodColor.bold(`${method}`) : chalk.white.bold(`${method}`)) +
-            ` ${chalk.cyan(url)} ` +
-            (statusColor ? statusColor.bold(`${statusCode}`) : chalk.white.bold(`${statusCode}`)) +
-            ` ${chalk.magenta(formatDuration(duration))}`);
+        // Status emoji based on status class
+        const statusEmoji = statusClass === 2 ? '✅' :
+            statusClass === 3 ? '↩️' :
+                statusClass === 4 ? '⚠️' :
+                    statusClass === 5 ? '❌' : '❓';
 
-        // تسجيل معلومات المستخدم للطلبات المحمية
+        // Log response
+        console.log(`[${formatTime()}] ${methodIcon} ${method} ${url} ${statusEmoji} ${statusCode} ${formatDuration(duration)}`);
+
+        // Log user information for protected requests
         if (req.user) {
-            console.log(chalk.gray(`    👤 User: ${getUserInfo(req)}`));
+            console.log(`    👤 User: ${getUserInfo(req)}`);
         }
 
-        // تسجيل الأخطاء
+        // Log errors
         if (statusClass >= 4) {
             if (data && data.message) {
-                console.log(chalk.gray(`    ❌ Error: ${data.message}`));
+                console.log(`    ❌ Error: ${data.message}`);
             }
         }
 
-        // تسجيل العمليات المهمة
+        // Log important operations
         if (method !== 'GET' && data && data.success) {
             if (data.data && data.data.id) {
-                console.log(chalk.gray(`    ✅ Resource ID: ${data.data.id}`));
+                console.log(`    ✅ Resource ID: ${data.data.id}`);
             }
         }
 
-        console.log(chalk.gray('    ' + '─'.repeat(50)));
+        console.log(`    ${'─'.repeat(50)}`);
 
         return originalJson.call(this, data);
     };
@@ -142,7 +124,7 @@ export const requestLogger = (req, res, next) => {
 };
 
 /**
- * Middleware لتسجيل الأخطاء
+ * Error logging middleware
  */
 export const errorLogger = (err, req, res, next) => {
     const timestamp = formatTime();
@@ -150,26 +132,26 @@ export const errorLogger = (err, req, res, next) => {
     const url = req.originalUrl || req.url;
     const ip = getRealIP(req);
 
-    console.log(chalk.red.bold(`[${timestamp}] 💥 ERROR`));
-    console.log(chalk.red(`    ${method} ${url} from ${ip ? ip.replace('::ffff:', '') : 'unknown'}`));
-    console.log(chalk.red(`    Message: ${err.message}`));
+    console.log(`[${timestamp}] 💥 ERROR`);
+    console.log(`    ${method} ${url} from ${ip ? ip.replace('::ffff:', '') : 'unknown'}`);
+    console.log(`    Message: ${err.message}`);
 
     if (req.user) {
-        console.log(chalk.red(`    User: ${getUserInfo(req)}`));
+        console.log(`    User: ${getUserInfo(req)}`);
     }
 
-    // تسجيل stack trace في development فقط
+    // Log stack trace in development only
     if (process.env.NODE_ENV === 'development') {
-        console.log(chalk.red(`    Stack: ${err.stack}`));
+        console.log(`    Stack: ${err.stack}`);
     }
 
-    console.log(chalk.red('    ' + '═'.repeat(50)));
+    console.log(`    ${'═'.repeat(50)}`);
 
     next(err);
 };
 
 /**
- * Middleware مبسط للتطوير
+ * Simple logging middleware for development
  */
 export const simpleLogger = (req, res, next) => {
     const method = req.method;

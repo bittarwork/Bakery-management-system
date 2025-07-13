@@ -25,9 +25,9 @@ export const protect = async (req, res, next) => {
         const user = await User.findOne({
             where: {
                 id: decoded.userId,
-                is_active: true
+                status: 'active'
             },
-            attributes: { exclude: ['password_hash'] }
+            attributes: { exclude: ['password'] }
         });
 
         if (!user) {
@@ -111,9 +111,9 @@ export const optionalAuth = async (req, res, next) => {
                 const user = await User.findOne({
                     where: {
                         id: decoded.userId,
-                        is_active: true
+                        status: 'active'
                     },
-                    attributes: { exclude: ['password_hash'] }
+                    attributes: { exclude: ['password'] }
                 });
 
                 if (user) {

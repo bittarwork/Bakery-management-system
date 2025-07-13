@@ -25,7 +25,7 @@ const createAdmin = async () => {
         const admin = await User.create({
             username: 'admin',
             email: 'admin@bakery.com',
-            password_hash: hashedPassword,
+            password: hashedPassword,
             full_name: 'مدير النظام',
             role: 'admin',
             is_active: true

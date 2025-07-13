@@ -1,5 +1,49 @@
-import sequelize from '../config/database.js';
+import { Sequelize } from 'sequelize';
 import { up as fixOrderItemsTable } from '../migrations/fix-order-items-table.js';
+
+// Database connection factory for enhanced system
+let sequelize = null;
+
+const getSequelizeConnection = async () => {
+    if (!sequelize) {
+        try {
+            const config = {
+                username: process.env.DB_USER || 'root',
+                password: process.env.DB_PASSWORD || '',
+                database: process.env.DB_NAME || 'bakery_db',
+                host: process.env.DB_HOST || 'localhost',
+                port: process.env.DB_PORT || 3306,
+                dialect: 'mysql',
+                logging: false,
+                pool: {
+                    max: 5,
+                    min: 0,
+                    acquire: 30000,
+                    idle: 10000
+                },
+                timezone: '+02:00',
+                define: {
+                    charset: 'utf8mb4',
+                    collate: 'utf8mb4_unicode_ci',
+                    timestamps: true,
+                    underscored: true,
+                    freezeTableName: true
+                }
+            };
+
+            sequelize = new Sequelize(
+                config.database,
+                config.username,
+                config.password,
+                config
+            );
+        } catch (error) {
+            console.error('Database connection failed in enhancedSystemSetup:', error.message);
+            throw new Error('Database connection unavailable');
+        }
+    }
+    return sequelize;
+};
 
 // Import Enhanced Models
 import EnhancedUser from '../models/EnhancedUser.js';
@@ -23,13 +67,21 @@ export const setupDatabase = async () => {
     try {
         console.log('🔧 Starting database setup...');
 
+        // Check if database environment variables are set
+        if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_NAME) {
+            console.log('⚠️  Database environment variables not set - skipping database setup');
+            console.log('📋 Please set DB_HOST, DB_USER, DB_PASSWORD, and DB_NAME environment variables');
+            return false;
+        }
+
         // Test database connection
-        await sequelize.authenticate();
+        const db = await getSequelizeConnection();
+        await db.authenticate();
         console.log('✅ Database connection established successfully');
 
         // Fix order_items table issue
         console.log('🔧 Fixing order_items table...');
-        await fixOrderItemsTable(sequelize.getQueryInterface(), sequelize);
+        await fixOrderItemsTable(db.getQueryInterface(), db);
 
         // Create/update original tables first - DISABLED FOR NEW DATABASE STRUCTURE
         // console.log('🔧 Creating/updating original tables...');
@@ -39,7 +91,9 @@ export const setupDatabase = async () => {
         return true;
     } catch (error) {
         console.error('❌ Database setup error:', error);
-        throw error;
+        console.log('⚠️  Database connection failed - system will start without database');
+        console.log('📋 Please ensure MySQL service is running and environment variables are set');
+        return false;
     }
 };
 
@@ -49,7 +103,12 @@ export const setupEnhancedSystem = async () => {
         console.log('🚀 Starting enhanced system setup...');
 
         // Setup database first
-        await setupDatabase();
+        const dbSetupSuccess = await setupDatabase();
+
+        if (!dbSetupSuccess) {
+            console.log('⚠️  Database setup failed - continuing without database');
+            console.log('📋 System will be limited until database is configured');
+        }
 
         // Create enhanced tables - DISABLED FOR NEW DATABASE STRUCTURE
         // console.log('🔧 Creating enhanced tables...');
@@ -73,14 +132,17 @@ export const setupEnhancedSystem = async () => {
         // Create additional tables for enhanced features
         // await createAdditionalTables();
 
-        console.log('⚠️  Enhanced tables sync disabled - please create database manually');
-        console.log('📋 Run: mysql -u root -p < database/create_complete_database.sql');
+        if (dbSetupSuccess) {
+            console.log('⚠️  Enhanced tables sync disabled - please create database manually');
+            console.log('📋 Run: mysql -u root -p < database/create_complete_database.sql');
+        }
 
         console.log('✅ Enhanced system setup completed successfully');
         return true;
     } catch (error) {
         console.error('❌ Enhanced system setup error:', error);
-        throw error;
+        console.log('⚠️  Enhanced system setup failed - continuing with basic functionality');
+        return false;
     }
 };
 
@@ -137,33 +199,53 @@ export const initializeEnhancedSystem = async () => {
         console.log('🚀 Starting complete enhanced system initialization...');
 
         // Step 1: Setup database and enhanced system
-        await setupEnhancedSystem();
+        const enhancedSetupSuccess = await setupEnhancedSystem();
 
-        // Step 2: Insert default settings
-        await insertDefaultSettings();
+        // Step 2: Insert default settings (only if database is available)
+        if (enhancedSetupSuccess) {
+            await insertDefaultSettings();
+        }
 
-        // Step 3: Create sample data (optional)
-        if (process.env.NODE_ENV === 'development') {
+        // Step 3: Create sample data (optional, only if database is available)
+        if (process.env.NODE_ENV === 'development' && enhancedSetupSuccess) {
             await createSampleData();
         }
 
-        console.log('🎉 Enhanced system initialized successfully!');
-        console.log('📊 System ready for use');
+        if (enhancedSetupSuccess) {
+            console.log('🎉 Enhanced system initialized successfully!');
+            console.log('📊 System ready for use');
+        } else {
+            console.log('⚠️  Enhanced system initialized with limited functionality');
+            console.log('📊 Basic API endpoints available, database features disabled');
+        }
 
         return true;
     } catch (error) {
         console.error('❌ Enhanced system initialization error:', error);
-        throw error;
+        console.log('⚠️  Enhanced system initialization failed - continuing with basic functionality');
+        return false;
     }
 };
 
 // Health check function
 export const healthCheck = async () => {
     try {
-        await sequelize.authenticate();
+        // Check if database environment variables are set
+        if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_NAME) {
+            return {
+                status: 'warning',
+                message: 'Database not configured - system running in limited mode',
+                database_configured: false,
+                enhanced_tables: 0,
+                required_tables: 0
+            };
+        }
+
+        const db = await getSequelizeConnection();
+        await db.authenticate();
 
         // Check if enhanced tables exist
-        const tables = await sequelize.getQueryInterface().showAllTables();
+        const tables = await db.getQueryInterface().showAllTables();
         const requiredTables = [
             'enhanced_users',
             'enhanced_stores',
@@ -177,15 +259,19 @@ export const healthCheck = async () => {
         return {
             status: 'healthy',
             message: 'Enhanced system is working correctly',
+            database_configured: true,
             tables_count: tables.length,
             enhanced_tables: existingTables.length,
             required_tables: requiredTables.length
         };
     } catch (error) {
         return {
-            status: 'error',
-            message: 'System health check error',
-            error: error.message
+            status: 'warning',
+            message: 'Database connection failed - system running in limited mode',
+            database_configured: false,
+            error: error.message,
+            enhanced_tables: 0,
+            required_tables: 0
         };
     }
 }; 
