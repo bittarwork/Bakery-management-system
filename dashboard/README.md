@@ -1,423 +1,242 @@
-# 🍞 نظام إدارة المخبزة - لوحة التحكم
+# 🍞 Bakery Management System Dashboard
 
-لوحة تحكم شاملة لإدارة نظام المخبزة مع دعم العملات المتعددة وإدارة التوزيع المتقدمة.
+A modern, responsive dashboard for comprehensive bakery management with advanced features including distribution tracking, payment management, and real-time analytics.
 
-## 🚀 المميزات
+## 🚀 Quick Deploy
 
-### 🔐 نظام المصادقة المتقدم
+### Deploy to Vercel (Recommended)
 
-- **5 أدوار مختلفة**: Admin, Manager, Distributor, Store Owner, Accountant
-- **نظام صلاحيات مفصل** لكل دور
-- **JWT Authentication** مع refresh tokens
-- **Rate limiting** ومعالجة الأمان
-- **Password policies** ومصادقة ثنائية
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/bakery-management-system)
 
-### 💰 العملات المتعددة
+1. **Fork this repository**
+2. **Click the Deploy button above**
+3. **Add environment variables:**
+   ```
+   VITE_API_BASE_URL=https://bakery-management-system-production.up.railway.app/api/
+   ```
+4. **Deploy!**
 
-- **العملة الأساسية**: EUR (يورو)
-- **العملة الثانوية**: SYP (ليرة سورية)
-- **تحويل تلقائي** بين العملات
-- **أسعار صرف قابلة للتحديث**
-
-### 🚚 إدارة التوزيع الشاملة
-
-- **جداول توزيع ذكية** مع تحسين المسارات
-- **تتبع مباشر** لمواقع الموزعين
-- **إدارة مخزون السيارات**
-- **تسجيل المصاريف** والأضرار
-- **تقارير يومية** شاملة
-
-### 📊 التحليلات والتقارير
-
-- **إحصائيات لحظية** للمبيعات والطلبات
-- **تقارير يومية/أسبوعية/شهرية**
-- **تحليلات الأداء** للموزعين
-- **خرائط تفاعلية** للتوزيع
-- **تصدير متقدم** (Excel, PDF, CSV)
-
-### 🎨 واجهة المستخدم
-
-- **تصميم متجاوب** يدعم جميع الأجهزة
-- **دعم RTL** كامل للعربية
-- **Dark mode** مع system preference
-- **انتقالات سلسة** مع Framer Motion
-- **مكونات UI** قابلة للإعادة الاستخدام
-
-## 🛠️ التقنيات المستخدمة
-
-### Frontend
-
-- **React 18** مع Hooks
-- **Vite** للبناء السريع
-- **Tailwind CSS** للتصميم
-- **React Router** للتنقل
-- **Zustand** لإدارة الحالة
-- **React Query** للـ API
-- **Framer Motion** للحركة
-- **Chart.js** للرسوم البيانية
-
-### مكتبات إضافية
-
-- **Axios** للـ API calls
-- **React Hot Toast** للإشعارات
-- **Leaflet** للخرائط
-- **Date-fns** للتواريخ
-- **React Select** للـ dropdowns
-- **React Table** للجداول
-
-## 📦 التثبيت والتشغيل
-
-### 1. متطلبات النظام
+### Manual Deploy
 
 ```bash
-Node.js >= 18
-npm >= 9
-```
+# Clone the repository
+git clone https://github.com/your-username/bakery-management-system.git
+cd bakery-management-system/dashboard
 
-### 2. تثبيت المشروع
+# Install dependencies
+npm install --legacy-peer-deps
 
-```bash
-# الانتقال إلى مجلد الداشبورد
-cd dashboard
-
-# تثبيت الاعتماديات
-npm install
-
-# تشغيل البيئة التطويرية
-npm run dev
-```
-
-### 3. بناء المشروع
-
-```bash
-# بناء للإنتاج
+# Build for production
 npm run build
 
-# معاينة البناء
+# Deploy to Vercel
+npm run deploy
+```
+
+## 🛠️ Technology Stack
+
+- **Frontend Framework**: React 18 + Vite
+- **Styling**: Tailwind CSS
+- **State Management**: Zustand
+- **Routing**: React Router v6
+- **Charts**: Chart.js + Recharts
+- **Maps**: Leaflet + React Leaflet
+- **Forms**: React Hook Form
+- **Animations**: Framer Motion
+- **Icons**: Lucide React
+
+## 📋 Features
+
+### 🔐 Authentication & User Management
+
+- Secure login/logout system
+- Role-based access control
+- User profile management
+- Password reset functionality
+
+### 📊 Dashboard & Analytics
+
+- Real-time statistics
+- Interactive charts and graphs
+- Performance metrics
+- Customizable widgets
+
+### 🏪 Store Management
+
+- Store CRUD operations
+- Location mapping with Google Maps
+- Store performance analytics
+- Geographic clustering
+
+### 📦 Product Management
+
+- Product catalog with categories
+- Image upload and management
+- Inventory tracking
+- Product performance analysis
+
+### 📋 Order Management
+
+- Order creation and tracking
+- Status workflow management
+- Multi-currency support (EUR/SYP)
+- Order assignment to distributors
+
+### 💳 Payment Management
+
+- Payment recording and tracking
+- Balance management
+- Payment method analysis
+- Debt aging reports
+
+### 🚚 Distribution Management
+
+- Route optimization
+- Real-time tracking
+- Schedule management
+- Performance monitoring
+
+### 📈 Reports & Analytics
+
+- Daily, weekly, monthly reports
+- Custom date range reports
+- Export functionality (PDF, Excel)
+- Business intelligence dashboards
+
+## 🔧 Development
+
+### Prerequisites
+
+- Node.js >= 18.0.0
+- npm >= 8.0.0
+
+### Installation
+
+```bash
+# Install dependencies
+npm install --legacy-peer-deps
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
 npm run preview
 ```
 
-## 🔧 الإعدادات
+### Environment Variables
 
-### متغيرات البيئة
-
-إنشاء ملف `.env` في المجلد الجذر:
+Create `.env.local` file:
 
 ```env
-# API Configuration
-VITE_API_URL=https://bakery-management-system-production.up.railway.app/api/
-VITE_API_TIMEOUT=30000
-
-# App Configuration
-VITE_APP_NAME=نظام إدارة المخبزة
-VITE_APP_VERSION=2.0.0
-
-# Google Maps (اختياري)
-VITE_GOOGLE_MAPS_API_KEY=your_api_key_here
-
-# Development
-VITE_DEV_MODE=true
+VITE_API_BASE_URL=https://bakery-management-system-production.up.railway.app/api/
+VITE_APP_NAME=Bakery Management System
+VITE_APP_VERSION=1.0.0
 ```
 
-### إعدادات Tailwind
-
-ملف `tailwind.config.js` يحتوي على:
-
-- نظام ألوان مخصص للمخبزة
-- دعم RTL كامل
-- متغيرات CSS مخصصة
-- أنماط مكونات جاهزة
-
-## 📋 بنية المشروع
+## 🏗️ Project Structure
 
 ```
-dashboard/
-├── public/                 # الملفات العامة
-├── src/
-│   ├── components/        # مكونات React
-│   │   ├── ui/           # مكونات UI أساسية
-│   │   ├── layout/       # مكونات Layout
-│   │   └── forms/        # مكونات النماذج
-│   ├── pages/            # صفحات التطبيق
-│   │   ├── auth/         # صفحات المصادقة
-│   │   ├── dashboard/    # صفحات الداشبورد
-│   │   ├── distribution/ # صفحات التوزيع
-│   │   ├── orders/       # صفحات الطلبات
-│   │   ├── payments/     # صفحات المدفوعات
-│   │   └── reports/      # صفحات التقارير
-│   ├── services/         # خدمات API
-│   ├── stores/           # Zustand stores
-│   ├── hooks/            # Custom hooks
-│   ├── utils/            # دوال مساعدة
-│   └── styles/           # ملفات CSS
-├── package.json
-├── vite.config.js
-├── tailwind.config.js
-└── README.md
+src/
+├── components/          # Reusable UI components
+│   ├── layout/         # Layout components
+│   └── ui/            # UI components
+├── pages/              # Page components
+│   ├── auth/          # Authentication pages
+│   ├── dashboard/     # Dashboard pages
+│   ├── distribution/  # Distribution pages
+│   ├── orders/        # Order management pages
+│   ├── payments/      # Payment pages
+│   ├── products/      # Product pages
+│   ├── reports/       # Report pages
+│   ├── stores/        # Store pages
+│   ├── users/         # User management pages
+│   └── settings/      # Settings pages
+├── services/           # API services
+├── stores/            # State management
+├── hooks/             # Custom React hooks
+├── utils/             # Utility functions
+├── styles/            # Global styles
+└── config/            # Configuration files
 ```
 
-## 🎯 الاستخدام
+## 🚀 Deployment
 
-### 1. تسجيل الدخول
+### Vercel (Recommended)
 
-```javascript
-// بيانات المستخدم الافتراضية
-Username: admin@bakery.com
-Password: admin123
-```
+1. **Connect your GitHub repository to Vercel**
+2. **Add environment variables in Vercel dashboard**
+3. **Deploy automatically on every push**
 
-### 2. الأدوار والصلاحيات
+### Other Platforms
 
-- **Admin**: جميع الصلاحيات
-- **Manager**: إدارة التوزيع والطلبات
-- **Distributor**: عمليات التوزيع
-- **Store Owner**: عرض الطلبات
-- **Accountant**: المدفوعات والتقارير
+- **Netlify**: Drag and drop `dist` folder
+- **GitHub Pages**: Use GitHub Actions workflow
+- **Railway**: Connect repository directly
 
-### 3. الواجهة الرئيسية
+## 📱 Mobile Support
 
-- **Dashboard**: إحصائيات لحظية
-- **Orders**: إدارة الطلبات
-- **Distribution**: إدارة التوزيع
-- **Payments**: إدارة المدفوعات
-- **Reports**: التقارير والتحليلات
+- Responsive design for all screen sizes
+- Touch-friendly interfaces
+- Progressive Web App (PWA) ready
+- Offline capabilities
 
-## 🔌 تكامل API
+## 🔒 Security
 
-### Backend Integration
+- JWT authentication
+- Role-based access control
+- Secure API communication
+- Input validation and sanitization
 
-```javascript
-// API Base URL
-const API_URL =
-  "https://bakery-management-system-production.up.railway.app/api/";
+## 📊 Performance
 
-// مثال على استخدام API
-import { apiService } from "./services/apiService";
+- Code splitting and lazy loading
+- Image optimization
+- Bundle size optimization
+- CDN integration
 
-// جلب الطلبات
-const orders = await apiService.get("/orders");
-
-// إنشاء طلب جديد
-const newOrder = await apiService.post("/orders", orderData);
-```
-
-### Authentication
-
-```javascript
-// تسجيل الدخول
-const response = await authService.login({
-  email: "admin@bakery.com",
-  password: "admin123",
-});
-
-// استخدام الـ store
-const { login, logout, user } = useAuthStore();
-```
-
-## 📱 الاستجابة والتوافق
-
-### المتصفحات المدعومة
-
-- Chrome 90+
-- Firefox 88+
-- Safari 14+
-- Edge 90+
-
-### الأجهزة المدعومة
-
-- **Desktop**: 1920x1080+
-- **Tablet**: 768x1024+
-- **Mobile**: 375x667+
-
-## 🚀 النشر
-
-### 1. النشر على Netlify
+## 🧪 Testing
 
 ```bash
-# بناء المشروع
-npm run build
+# Run tests
+npm test
 
-# نشر المجلد dist
-netlify deploy --prod --dir=dist
+# Run tests with coverage
+npm run test:coverage
+
+# Run e2e tests
+npm run test:e2e
 ```
 
-### 2. النشر على Vercel
+## 📈 Monitoring
 
-```bash
-# بناء المشروع
-npm run build
+- Vercel Analytics integration
+- Error tracking with Sentry
+- Performance monitoring
+- User behavior analytics
 
-# نشر
-vercel --prod
-```
+## 🤝 Contributing
 
-### 3. النشر مع Docker
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "run", "preview"]
-```
+## 📄 License
 
-## 🔍 التطوير والتخصيص
+This project is licensed under the MIT License.
 
-### إضافة مكونات جديدة
+## 🆘 Support
 
-```javascript
-// مكون جديد
-import React from "react";
-import { motion } from "framer-motion";
+For support and questions:
 
-const NewComponent = () => {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="card"
-    >
-      {/* محتوى المكون */}
-    </motion.div>
-  );
-};
+- Create an issue on GitHub
+- Check the documentation
+- Contact the development team
 
-export default NewComponent;
-```
+---
 
-### إضافة صفحة جديدة
-
-```javascript
-// في App.jsx
-<Route
-  path="/new-page"
-  element={
-    <ProtectedRoute>
-      <DashboardLayout>
-        <NewPage />
-      </DashboardLayout>
-    </ProtectedRoute>
-  }
-/>
-```
-
-### إضافة API service
-
-```javascript
-// في services/
-class NewService {
-  async getData() {
-    return await apiService.get("/new-endpoint");
-  }
-}
-
-export const newService = new NewService();
-```
-
-## 🐛 معالجة الأخطاء
-
-### Error Boundary
-
-```javascript
-import { ErrorBoundary } from "./components/ui/ErrorBoundary";
-
-<ErrorBoundary>
-  <YourComponent />
-</ErrorBoundary>;
-```
-
-### Toast Notifications
-
-```javascript
-import { toast } from "react-hot-toast";
-
-toast.success("نجح الحفظ");
-toast.error("حدث خطأ");
-toast.loading("جاري الحفظ...");
-```
-
-## 📊 الأداء والتحسين
-
-### Code Splitting
-
-```javascript
-const LazyComponent = React.lazy(() => import('./Component'))
-
-<Suspense fallback={<LoadingSpinner />}>
-  <LazyComponent />
-</Suspense>
-```
-
-### Memoization
-
-```javascript
-const MemoizedComponent = React.memo(Component);
-const memoizedValue = useMemo(() => compute(), [deps]);
-```
-
-## 🔐 الأمان
-
-### معالجة الأمان
-
-- **HTTPS only** في الإنتاج
-- **CSP headers** للحماية
-- **XSS protection** في المدخلات
-- **CSRF protection** في النماذج
-
-### Best Practices
-
-- تشفير البيانات الحساسة
-- تحديث الـ dependencies دورياً
-- مراجعة الكود أمنياً
-- تسجيل الأنشطة المشبوهة
-
-## 🆘 استكشاف الأخطاء
-
-### مشاكل شائعة
-
-1. **خطأ في الاتصال**: تحقق من URL الـ API
-2. **خطأ في المصادقة**: تحقق من صحة الـ token
-3. **خطأ في التحميل**: تحقق من الشبكة
-4. **خطأ في البناء**: تحقق من الـ dependencies
-
-### أدوات التطوير
-
-- **React DevTools** لفحص المكونات
-- **Redux DevTools** لفحص الحالة
-- **Network tab** لفحص الـ API
-- **Console** لفحص الأخطاء
-
-## 📞 الدعم والمساعدة
-
-### التواصل
-
-- **Email**: support@bakery-system.com
-- **GitHub**: [Repository Issues](https://github.com/your-repo/issues)
-- **Documentation**: [Wiki](https://github.com/your-repo/wiki)
-
-### المساهمة
-
-1. Fork المشروع
-2. إنشاء branch جديد
-3. إضافة التغييرات
-4. إنشاء Pull Request
-
-## 📄 الرخصة
-
-هذا المشروع مرخص تحت رخصة MIT. راجع ملف `LICENSE` للتفاصيل.
-
-## 🎉 الخلاصة
-
-تم إنشاء نظام إدارة مخبزة شامل مع:
-
-- ✅ واجهة مستخدم حديثة وسهلة الاستخدام
-- ✅ نظام مصادقة متقدم
-- ✅ دعم العملات المتعددة
-- ✅ إدارة توزيع ذكية
-- ✅ تقارير وتحليلات شاملة
-- ✅ تكامل كامل مع Backend
-
-**🚀 جاهز للاستخدام الفوري!**
+**🍞 Built with ❤️ for modern bakery management**
