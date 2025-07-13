@@ -53,7 +53,7 @@ class ConnectivityListener extends StatefulWidget {
 
 class _ConnectivityListenerState extends State<ConnectivityListener> {
   late final Connectivity _connectivity;
-  late final Stream<ConnectivityResult> _stream;
+  late final Stream<List<ConnectivityResult>> _stream;
   bool _wasOffline = false;
 
   @override
@@ -61,7 +61,8 @@ class _ConnectivityListenerState extends State<ConnectivityListener> {
     super.initState();
     _connectivity = Connectivity();
     _stream = _connectivity.onConnectivityChanged;
-    _stream.listen((result) async {
+    _stream.listen((results) async {
+      final result = results.isNotEmpty ? results.first : ConnectivityResult.none;
       final isOffline = result == ConnectivityResult.none;
       if (isOffline && !_wasOffline) {
         rootScaffoldMessengerKey.currentState?.showSnackBar(
