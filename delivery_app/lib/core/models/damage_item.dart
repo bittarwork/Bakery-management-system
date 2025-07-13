@@ -20,4 +20,12 @@ class DamageItem {
     quantity: json['quantity'],
     reason: json['reason'],
   );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'productId': productId,
+    'productName': productName,
+    'quantity': quantity,
+    'reason': reason,
+  };
 } 

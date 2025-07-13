@@ -20,4 +20,12 @@ class InventoryItem {
     quantity: json['quantity'],
     unit: json['unit'],
   );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'productId': productId,
+    'productName': productName,
+    'quantity': quantity,
+    'unit': unit,
+  };
 } 

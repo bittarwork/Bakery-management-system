@@ -20,4 +20,12 @@ class Store {
     balance: (json['balance'] ?? 0).toDouble(),
     giftPolicy: json['giftPolicy'],
   );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'address': address,
+    'balance': balance,
+    'giftPolicy': giftPolicy,
+  };
 } 

@@ -4,6 +4,7 @@ import '../models/inventory.dart';
 import '../models/expense.dart';
 import '../models/daily_report.dart';
 import '../models/notification.dart';
+import '../models/distribution_schedule.dart';
 
 final paymentsOfflineCache = OfflineCache<Payment>(
   boxName: 'paymentsBox',
@@ -80,5 +81,16 @@ final notificationsOfflineCache = OfflineCache<NotificationModel>(
     'date': n.date,
     'isRead': n.isRead,
     'type': n.type,
+  },
+);
+
+final distributionScheduleOfflineCache = OfflineCache<DistributionSchedule>(
+  boxName: 'distributionScheduleBox',
+  pendingOpsBoxName: 'distributionSchedulePendingOpsBox',
+  cacheKey: 'schedule',
+  fromJson: (json) => DistributionSchedule.fromJson(json),
+  toJson: (s) => {
+    'date': s.date,
+    'stores': s.stores.map((store) => store.toJson()).toList(),
   },
 ); 
