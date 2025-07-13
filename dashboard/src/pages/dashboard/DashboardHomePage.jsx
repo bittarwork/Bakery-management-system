@@ -1,91 +1,325 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import {
+  TrendingUp,
+  TrendingDown,
+  Package,
+  DollarSign,
+  Store,
+  Truck,
+  Plus,
+  FileText,
+  BarChart3,
+} from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
+import Card from "../../components/ui/Card";
+import Button from "../../components/ui/Button";
 
 const DashboardHomePage = () => {
   const { user } = useAuthStore();
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    revenue: 0,
+    activeStores: 0,
+    pendingDeliveries: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate loading data
+    const timer = setTimeout(() => {
+      setStats({
+        totalOrders: 1247,
+        revenue: 45680,
+        activeStores: 23,
+        pendingDeliveries: 8,
+      });
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const statCards = [
+    {
+      title: "Total Orders",
+      value: stats.totalOrders,
+      change: "+12.5%",
+      trend: "up",
+      icon: Package,
+      color: "blue",
+    },
+    {
+      title: "Revenue",
+      value: `€${stats.revenue.toLocaleString()}`,
+      change: "+8.2%",
+      trend: "up",
+      icon: DollarSign,
+      color: "green",
+    },
+    {
+      title: "Active Stores",
+      value: stats.activeStores,
+      change: "+2",
+      trend: "up",
+      icon: Store,
+      color: "purple",
+    },
+    {
+      title: "Pending Deliveries",
+      value: stats.pendingDeliveries,
+      change: "-3",
+      trend: "down",
+      icon: Truck,
+      color: "orange",
+    },
+  ];
+
+  const quickActions = [
+    {
+      title: "Create Order",
+      description: "Add a new order to the system",
+      icon: Plus,
+      color: "blue",
+      path: "/orders/create",
+    },
+    {
+      title: "Add Store",
+      description: "Register a new store location",
+      icon: Store,
+      color: "green",
+      path: "/stores/create",
+    },
+    {
+      title: "View Reports",
+      description: "Access detailed analytics",
+      icon: BarChart3,
+      color: "purple",
+      path: "/reports",
+    },
+  ];
+
+  const recentActivities = [
+    {
+      id: 1,
+      type: "order",
+      message: "New order #1234 created for Store ABC",
+      time: "2 minutes ago",
+      status: "pending",
+    },
+    {
+      id: 2,
+      type: "payment",
+      message: "Payment received from Store XYZ - €1,250",
+      time: "15 minutes ago",
+      status: "completed",
+    },
+    {
+      id: 3,
+      type: "delivery",
+      message: "Delivery completed for Store DEF",
+      time: "1 hour ago",
+      status: "completed",
+    },
+    {
+      id: 4,
+      type: "store",
+      message: "New store registered: Store GHI",
+      time: "2 hours ago",
+      status: "pending",
+    },
+  ];
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "completed":
+        return "text-green-600 bg-green-100";
+      case "pending":
+        return "text-yellow-600 bg-yellow-100";
+      case "failed":
+        return "text-red-600 bg-red-100";
+      default:
+        return "text-gray-600 bg-gray-100";
+    }
+  };
+
+  const getActivityIcon = (type) => {
+    switch (type) {
+      case "order":
+        return Package;
+      case "payment":
+        return DollarSign;
+      case "delivery":
+        return Truck;
+      case "store":
+        return Store;
+      default:
+        return FileText;
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <div className="text-sm text-gray-600">Welcome back, {user?.name}</div>
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
+      >
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600">Welcome back, {user?.name || "Admin"}</p>
+        </div>
+        <div className="text-sm text-gray-500">
+          {new Date().toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        </div>
+      </motion.div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {statCards.map((stat, index) => {
+          const Icon = stat.icon;
+          return (
+            <motion.div
+              key={stat.title}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+            >
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      {stat.title}
+                    </p>
+                    <p className="mt-2 text-3xl font-bold text-gray-900">
+                      {isLoading ? "..." : stat.value}
+                    </p>
+                    <div className="flex items-center mt-2">
+                      {stat.trend === "up" ? (
+                        <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
+                      ) : (
+                        <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
+                      )}
+                      <span
+                        className={`text-sm font-medium ${
+                          stat.trend === "up"
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {stat.change}
+                      </span>
+                      <span className="text-sm text-gray-500 ml-1">
+                        from last month
+                      </span>
+                    </div>
+                  </div>
+                  <div
+                    className={`p-3 rounded-full bg-${stat.color}-100 text-${stat.color}-600`}
+                  >
+                    <Icon className="w-6 h-6" />
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          );
+        })}
       </div>
 
-      <div className="dashboard-grid">
-        {/* Quick Stats */}
-        <div className="dashboard-stat">
-          <h3 className="text-lg font-medium text-gray-900">Total Orders</h3>
-          <p className="mt-2 text-3xl font-bold text-primary-600">0</p>
-          <p className="mt-1 text-sm text-gray-600">Last 30 days</p>
-        </div>
-
-        <div className="dashboard-stat">
-          <h3 className="text-lg font-medium text-gray-900">Revenue</h3>
-          <p className="mt-2 text-3xl font-bold text-success-600">$0.00</p>
-          <p className="mt-1 text-sm text-gray-600">Last 30 days</p>
-        </div>
-
-        <div className="dashboard-stat">
-          <h3 className="text-lg font-medium text-gray-900">Active Stores</h3>
-          <p className="mt-2 text-3xl font-bold text-info-600">0</p>
-          <p className="mt-1 text-sm text-gray-600">Currently active</p>
-        </div>
-
-        <div className="dashboard-stat">
-          <h3 className="text-lg font-medium text-gray-900">
-            Pending Deliveries
-          </h3>
-          <p className="mt-2 text-3xl font-bold text-warning-600">0</p>
-          <p className="mt-1 text-sm text-gray-600">Needs attention</p>
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
-        </div>
-        <div className="card-body">
-          <div className="text-center text-gray-600 py-8">
-            No recent activity to display
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="card">
-          <div className="card-header">
-            <h2 className="text-lg font-medium text-gray-900">Quick Actions</h2>
-          </div>
-          <div className="card-body">
-            <div className="space-y-2">
-              <button className="w-full btn btn-outline">
-                Create New Order
-              </button>
-              <button className="w-full btn btn-outline">Add New Store</button>
-              <button className="w-full btn btn-outline">View Reports</button>
-            </div>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-header">
-            <h2 className="text-lg font-medium text-gray-900">System Status</h2>
-          </div>
-          <div className="card-body">
+      {/* Quick Actions and Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Quick Actions */}
+        <Card>
+          <Card.Header>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Quick Actions
+            </h2>
+          </Card.Header>
+          <Card.Body>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">API Status</span>
-                <span className="badge badge-success">Operational</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Last Sync</span>
-                <span className="text-sm text-gray-900">Just now</span>
-              </div>
+              {quickActions.map((action, index) => {
+                const Icon = action.icon;
+                return (
+                  <motion.div
+                    key={action.title}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start h-auto p-4"
+                      icon={<Icon className="w-5 h-5" />}
+                    >
+                      <div className="text-left">
+                        <div className="font-medium text-gray-900">
+                          {action.title}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {action.description}
+                        </div>
+                      </div>
+                    </Button>
+                  </motion.div>
+                );
+              })}
             </div>
-          </div>
-        </div>
+          </Card.Body>
+        </Card>
+
+        {/* Recent Activity */}
+        <Card>
+          <Card.Header>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Recent Activity
+            </h2>
+          </Card.Header>
+          <Card.Body>
+            <div className="space-y-4">
+              {recentActivities.map((activity, index) => {
+                const Icon = getActivityIcon(activity.type);
+                return (
+                  <motion.div
+                    key={activity.id}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="flex items-start space-x-3"
+                  >
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                        <Icon className="w-4 h-4 text-gray-600" />
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-900">
+                        {activity.message}
+                      </p>
+                      <div className="flex items-center mt-1 space-x-2">
+                        <span className="text-xs text-gray-500">
+                          {activity.time}
+                        </span>
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
+                            activity.status
+                          )}`}
+                        >
+                          {activity.status}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </Card.Body>
+        </Card>
       </div>
     </div>
   );
