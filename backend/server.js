@@ -61,6 +61,8 @@ app.use(cors({
             'http://localhost:5173', // Vite default port
             'http://127.0.0.1:3000',
             'http://127.0.0.1:5173',
+            // Production frontend domain
+            'https://bakery-management-system-nine.vercel.app',
             // Flutter development origins
             'http://localhost:8080', // Flutter web development
             'http://127.0.0.1:8080',
