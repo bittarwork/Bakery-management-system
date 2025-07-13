@@ -75,20 +75,30 @@ class _ConnectivityListenerState extends State<ConnectivityListener> {
         // عند عودة الاتصال: مزامنة جميع الكيانات
         final ctx = context;
         // Payments
-        final paymentCubit = BlocProvider.of<PaymentCubit?>(ctx, listen: false);
-        paymentCubit?.synchronizePendingOps();
+        try {
+          final paymentCubit = BlocProvider.of<PaymentCubit>(ctx, listen: false);
+          paymentCubit.synchronizePendingOps();
+        } catch (_) {}
         // Inventory
-        final inventoryCubit = BlocProvider.of<InventoryCubit?>(ctx, listen: false);
-        inventoryCubit?.synchronizePendingOps();
+        try {
+          final inventoryCubit = BlocProvider.of<InventoryCubit>(ctx, listen: false);
+          inventoryCubit.synchronizePendingOps();
+        } catch (_) {}
         // Expenses
-        final expensesCubit = BlocProvider.of<ExpensesCubit?>(ctx, listen: false);
-        expensesCubit?.synchronizePendingOps();
+        try {
+          final expensesCubit = BlocProvider.of<ExpensesCubit>(ctx, listen: false);
+          expensesCubit.synchronizePendingOps();
+        } catch (_) {}
         // Daily Reports
-        final dailyReportCubit = BlocProvider.of<DailyReportCubit?>(ctx, listen: false);
-        dailyReportCubit?.synchronizePendingOps();
+        try {
+          final dailyReportCubit = BlocProvider.of<DailyReportCubit>(ctx, listen: false);
+          dailyReportCubit.synchronizePendingOps();
+        } catch (_) {}
         // Notifications (للاتساق)
-        final notificationsCubit = BlocProvider.of<NotificationsCubit?>(ctx, listen: false);
-        notificationsCubit?.synchronizePendingOps();
+        try {
+          final notificationsCubit = BlocProvider.of<NotificationsCubit>(ctx, listen: false);
+          notificationsCubit.synchronizePendingOps();
+        } catch (_) {}
       }
       _wasOffline = isOffline;
     });
