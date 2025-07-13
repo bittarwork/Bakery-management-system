@@ -12,7 +12,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
-import Card from "../../components/ui/Card";
+import { Card } from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 
 const DashboardHomePage = () => {

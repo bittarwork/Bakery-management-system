@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import Input from "./Input";
 import Button from "./Button";
-import Card from "./Card";
+import { Card } from "./Card";
 
 const DataTable = ({
   data = [],

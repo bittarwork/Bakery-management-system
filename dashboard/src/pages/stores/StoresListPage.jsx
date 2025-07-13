@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import Card from "../../components/ui/Card";
+import { Card } from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import DataTable from "../../components/ui/DataTable";
 

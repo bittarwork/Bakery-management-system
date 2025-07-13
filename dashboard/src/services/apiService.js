@@ -61,8 +61,28 @@ apiClient.interceptors.response.use(
 
         // Handle network errors
         if (!error.response) {
-            const errorMessage = 'خطأ في الاتصال بالخادم. تحقق من اتصال الإنترنت.';
-            toast.error(errorMessage);
+            console.error('Network Error Details:', {
+                message: error.message,
+                code: error.code,
+                config: {
+                    url: originalRequest?.url,
+                    method: originalRequest?.method,
+                    baseURL: originalRequest?.baseURL
+                }
+            });
+
+            let errorMessage = 'خطأ في الاتصال بالخادم';
+
+            if (error.code === 'ERR_NETWORK') {
+                errorMessage = 'لا يمكن الاتصال بالخادم. تحقق من اتصال الإنترنت أو أن الخادم متاح.';
+            } else if (error.code === 'ERR_INTERNET_DISCONNECTED') {
+                errorMessage = 'لا يوجد اتصال بالإنترنت';
+            } else if (error.code === 'ECONNABORTED') {
+                errorMessage = 'انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى';
+            } else if (error.message.includes('CORS')) {
+                errorMessage = 'خطأ في إعدادات الأمان (CORS). يرجى المحاولة لاحقاً';
+            }
+
             return Promise.reject(new Error(errorMessage));
         }
 

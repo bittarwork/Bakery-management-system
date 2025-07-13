@@ -1,69 +1,100 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { clsx } from "clsx";
+import { cn } from "../../utils/cn";
 
-const Card = ({
-  children,
-  className = "",
-  hover = true,
-  padding = "default",
-  ...props
-}) => {
-  const paddingClasses = {
-    none: "",
-    sm: "p-3",
-    default: "p-6",
-    lg: "p-8",
-  };
+const Card = React.forwardRef(
+  (
+    {
+      children,
+      className = "",
+      variant = "default",
+      hover = true,
+      interactive = false,
+      onClick,
+      ...props
+    },
+    ref
+  ) => {
+    const baseClasses = "card";
 
-  const classes = clsx(
-    "bg-white rounded-lg shadow-sm border border-gray-200",
-    paddingClasses[padding],
-    className
-  );
+    const variantClasses = {
+      default: "",
+      glass: "card-glass",
+      elevated: "shadow-large",
+      bordered: "border-2 border-border/50",
+    };
 
-  const MotionCard = motion.div;
+    const classes = cn(
+      baseClasses,
+      variantClasses[variant],
+      hover && "hover:shadow-medium hover:scale-[1.01]",
+      interactive && "cursor-pointer",
+      className
+    );
 
-  return (
-    <MotionCard
-      className={classes}
-      whileHover={
-        hover ? { y: -2, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" } : {}
+    const handleClick = () => {
+      if (interactive && onClick) {
+        onClick();
       }
-      transition={{ duration: 0.2 }}
-      {...props}
-    >
-      {children}
-    </MotionCard>
-  );
-};
+    };
 
-const CardHeader = ({ children, className = "", ...props }) => (
-  <div
-    className={clsx("border-b border-gray-200 pb-4 mb-4", className)}
-    {...props}
-  >
-    {children}
-  </div>
+    return (
+      <motion.div
+        ref={ref}
+        className={classes}
+        onClick={handleClick}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        whileHover={interactive ? { scale: 1.02 } : {}}
+        whileTap={interactive ? { scale: 0.98 } : {}}
+        {...props}
+      >
+        {/* Gradient overlay for glass variant */}
+        {variant === "glass" && (
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl pointer-events-none" />
+        )}
+
+        {/* Content */}
+        <div className="relative z-10">{children}</div>
+      </motion.div>
+    );
+  }
 );
 
-const CardBody = ({ children, className = "", ...props }) => (
-  <div className={clsx("", className)} {...props}>
-    {children}
-  </div>
+const CardHeader = React.forwardRef(
+  ({ children, className = "", ...props }, ref) => {
+    return (
+      <div ref={ref} className={cn("card-header", className)} {...props}>
+        {children}
+      </div>
+    );
+  }
 );
 
-const CardFooter = ({ children, className = "", ...props }) => (
-  <div
-    className={clsx("border-t border-gray-200 pt-4 mt-4", className)}
-    {...props}
-  >
-    {children}
-  </div>
+const CardBody = React.forwardRef(
+  ({ children, className = "", ...props }, ref) => {
+    return (
+      <div ref={ref} className={cn("card-body", className)} {...props}>
+        {children}
+      </div>
+    );
+  }
 );
 
-Card.Header = CardHeader;
-Card.Body = CardBody;
-Card.Footer = CardFooter;
+const CardFooter = React.forwardRef(
+  ({ children, className = "", ...props }, ref) => {
+    return (
+      <div ref={ref} className={cn("card-footer", className)} {...props}>
+        {children}
+      </div>
+    );
+  }
+);
 
-export default Card;
+Card.displayName = "Card";
+CardHeader.displayName = "CardHeader";
+CardBody.displayName = "CardBody";
+CardFooter.displayName = "CardFooter";
+
+export { Card, CardHeader, CardBody, CardFooter };

@@ -53,19 +53,34 @@ const limiter = rateLimit({
 
 // Middleware
 app.use(helmet());
+
+// Add CORS preflight handling
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Request-Time');
+    res.header('Access-Control-Allow-Credentials', 'true');
+
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+    } else {
+        next();
+    }
+});
+
 app.use(cors({
     origin: function (origin, callback) {
-        // List of allowed origins
+        // In development mode, allow all origins
+        if (process.env.NODE_ENV === 'development') {
+            console.log('Development mode - allowing all origins:', origin);
+            return callback(null, true);
+        }
+
+        // List of allowed origins for production
         const allowedOrigins = [
             process.env.FRONTEND_URL || 'http://localhost:3000',
-            'http://localhost:5173', // Vite default port
-            'http://127.0.0.1:3000',
-            'http://127.0.0.1:5173',
-            // Production frontend domain
             'https://bakery-management-system-nine.vercel.app',
-            // Flutter development origins
-            'http://localhost:8080', // Flutter web development
-            'http://127.0.0.1:8080',
             // Mobile app origins (for development)
             'capacitor://localhost',
             'ionic://localhost',
@@ -73,18 +88,23 @@ app.use(cors({
             null
         ];
 
-        // Allow requests without origin (like mobile apps)
-        if (!origin) return callback(null, true);
+        // Log CORS requests for debugging
+        console.log('CORS Request from origin:', origin);
+        console.log('Allowed origins:', allowedOrigins);
 
+        // Allow requests without origin (like mobile apps)
+        if (!origin) {
+            console.log('Allowing request with no origin');
+            return callback(null, true);
+        }
+
+        // Check if origin is in allowed list
         if (allowedOrigins.indexOf(origin) !== -1) {
+            console.log('Origin allowed:', origin);
             callback(null, true);
         } else {
-            // In development environment, allow all origins
-            if (process.env.NODE_ENV === 'development') {
-                callback(null, true);
-            } else {
-                callback(new Error('Not allowed by CORS'));
-            }
+            console.log('Origin not allowed:', origin);
+            callback(new Error(`Not allowed by CORS: ${origin}`));
         }
     },
     credentials: true,
@@ -96,7 +116,8 @@ app.use(cors({
         'Accept',
         'Origin',
         'Access-Control-Request-Method',
-        'Access-Control-Request-Headers'
+        'Access-Control-Request-Headers',
+        'X-Request-Time'
     ],
     exposedHeaders: ['Content-Range', 'X-Content-Range'],
     maxAge: 86400 // 24 hours
