@@ -310,7 +310,7 @@ const sessionController = {
             if (!sessionId) {
                 // إرجاع معلومات المستخدم فقط
                 const user = await User.findByPk(userId, {
-                    attributes: { exclude: ['password_hash'] }
+                    attributes: { exclude: ['password'] }
                 });
 
                 return res.status(200).json({

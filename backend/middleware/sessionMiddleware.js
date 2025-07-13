@@ -148,7 +148,7 @@ export const sessionProtect = async (req, res, next) => {
                 id: decoded.userId,
                 is_active: true
             },
-            attributes: { exclude: ['password_hash'] }
+            attributes: { exclude: ['password'] }
         });
 
         if (!user) {

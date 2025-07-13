@@ -34,7 +34,7 @@ const User = sequelize.define('User', {
             }
         }
     },
-    password_hash: {
+    password: {
         type: DataTypes.STRING,
         allowNull: false,
         validate: {
@@ -109,17 +109,15 @@ const User = sequelize.define('User', {
         beforeCreate: async (user) => {
             if (user.password) {
                 const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 10;
-                user.password_hash = await bcrypt.hash(user.password, saltRounds);
-                user.setDataValue('password_hash', user.password_hash);
-                delete user.dataValues.password; // Remove the plain password
+                const hashedPassword = await bcrypt.hash(user.password, saltRounds);
+                user.setDataValue('password', hashedPassword);
             }
         },
         beforeUpdate: async (user) => {
             if (user.password && user.changed('password')) {
                 const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 10;
-                user.password_hash = await bcrypt.hash(user.password, saltRounds);
-                user.setDataValue('password_hash', user.password_hash);
-                delete user.dataValues.password; // Remove the plain password
+                const hashedPassword = await bcrypt.hash(user.password, saltRounds);
+                user.setDataValue('password', hashedPassword);
             }
         }
     }
@@ -127,12 +125,11 @@ const User = sequelize.define('User', {
 
 // Instance methods
 User.prototype.comparePassword = async function (candidatePassword) {
-    return await bcrypt.compare(candidatePassword, this.password_hash);
+    return await bcrypt.compare(candidatePassword, this.password);
 };
 
 User.prototype.toJSON = function () {
     const values = Object.assign({}, this.get());
-    delete values.password_hash;
     delete values.password;
     return values;
 };

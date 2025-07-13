@@ -29,7 +29,7 @@ const createTestUser = async () => {
             username: 'admin',
             full_name: 'مدير النظام',
             email: 'admin@example.com',
-            password_hash: 'password123', // سيتم hash تلقائياً بواسطة beforeCreate hook
+            password: 'password123', // سيتم hash تلقائياً بواسطة beforeCreate hook
             role: 'admin',
             phone: '123456789',
             is_active: true
