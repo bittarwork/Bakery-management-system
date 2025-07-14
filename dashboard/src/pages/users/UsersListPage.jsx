@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Users,
-  User,
-  Shield,
-  UserCheck,
-  UserX,
   Search,
   Filter,
   Eye,
@@ -17,639 +14,647 @@ import {
   Mail,
   Phone,
   Calendar,
-  MapPin,
-  Crown,
-  Briefcase,
-  Truck,
-  ShoppingCart,
-  TrendingUp,
-  Activity,
-  Clock,
-  Star,
-  Sparkles,
-  Zap,
-  Target,
-  Award,
+  UserCheck,
+  UserX,
+  AlertCircle,
+  CheckCircle,
+  Loader2,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
-import DataTable from "../../components/ui/DataTable";
+import LoadingSpinner from "../../components/ui/LoadingSpinner";
+import userService from "../../services/userService";
 
 const UsersListPage = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  // فلاتر البحث
   const [filters, setFilters] = useState({
+    search: "",
     role: "",
     status: "",
-    search: "",
   });
-  const [selectedUsers, setSelectedUsers] = useState([]);
-  const [viewMode, setViewMode] = useState("table"); // table, grid, cards
 
+  // التصفح
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 10,
+  });
+
+  // الإحصائيات
+  const [statistics, setStatistics] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    inactiveUsers: 0,
+  });
+
+  // تحميل البيانات
   useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setUsers([
-        {
-          id: 1,
-          name: "Ahmed Hassan",
-          email: "ahmed.hassan@bakery.com",
-          phone: "+963 955 123 456",
-          role: "admin",
-          status: "active",
-          lastLogin: "2024-03-25 09:30",
-          store: "Main Office",
-          avatar: "AH",
-          createdAt: "2024-01-15",
-          permissions: ["all"],
-          performance: 95,
-          ordersHandled: 1250,
-          avgRating: 4.8,
-        },
-        {
-          id: 2,
-          name: "Fatima Ali",
-          email: "fatima.ali@bakery.com",
-          phone: "+963 955 789 012",
-          role: "manager",
-          status: "active",
-          lastLogin: "2024-03-24 14:15",
-          store: "Downtown Store",
-          avatar: "FA",
-          createdAt: "2024-02-10",
-          permissions: ["orders", "products", "reports"],
-          performance: 88,
-          ordersHandled: 890,
-          avgRating: 4.6,
-        },
-        {
-          id: 3,
-          name: "Omar Khalil",
-          email: "omar.khalil@bakery.com",
-          phone: "+963 955 345 678",
-          role: "distributor",
-          status: "active",
-          lastLogin: "2024-03-25 08:45",
-          store: "Distribution Center",
-          avatar: "OK",
-          createdAt: "2024-02-20",
-          permissions: ["distribution", "delivery"],
-          performance: 92,
-          ordersHandled: 1560,
-          avgRating: 4.9,
-        },
-        {
-          id: 4,
-          name: "Layla Mansour",
-          email: "layla.mansour@bakery.com",
-          phone: "+963 955 901 234",
-          role: "cashier",
-          status: "inactive",
-          lastLogin: "2024-03-20 16:20",
-          store: "Westside Store",
-          avatar: "LM",
-          createdAt: "2024-03-01",
-          permissions: ["orders", "payments"],
-          performance: 75,
-          ordersHandled: 420,
-          avgRating: 4.2,
-        },
-        {
-          id: 5,
-          name: "Youssef Ibrahim",
-          email: "youssef.ibrahim@bakery.com",
-          phone: "+963 955 567 890",
-          role: "manager",
-          status: "active",
-          lastLogin: "2024-03-25 11:30",
-          store: "Eastside Store",
-          avatar: "YI",
-          createdAt: "2024-01-25",
-          permissions: ["orders", "products", "reports"],
-          performance: 91,
-          ordersHandled: 1100,
-          avgRating: 4.7,
-        },
-        {
-          id: 6,
-          name: "Nour Al-Zahra",
-          email: "nour.alzahra@bakery.com",
-          phone: "+963 955 234 567",
-          role: "accountant",
-          status: "active",
-          lastLogin: "2024-03-24 17:45",
-          store: "Main Office",
-          avatar: "NA",
-          createdAt: "2024-02-05",
-          permissions: ["payments", "reports", "financial"],
-          performance: 87,
-          ordersHandled: 0,
-          avgRating: 4.5,
-        },
-      ]);
+    loadUsers();
+    loadStatistics();
+  }, [pagination.currentPage, filters]);
+
+  const loadUsers = async () => {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      const params = {
+        page: pagination.currentPage,
+        limit: pagination.itemsPerPage,
+        ...filters,
+      };
+
+      const response = await userService.getUsers(params);
+
+      if (response.success) {
+        setUsers(response.data.users);
+        setPagination((prev) => ({
+          ...prev,
+          totalPages: response.data.pagination.totalPages,
+          totalItems: response.data.pagination.totalItems,
+        }));
+      } else {
+        setError(response.message);
+      }
+    } catch (error) {
+      setError("خطأ في تحميل بيانات الموظفين");
+      console.error("Error loading users:", error);
+    } finally {
       setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "inactive":
-        return "bg-red-100 text-red-800 border-red-200";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case "active":
-        return UserCheck;
-      case "inactive":
-        return UserX;
-      case "pending":
-        return User;
-      default:
-        return User;
+  const loadStatistics = async () => {
+    try {
+      const response = await userService.getUserStatistics();
+      if (response.success) {
+        setStatistics(response.data.general);
+      }
+    } catch (error) {
+      console.error("Error loading statistics:", error);
     }
   };
 
-  const getRoleColor = (role) => {
-    switch (role) {
-      case "admin":
-        return "bg-purple-100 text-purple-800 border-purple-200";
-      case "manager":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      case "distributor":
-        return "bg-orange-100 text-orange-800 border-orange-200";
-      case "cashier":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "accountant":
-        return "bg-indigo-100 text-indigo-800 border-indigo-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
-
-  const getRoleIcon = (role) => {
-    switch (role) {
-      case "admin":
-        return Crown;
-      case "manager":
-        return Briefcase;
-      case "distributor":
-        return Truck;
-      case "cashier":
-        return ShoppingCart;
-      case "accountant":
-        return Shield;
-      default:
-        return User;
-    }
-  };
-
-  const getRoleText = (role) => {
-    switch (role) {
-      case "admin":
-        return "Admin";
-      case "manager":
-        return "Manager";
-      case "distributor":
-        return "Distributor";
-      case "cashier":
-        return "Cashier";
-      case "accountant":
-        return "Accountant";
-      default:
-        return "User";
-    }
-  };
-
-  const getPerformanceColor = (performance) => {
-    if (performance >= 90) return "text-green-600";
-    if (performance >= 80) return "text-blue-600";
-    if (performance >= 70) return "text-yellow-600";
-    return "text-red-600";
-  };
-
-  const getPerformanceBg = (performance) => {
-    if (performance >= 90) return "bg-green-50 border-green-200";
-    if (performance >= 80) return "bg-blue-50 border-blue-200";
-    if (performance >= 70) return "bg-yellow-50 border-yellow-200";
-    return "bg-red-50 border-red-200";
-  };
-
-  const columns = [
-    {
-      key: "name",
-      title: "User",
-      render: (value, row) => (
-        <div className="flex items-center">
-          <div className="relative">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mr-4 shadow-lg">
-              <span className="text-sm font-bold text-white">{row.avatar}</span>
-            </div>
-            <div
-              className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
-                row.status === "active" ? "bg-green-500" : "bg-red-500"
-              }`}
-            />
-          </div>
-          <div>
-            <div className="font-semibold text-gray-900 text-lg">{value}</div>
-            <div className="text-sm text-gray-500">ID: {row.id}</div>
-            <div className="text-xs text-gray-400">{row.store}</div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "email",
-      title: "Contact",
-      render: (value, row) => (
-        <div className="space-y-2">
-          <div className="flex items-center text-sm text-gray-900">
-            <Mail className="w-4 h-4 text-gray-400 mr-2" />
-            <span className="font-medium">{value}</span>
-          </div>
-          <div className="flex items-center text-sm text-gray-500">
-            <Phone className="w-4 h-4 text-gray-400 mr-2" />
-            {row.phone}
-          </div>
-          <div className="flex items-center text-xs text-gray-400">
-            <Calendar className="w-3 h-3 text-gray-400 mr-1" />
-            Joined {row.createdAt}
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "role",
-      title: "Role & Status",
-      render: (value, row) => {
-        const Icon = getRoleIcon(value);
-        const StatusIcon = getStatusIcon(row.status);
-        return (
-          <div className="space-y-3">
-            <div className="flex items-center">
-              <div className="p-2 bg-gray-100 rounded-lg mr-3">
-                <Icon className="w-4 h-4 text-gray-600" />
-              </div>
-              <span
-                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${getRoleColor(
-                  value
-                )}`}
-              >
-                {getRoleText(value)}
-              </span>
-            </div>
-            <div className="flex items-center">
-              <div className="p-2 bg-gray-100 rounded-lg mr-3">
-                <StatusIcon className="w-4 h-4 text-gray-600" />
-              </div>
-              <span
-                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(
-                  row.status
-                )}`}
-              >
-                {row.status === "active"
-                  ? "Active"
-                  : row.status === "inactive"
-                  ? "Inactive"
-                  : "Pending"}
-              </span>
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      key: "performance",
-      title: "Performance",
-      render: (value, row) => (
-        <div className="space-y-3">
-          <div className={`p-3 rounded-xl border ${getPerformanceBg(value)}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-gray-600">
-                Performance
-              </span>
-              <span
-                className={`text-sm font-bold ${getPerformanceColor(value)}`}
-              >
-                {value}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${value}%` }}
-                transition={{ duration: 1, ease: "easeOut" }}
-                className={`h-2 rounded-full ${
-                  value >= 90
-                    ? "bg-green-500"
-                    : value >= 80
-                    ? "bg-blue-500"
-                    : value >= 70
-                    ? "bg-yellow-500"
-                    : "bg-red-500"
-                }`}
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="text-center p-2 bg-gray-50 rounded-lg">
-              <div className="font-semibold text-gray-900">
-                {row.ordersHandled}
-              </div>
-              <div className="text-gray-500">Orders</div>
-            </div>
-            <div className="text-center p-2 bg-gray-50 rounded-lg">
-              <div className="font-semibold text-gray-900">{row.avgRating}</div>
-              <div className="text-gray-500">Rating</div>
-            </div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "lastLogin",
-      title: "Last Activity",
-      render: (value) => (
-        <div className="space-y-2">
-          <div className="flex items-center text-sm text-gray-900">
-            <Clock className="w-4 h-4 text-gray-400 mr-2" />
-            <span className="font-medium">{value}</span>
-          </div>
-          <div className="flex items-center text-xs text-gray-500">
-            <Activity className="w-3 h-3 text-gray-400 mr-1" />
-            Recently active
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "actions",
-      title: "Actions",
-      render: (value, row) => (
-        <div className="flex items-center space-x-2 rtl:space-x-reverse">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-            title="View Details"
-          >
-            <Eye className="w-4 h-4" />
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-200"
-            title="Edit User"
-          >
-            <Edit className="w-4 h-4" />
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-            title="Delete User"
-          >
-            <Trash2 className="w-4 h-4" />
-          </motion.button>
-        </div>
-      ),
-    },
-  ];
-
-  const handleDelete = (userId) => {
-    setUsers(users.filter((user) => user.id !== userId));
-  };
-
+  // معالجة تغيير الفلاتر
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
-  const handleExport = () => {
-    // TODO: Implement export functionality
-    console.log("Exporting users...");
+  // معالجة البحث
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
-  const handleRefresh = () => {
-    setIsLoading(true);
-    // Simulate refresh
-    setTimeout(() => setIsLoading(false), 1000);
+  // تصدير البيانات
+  const handleExport = async (format = "json") => {
+    try {
+      setIsExporting(true);
+      setError("");
+
+      const response = await userService.exportUsers(format);
+
+      if (response.success) {
+        if (format === "csv") {
+          // تحميل ملف CSV
+          const blob = new Blob([response.data], { type: "text/csv" });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `employees_${
+            new Date().toISOString().split("T")[0]
+          }.csv`;
+          a.click();
+          window.URL.revokeObjectURL(url);
+        } else {
+          // تحميل ملف JSON
+          const dataStr = JSON.stringify(response.data, null, 2);
+          const blob = new Blob([dataStr], { type: "application/json" });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `employees_${
+            new Date().toISOString().split("T")[0]
+          }.json`;
+          a.click();
+          window.URL.revokeObjectURL(url);
+        }
+        setSuccess(`تم تصدير البيانات بنجاح بصيغة ${format.toUpperCase()}`);
+      } else {
+        setError(response.message);
+      }
+    } catch (error) {
+      setError("خطأ في تصدير البيانات");
+      console.error("Error exporting users:", error);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-      user.email.toLowerCase().includes(filters.search.toLowerCase());
-    const matchesRole = !filters.role || user.role === filters.role;
-    const matchesStatus = !filters.status || user.status === filters.status;
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  // حذف موظف
+  const handleDelete = async (userId, userName) => {
+    if (!window.confirm(`هل أنت متأكد من حذف الموظف "${userName}"؟`)) {
+      return;
+    }
 
-  const stats = {
-    total: users.length,
-    active: users.filter((u) => u.status === "active").length,
-    inactive: users.filter((u) => u.status === "inactive").length,
-    avgPerformance: Math.round(
-      users.reduce((acc, u) => acc + u.performance, 0) / users.length
-    ),
+    try {
+      setError("");
+      const response = await userService.deleteUser(userId);
+
+      if (response.success) {
+        setSuccess("تم حذف الموظف بنجاح");
+        loadUsers();
+        loadStatistics();
+      } else {
+        setError(response.message);
+      }
+    } catch (error) {
+      setError("خطأ في حذف الموظف");
+      console.error("Error deleting user:", error);
+    }
   };
+
+  // تغيير حالة موظف
+  const handleToggleStatus = async (userId, currentStatus) => {
+    const newStatus = currentStatus === "active" ? "inactive" : "active";
+
+    try {
+      setError("");
+      const response = await userService.toggleUserStatus(userId, newStatus);
+
+      if (response.success) {
+        setSuccess(
+          `تم ${newStatus === "active" ? "تفعيل" : "إلغاء تفعيل"} الموظف بنجاح`
+        );
+        loadUsers();
+        loadStatistics();
+      } else {
+        setError(response.message);
+      }
+    } catch (error) {
+      setError("خطأ في تغيير حالة الموظف");
+      console.error("Error toggling user status:", error);
+    }
+  };
+
+  // إزالة الرسائل
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(""), 5000);
+      return () => clearTimeout(timer);
+    }
+    if (error) {
+      const timer = setTimeout(() => setError(""), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [success, error]);
+
+  if (isLoading && users.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <LoadingSpinner size="xl" text="جاري تحميل بيانات الموظفين..." />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Enhanced Header */}
-      <motion.div
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6 }}
-        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
-      >
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl">
-              <Users className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                إدارة الموظفين
+              </h1>
+              <p className="text-gray-600 mt-2">إدارة موظفي المخبز في بلجيكا</p>
             </div>
-            إدارة المستخدمين
-          </h1>
-          <p className="text-gray-600 mt-2">
-            إدارة المستخدمين والصلاحيات والأنشطة
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleRefresh}
-            className="p-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors duration-200"
-            title="Refresh"
-          >
-            <RefreshCw
-              className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`}
-            />
-          </motion.button>
-
-          <Link to="/users/create">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all duration-300 shadow-lg hover:shadow-xl"
+            <Button
+              onClick={() => navigate("/users/create")}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              <Plus className="w-5 h-5" />
-              إضافة مستخدم جديد
-            </motion.button>
-          </Link>
-        </div>
-      </motion.div>
+              <Plus className="w-4 h-4 ml-2" />
+              إضافة موظف جديد
+            </Button>
+          </div>
 
-      {/* Enhanced Stats Cards */}
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.6 }}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-      >
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 border border-blue-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-600 text-sm font-medium">
-                إجمالي المستخدمين
-              </p>
-              <p className="text-3xl font-bold text-blue-900">{stats.total}</p>
-            </div>
-            <div className="p-3 bg-blue-500 rounded-xl">
-              <Users className="w-6 h-6 text-white" />
-            </div>
+          {/* الإحصائيات */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <Card>
+              <CardBody className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 bg-blue-100 rounded-lg">
+                    <Users className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div className="mr-4">
+                    <p className="text-sm font-medium text-gray-600">
+                      إجمالي الموظفين
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {statistics.totalUsers}
+                    </p>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardBody className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 bg-green-100 rounded-lg">
+                    <UserCheck className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div className="mr-4">
+                    <p className="text-sm font-medium text-gray-600">
+                      الموظفين النشطين
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {statistics.activeUsers}
+                    </p>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardBody className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 bg-red-100 rounded-lg">
+                    <UserX className="w-6 h-6 text-red-600" />
+                  </div>
+                  <div className="mr-4">
+                    <p className="text-sm font-medium text-gray-600">
+                      الموظفين غير النشطين
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {statistics.inactiveUsers}
+                    </p>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-6 border border-green-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-600 text-sm font-medium">
-                المستخدمين النشطين
-              </p>
-              <p className="text-3xl font-bold text-green-900">
-                {stats.active}
-              </p>
+        {/* رسائل النجاح والخطأ */}
+        <AnimatePresence>
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg"
+            >
+              <div className="flex items-center">
+                <CheckCircle className="w-5 h-5 text-green-600 ml-2" />
+                <span className="text-green-800">{success}</span>
+              </div>
+            </motion.div>
+          )}
+
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg"
+            >
+              <div className="flex items-center">
+                <AlertCircle className="w-5 h-5 text-red-600 ml-2" />
+                <span className="text-red-800">{error}</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* أدوات البحث والفلترة */}
+        <Card className="mb-6">
+          <CardBody className="p-6">
+            <form onSubmit={handleSearch} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* البحث */}
+                <div className="relative">
+                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    type="text"
+                    placeholder="البحث في الموظفين..."
+                    value={filters.search}
+                    onChange={(e) =>
+                      handleFilterChange("search", e.target.value)
+                    }
+                    className="pr-10 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* فلتر الدور */}
+                <select
+                  value={filters.role}
+                  onChange={(e) => handleFilterChange("role", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                >
+                  <option value="">جميع الأدوار</option>
+                  <option value="admin">مدير النظام</option>
+                  <option value="manager">مدير</option>
+                  <option value="distributor">موزع</option>
+                  <option value="cashier">كاشير</option>
+                  <option value="accountant">محاسب</option>
+                </select>
+
+                {/* فلتر الحالة */}
+                <select
+                  value={filters.status}
+                  onChange={(e) => handleFilterChange("status", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                >
+                  <option value="">جميع الحالات</option>
+                  <option value="active">نشط</option>
+                  <option value="inactive">غير نشط</option>
+                  <option value="suspended">معلق</option>
+                </select>
+
+                {/* أزرار الإجراءات */}
+                <div className="flex gap-2">
+                  <Button
+                    type="submit"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Search className="w-4 h-4 ml-2" />
+                    بحث
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setFilters({ search: "", role: "", status: "" });
+                      setPagination((prev) => ({ ...prev, currentPage: 1 }));
+                    }}
+                    className="bg-gray-600 hover:bg-gray-700 text-white"
+                  >
+                    <RefreshCw className="w-4 h-4 ml-2" />
+                    إعادة تعيين
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </CardBody>
+        </Card>
+
+        {/* جدول الموظفين */}
+        <Card>
+          <CardHeader className="border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">
+                قائمة الموظفين
+              </h2>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleExport("json")}
+                  disabled={isExporting}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {isExporting ? (
+                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4 ml-2" />
+                  )}
+                  تصدير JSON
+                </Button>
+                <Button
+                  onClick={() => handleExport("csv")}
+                  disabled={isExporting}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  {isExporting ? (
+                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4 ml-2" />
+                  )}
+                  تصدير CSV
+                </Button>
+              </div>
             </div>
-            <div className="p-3 bg-green-500 rounded-xl">
-              <UserCheck className="w-6 h-6 text-white" />
+          </CardHeader>
+
+          <CardBody className="p-0">
+            {isLoading ? (
+              <div className="p-8 text-center">
+                <LoadingSpinner size="lg" text="جاري تحميل البيانات..." />
+              </div>
+            ) : users.length === 0 ? (
+              <div className="p-8 text-center">
+                <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  لا توجد موظفين
+                </h3>
+                <p className="text-gray-600">
+                  لم يتم العثور على موظفين يطابقون معايير البحث
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        الموظف
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        الدور
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        الحالة
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        تاريخ الإنشاء
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        آخر تسجيل دخول
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        الإجراءات
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {users.map((user) => (
+                      <tr key={user.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10">
+                              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                <span className="text-sm font-medium text-blue-600">
+                                  {user.full_name
+                                    .split(" ")
+                                    .map((n) => n[0])
+                                    .join("")
+                                    .toUpperCase()}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="mr-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                {user.full_name}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {user.email}
+                              </div>
+                              {user.phone && (
+                                <div className="text-sm text-gray-500">
+                                  {user.phone}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-${userService.getRoleColor(
+                              user.role
+                            )}-100 text-${userService.getRoleColor(
+                              user.role
+                            )}-800`}
+                          >
+                            {userService.getRoleDisplayName(user.role)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-${userService.getStatusColor(
+                              user.status
+                            )}-100 text-${userService.getStatusColor(
+                              user.status
+                            )}-800`}
+                          >
+                            {userService.getStatusDisplayName(user.status)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(user.created_at).toLocaleDateString(
+                            "ar-SA"
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {user.last_login
+                            ? new Date(user.last_login).toLocaleDateString(
+                                "ar-SA"
+                              )
+                            : "لم يسجل دخول"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              onClick={() => navigate(`/users/${user.id}`)}
+                              size="sm"
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              <Eye className="w-3 h-3 ml-1" />
+                              عرض
+                            </Button>
+                            <Button
+                              onClick={() => navigate(`/users/${user.id}/edit`)}
+                              size="sm"
+                              className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                            >
+                              <Edit className="w-3 h-3 ml-1" />
+                              تعديل
+                            </Button>
+                            <Button
+                              onClick={() =>
+                                handleToggleStatus(user.id, user.status)
+                              }
+                              size="sm"
+                              className={
+                                user.status === "active"
+                                  ? "bg-red-600 hover:bg-red-700 text-white"
+                                  : "bg-green-600 hover:bg-green-700 text-white"
+                              }
+                            >
+                              {user.status === "active" ? (
+                                <>
+                                  <UserX className="w-3 h-3 ml-1" />
+                                  إلغاء التفعيل
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="w-3 h-3 ml-1" />
+                                  تفعيل
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              onClick={() =>
+                                handleDelete(user.id, user.full_name)
+                              }
+                              size="sm"
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                              <Trash2 className="w-3 h-3 ml-1" />
+                              حذف
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+
+        {/* التصفح */}
+        {pagination.totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+              عرض {(pagination.currentPage - 1) * pagination.itemsPerPage + 1}{" "}
+              إلى{" "}
+              {Math.min(
+                pagination.currentPage * pagination.itemsPerPage,
+                pagination.totalItems
+              )}{" "}
+              من {pagination.totalItems} موظف
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() =>
+                  setPagination((prev) => ({
+                    ...prev,
+                    currentPage: prev.currentPage - 1,
+                  }))
+                }
+                disabled={pagination.currentPage === 1}
+                className="bg-gray-600 hover:bg-gray-700 text-white disabled:opacity-50"
+              >
+                السابق
+              </Button>
+              <span className="px-3 py-2 text-sm text-gray-700">
+                صفحة {pagination.currentPage} من {pagination.totalPages}
+              </span>
+              <Button
+                onClick={() =>
+                  setPagination((prev) => ({
+                    ...prev,
+                    currentPage: prev.currentPage + 1,
+                  }))
+                }
+                disabled={pagination.currentPage === pagination.totalPages}
+                className="bg-gray-600 hover:bg-gray-700 text-white disabled:opacity-50"
+              >
+                التالي
+              </Button>
             </div>
           </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-2xl p-6 border border-red-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-red-600 text-sm font-medium">
-                المستخدمين غير النشطين
-              </p>
-              <p className="text-3xl font-bold text-red-900">
-                {stats.inactive}
-              </p>
-            </div>
-            <div className="p-3 bg-red-500 rounded-xl">
-              <UserX className="w-6 h-6 text-white" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-6 border border-purple-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-600 text-sm font-medium">
-                متوسط الأداء
-              </p>
-              <p className="text-3xl font-bold text-purple-900">
-                {stats.avgPerformance}%
-              </p>
-            </div>
-            <div className="p-3 bg-purple-500 rounded-xl">
-              <TrendingUp className="w-6 h-6 text-white" />
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Enhanced Filters */}
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.4, duration: 0.6 }}
-        className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200"
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="البحث في المستخدمين..."
-              value={filters.search}
-              onChange={(e) => handleFilterChange("search", e.target.value)}
-              className="pl-10 bg-gray-50 border-gray-200 focus:bg-white focus:border-blue-500 transition-all duration-300"
-            />
-          </div>
-
-          <select
-            value={filters.role}
-            onChange={(e) => handleFilterChange("role", e.target.value)}
-            className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-gray-50 focus:bg-white"
-          >
-            <option value="">جميع الأدوار</option>
-            <option value="admin">Admin</option>
-            <option value="manager">Manager</option>
-            <option value="distributor">Distributor</option>
-            <option value="cashier">Cashier</option>
-            <option value="accountant">Accountant</option>
-          </select>
-
-          <select
-            value={filters.status}
-            onChange={(e) => handleFilterChange("status", e.target.value)}
-            className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-gray-50 focus:bg-white"
-          >
-            <option value="">جميع الحالات</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="pending">Pending</option>
-          </select>
-
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleExport}
-            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 shadow-lg hover:shadow-xl"
-          >
-            <Download className="w-5 h-5" />
-            تصدير البيانات
-          </motion.button>
-        </div>
-      </motion.div>
-
-      {/* Enhanced Data Table */}
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.6, duration: 0.6 }}
-        className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden"
-      >
-        <DataTable
-          data={filteredUsers}
-          columns={columns}
-          isLoading={isLoading}
-          className="rounded-2xl"
-        />
-      </motion.div>
+        )}
+      </div>
     </div>
   );
 };

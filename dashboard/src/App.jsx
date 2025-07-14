@@ -51,6 +51,7 @@ import MonthlyReportsPage from "./pages/reports/MonthlyReportsPage";
 import UsersListPage from "./pages/users/UsersListPage";
 import UserDetailsPage from "./pages/users/UserDetailsPage";
 import CreateUserPage from "./pages/users/CreateUserPage";
+import EditUserPage from "./pages/users/EditUserPage";
 
 // Pages - Settings
 import SettingsPage from "./pages/settings/SettingsPage";
@@ -678,6 +679,27 @@ function App() {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <CreateUserPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/users/:id/edit"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <EditUserPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>

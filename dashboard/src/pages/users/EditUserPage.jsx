@@ -1,13 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   User,
   Mail,
   Phone,
-  Lock,
-  Eye,
-  EyeOff,
   Save,
   ArrowLeft,
   AlertCircle,
@@ -17,24 +14,25 @@ import {
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
+import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import userService from "../../services/userService";
 
-const CreateUserPage = () => {
+const EditUserPage = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
   const [formData, setFormData] = useState({
     username: "",
     email: "",
     full_name: "",
     phone: "",
-    password: "",
-    confirmPassword: "",
-    role: "distributor",
+    role: "",
+    status: "active",
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [userNotFound, setUserNotFound] = useState(false);
 
   const roles = [
     {
@@ -63,6 +61,46 @@ const CreateUserPage = () => {
       description: "إدارة الحسابات والتقارير المالية",
     },
   ];
+
+  const statuses = [
+    { value: "active", label: "نشط" },
+    { value: "inactive", label: "غير نشط" },
+    { value: "suspended", label: "معلق" },
+  ];
+
+  // تحميل بيانات الموظف
+  useEffect(() => {
+    loadUser();
+  }, [id]);
+
+  const loadUser = async () => {
+    try {
+      setIsLoading(true);
+      setErrors({});
+
+      const response = await userService.getUser(id);
+
+      if (response.success) {
+        setFormData({
+          username: response.data.username || "",
+          email: response.data.email || "",
+          full_name: response.data.full_name || "",
+          phone: response.data.phone || "",
+          role: response.data.role || "",
+          status: response.data.status || "active",
+        });
+      } else {
+        setUserNotFound(true);
+        setErrors({ submit: response.message });
+      }
+    } catch (error) {
+      setUserNotFound(true);
+      setErrors({ submit: "خطأ في تحميل بيانات الموظف" });
+      console.error("Error loading user:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -106,56 +144,18 @@ const CreateUserPage = () => {
       newErrors.phone = "رقم الهاتف غير صحيح";
     }
 
-    // التحقق من كلمة المرور
-    if (!formData.password) {
-      newErrors.password = "كلمة المرور مطلوبة";
-    } else if (formData.password.length < 8) {
-      newErrors.password = "كلمة المرور يجب أن تكون 8 أحرف على الأقل";
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-      newErrors.password =
-        "كلمة المرور يجب أن تحتوي على حرف صغير وحرف كبير ورقم";
-    }
-
-    // التحقق من تأكيد كلمة المرور
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "تأكيد كلمة المرور مطلوب";
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "كلمة المرور غير متطابقة";
-    }
-
     // التحقق من الدور
     if (!formData.role) {
       newErrors.role = "الدور مطلوب";
     }
 
+    // التحقق من الحالة
+    if (!formData.status) {
+      newErrors.status = "الحالة مطلوبة";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const getPasswordStrength = (password) => {
-    let strength = 0;
-    if (password.length >= 8) strength++;
-    if (/[A-Z]/.test(password)) strength++;
-    if (/[a-z]/.test(password)) strength++;
-    if (/[0-9]/.test(password)) strength++;
-    if (/[^A-Za-z0-9]/.test(password)) strength++;
-    return strength;
-  };
-
-  const getPasswordStrengthColor = (strength) => {
-    if (strength <= 1) return "text-red-500";
-    if (strength <= 2) return "text-orange-500";
-    if (strength <= 3) return "text-yellow-500";
-    if (strength <= 4) return "text-blue-500";
-    return "text-green-500";
-  };
-
-  const getPasswordStrengthText = (strength) => {
-    if (strength <= 1) return "ضعيف";
-    if (strength <= 2) return "متوسط";
-    if (strength <= 3) return "جيد";
-    if (strength <= 4) return "قوي";
-    return "ممتاز";
   };
 
   const handleSubmit = async (e) => {
@@ -165,11 +165,11 @@ const CreateUserPage = () => {
       return;
     }
 
-    setIsLoading(true);
+    setIsSaving(true);
     setErrors({});
 
     try {
-      const response = await userService.createUser(formData);
+      const response = await userService.updateUser(id, formData);
 
       if (response.success) {
         setIsSuccess(true);
@@ -180,12 +180,44 @@ const CreateUserPage = () => {
         setErrors({ submit: response.message });
       }
     } catch (error) {
-      setErrors({ submit: "خطأ في إنشاء الموظف. يرجى المحاولة مرة أخرى." });
-      console.error("Error creating user:", error);
+      setErrors({
+        submit: "خطأ في تحديث بيانات الموظف. يرجى المحاولة مرة أخرى.",
+      });
+      console.error("Error updating user:", error);
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <LoadingSpinner size="xl" text="جاري تحميل بيانات الموظف..." />
+      </div>
+    );
+  }
+
+  if (userNotFound) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              الموظف غير موجود
+            </h1>
+            <p className="text-gray-600 mb-6">{errors.submit}</p>
+            <Button
+              onClick={() => navigate("/users")}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              العودة إلى قائمة الموظفين
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -203,10 +235,10 @@ const CreateUserPage = () => {
             </Button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                إضافة موظف جديد
+                تعديل بيانات الموظف
               </h1>
               <p className="text-gray-600 mt-2">
-                إضافة موظف جديد للمخبز في بلجيكا
+                تعديل معلومات الموظف في المخبز
               </p>
             </div>
           </div>
@@ -222,7 +254,7 @@ const CreateUserPage = () => {
             <div className="flex items-center">
               <CheckCircle className="w-5 h-5 text-green-600 ml-2" />
               <span className="text-green-800">
-                تم إنشاء الموظف بنجاح! جاري التحويل...
+                تم تحديث بيانات الموظف بنجاح! جاري التحويل...
               </span>
             </div>
           </motion.div>
@@ -248,7 +280,7 @@ const CreateUserPage = () => {
             <h2 className="text-xl font-semibold text-gray-900">
               معلومات الموظف
             </h2>
-            <p className="text-gray-600">أدخل معلومات الموظف الجديد</p>
+            <p className="text-gray-600">تعديل معلومات الموظف</p>
           </CardHeader>
           <CardBody>
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -346,139 +378,54 @@ const CreateUserPage = () => {
                   )}
                 </div>
 
-                {/* كلمة المرور */}
+                {/* الدور */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    كلمة المرور *
+                    الدور الوظيفي *
                   </label>
-                  <div className="relative">
-                    <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      placeholder="أدخل كلمة المرور"
-                      className={`pr-10 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
-                        errors.password ? "border-red-500" : ""
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                  {formData.password && (
-                    <div className="mt-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">قوة كلمة المرور:</span>
-                        <span
-                          className={getPasswordStrengthColor(
-                            getPasswordStrength(formData.password)
-                          )}
-                        >
-                          {getPasswordStrengthText(
-                            getPasswordStrength(formData.password)
-                          )}
-                        </span>
-                      </div>
-                      <div className="mt-1 w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full transition-all duration-300 ${
-                            getPasswordStrength(formData.password) <= 1
-                              ? "bg-red-500"
-                              : getPasswordStrength(formData.password) <= 2
-                              ? "bg-orange-500"
-                              : getPasswordStrength(formData.password) <= 3
-                              ? "bg-yellow-500"
-                              : getPasswordStrength(formData.password) <= 4
-                              ? "bg-blue-500"
-                              : "bg-green-500"
-                          }`}
-                          style={{
-                            width: `${
-                              (getPasswordStrength(formData.password) / 5) * 100
-                            }%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                  {errors.password && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.password}
-                    </p>
+                  <select
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${
+                      errors.role ? "border-red-500" : ""
+                    }`}
+                  >
+                    <option value="">اختر الدور</option>
+                    {roles.map((role) => (
+                      <option key={role.value} value={role.value}>
+                        {role.label} - {role.description}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.role && (
+                    <p className="mt-1 text-sm text-red-600">{errors.role}</p>
                   )}
                 </div>
 
-                {/* تأكيد كلمة المرور */}
+                {/* الحالة */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    تأكيد كلمة المرور *
+                    الحالة *
                   </label>
-                  <div className="relative">
-                    <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      type={showConfirmPassword ? "text" : "password"}
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      placeholder="أعد إدخال كلمة المرور"
-                      className={`pr-10 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
-                        errors.confirmPassword ? "border-red-500" : ""
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setShowConfirmPassword(!showConfirmPassword)
-                      }
-                      className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                  {errors.confirmPassword && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.confirmPassword}
-                    </p>
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleChange}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${
+                      errors.status ? "border-red-500" : ""
+                    }`}
+                  >
+                    {statuses.map((status) => (
+                      <option key={status.value} value={status.value}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.status && (
+                    <p className="mt-1 text-sm text-red-600">{errors.status}</p>
                   )}
                 </div>
-              </div>
-
-              {/* الدور */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  الدور الوظيفي *
-                </label>
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${
-                    errors.role ? "border-red-500" : ""
-                  }`}
-                >
-                  {roles.map((role) => (
-                    <option key={role.value} value={role.value}>
-                      {role.label} - {role.description}
-                    </option>
-                  ))}
-                </select>
-                {errors.role && (
-                  <p className="mt-1 text-sm text-red-600">{errors.role}</p>
-                )}
               </div>
 
               {/* أزرار الإجراءات */}
@@ -492,18 +439,18 @@ const CreateUserPage = () => {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isSaving}
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  {isLoading ? (
+                  {isSaving ? (
                     <>
                       <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                      جاري الإنشاء...
+                      جاري الحفظ...
                     </>
                   ) : (
                     <>
                       <Save className="w-4 h-4 ml-2" />
-                      إنشاء الموظف
+                      حفظ التغييرات
                     </>
                   )}
                 </Button>
@@ -516,4 +463,4 @@ const CreateUserPage = () => {
   );
 };
 
-export default CreateUserPage;
+export default EditUserPage;
