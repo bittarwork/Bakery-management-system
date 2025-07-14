@@ -129,7 +129,6 @@ const EditUserPage = () => {
     } catch (error) {
       setUserNotFound(true);
       setErrors({ submit: "خطأ في تحميل بيانات الموظف" });
-      console.error("Error loading user:", error);
     } finally {
       setIsLoading(false);
     }
@@ -216,7 +215,6 @@ const EditUserPage = () => {
       setErrors({
         submit: "خطأ في تحديث بيانات الموظف. يرجى المحاولة مرة أخرى.",
       });
-      console.error("Error updating user:", error);
     } finally {
       setIsSaving(false);
     }

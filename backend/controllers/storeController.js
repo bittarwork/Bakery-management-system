@@ -671,4 +671,259 @@ export const getStoresMap = async (req, res) => {
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
+};
+
+// @desc    الحصول على طلبات محل محدد
+// @route   GET /api/stores/:id/orders
+// @access  Private
+export const getStoreOrders = async (req, res) => {
+    try {
+        const storeId = parseInt(req.params.id);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        if (isNaN(storeId) || storeId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'معرف المحل غير صحيح'
+            });
+        }
+
+        // Check if store exists
+        const store = await Store.findByPk(storeId);
+        if (!store) {
+            return res.status(404).json({
+                success: false,
+                message: 'المحل غير موجود'
+            });
+        }
+
+        // Build where clause
+        const whereClause = { store_id: storeId };
+
+        if (req.query.status) {
+            whereClause.status = req.query.status;
+        }
+
+        if (req.query.startDate && req.query.endDate) {
+            whereClause.created_at = {
+                [Op.between]: [new Date(req.query.startDate), new Date(req.query.endDate)]
+            };
+        }
+
+        const { count, rows } = await Order.findAndCountAll({
+            where: whereClause,
+            limit,
+            offset,
+            order: [['created_at', 'DESC']],
+            include: [
+                {
+                    model: OrderItem,
+                    as: 'items',
+                    attributes: ['id', 'product_name', 'quantity', 'unit_price', 'total_price']
+                }
+            ]
+        });
+
+        const pagination = {
+            page,
+            limit,
+            total: count,
+            totalPages: Math.ceil(count / limit),
+            hasNext: page < Math.ceil(count / limit),
+            hasPrev: page > 1
+        };
+
+        res.json({
+            success: true,
+            data: {
+                orders: rows,
+                pagination
+            }
+        });
+
+    } catch (error) {
+        console.error('[STORES] Failed to fetch store orders:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في جلب طلبات المحل',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// @desc    الحصول على مدفوعات محل محدد
+// @route   GET /api/stores/:id/payments
+// @access  Private
+export const getStorePayments = async (req, res) => {
+    try {
+        const storeId = parseInt(req.params.id);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        if (isNaN(storeId) || storeId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'معرف المحل غير صحيح'
+            });
+        }
+
+        // Check if store exists
+        const store = await Store.findByPk(storeId);
+        if (!store) {
+            return res.status(404).json({
+                success: false,
+                message: 'المحل غير موجود'
+            });
+        }
+
+        // For now, we'll return payment data from the store model
+        // In a real implementation, you might have a separate Payment model
+        const payments = [
+            {
+                id: 1,
+                amount: store.total_payments_eur || 0,
+                currency: 'EUR',
+                status: 'completed',
+                created_at: store.last_payment_date || new Date(),
+                payment_method: 'bank_transfer'
+            }
+        ];
+
+        const pagination = {
+            page,
+            limit,
+            total: payments.length,
+            totalPages: Math.ceil(payments.length / limit),
+            hasNext: page < Math.ceil(payments.length / limit),
+            hasPrev: page > 1
+        };
+
+        res.json({
+            success: true,
+            data: {
+                payments: payments.slice(offset, offset + limit),
+                pagination
+            }
+        });
+
+    } catch (error) {
+        console.error('[STORES] Failed to fetch store payments:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في جلب مدفوعات المحل',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// @desc    الحصول على إحصائيات محل محدد
+// @route   GET /api/stores/:id/statistics
+// @access  Private
+export const getStoreSpecificStatistics = async (req, res) => {
+    try {
+        const storeId = parseInt(req.params.id);
+
+        if (isNaN(storeId) || storeId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'معرف المحل غير صحيح'
+            });
+        }
+
+        const store = await Store.findByPk(storeId);
+        if (!store) {
+            return res.status(404).json({
+                success: false,
+                message: 'المحل غير موجود'
+            });
+        }
+
+        // Get store-specific statistics
+        const stats = await Store.getStoreStatistics(storeId);
+
+        res.json({
+            success: true,
+            data: {
+                store_id: storeId,
+                store_name: store.name,
+                statistics: {
+                    total_orders: store.total_orders || 0,
+                    completed_orders: store.completed_orders || 0,
+                    total_revenue: parseFloat(store.total_purchases_eur || 0),
+                    average_order_value: parseFloat(store.average_order_value_eur || 0),
+                    monthly_orders: stats.monthly_orders || 0,
+                    performance_rating: parseFloat(store.performance_rating || 0),
+                    last_order_date: store.last_order_date,
+                    last_payment_date: store.last_payment_date,
+                    current_balance: parseFloat(store.current_balance_eur || 0),
+                    credit_limit: parseFloat(store.credit_limit_eur || 0)
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('[STORES] Failed to fetch store statistics:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في جلب إحصائيات المحل',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// @desc    تحديث حالة محل
+// @route   PATCH /api/stores/:id/status
+// @access  Private (Manager/Admin)
+export const updateStoreStatus = async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                message: 'بيانات غير صحيحة',
+                errors: errors.array()
+            });
+        }
+
+        const storeId = parseInt(req.params.id);
+        const { status } = req.body;
+
+        if (isNaN(storeId) || storeId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'معرف المحل غير صحيح'
+            });
+        }
+
+        const store = await Store.findByPk(storeId);
+        if (!store) {
+            return res.status(404).json({
+                success: false,
+                message: 'المحل غير موجود'
+            });
+        }
+
+        // Update store status
+        await store.update({ status });
+
+        res.json({
+            success: true,
+            message: 'تم تحديث حالة المحل بنجاح',
+            data: {
+                store_id: storeId,
+                status: status
+            }
+        });
+
+    } catch (error) {
+        console.error('[STORES] Failed to update store status:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في تحديث حالة المحل',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
 }; 

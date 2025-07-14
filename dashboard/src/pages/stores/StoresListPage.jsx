@@ -9,76 +9,100 @@ import {
   Eye,
   Edit,
   Trash2,
+  Map,
+  List,
+  Filter,
+  Search,
+  RefreshCw,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import DataTable from "../../components/ui/DataTable";
+import StoreMap from "../../components/ui/StoreMap";
+import storeService from "../../services/storeService";
+import { toast } from "react-hot-toast";
 
 const StoresListPage = () => {
   const [stores, setStores] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [viewMode, setViewMode] = useState("list"); // 'list' or 'map'
+  const [filters, setFilters] = useState({
+    status: "",
+    region: "",
+    search: "",
+  });
+  const [showFilters, setShowFilters] = useState(false);
+  const [statistics, setStatistics] = useState({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    totalRevenue: 0,
+  });
+
+  // Load stores data
+  const loadStores = async () => {
+    try {
+      setIsLoading(true);
+      const response = await storeService.getStores(filters);
+
+      // Handle the correct response structure from backend
+      const storesData = response.data?.stores || response.data || [];
+      setStores(storesData);
+
+      // Calculate statistics
+      const stats = {
+        total: storesData.length || 0,
+        active:
+          storesData.filter((store) => store.status === "active").length || 0,
+        inactive:
+          storesData.filter((store) => store.status === "inactive").length || 0,
+        totalRevenue:
+          storesData.reduce(
+            (sum, store) => sum + (parseFloat(store.total_purchases_eur) || 0),
+            0
+          ) || 0,
+      };
+      setStatistics(stats);
+    } catch (error) {
+      console.error("Error loading stores:", error);
+      toast.error("Failed to load stores");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setStores([
-        {
-          id: 1,
-          name: "Bakery Central",
-          address: "123 Main Street, Downtown",
-          phone: "+1 555-0123",
-          email: "central@bakery.com",
-          status: "active",
-          revenue: 12500,
-          orders: 45,
-        },
-        {
-          id: 2,
-          name: "Sweet Corner",
-          address: "456 Oak Avenue, Westside",
-          phone: "+1 555-0124",
-          email: "sweet@bakery.com",
-          status: "active",
-          revenue: 8900,
-          orders: 32,
-        },
-        {
-          id: 3,
-          name: "Fresh Bread Co.",
-          address: "789 Pine Road, Eastside",
-          phone: "+1 555-0125",
-          email: "fresh@bakery.com",
-          status: "inactive",
-          revenue: 0,
-          orders: 0,
-        },
-        {
-          id: 4,
-          name: "Artisan Bakery",
-          address: "321 Elm Street, Northside",
-          phone: "+1 555-0126",
-          email: "artisan@bakery.com",
-          status: "active",
-          revenue: 15600,
-          orders: 58,
-        },
-        {
-          id: 5,
-          name: "Golden Crust",
-          address: "654 Maple Drive, Southside",
-          phone: "+1 555-0127",
-          email: "golden@bakery.com",
-          status: "active",
-          revenue: 11200,
-          orders: 41,
-        },
-      ]);
-      setIsLoading(false);
-    }, 1000);
+    loadStores();
+  }, [filters]);
 
-    return () => clearTimeout(timer);
-  }, []);
+  // Handle store deletion
+  const handleDelete = async (storeId) => {
+    if (window.confirm("Are you sure you want to delete this store?")) {
+      try {
+        await storeService.deleteStore(storeId);
+        toast.success("Store deleted successfully");
+        loadStores(); // Reload stores
+      } catch (error) {
+        console.error("Error deleting store:", error);
+        toast.error("Failed to delete store");
+      }
+    }
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // Clear filters
+  const clearFilters = () => {
+    setFilters({
+      status: "",
+      region: "",
+      search: "",
+    });
+  };
 
   const columns = [
     {
@@ -138,26 +162,46 @@ const StoresListPage = () => {
       ),
     },
     {
-      key: "revenue",
+      key: "total_purchases_eur",
       title: "Revenue",
       render: (value) => (
         <div className="text-sm font-medium text-gray-900">
-          €{value.toLocaleString()}
+          €{(parseFloat(value) || 0).toLocaleString()}
         </div>
       ),
     },
     {
-      key: "orders",
+      key: "total_orders",
       title: "Orders",
-      render: (value) => <div className="text-sm text-gray-900">{value}</div>,
+      render: (value) => (
+        <div className="text-sm text-gray-900">{value || 0}</div>
+      ),
+    },
+    {
+      key: "actions",
+      title: "Actions",
+      render: (value, row) => (
+        <div className="flex items-center space-x-2">
+          <Link to={`/stores/${row.id}`}>
+            <button className="p-1 text-blue-600 hover:text-blue-800 transition-colors">
+              <Eye className="w-4 h-4" />
+            </button>
+          </Link>
+          <Link to={`/stores/edit/${row.id}`}>
+            <button className="p-1 text-green-600 hover:text-green-800 transition-colors">
+              <Edit className="w-4 h-4" />
+            </button>
+          </Link>
+          <button
+            onClick={() => handleDelete(row.id)}
+            className="p-1 text-red-600 hover:text-red-800 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      ),
     },
   ];
-
-  const handleDelete = (storeId) => {
-    if (window.confirm("Are you sure you want to delete this store?")) {
-      setStores(stores.filter((store) => store.id !== storeId));
-    }
-  };
 
   if (isLoading) {
     return (
@@ -179,12 +223,118 @@ const StoresListPage = () => {
           <h1 className="text-3xl font-bold text-gray-900">Stores</h1>
           <p className="text-gray-600">Manage your bakery store locations</p>
         </div>
-        <Link to="/stores/create">
-          <Button variant="primary" icon={<Plus className="w-4 h-4" />}>
-            Add Store
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 bg-white rounded-lg border border-gray-200 p-1">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                viewMode === "list"
+                  ? "bg-blue-100 text-blue-700"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <List className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("map")}
+              className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                viewMode === "map"
+                  ? "bg-blue-100 text-blue-700"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <Map className="w-4 h-4" />
+            </button>
+          </div>
+          <Button
+            variant="outline"
+            icon={<Filter className="w-4 h-4" />}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            Filters
           </Button>
-        </Link>
+          <Button
+            variant="outline"
+            icon={<RefreshCw className="w-4 h-4" />}
+            onClick={loadStores}
+          >
+            Refresh
+          </Button>
+          <Link to="/stores/create">
+            <Button variant="primary" icon={<Plus className="w-4 h-4" />}>
+              Add Store
+            </Button>
+          </Link>
+        </div>
       </motion.div>
+
+      {/* Filters */}
+      {showFilters && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          className="bg-white rounded-lg border border-gray-200 p-4"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Search
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search stores..."
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange("search", e.target.value)}
+                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Status
+              </label>
+              <select
+                value={filters.status}
+                onChange={(e) => handleFilterChange("status", e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Region
+              </label>
+              <select
+                value={filters.region}
+                onChange={(e) => handleFilterChange("region", e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">All Regions</option>
+                <option value="north">North</option>
+                <option value="south">South</option>
+                <option value="east">East</option>
+                <option value="west">West</option>
+                <option value="central">Central</option>
+              </select>
+            </div>
+            <div className="flex items-end">
+              <Button
+                variant="outline"
+                onClick={clearFilters}
+                className="w-full"
+              >
+                Clear Filters
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -196,7 +346,7 @@ const StoresListPage = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Stores</p>
               <p className="text-2xl font-bold text-gray-900">
-                {stores.length}
+                {statistics.total}
               </p>
             </div>
           </div>
@@ -210,7 +360,23 @@ const StoresListPage = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Active Stores</p>
               <p className="text-2xl font-bold text-gray-900">
-                {stores.filter((store) => store.status === "active").length}
+                {statistics.active}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center">
+            <div className="p-3 bg-red-100 rounded-full">
+              <Store className="w-6 h-6 text-red-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">
+                Inactive Stores
+              </p>
+              <p className="text-2xl font-bold text-gray-900">
+                {statistics.inactive}
               </p>
             </div>
           </div>
@@ -224,40 +390,38 @@ const StoresListPage = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Revenue</p>
               <p className="text-2xl font-bold text-gray-900">
-                €
-                {stores
-                  .reduce((sum, store) => sum + store.revenue, 0)
-                  .toLocaleString()}
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center">
-            <div className="p-3 bg-orange-100 rounded-full">
-              <Store className="w-6 h-6 text-orange-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Orders</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {stores.reduce((sum, store) => sum + store.orders, 0)}
+                €{statistics.totalRevenue.toLocaleString()}
               </p>
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Stores Table */}
-      <DataTable
-        data={stores}
-        columns={columns}
-        searchable={true}
-        filterable={true}
-        sortable={true}
-        pagination={true}
-        itemsPerPage={10}
-      />
+      {/* Content */}
+      {viewMode === "list" ? (
+        <Card>
+          <DataTable
+            data={stores}
+            columns={columns}
+            isLoading={isLoading}
+            emptyMessage="No stores found"
+          />
+        </Card>
+      ) : (
+        <Card>
+          <div className="p-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              Store Locations
+            </h3>
+            <StoreMap
+              stores={stores}
+              height="600px"
+              showControls={true}
+              interactive={false}
+            />
+          </div>
+        </Card>
+      )}
     </div>
   );
 };

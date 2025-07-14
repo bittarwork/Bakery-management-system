@@ -407,11 +407,12 @@ export const exportUsers = async (req, res) => {
                 'تاريخ الإنشاء': user.created_at
             }));
 
-            res.setHeader('Content-Type', 'text/csv');
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
             res.setHeader('Content-Disposition', 'attachment; filename=users.csv');
 
-            // تحويل إلى CSV
-            const csv = Object.keys(csvData[0]).join(',') + '\n' +
+            // تحويل إلى CSV مع BOM
+            const BOM = '\uFEFF';
+            const csv = BOM + Object.keys(csvData[0]).join(',') + '\n' +
                 csvData.map(row => Object.values(row).join(',')).join('\n');
 
             res.send(csv);

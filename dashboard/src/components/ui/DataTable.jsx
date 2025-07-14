@@ -28,7 +28,7 @@ const DataTable = ({
 
   // Filter data based on search term
   const filteredData = useMemo(() => {
-    let filtered = data;
+    let filtered = data || [];
 
     // Apply search
     if (searchTerm) {
@@ -51,9 +51,9 @@ const DataTable = ({
 
   // Sort data
   const sortedData = useMemo(() => {
-    if (!sortConfig.key) return filteredData;
+    if (!sortConfig.key) return filteredData || [];
 
-    return [...filteredData].sort((a, b) => {
+    return [...(filteredData || [])].sort((a, b) => {
       const aValue = a[sortConfig.key];
       const bValue = b[sortConfig.key];
 
@@ -69,11 +69,11 @@ const DataTable = ({
 
   // Paginate data
   const paginatedData = useMemo(() => {
-    if (!pagination) return sortedData;
+    if (!pagination) return sortedData || [];
 
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return sortedData.slice(startIndex, endIndex);
+    return (sortedData || []).slice(startIndex, endIndex);
   }, [sortedData, currentPage, itemsPerPage, pagination]);
 
   // Handle sorting
@@ -96,7 +96,7 @@ const DataTable = ({
 
   // Get unique values for filter options
   const getFilterOptions = (key) => {
-    const values = [...new Set(data.map((item) => item[key]))];
+    const values = [...new Set((data || []).map((item) => item[key]))];
     return values.filter(Boolean);
   };
 
@@ -164,41 +164,43 @@ const DataTable = ({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                {columns.map((column) => (
-                  <th
-                    key={column.key}
-                    className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
-                      sortable && column.sortable !== false
-                        ? "cursor-pointer hover:bg-gray-100"
-                        : ""
-                    }`}
-                    onClick={() => handleSort(column.key)}
-                  >
-                    <div className="flex items-center space-x-1">
-                      <span>{column.title}</span>
-                      {sortable && column.sortable !== false && (
-                        <div className="flex flex-col">
-                          <ChevronUp
-                            className={`w-3 h-3 ${
-                              sortConfig.key === column.key &&
-                              sortConfig.direction === "asc"
-                                ? "text-blue-600"
-                                : "text-gray-400"
-                            }`}
-                          />
-                          <ChevronDown
-                            className={`w-3 h-3 -mt-1 ${
-                              sortConfig.key === column.key &&
-                              sortConfig.direction === "desc"
-                                ? "text-blue-600"
-                                : "text-gray-400"
-                            }`}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </th>
-                ))}
+                {columns
+                  .filter((col) => col.key !== "actions")
+                  .map((column) => (
+                    <th
+                      key={column.key}
+                      className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                        sortable && column.sortable !== false
+                          ? "cursor-pointer hover:bg-gray-100"
+                          : ""
+                      }`}
+                      onClick={() => handleSort(column.key)}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>{column.title}</span>
+                        {sortable && column.sortable !== false && (
+                          <div className="flex flex-col">
+                            <ChevronUp
+                              className={`w-3 h-3 ${
+                                sortConfig.key === column.key &&
+                                sortConfig.direction === "asc"
+                                  ? "text-blue-600"
+                                  : "text-gray-400"
+                              }`}
+                            />
+                            <ChevronDown
+                              className={`w-3 h-3 -mt-1 ${
+                                sortConfig.key === column.key &&
+                                sortConfig.direction === "desc"
+                                  ? "text-blue-600"
+                                  : "text-gray-400"
+                              }`}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </th>
+                  ))}
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
@@ -213,24 +215,30 @@ const DataTable = ({
                   transition={{ delay: index * 0.05 }}
                   className="hover:bg-gray-50"
                 >
-                  {columns.map((column) => (
-                    <td
-                      key={column.key}
-                      className="px-6 py-4 whitespace-nowrap"
-                    >
-                      {column.render ? (
-                        column.render(row[column.key], row)
-                      ) : (
-                        <div className="text-sm text-gray-900">
-                          {row[column.key]}
-                        </div>
-                      )}
-                    </td>
-                  ))}
+                  {columns
+                    .filter((col) => col.key !== "actions")
+                    .map((column) => (
+                      <td
+                        key={column.key}
+                        className="px-6 py-4 whitespace-nowrap"
+                      >
+                        {column.render ? (
+                          column.render(row[column.key], row)
+                        ) : (
+                          <div className="text-sm text-gray-900">
+                            {row[column.key]}
+                          </div>
+                        )}
+                      </td>
+                    ))}
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button className="text-gray-400 hover:text-gray-600">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
+                    {columns
+                      .find((col) => col.key === "actions")
+                      ?.render?.(null, row) || (
+                      <button className="text-gray-400 hover:text-gray-600">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+                    )}
                   </td>
                 </motion.tr>
               ))}

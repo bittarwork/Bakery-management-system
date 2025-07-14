@@ -197,7 +197,6 @@ const CreateUserPage = () => {
       }
     } catch (error) {
       setErrors({ submit: "خطأ في إنشاء الموظف. يرجى المحاولة مرة أخرى." });
-      console.error("Error creating user:", error);
     } finally {
       setIsLoading(false);
     }

@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -11,6 +11,8 @@ import {
   Globe,
   Save,
   X,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { Card } from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
@@ -18,11 +20,14 @@ import StoreMap from "../../components/ui/StoreMap";
 import storeService from "../../services/storeService";
 import { toast } from "react-hot-toast";
 
-const CreateStorePage = () => {
+const EditStorePage = () => {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
+  const { id } = useParams();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [selectedLocation, setSelectedLocation] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -36,6 +41,48 @@ const CreateStorePage = () => {
     notes: "",
     status: "active",
   });
+
+  // Load store data
+  useEffect(() => {
+    const loadStore = async () => {
+      try {
+        setIsLoading(true);
+        const response = await storeService.getStore(id);
+        const store = response.data;
+
+        setFormData({
+          name: store.name || "",
+          region: store.region || "",
+          address: store.address || "",
+          contact_person: store.contact_person || "",
+          phone: store.phone || "",
+          email: store.email || "",
+          payment_method: store.payment_method || "cash",
+          credit_limit: store.credit_limit || "",
+          notes: store.notes || "",
+          status: store.status || "active",
+        });
+
+        if (store.latitude && store.longitude) {
+          setSelectedLocation({
+            lat: parseFloat(store.latitude),
+            lng: parseFloat(store.longitude),
+            name: store.name,
+          });
+        }
+      } catch (error) {
+        console.error("Error loading store:", error);
+        toast.error("Failed to load store data");
+        navigate("/stores");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (id) {
+      loadStore();
+    }
+  }, [id, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -54,7 +101,7 @@ const CreateStorePage = () => {
     }
 
     try {
-      setIsLoading(true);
+      setIsSaving(true);
       setErrors({});
 
       const storeData = storeService.formatStoreData({
@@ -63,17 +110,28 @@ const CreateStorePage = () => {
         longitude: selectedLocation?.lng,
       });
 
-      await storeService.createStore(storeData);
-      toast.success("Store created successfully");
+      await storeService.updateStore(id, storeData);
+      toast.success("Store updated successfully");
       navigate("/stores");
     } catch (error) {
-      console.error("Error creating store:", error);
+      console.error("Error updating store:", error);
       if (error.response?.data?.errors) {
         setErrors(error.response.data.errors);
       }
-      toast.error("Failed to create store");
+      toast.error("Failed to update store");
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await storeService.deleteStore(id);
+      toast.success("Store deleted successfully");
+      navigate("/stores");
+    } catch (error) {
+      console.error("Error deleting store:", error);
+      toast.error("Failed to delete store");
     }
   };
 
@@ -85,6 +143,14 @@ const CreateStorePage = () => {
   const clearLocation = () => {
     setSelectedLocation(null);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -98,9 +164,54 @@ const CreateStorePage = () => {
           <Link to="/stores" className="text-gray-500 hover:text-gray-700">
             <ArrowLeft className="w-6 h-6" />
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Add New Store</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Edit Store</h1>
+        </div>
+        <div className="flex items-center space-x-3">
+          <Button
+            variant="outline"
+            icon={<AlertTriangle className="w-4 h-4" />}
+            onClick={() => setShowDeleteConfirm(true)}
+            className="text-red-600 hover:text-red-700"
+          >
+            Delete Store
+          </Button>
         </div>
       </motion.div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-full">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900">
+                Delete Store
+              </h3>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this store? This action cannot be
+              undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                icon={<Trash2 className="w-4 h-4" />}
+                onClick={handleDelete}
+              >
+                Delete Store
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Store Information */}
@@ -310,6 +421,22 @@ const CreateStorePage = () => {
                   </p>
                 )}
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Status
+                </label>
+                <select
+                  className="mt-1 input"
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, status: e.target.value }))
+                  }
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
             </div>
 
             <div>
@@ -384,7 +511,7 @@ const CreateStorePage = () => {
         {/* Form Actions */}
         <div className="flex justify-end space-x-3">
           <Link to="/stores">
-            <Button variant="outline" disabled={isLoading}>
+            <Button variant="outline" disabled={isSaving}>
               Cancel
             </Button>
           </Link>
@@ -392,10 +519,10 @@ const CreateStorePage = () => {
             type="submit"
             variant="primary"
             icon={<Save className="w-4 h-4" />}
-            loading={isLoading}
-            disabled={isLoading}
+            loading={isSaving}
+            disabled={isSaving}
           >
-            {isLoading ? "Creating..." : "Create Store"}
+            {isSaving ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </form>
@@ -403,4 +530,4 @@ const CreateStorePage = () => {
   );
 };
 
-export default CreateStorePage;
+export default EditStorePage;

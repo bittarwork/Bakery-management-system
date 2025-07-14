@@ -21,7 +21,7 @@ const EnhancedButton = React.forwardRef(
     ref
   ) => {
     const baseClasses =
-      "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden";
+      "inline-flex items-center justify-center font-medium rounded-2xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden shadow-md";
 
     const variantClasses = {
       primary:
@@ -77,7 +77,7 @@ const EnhancedButton = React.forwardRef(
       >
         {/* Ripple effect */}
         <motion.div
-          className="absolute inset-0 bg-white/20 rounded-lg"
+          className="absolute inset-0 bg-white/20 rounded-2xl"
           initial={{ scale: 0, opacity: 0 }}
           whileHover={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.3 }}
@@ -86,7 +86,7 @@ const EnhancedButton = React.forwardRef(
         {/* Loading spinner */}
         {loading && (
           <motion.div
-            className="absolute inset-0 flex items-center justify-center bg-inherit rounded-lg"
+            className="absolute inset-0 flex items-center justify-center bg-inherit rounded-2xl"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -137,7 +137,7 @@ const EnhancedButton = React.forwardRef(
           variant === "success" ||
           variant === "warning" ||
           variant === "danger") && (
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-2xl" />
         )}
       </motion.button>
     );

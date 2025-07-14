@@ -8,7 +8,11 @@ import {
     deleteStore,
     getNearbyStores,
     getStoreStatistics,
-    getStoresMap
+    getStoresMap,
+    getStoreOrders,
+    getStorePayments,
+    getStoreSpecificStatistics,
+    updateStoreStatus
 } from '../controllers/storeController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -41,6 +45,28 @@ router.get('/', getStores);
 // @route   GET /api/stores/:id
 // @access  Private
 router.get('/:id', getStore);
+
+// @desc    الحصول على طلبات محل محدد
+// @route   GET /api/stores/:id/orders
+// @access  Private
+router.get('/:id/orders', getStoreOrders);
+
+// @desc    الحصول على مدفوعات محل محدد
+// @route   GET /api/stores/:id/payments
+// @access  Private
+router.get('/:id/payments', getStorePayments);
+
+// @desc    الحصول على إحصائيات محل محدد
+// @route   GET /api/stores/:id/statistics
+// @access  Private
+router.get('/:id/statistics', getStoreSpecificStatistics);
+
+// @desc    تحديث حالة محل
+// @route   PATCH /api/stores/:id/status
+// @access  Private (Manager/Admin)
+router.patch('/:id/status', [
+    body('status').isIn(['active', 'inactive', 'suspended']).withMessage('حالة المحل غير صحيحة')
+], updateStoreStatus);
 
 // @desc    إنشاء محل جديد
 // @route   POST /api/stores
@@ -133,8 +159,6 @@ router.put('/:id', [
         return true;
     })
 ], updateStore);
-
-
 
 // @desc    حذف محل
 // @route   DELETE /api/stores/:id

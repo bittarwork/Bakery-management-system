@@ -35,6 +35,7 @@ import PaymentRecordPage from "./pages/payments/PaymentRecordPage";
 import StoresListPage from "./pages/stores/StoresListPage";
 import StoreDetailsPage from "./pages/stores/StoreDetailsPage";
 import CreateStorePage from "./pages/stores/CreateStorePage";
+import EditStorePage from "./pages/stores/EditStorePage";
 
 // Pages - Products
 import ProductsListPage from "./pages/products/ProductsListPage";
@@ -466,6 +467,27 @@ function App() {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <CreateStorePage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/stores/edit/:id"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <EditStorePage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>

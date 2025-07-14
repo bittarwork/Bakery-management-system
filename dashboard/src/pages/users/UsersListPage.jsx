@@ -99,7 +99,6 @@ const UsersListPage = () => {
       }
     } catch (error) {
       setError("خطأ في تحميل بيانات الموظفين");
-      console.error("Error loading users:", error);
     } finally {
       setIsLoading(false);
     }
@@ -112,7 +111,7 @@ const UsersListPage = () => {
         setStatistics(response.data.general);
       }
     } catch (error) {
-      console.error("Error loading statistics:", error);
+      // console.error("Error loading statistics:", error);
     }
   };
 
@@ -167,7 +166,6 @@ const UsersListPage = () => {
       }
     } catch (error) {
       setError("خطأ في تصدير البيانات");
-      console.error("Error exporting users:", error);
     } finally {
       setIsExporting(false);
     }
@@ -211,7 +209,6 @@ const UsersListPage = () => {
       }
     } catch (error) {
       setError("خطأ في حذف الموظف");
-      console.error("Error deleting user:", error);
     } finally {
       setDeleteModal((prev) => ({ ...prev, isLoading: false }));
     }
@@ -236,7 +233,6 @@ const UsersListPage = () => {
       }
     } catch (error) {
       setError("خطأ في تغيير حالة الموظف");
-      console.error("Error toggling user status:", error);
     }
   };
 
@@ -632,14 +628,14 @@ const UsersListPage = () => {
                             <div className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
                               {new Date(user.created_at).toLocaleDateString(
-                                "ar-SA"
+                                "en-GB"
                               )}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {user.last_login
                               ? new Date(user.last_login).toLocaleDateString(
-                                  "ar-SA"
+                                  "en-GB"
                                 )
                               : "لم يسجل دخول"}
                           </td>
