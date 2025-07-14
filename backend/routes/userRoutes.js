@@ -103,15 +103,25 @@ const toggleStatusValidation = [
 // @access  Private (Admin/Manager)
 router.get('/', authorize('admin', 'manager'), getUsers);
 
-// @desc    الحصول على موظف واحد
-// @route   GET /api/users/:id
+// @desc    الحصول على إحصائيات الموظفين
+// @route   GET /api/users/statistics
 // @access  Private (Admin/Manager)
-router.get('/:id', authorize('admin', 'manager'), getUser);
+router.get('/statistics', authorize('admin', 'manager'), getUserStatistics);
+
+// @desc    تصدير بيانات الموظفين
+// @route   GET /api/users/export
+// @access  Private (Admin/Manager)
+router.get('/export', authorize('admin', 'manager'), exportUsers);
 
 // @desc    إنشاء موظف جديد
 // @route   POST /api/users
 // @access  Private (Admin)
 router.post('/', authorize('admin'), createUserValidation, createUser);
+
+// @desc    الحصول على موظف واحد
+// @route   GET /api/users/:id
+// @access  Private (Admin/Manager)
+router.get('/:id', authorize('admin', 'manager'), getUser);
 
 // @desc    تحديث بيانات موظف
 // @route   PUT /api/users/:id
@@ -127,15 +137,5 @@ router.delete('/:id', authorize('admin'), deleteUser);
 // @route   PATCH /api/users/:id/status
 // @access  Private (Admin)
 router.patch('/:id/status', authorize('admin'), toggleStatusValidation, toggleUserStatus);
-
-// @desc    الحصول على إحصائيات الموظفين
-// @route   GET /api/users/statistics
-// @access  Private (Admin/Manager)
-router.get('/statistics', authorize('admin', 'manager'), getUserStatistics);
-
-// @desc    تصدير بيانات الموظفين
-// @route   GET /api/users/export
-// @access  Private (Admin/Manager)
-router.get('/export', authorize('admin', 'manager'), exportUsers);
 
 export default router; 

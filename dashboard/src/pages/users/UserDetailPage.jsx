@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   User,
   Mail,
   Phone,
-  MapPin,
   Calendar,
   Clock,
   Shield,
   Edit,
   Trash2,
-  ArrowLeft,
   Activity,
   Settings,
   Lock,
@@ -24,119 +22,72 @@ import {
   Briefcase,
   Truck,
   ShoppingCart,
+  Calculator,
+  UserCheck,
+  UserX,
+  MapPin,
   Download,
   RefreshCw,
   MoreVertical,
+  ArrowRight,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
-import Button from "../../components/ui/Button";
-import DataTable from "../../components/ui/DataTable";
+import EnhancedButton from "../../components/ui/EnhancedButton";
+import BackButton from "../../components/ui/BackButton";
+import LoadingSpinner from "../../components/ui/LoadingSpinner";
+import { DeleteConfirmationModal } from "../../components/ui/Modal";
+import userService from "../../services/userService";
 
 const UserDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [editForm, setEditForm] = useState({});
   const [errors, setErrors] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  // Modal الحذف
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    isLoading: false,
+  });
 
   useEffect(() => {
-    // Simulate loading user data
-    const timer = setTimeout(() => {
-      setUser({
-        id: parseInt(id),
-        name: "Ahmed Hassan",
-        email: "ahmed.hassan@bakery.com",
-        phone: "+963 955 123 456",
-        role: "admin",
-        status: "active",
-        lastLogin: "2024-03-25 09:30",
-        store: "Main Office",
-        avatar: "AH",
-        createdAt: "2024-01-15",
-        permissions: ["all"],
-        activityHistory: [
-          {
-            id: 1,
-            action: "Login",
-            description: "User logged in successfully",
-            timestamp: "2024-03-25 09:30",
-            ip: "192.168.1.100",
-            device: "Chrome on Windows",
-          },
-          {
-            id: 2,
-            action: "Order Created",
-            description: "Created order #ORD-2024-001",
-            timestamp: "2024-03-25 08:45",
-            ip: "192.168.1.100",
-            device: "Chrome on Windows",
-          },
-          {
-            id: 3,
-            action: "Product Updated",
-            description: "Updated product 'Fresh Bread'",
-            timestamp: "2024-03-24 16:20",
-            ip: "192.168.1.100",
-            device: "Chrome on Windows",
-          },
-          {
-            id: 4,
-            action: "Report Generated",
-            description: "Generated daily sales report",
-            timestamp: "2024-03-24 14:30",
-            ip: "192.168.1.100",
-            device: "Chrome on Windows",
-          },
-          {
-            id: 5,
-            action: "Login",
-            description: "User logged in successfully",
-            timestamp: "2024-03-24 09:15",
-            ip: "192.168.1.100",
-            device: "Chrome on Windows",
-          },
-        ],
-        recentOrders: [
-          {
-            id: "ORD-2024-001",
-            customer: "Fatima Ali",
-            amount: 45.5,
-            status: "completed",
-            date: "2024-03-25",
-          },
-          {
-            id: "ORD-2024-002",
-            customer: "Omar Khalil",
-            amount: 32.75,
-            status: "pending",
-            date: "2024-03-24",
-          },
-          {
-            id: "ORD-2024-003",
-            customer: "Layla Mansour",
-            amount: 67.25,
-            status: "completed",
-            date: "2024-03-23",
-          },
-        ],
-      });
-      setEditForm({
-        name: "Ahmed Hassan",
-        email: "ahmed.hassan@bakery.com",
-        phone: "+963 955 123 456",
-        role: "admin",
-        store: "Main Office",
-        status: "active",
-      });
-      setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    loadUser();
   }, [id]);
+
+  const loadUser = async () => {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      const response = await userService.getUser(id);
+
+      if (response.success) {
+        setUser(response.data);
+        setEditForm({
+          username: response.data.username || "",
+          email: response.data.email || "",
+          full_name: response.data.full_name || "",
+          phone: response.data.phone || "",
+          role: response.data.role || "",
+          status: response.data.status || "active",
+        });
+      } else {
+        setError(response.message);
+      }
+    } catch (error) {
+      setError("خطأ في تحميل بيانات الموظف");
+      console.error("Error loading user:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -144,7 +95,7 @@ const UserDetailPage = () => {
         return "bg-green-100 text-green-800";
       case "inactive":
         return "bg-red-100 text-red-800";
-      case "pending":
+      case "suspended":
         return "bg-yellow-100 text-yellow-800";
       default:
         return "bg-gray-100 text-gray-800";
@@ -154,13 +105,13 @@ const UserDetailPage = () => {
   const getStatusIcon = (status) => {
     switch (status) {
       case "active":
-        return CheckCircle;
+        return <UserCheck className="w-4 h-4" />;
       case "inactive":
-        return XCircle;
-      case "pending":
-        return AlertCircle;
+        return <UserX className="w-4 h-4" />;
+      case "suspended":
+        return <AlertCircle className="w-4 h-4" />;
       default:
-        return User;
+        return <User className="w-4 h-4" />;
     }
   };
 
@@ -171,11 +122,11 @@ const UserDetailPage = () => {
       case "manager":
         return "bg-blue-100 text-blue-800";
       case "distributor":
-        return "bg-orange-100 text-orange-800";
-      case "cashier":
         return "bg-green-100 text-green-800";
+      case "cashier":
+        return "bg-yellow-100 text-yellow-800";
       case "accountant":
-        return "bg-indigo-100 text-indigo-800";
+        return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -184,482 +135,544 @@ const UserDetailPage = () => {
   const getRoleIcon = (role) => {
     switch (role) {
       case "admin":
-        return Crown;
+        return <Shield className="w-4 h-4" />;
       case "manager":
-        return Briefcase;
+        return <Briefcase className="w-4 h-4" />;
       case "distributor":
-        return Truck;
+        return <Truck className="w-4 h-4" />;
       case "cashier":
-        return ShoppingCart;
+        return <ShoppingCart className="w-4 h-4" />;
       case "accountant":
-        return Settings;
+        return <Calculator className="w-4 h-4" />;
       default:
-        return User;
+        return <User className="w-4 h-4" />;
     }
   };
-
-  const getRoleText = (role) => {
-    switch (role) {
-      case "admin":
-        return "Admin";
-      case "manager":
-        return "Manager";
-      case "distributor":
-        return "Distributor";
-      case "cashier":
-        return "Cashier";
-      case "accountant":
-        return "Accountant";
-      default:
-        return "User";
-    }
-  };
-
-  const activityColumns = [
-    {
-      key: "action",
-      title: "Action",
-      render: (value) => (
-        <span className="font-medium text-gray-900">{value}</span>
-      ),
-    },
-    {
-      key: "description",
-      title: "Description",
-      render: (value) => <span className="text-gray-600">{value}</span>,
-    },
-    {
-      key: "timestamp",
-      title: "Timestamp",
-      render: (value) => (
-        <div className="flex items-center text-sm text-gray-500">
-          <Clock className="w-4 h-4 mr-2" />
-          <div>
-            <div>{new Date(value).toLocaleDateString()}</div>
-            <div>{new Date(value).toLocaleTimeString()}</div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "ip",
-      title: "IP Address",
-      render: (value) => (
-        <span className="text-sm text-gray-500 font-mono">{value}</span>
-      ),
-    },
-  ];
-
-  const orderColumns = [
-    {
-      key: "id",
-      title: "Order ID",
-      render: (value) => (
-        <span className="font-medium text-blue-600">{value}</span>
-      ),
-    },
-    {
-      key: "customer",
-      title: "Customer",
-      render: (value) => <span className="text-gray-900">{value}</span>,
-    },
-    {
-      key: "amount",
-      title: "Amount",
-      render: (value) => (
-        <span className="font-medium text-gray-900">€{value.toFixed(2)}</span>
-      ),
-    },
-    {
-      key: "status",
-      title: "Status",
-      render: (value) => (
-        <span
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            value === "completed"
-              ? "bg-green-100 text-green-800"
-              : "bg-yellow-100 text-yellow-800"
-          }`}
-        >
-          {value.charAt(0).toUpperCase() + value.slice(1)}
-        </span>
-      ),
-    },
-    {
-      key: "date",
-      title: "Date",
-      render: (value) => <span className="text-sm text-gray-500">{value}</span>,
-    },
-  ];
 
   const handleEdit = () => {
     setIsEditing(true);
+    setErrors({});
   };
 
   const handleSave = async () => {
-    // TODO: Implement save functionality
-    setIsEditing(false);
-    // Update user data
-    setUser((prev) => ({ ...prev, ...editForm }));
+    try {
+      setIsSaving(true);
+      setErrors({});
+
+      const response = await userService.updateUser(id, editForm);
+
+      if (response.success) {
+        setIsSuccess(true);
+        setIsEditing(false);
+        loadUser();
+        setTimeout(() => setIsSuccess(false), 3000);
+      } else {
+        setErrors({ submit: response.message });
+      }
+    } catch (error) {
+      setErrors({
+        submit: "خطأ في تحديث بيانات الموظف. يرجى المحاولة مرة أخرى.",
+      });
+      console.error("Error updating user:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
     setEditForm({
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      store: user.store,
-      status: user.status,
+      username: user?.username || "",
+      email: user?.email || "",
+      full_name: user?.full_name || "",
+      phone: user?.phone || "",
+      role: user?.role || "",
+      status: user?.status || "active",
     });
+    setErrors({});
   };
 
-  const handleDelete = () => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
-      // TODO: Implement delete functionality
-      navigate("/users");
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
-  const handleStatusToggle = () => {
+  const openDeleteModal = () => {
+    setDeleteModal({ isOpen: true, isLoading: false });
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModal({ isOpen: false, isLoading: false });
+  };
+
+  const confirmDelete = async () => {
+    try {
+      setDeleteModal((prev) => ({ ...prev, isLoading: true }));
+      setError("");
+
+      const response = await userService.deleteUser(id);
+
+      if (response.success) {
+        navigate("/users");
+      } else {
+        setError(response.message);
+      }
+    } catch (error) {
+      setError("خطأ في حذف الموظف");
+      console.error("Error deleting user:", error);
+    } finally {
+      setDeleteModal((prev) => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  const handleStatusToggle = async () => {
     const newStatus = user.status === "active" ? "inactive" : "active";
-    setUser((prev) => ({ ...prev, status: newStatus }));
-    setEditForm((prev) => ({ ...prev, status: newStatus }));
+
+    try {
+      setError("");
+      const response = await userService.toggleUserStatus(id, newStatus);
+
+      if (response.success) {
+        loadUser();
+      } else {
+        setError(response.message);
+      }
+    } catch (error) {
+      setError("خطأ في تغيير حالة الموظف");
+      console.error("Error toggling user status:", error);
+    }
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <LoadingSpinner size="xl" text="جاري تحميل بيانات الموظف..." />
+      </div>
+    );
+  }
+
+  if (error && !user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              خطأ في تحميل البيانات
+            </h1>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <BackButton variant="primary" />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">
-          User Not Found
-        </h2>
-        <p className="text-gray-600 mb-6">
-          The user you're looking for doesn't exist.
-        </p>
-        <Link to="/users">
-          <Button variant="primary">Back to Users</Button>
-        </Link>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center">
+            <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              الموظف غير موجود
+            </h1>
+            <p className="text-gray-600 mb-6">
+              لم يتم العثور على الموظف المطلوب
+            </p>
+            <BackButton variant="primary" />
+          </div>
+        </div>
       </div>
     );
   }
 
-  const StatusIcon = getStatusIcon(user.status);
-  const RoleIcon = getRoleIcon(user.role);
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
-        <div className="flex items-center space-x-4">
-          <Link to="/users">
-            <Button variant="ghost" icon={<ArrowLeft className="w-4 h-4" />}>
-              Back
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">User Details</h1>
-            <p className="text-gray-600">View and manage user information</p>
-          </div>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline" icon={<Download className="w-4 h-4" />}>
-            Export
-          </Button>
-          <Button variant="outline" icon={<RefreshCw className="w-4 h-4" />}>
-            Refresh
-          </Button>
-          <Button variant="ghost" icon={<MoreVertical className="w-4 h-4" />}>
-            More
-          </Button>
-        </div>
-      </motion.div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* User Information */}
-        <div className="lg:col-span-1">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  User Information
-                </h2>
-                {!isEditing && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={<Edit className="w-4 h-4" />}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                تفاصيل الموظف
+              </h1>
+              <p className="text-gray-600 text-lg">عرض وتعديل معلومات الموظف</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <BackButton variant="outline" size="lg" />
+              {!isEditing && (
+                <>
+                  <EnhancedButton
                     onClick={handleEdit}
+                    variant="primary"
+                    size="lg"
+                    icon={<Edit className="w-5 h-5" />}
                   >
-                    Edit
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardBody>
-              <div className="text-center mb-6">
-                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl font-bold text-blue-600">
-                    {user.avatar}
-                  </span>
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900">
-                  {user.name}
-                </h3>
-                <p className="text-gray-500">User ID: {user.id}</p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center">
-                  <Mail className="w-4 h-4 text-gray-400 mr-3" />
-                  <div>
-                    <p className="text-sm text-gray-500">Email</p>
-                    <p className="text-gray-900">{user.email}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center">
-                  <Phone className="w-4 h-4 text-gray-400 mr-3" />
-                  <div>
-                    <p className="text-sm text-gray-500">Phone</p>
-                    <p className="text-gray-900">{user.phone}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center">
-                  <MapPin className="w-4 h-4 text-gray-400 mr-3" />
-                  <div>
-                    <p className="text-sm text-gray-500">Store</p>
-                    <p className="text-gray-900">{user.store}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center">
-                  <Calendar className="w-4 h-4 text-gray-400 mr-3" />
-                  <div>
-                    <p className="text-sm text-gray-500">Member Since</p>
-                    <p className="text-gray-900">
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center">
-                  <Clock className="w-4 h-4 text-gray-400 mr-3" />
-                  <div>
-                    <p className="text-sm text-gray-500">Last Login</p>
-                    <p className="text-gray-900">
-                      {new Date(user.lastLogin).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 pt-6 border-t">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-gray-700">
-                    Role
-                  </span>
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(
-                      user.role
-                    )}`}
+                    تعديل
+                  </EnhancedButton>
+                  <EnhancedButton
+                    onClick={openDeleteModal}
+                    variant="danger"
+                    size="lg"
+                    icon={<Trash2 className="w-5 h-5" />}
                   >
-                    <RoleIcon className="w-3 h-3 mr-1" />
-                    {getRoleText(user.role)}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">
-                    Status
-                  </span>
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
-                      user.status
-                    )}`}
-                  >
-                    <StatusIcon className="w-3 h-3 mr-1" />
-                    {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                  </span>
-                </div>
-              </div>
-
-              {isEditing && (
-                <div className="mt-6 pt-6 border-t space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Name
-                    </label>
-                    <input
-                      type="text"
-                      value={editForm.name}
-                      onChange={(e) =>
-                        setEditForm((prev) => ({
-                          ...prev,
-                          name: e.target.value,
-                        }))
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      value={editForm.email}
-                      onChange={(e) =>
-                        setEditForm((prev) => ({
-                          ...prev,
-                          email: e.target.value,
-                        }))
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone
-                    </label>
-                    <input
-                      type="tel"
-                      value={editForm.phone}
-                      onChange={(e) =>
-                        setEditForm((prev) => ({
-                          ...prev,
-                          phone: e.target.value,
-                        }))
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div className="flex space-x-3">
-                    <Button
-                      variant="outline"
-                      onClick={handleCancel}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="primary"
-                      onClick={handleSave}
-                      className="flex-1"
-                    >
-                      Save
-                    </Button>
-                  </div>
-                </div>
+                    حذف
+                  </EnhancedButton>
+                </>
               )}
-            </CardBody>
-          </Card>
+            </div>
+          </div>
+        </motion.div>
 
-          {/* Quick Actions */}
-          <Card className="mt-6">
-            <CardHeader>
-              <h3 className="text-lg font-semibold text-gray-900">
-                Quick Actions
-              </h3>
-            </CardHeader>
-            <CardBody>
-              <div className="space-y-3">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  icon={<Lock className="w-4 h-4" />}
-                >
-                  Reset Password
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  icon={
-                    user.status === "active" ? (
-                      <XCircle className="w-4 h-4" />
-                    ) : (
-                      <CheckCircle className="w-4 h-4" />
-                    )
-                  }
-                  onClick={handleStatusToggle}
-                >
-                  {user.status === "active"
-                    ? "Deactivate User"
-                    : "Activate User"}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  icon={<Shield className="w-4 h-4" />}
-                >
-                  Manage Permissions
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-red-600 hover:text-red-700"
-                  icon={<Trash2 className="w-4 h-4" />}
-                  onClick={handleDelete}
-                >
-                  Delete User
-                </Button>
+        {/* رسائل النجاح والخطأ */}
+        <AnimatePresence>
+          {isSuccess && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl shadow-sm"
+            >
+              <div className="flex items-center">
+                <CheckCircle className="w-5 h-5 text-green-600 ml-2" />
+                <span className="text-green-800 font-medium">
+                  تم تحديث بيانات الموظف بنجاح!
+                </span>
               </div>
-            </CardBody>
-          </Card>
-        </div>
+            </motion.div>
+          )}
 
-        {/* Activity and Orders */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Recent Activity */}
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold text-gray-900">
-                Recent Activity
-              </h3>
-            </CardHeader>
-            <CardBody>
-              <DataTable
-                data={user.activityHistory}
-                columns={activityColumns}
-                pagination={true}
-                itemsPerPage={5}
-              />
-            </CardBody>
-          </Card>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl shadow-sm"
+            >
+              <div className="flex items-center">
+                <AlertCircle className="w-5 h-5 text-red-600 ml-2" />
+                <span className="text-red-800 font-medium">{error}</span>
+              </div>
+            </motion.div>
+          )}
 
-          {/* Recent Orders */}
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold text-gray-900">
-                Recent Orders
-              </h3>
-            </CardHeader>
-            <CardBody>
-              <DataTable
-                data={user.recentOrders}
-                columns={orderColumns}
-                pagination={true}
-                itemsPerPage={5}
-              />
-            </CardBody>
-          </Card>
+          {errors.submit && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl shadow-sm"
+            >
+              <div className="flex items-center">
+                <AlertCircle className="w-5 h-5 text-red-600 ml-2" />
+                <span className="text-red-800 font-medium">
+                  {errors.submit}
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* معلومات الموظف الأساسية */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="lg:col-span-2"
+          >
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  المعلومات الأساسية
+                </h2>
+              </CardHeader>
+              <CardBody className="p-6">
+                {isEditing ? (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          اسم المستخدم <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="username"
+                          value={editForm.username}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          البريد الإلكتروني{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="email"
+                          name="email"
+                          value={editForm.email}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          الاسم الكامل <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="full_name"
+                          value={editForm.full_name}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          رقم الهاتف
+                        </label>
+                        <input
+                          type="tel"
+                          name="phone"
+                          value={editForm.phone}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4 pt-6 border-t border-gray-200">
+                      <EnhancedButton
+                        onClick={handleSave}
+                        variant="primary"
+                        size="lg"
+                        loading={isSaving}
+                        icon={<Edit className="w-5 h-5" />}
+                      >
+                        {isSaving ? "جاري الحفظ..." : "حفظ التغييرات"}
+                      </EnhancedButton>
+                      <EnhancedButton
+                        onClick={handleCancel}
+                        variant="secondary"
+                        size="lg"
+                      >
+                        إلغاء
+                      </EnhancedButton>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4">
+                      <div className="h-20 w-20 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+                        <span className="text-2xl font-bold text-white">
+                          {user.full_name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold text-gray-900">
+                          {user.full_name}
+                        </h3>
+                        <p className="text-gray-600">{user.email}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                        <User className="w-5 h-5 text-gray-500" />
+                        <div>
+                          <p className="text-sm text-gray-500">اسم المستخدم</p>
+                          <p className="font-medium text-gray-900">
+                            {user.username}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                        <Mail className="w-5 h-5 text-gray-500" />
+                        <div>
+                          <p className="text-sm text-gray-500">
+                            البريد الإلكتروني
+                          </p>
+                          <p className="font-medium text-gray-900">
+                            {user.email}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                        <Phone className="w-5 h-5 text-gray-500" />
+                        <div>
+                          <p className="text-sm text-gray-500">رقم الهاتف</p>
+                          <p className="font-medium text-gray-900">
+                            {user.phone || "غير محدد"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                        <Calendar className="w-5 h-5 text-gray-500" />
+                        <div>
+                          <p className="text-sm text-gray-500">تاريخ الإنشاء</p>
+                          <p className="font-medium text-gray-900">
+                            {new Date(user.created_at).toLocaleDateString(
+                              "ar-SA"
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardBody>
+            </Card>
+          </motion.div>
+
+          {/* معلومات إضافية */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+            className="space-y-6"
+          >
+            {/* الدور والحالة */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  الدور والحالة
+                </h3>
+              </CardHeader>
+              <CardBody className="p-6 space-y-4">
+                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                  <div className="p-2 bg-gray-100 rounded-lg">
+                    {getRoleIcon(user.role)}
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">الدور</p>
+                    <span
+                      className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getRoleColor(
+                        user.role
+                      )}`}
+                    >
+                      {userService.getRoleDisplayName(user.role)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                  <div className="p-2 bg-gray-100 rounded-lg">
+                    {getStatusIcon(user.status)}
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">الحالة</p>
+                    <span
+                      className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(
+                        user.status
+                      )}`}
+                    >
+                      {userService.getStatusDisplayName(user.status)}
+                    </span>
+                  </div>
+                </div>
+
+                {!isEditing && (
+                  <EnhancedButton
+                    onClick={handleStatusToggle}
+                    variant={user.status === "active" ? "danger" : "success"}
+                    size="sm"
+                    icon={
+                      user.status === "active" ? (
+                        <UserX className="w-4 h-4" />
+                      ) : (
+                        <UserCheck className="w-4 h-4" />
+                      )
+                    }
+                    fullWidth
+                  >
+                    {user.status === "active" ? "إلغاء التفعيل" : "تفعيل"}
+                  </EnhancedButton>
+                )}
+              </CardBody>
+            </Card>
+
+            {/* آخر تسجيل دخول */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  آخر تسجيل دخول
+                </h3>
+              </CardHeader>
+              <CardBody className="p-6">
+                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                  <Clock className="w-5 h-5 text-gray-500" />
+                  <div>
+                    <p className="text-sm text-gray-500">آخر تسجيل دخول</p>
+                    <p className="font-medium text-gray-900">
+                      {user.last_login
+                        ? new Date(user.last_login).toLocaleDateString("ar-SA")
+                        : "لم يسجل دخول"}
+                    </p>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+
+            {/* إجراءات سريعة */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  إجراءات سريعة
+                </h3>
+              </CardHeader>
+              <CardBody className="p-6 space-y-3">
+                <EnhancedButton
+                  onClick={() => navigate(`/users/${id}/edit`)}
+                  variant="primary"
+                  size="sm"
+                  icon={<Edit className="w-4 h-4" />}
+                  fullWidth
+                >
+                  تعديل كامل
+                </EnhancedButton>
+                <EnhancedButton
+                  onClick={() => navigate("/users")}
+                  variant="secondary"
+                  size="sm"
+                  icon={<ArrowRight className="w-4 h-4" />}
+                  fullWidth
+                >
+                  العودة للقائمة
+                </EnhancedButton>
+              </CardBody>
+            </Card>
+          </motion.div>
         </div>
       </div>
+
+      {/* Modal الحذف */}
+      <DeleteConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={closeDeleteModal}
+        onConfirm={confirmDelete}
+        itemName={user?.full_name}
+        isLoading={deleteModal.isLoading}
+      />
     </div>
   );
 };

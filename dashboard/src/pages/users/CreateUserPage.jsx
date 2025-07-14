@@ -9,15 +9,21 @@ import {
   Eye,
   EyeOff,
   Save,
-  ArrowLeft,
   AlertCircle,
   CheckCircle,
   Loader2,
+  Shield,
+  Users,
+  Truck,
+  CreditCard,
+  Calculator,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
-import Button from "../../components/ui/Button";
-import Input from "../../components/ui/Input";
+import EnhancedButton from "../../components/ui/EnhancedButton";
+import EnhancedInput from "../../components/ui/EnhancedInput";
+import BackButton from "../../components/ui/BackButton";
 import userService from "../../services/userService";
+import { AnimatePresence } from "framer-motion";
 
 const CreateUserPage = () => {
   const navigate = useNavigate();
@@ -41,26 +47,36 @@ const CreateUserPage = () => {
       value: "admin",
       label: "مدير النظام",
       description: "صلاحيات كاملة على النظام",
+      icon: <Shield className="w-5 h-5" />,
+      color: "from-purple-500 to-purple-600",
     },
     {
       value: "manager",
       label: "مدير",
       description: "إدارة المخبز والموظفين",
+      icon: <Users className="w-5 h-5" />,
+      color: "from-blue-500 to-blue-600",
     },
     {
       value: "distributor",
       label: "موزع",
       description: "توزيع المنتجات والتوصيل",
+      icon: <Truck className="w-5 h-5" />,
+      color: "from-green-500 to-green-600",
     },
     {
       value: "cashier",
       label: "كاشير",
       description: "المبيعات والمدفوعات",
+      icon: <CreditCard className="w-5 h-5" />,
+      color: "from-yellow-500 to-yellow-600",
     },
     {
       value: "accountant",
       label: "محاسب",
       description: "إدارة الحسابات والتقارير المالية",
+      icon: <Calculator className="w-5 h-5" />,
+      color: "from-gray-500 to-gray-600",
     },
   ];
 
@@ -188,329 +204,290 @@ const CreateUserPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center mb-4">
-            <Button
-              onClick={() => navigate("/users")}
-              variant="ghost"
-              className="mr-4"
-            >
-              <ArrowLeft className="w-4 h-4 ml-2" />
-              العودة
-            </Button>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">
                 إضافة موظف جديد
               </h1>
-              <p className="text-gray-600 mt-2">
-                إضافة موظف جديد للمخبز في بلجيكا
+              <p className="text-gray-600 text-lg">
+                إنشاء حساب جديد لموظف في النظام
               </p>
             </div>
+            <BackButton variant="outline" size="lg" />
           </div>
-        </div>
+        </motion.div>
 
-        {/* رسالة النجاح */}
-        {isSuccess && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg"
-          >
-            <div className="flex items-center">
-              <CheckCircle className="w-5 h-5 text-green-600 ml-2" />
-              <span className="text-green-800">
-                تم إنشاء الموظف بنجاح! جاري التحويل...
-              </span>
-            </div>
-          </motion.div>
-        )}
+        {/* رسائل النجاح والخطأ */}
+        <AnimatePresence>
+          {isSuccess && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl shadow-sm"
+            >
+              <div className="flex items-center">
+                <CheckCircle className="w-5 h-5 text-green-600 ml-2" />
+                <span className="text-green-800 font-medium">
+                  تم إنشاء الموظف بنجاح! جاري التوجيه...
+                </span>
+              </div>
+            </motion.div>
+          )}
 
-        {/* رسالة الخطأ */}
-        {errors.submit && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg"
-          >
-            <div className="flex items-center">
-              <AlertCircle className="w-5 h-5 text-red-600 ml-2" />
-              <span className="text-red-800">{errors.submit}</span>
-            </div>
-          </motion.div>
-        )}
+          {errors.submit && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl shadow-sm"
+            >
+              <div className="flex items-center">
+                <AlertCircle className="w-5 h-5 text-red-600 ml-2" />
+                <span className="text-red-800 font-medium">
+                  {errors.submit}
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* النموذج */}
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold text-gray-900">
-              معلومات الموظف
-            </h2>
-            <p className="text-gray-600">أدخل معلومات الموظف الجديد</p>
-          </CardHeader>
-          <CardBody>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* الاسم الكامل */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    الاسم الكامل *
-                  </label>
-                  <div className="relative">
-                    <User className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      type="text"
-                      name="full_name"
-                      value={formData.full_name}
-                      onChange={handleChange}
-                      placeholder="أدخل الاسم الكامل"
-                      className={`pr-10 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
-                        errors.full_name ? "border-red-500" : ""
-                      }`}
-                    />
-                  </div>
-                  {errors.full_name && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.full_name}
-                    </p>
-                  )}
-                </div>
-
-                {/* اسم المستخدم */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    اسم المستخدم *
-                  </label>
-                  <Input
-                    type="text"
+        {/* نموذج إنشاء الموظف */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+              <h2 className="text-xl font-semibold text-gray-900">
+                معلومات الموظف
+              </h2>
+            </CardHeader>
+            <CardBody className="p-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* اسم المستخدم */}
+                  <EnhancedInput
+                    label="اسم المستخدم"
                     name="username"
                     value={formData.username}
                     onChange={handleChange}
                     placeholder="أدخل اسم المستخدم"
-                    className={`bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
-                      errors.username ? "border-red-500" : ""
-                    }`}
+                    required
+                    error={errors.username}
+                    icon={<User className="w-4 h-4" />}
                   />
-                  {errors.username && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.username}
-                    </p>
-                  )}
-                </div>
 
-                {/* البريد الإلكتروني */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    البريد الإلكتروني *
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      placeholder="أدخل البريد الإلكتروني"
-                      className={`pr-10 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
-                        errors.email ? "border-red-500" : ""
-                      }`}
-                    />
-                  </div>
-                  {errors.email && (
-                    <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-                  )}
-                </div>
+                  {/* البريد الإلكتروني */}
+                  <EnhancedInput
+                    label="البريد الإلكتروني"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="أدخل البريد الإلكتروني"
+                    required
+                    error={errors.email}
+                    icon={<Mail className="w-4 h-4" />}
+                  />
 
-                {/* رقم الهاتف */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    رقم الهاتف
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      placeholder="أدخل رقم الهاتف"
-                      className={`pr-10 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
-                        errors.phone ? "border-red-500" : ""
-                      }`}
-                    />
-                  </div>
-                  {errors.phone && (
-                    <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
-                  )}
-                </div>
+                  {/* الاسم الكامل */}
+                  <EnhancedInput
+                    label="الاسم الكامل"
+                    name="full_name"
+                    value={formData.full_name}
+                    onChange={handleChange}
+                    placeholder="أدخل الاسم الكامل"
+                    required
+                    error={errors.full_name}
+                    icon={<User className="w-4 h-4" />}
+                  />
 
-                {/* كلمة المرور */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    كلمة المرور *
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      type={showPassword ? "text" : "password"}
+                  {/* رقم الهاتف */}
+                  <EnhancedInput
+                    label="رقم الهاتف"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    placeholder="أدخل رقم الهاتف"
+                    error={errors.phone}
+                    icon={<Phone className="w-4 h-4" />}
+                  />
+
+                  {/* كلمة المرور */}
+                  <div className="space-y-2">
+                    <EnhancedInput
+                      label="كلمة المرور"
                       name="password"
+                      type={showPassword ? "text" : "password"}
                       value={formData.password}
                       onChange={handleChange}
                       placeholder="أدخل كلمة المرور"
-                      className={`pr-10 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
-                        errors.password ? "border-red-500" : ""
-                      }`}
+                      required
+                      error={errors.password}
+                      icon={<Lock className="w-4 h-4" />}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="text-gray-500 hover:text-gray-700 transition-colors"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                      {formData.password && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-gray-500">
+                            قوة كلمة المرور:
+                          </span>
+                          <span
+                            className={`font-medium ${getPasswordStrengthColor(
+                              getPasswordStrength(formData.password)
+                            )}`}
+                          >
+                            {getPasswordStrengthText(
+                              getPasswordStrength(formData.password)
+                            )}
+                          </span>
+                        </div>
                       )}
-                    </button>
-                  </div>
-                  {formData.password && (
-                    <div className="mt-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">قوة كلمة المرور:</span>
-                        <span
-                          className={getPasswordStrengthColor(
-                            getPasswordStrength(formData.password)
-                          )}
-                        >
-                          {getPasswordStrengthText(
-                            getPasswordStrength(formData.password)
-                          )}
-                        </span>
-                      </div>
-                      <div className="mt-1 w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full transition-all duration-300 ${
-                            getPasswordStrength(formData.password) <= 1
-                              ? "bg-red-500"
-                              : getPasswordStrength(formData.password) <= 2
-                              ? "bg-orange-500"
-                              : getPasswordStrength(formData.password) <= 3
-                              ? "bg-yellow-500"
-                              : getPasswordStrength(formData.password) <= 4
-                              ? "bg-blue-500"
-                              : "bg-green-500"
-                          }`}
-                          style={{
-                            width: `${
-                              (getPasswordStrength(formData.password) / 5) * 100
-                            }%`,
-                          }}
-                        />
-                      </div>
                     </div>
-                  )}
-                  {errors.password && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.password}
-                    </p>
-                  )}
-                </div>
+                  </div>
 
-                {/* تأكيد كلمة المرور */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    تأكيد كلمة المرور *
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      type={showConfirmPassword ? "text" : "password"}
+                  {/* تأكيد كلمة المرور */}
+                  <div className="space-y-2">
+                    <EnhancedInput
+                      label="تأكيد كلمة المرور"
                       name="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
                       value={formData.confirmPassword}
                       onChange={handleChange}
                       placeholder="أعد إدخال كلمة المرور"
-                      className={`pr-10 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
-                        errors.confirmPassword ? "border-red-500" : ""
-                      }`}
+                      required
+                      error={errors.confirmPassword}
+                      icon={<Lock className="w-4 h-4" />}
                     />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setShowConfirmPassword(!showConfirmPassword)
-                      }
-                      className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
+                        className="text-gray-500 hover:text-gray-700 transition-colors"
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
-                  {errors.confirmPassword && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.confirmPassword}
-                    </p>
+                </div>
+
+                {/* اختيار الدور */}
+                <div className="space-y-4">
+                  <label className="block text-sm font-medium text-gray-700">
+                    الدور <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {roles.map((role) => (
+                      <motion.div
+                        key={role.value}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <input
+                          type="radio"
+                          id={role.value}
+                          name="role"
+                          value={role.value}
+                          checked={formData.role === role.value}
+                          onChange={handleChange}
+                          className="sr-only"
+                        />
+                        <label
+                          htmlFor={role.value}
+                          className={`block p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
+                            formData.role === role.value
+                              ? `border-blue-500 bg-gradient-to-r ${role.color} text-white shadow-lg`
+                              : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-md"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`p-2 rounded-lg ${
+                                formData.role === role.value
+                                  ? "bg-white/20"
+                                  : "bg-gray-100"
+                              }`}
+                            >
+                              {role.icon}
+                            </div>
+                            <div>
+                              <div className="font-semibold">{role.label}</div>
+                              <div
+                                className={`text-sm ${
+                                  formData.role === role.value
+                                    ? "text-white/80"
+                                    : "text-gray-500"
+                                }`}
+                              >
+                                {role.description}
+                              </div>
+                            </div>
+                          </div>
+                        </label>
+                      </motion.div>
+                    ))}
+                  </div>
+                  {errors.role && (
+                    <div className="text-sm text-red-600 flex items-center gap-1">
+                      <span>⚠</span>
+                      <span>{errors.role}</span>
+                    </div>
                   )}
                 </div>
-              </div>
 
-              {/* الدور */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  الدور الوظيفي *
-                </label>
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${
-                    errors.role ? "border-red-500" : ""
-                  }`}
-                >
-                  {roles.map((role) => (
-                    <option key={role.value} value={role.value}>
-                      {role.label} - {role.description}
-                    </option>
-                  ))}
-                </select>
-                {errors.role && (
-                  <p className="mt-1 text-sm text-red-600">{errors.role}</p>
-                )}
-              </div>
-
-              {/* أزرار الإجراءات */}
-              <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
-                <Button
-                  type="button"
-                  onClick={() => navigate("/users")}
-                  className="bg-gray-600 hover:bg-gray-700 text-white"
-                >
-                  إلغاء
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                      جاري الإنشاء...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 ml-2" />
-                      إنشاء الموظف
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </CardBody>
-        </Card>
+                {/* أزرار الإجراءات */}
+                <div className="flex gap-4 pt-6 border-t border-gray-200">
+                  <EnhancedButton
+                    type="submit"
+                    variant="primary"
+                    size="lg"
+                    loading={isLoading}
+                    icon={<Save className="w-5 h-5" />}
+                    fullWidth
+                  >
+                    {isLoading ? "جاري الإنشاء..." : "إنشاء الموظف"}
+                  </EnhancedButton>
+                  <EnhancedButton
+                    type="button"
+                    variant="secondary"
+                    size="lg"
+                    onClick={() => navigate("/users")}
+                    fullWidth
+                  >
+                    إلغاء
+                  </EnhancedButton>
+                </div>
+              </form>
+            </CardBody>
+          </Card>
+        </motion.div>
       </div>
     </div>
   );

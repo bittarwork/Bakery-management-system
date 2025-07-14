@@ -19,11 +19,15 @@ import {
   AlertCircle,
   CheckCircle,
   Loader2,
+  MoreVertical,
+  FileText,
+  BarChart3,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
-import Button from "../../components/ui/Button";
-import Input from "../../components/ui/Input";
+import EnhancedButton from "../../components/ui/EnhancedButton";
+import EnhancedInput from "../../components/ui/EnhancedInput";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
+import { DeleteConfirmationModal } from "../../components/ui/Modal";
 import userService from "../../services/userService";
 
 const UsersListPage = () => {
@@ -54,6 +58,14 @@ const UsersListPage = () => {
     totalUsers: 0,
     activeUsers: 0,
     inactiveUsers: 0,
+  });
+
+  // Modal الحذف
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    userId: null,
+    userName: "",
+    isLoading: false,
   });
 
   // تحميل البيانات
@@ -161,18 +173,37 @@ const UsersListPage = () => {
     }
   };
 
-  // حذف موظف
-  const handleDelete = async (userId, userName) => {
-    if (!window.confirm(`هل أنت متأكد من حذف الموظف "${userName}"؟`)) {
-      return;
-    }
+  // فتح modal الحذف
+  const openDeleteModal = (userId, userName) => {
+    setDeleteModal({
+      isOpen: true,
+      userId,
+      userName,
+      isLoading: false,
+    });
+  };
 
+  // إغلاق modal الحذف
+  const closeDeleteModal = () => {
+    setDeleteModal({
+      isOpen: false,
+      userId: null,
+      userName: "",
+      isLoading: false,
+    });
+  };
+
+  // تأكيد الحذف
+  const confirmDelete = async () => {
     try {
+      setDeleteModal((prev) => ({ ...prev, isLoading: true }));
       setError("");
-      const response = await userService.deleteUser(userId);
+
+      const response = await userService.deleteUser(deleteModal.userId);
 
       if (response.success) {
         setSuccess("تم حذف الموظف بنجاح");
+        closeDeleteModal();
         loadUsers();
         loadStatistics();
       } else {
@@ -181,6 +212,8 @@ const UsersListPage = () => {
     } catch (error) {
       setError("خطأ في حذف الموظف");
       console.error("Error deleting user:", error);
+    } finally {
+      setDeleteModal((prev) => ({ ...prev, isLoading: false }));
     }
   };
 
@@ -221,90 +254,115 @@ const UsersListPage = () => {
 
   if (isLoading && users.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <LoadingSpinner size="xl" text="جاري تحميل بيانات الموظفين..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">
                 إدارة الموظفين
               </h1>
-              <p className="text-gray-600 mt-2">إدارة موظفي المخبز في بلجيكا</p>
+              <p className="text-gray-600 text-lg">
+                إدارة موظفي المخبز في بلجيكا
+              </p>
             </div>
-            <Button
+            <EnhancedButton
               onClick={() => navigate("/users/create")}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              variant="primary"
+              size="lg"
+              icon={<Plus className="w-5 h-5" />}
             >
-              <Plus className="w-4 h-4 ml-2" />
               إضافة موظف جديد
-            </Button>
+            </EnhancedButton>
           </div>
 
           {/* الإحصائيات */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <Card>
-              <CardBody className="p-6">
-                <div className="flex items-center">
-                  <div className="p-3 bg-blue-100 rounded-lg">
-                    <Users className="w-6 h-6 text-blue-600" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+                <CardBody className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-blue-100 text-sm font-medium">
+                        إجمالي الموظفين
+                      </p>
+                      <p className="text-3xl font-bold mt-1">
+                        {statistics.totalUsers}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-white/20 rounded-xl">
+                      <Users className="w-8 h-8" />
+                    </div>
                   </div>
-                  <div className="mr-4">
-                    <p className="text-sm font-medium text-gray-600">
-                      إجمالي الموظفين
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {statistics.totalUsers}
-                    </p>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
+                </CardBody>
+              </Card>
+            </motion.div>
 
-            <Card>
-              <CardBody className="p-6">
-                <div className="flex items-center">
-                  <div className="p-3 bg-green-100 rounded-lg">
-                    <UserCheck className="w-6 h-6 text-green-600" />
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white border-0 shadow-lg">
+                <CardBody className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-green-100 text-sm font-medium">
+                        الموظفين النشطين
+                      </p>
+                      <p className="text-3xl font-bold mt-1">
+                        {statistics.activeUsers}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-white/20 rounded-xl">
+                      <UserCheck className="w-8 h-8" />
+                    </div>
                   </div>
-                  <div className="mr-4">
-                    <p className="text-sm font-medium text-gray-600">
-                      الموظفين النشطين
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {statistics.activeUsers}
-                    </p>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
+                </CardBody>
+              </Card>
+            </motion.div>
 
-            <Card>
-              <CardBody className="p-6">
-                <div className="flex items-center">
-                  <div className="p-3 bg-red-100 rounded-lg">
-                    <UserX className="w-6 h-6 text-red-600" />
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Card className="bg-gradient-to-r from-red-500 to-red-600 text-white border-0 shadow-lg">
+                <CardBody className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-red-100 text-sm font-medium">
+                        الموظفين غير النشطين
+                      </p>
+                      <p className="text-3xl font-bold mt-1">
+                        {statistics.inactiveUsers}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-white/20 rounded-xl">
+                      <UserX className="w-8 h-8" />
+                    </div>
                   </div>
-                  <div className="mr-4">
-                    <p className="text-sm font-medium text-gray-600">
-                      الموظفين غير النشطين
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {statistics.inactiveUsers}
-                    </p>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
+                </CardBody>
+              </Card>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
 
         {/* رسائل النجاح والخطأ */}
         <AnimatePresence>
@@ -313,11 +371,11 @@ const UsersListPage = () => {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg"
+              className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl shadow-sm"
             >
               <div className="flex items-center">
                 <CheckCircle className="w-5 h-5 text-green-600 ml-2" />
-                <span className="text-green-800">{success}</span>
+                <span className="text-green-800 font-medium">{success}</span>
               </div>
             </motion.div>
           )}
@@ -327,293 +385,336 @@ const UsersListPage = () => {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg"
+              className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl shadow-sm"
             >
               <div className="flex items-center">
                 <AlertCircle className="w-5 h-5 text-red-600 ml-2" />
-                <span className="text-red-800">{error}</span>
+                <span className="text-red-800 font-medium">{error}</span>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* أدوات البحث والفلترة */}
-        <Card className="mb-6">
-          <CardBody className="p-6">
-            <form onSubmit={handleSearch} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* البحث */}
-                <div className="relative">
-                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <Card className="mb-6 border-0 shadow-lg">
+            <CardBody className="p-6">
+              <form onSubmit={handleSearch} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {/* البحث */}
+                  <EnhancedInput
                     type="text"
                     placeholder="البحث في الموظفين..."
                     value={filters.search}
                     onChange={(e) =>
                       handleFilterChange("search", e.target.value)
                     }
-                    className="pr-10 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    icon={<Search className="w-4 h-4" />}
+                    size="md"
                   />
-                </div>
 
-                {/* فلتر الدور */}
-                <select
-                  value={filters.role}
-                  onChange={(e) => handleFilterChange("role", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                >
-                  <option value="">جميع الأدوار</option>
-                  <option value="admin">مدير النظام</option>
-                  <option value="manager">مدير</option>
-                  <option value="distributor">موزع</option>
-                  <option value="cashier">كاشير</option>
-                  <option value="accountant">محاسب</option>
-                </select>
-
-                {/* فلتر الحالة */}
-                <select
-                  value={filters.status}
-                  onChange={(e) => handleFilterChange("status", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                >
-                  <option value="">جميع الحالات</option>
-                  <option value="active">نشط</option>
-                  <option value="inactive">غير نشط</option>
-                  <option value="suspended">معلق</option>
-                </select>
-
-                {/* أزرار الإجراءات */}
-                <div className="flex gap-2">
-                  <Button
-                    type="submit"
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  {/* فلتر الدور */}
+                  <select
+                    value={filters.role}
+                    onChange={(e) => handleFilterChange("role", e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                   >
-                    <Search className="w-4 h-4 ml-2" />
-                    بحث
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setFilters({ search: "", role: "", status: "" });
-                      setPagination((prev) => ({ ...prev, currentPage: 1 }));
-                    }}
-                    className="bg-gray-600 hover:bg-gray-700 text-white"
+                    <option value="">جميع الأدوار</option>
+                    <option value="admin">مدير النظام</option>
+                    <option value="manager">مدير</option>
+                    <option value="distributor">موزع</option>
+                    <option value="cashier">كاشير</option>
+                    <option value="accountant">محاسب</option>
+                  </select>
+
+                  {/* فلتر الحالة */}
+                  <select
+                    value={filters.status}
+                    onChange={(e) =>
+                      handleFilterChange("status", e.target.value)
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                   >
-                    <RefreshCw className="w-4 h-4 ml-2" />
-                    إعادة تعيين
-                  </Button>
+                    <option value="">جميع الحالات</option>
+                    <option value="active">نشط</option>
+                    <option value="inactive">غير نشط</option>
+                    <option value="suspended">معلق</option>
+                  </select>
+
+                  {/* أزرار الإجراءات */}
+                  <div className="flex gap-2">
+                    <EnhancedButton
+                      type="submit"
+                      variant="primary"
+                      icon={<Search className="w-4 h-4" />}
+                    >
+                      بحث
+                    </EnhancedButton>
+                    <EnhancedButton
+                      type="button"
+                      variant="secondary"
+                      icon={<RefreshCw className="w-4 h-4" />}
+                      onClick={() => {
+                        setFilters({ search: "", role: "", status: "" });
+                        setPagination((prev) => ({ ...prev, currentPage: 1 }));
+                      }}
+                    >
+                      إعادة تعيين
+                    </EnhancedButton>
+                  </div>
                 </div>
-              </div>
-            </form>
-          </CardBody>
-        </Card>
+              </form>
+            </CardBody>
+          </Card>
+        </motion.div>
 
         {/* جدول الموظفين */}
-        <Card>
-          <CardHeader className="border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">
-                قائمة الموظفين
-              </h2>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => handleExport("json")}
-                  disabled={isExporting}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  {isExporting ? (
-                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                  ) : (
-                    <Download className="w-4 h-4 ml-2" />
-                  )}
-                  تصدير JSON
-                </Button>
-                <Button
-                  onClick={() => handleExport("csv")}
-                  disabled={isExporting}
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
-                >
-                  {isExporting ? (
-                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                  ) : (
-                    <Download className="w-4 h-4 ml-2" />
-                  )}
-                  تصدير CSV
-                </Button>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  قائمة الموظفين
+                </h2>
+                <div className="flex gap-2">
+                  <EnhancedButton
+                    onClick={() => handleExport("json")}
+                    disabled={isExporting}
+                    variant="success"
+                    size="sm"
+                    icon={
+                      isExporting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <FileText className="w-4 h-4" />
+                      )
+                    }
+                  >
+                    تصدير JSON
+                  </EnhancedButton>
+                  <EnhancedButton
+                    onClick={() => handleExport("csv")}
+                    disabled={isExporting}
+                    variant="warning"
+                    size="sm"
+                    icon={
+                      isExporting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4" />
+                      )
+                    }
+                  >
+                    تصدير CSV
+                  </EnhancedButton>
+                </div>
               </div>
-            </div>
-          </CardHeader>
+            </CardHeader>
 
-          <CardBody className="p-0">
-            {isLoading ? (
-              <div className="p-8 text-center">
-                <LoadingSpinner size="lg" text="جاري تحميل البيانات..." />
-              </div>
-            ) : users.length === 0 ? (
-              <div className="p-8 text-center">
-                <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  لا توجد موظفين
-                </h3>
-                <p className="text-gray-600">
-                  لم يتم العثور على موظفين يطابقون معايير البحث
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        الموظف
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        الدور
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        الحالة
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        تاريخ الإنشاء
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        آخر تسجيل دخول
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        الإجراءات
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {users.map((user) => (
-                      <tr key={user.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10">
-                              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                <span className="text-sm font-medium text-blue-600">
-                                  {user.full_name
-                                    .split(" ")
-                                    .map((n) => n[0])
-                                    .join("")
-                                    .toUpperCase()}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="mr-4">
-                              <div className="text-sm font-medium text-gray-900">
-                                {user.full_name}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {user.email}
-                              </div>
-                              {user.phone && (
-                                <div className="text-sm text-gray-500">
-                                  {user.phone}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-${userService.getRoleColor(
-                              user.role
-                            )}-100 text-${userService.getRoleColor(
-                              user.role
-                            )}-800`}
-                          >
-                            {userService.getRoleDisplayName(user.role)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-${userService.getStatusColor(
-                              user.status
-                            )}-100 text-${userService.getStatusColor(
-                              user.status
-                            )}-800`}
-                          >
-                            {userService.getStatusDisplayName(user.status)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(user.created_at).toLocaleDateString(
-                            "ar-SA"
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {user.last_login
-                            ? new Date(user.last_login).toLocaleDateString(
-                                "ar-SA"
-                              )
-                            : "لم يسجل دخول"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              onClick={() => navigate(`/users/${user.id}`)}
-                              size="sm"
-                              className="bg-blue-600 hover:bg-blue-700 text-white"
-                            >
-                              <Eye className="w-3 h-3 ml-1" />
-                              عرض
-                            </Button>
-                            <Button
-                              onClick={() => navigate(`/users/${user.id}/edit`)}
-                              size="sm"
-                              className="bg-yellow-600 hover:bg-yellow-700 text-white"
-                            >
-                              <Edit className="w-3 h-3 ml-1" />
-                              تعديل
-                            </Button>
-                            <Button
-                              onClick={() =>
-                                handleToggleStatus(user.id, user.status)
-                              }
-                              size="sm"
-                              className={
-                                user.status === "active"
-                                  ? "bg-red-600 hover:bg-red-700 text-white"
-                                  : "bg-green-600 hover:bg-green-700 text-white"
-                              }
-                            >
-                              {user.status === "active" ? (
-                                <>
-                                  <UserX className="w-3 h-3 ml-1" />
-                                  إلغاء التفعيل
-                                </>
-                              ) : (
-                                <>
-                                  <UserCheck className="w-3 h-3 ml-1" />
-                                  تفعيل
-                                </>
-                              )}
-                            </Button>
-                            <Button
-                              onClick={() =>
-                                handleDelete(user.id, user.full_name)
-                              }
-                              size="sm"
-                              className="bg-red-600 hover:bg-red-700 text-white"
-                            >
-                              <Trash2 className="w-3 h-3 ml-1" />
-                              حذف
-                            </Button>
-                          </div>
-                        </td>
+            <CardBody className="p-0">
+              {isLoading ? (
+                <div className="p-8 text-center">
+                  <LoadingSpinner size="lg" text="جاري تحميل البيانات..." />
+                </div>
+              ) : users.length === 0 ? (
+                <div className="p-8 text-center">
+                  <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">
+                    لا توجد موظفين
+                  </h3>
+                  <p className="text-gray-600">
+                    لم يتم العثور على موظفين يطابقون معايير البحث
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          الموظف
+                        </th>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          الدور
+                        </th>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          الحالة
+                        </th>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          تاريخ الإنشاء
+                        </th>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          آخر تسجيل دخول
+                        </th>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          الإجراءات
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardBody>
-        </Card>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {users.map((user, index) => (
+                        <motion.tr
+                          key={user.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="hover:bg-gray-50 transition-colors"
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 h-12 w-12">
+                                <div className="h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+                                  <span className="text-sm font-bold text-white">
+                                    {user.full_name
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .join("")
+                                      .toUpperCase()}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="mr-4">
+                                <div className="text-sm font-semibold text-gray-900">
+                                  {user.full_name}
+                                </div>
+                                <div className="text-sm text-gray-500 flex items-center gap-1">
+                                  <Mail className="w-3 h-3" />
+                                  {user.email}
+                                </div>
+                                {user.phone && (
+                                  <div className="text-sm text-gray-500 flex items-center gap-1">
+                                    <Phone className="w-3 h-3" />
+                                    {user.phone}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+                                user.role === "admin"
+                                  ? "bg-purple-100 text-purple-800"
+                                  : user.role === "manager"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : user.role === "distributor"
+                                  ? "bg-green-100 text-green-800"
+                                  : user.role === "cashier"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {userService.getRoleDisplayName(user.role)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+                                user.status === "active"
+                                  ? "bg-green-100 text-green-800"
+                                  : user.status === "inactive"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                              }`}
+                            >
+                              {userService.getStatusDisplayName(user.status)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {new Date(user.created_at).toLocaleDateString(
+                                "ar-SA"
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {user.last_login
+                              ? new Date(user.last_login).toLocaleDateString(
+                                  "ar-SA"
+                                )
+                              : "لم يسجل دخول"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex items-center gap-2">
+                              <EnhancedButton
+                                onClick={() => navigate(`/users/${user.id}`)}
+                                variant="primary"
+                                size="sm"
+                                icon={<Eye className="w-3 h-3" />}
+                              >
+                                عرض
+                              </EnhancedButton>
+                              <EnhancedButton
+                                onClick={() =>
+                                  navigate(`/users/${user.id}/edit`)
+                                }
+                                variant="warning"
+                                size="sm"
+                                icon={<Edit className="w-3 h-3" />}
+                              >
+                                تعديل
+                              </EnhancedButton>
+                              <EnhancedButton
+                                onClick={() =>
+                                  handleToggleStatus(user.id, user.status)
+                                }
+                                variant={
+                                  user.status === "active"
+                                    ? "danger"
+                                    : "success"
+                                }
+                                size="sm"
+                                icon={
+                                  user.status === "active" ? (
+                                    <UserX className="w-3 h-3" />
+                                  ) : (
+                                    <UserCheck className="w-3 h-3" />
+                                  )
+                                }
+                              >
+                                {user.status === "active"
+                                  ? "إلغاء التفعيل"
+                                  : "تفعيل"}
+                              </EnhancedButton>
+                              <EnhancedButton
+                                onClick={() =>
+                                  openDeleteModal(user.id, user.full_name)
+                                }
+                                variant="danger"
+                                size="sm"
+                                icon={<Trash2 className="w-3 h-3" />}
+                              >
+                                حذف
+                              </EnhancedButton>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        </motion.div>
 
         {/* التصفح */}
         {pagination.totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-between">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="mt-6 flex items-center justify-between bg-white p-4 rounded-xl shadow-lg"
+          >
             <div className="text-sm text-gray-700">
               عرض {(pagination.currentPage - 1) * pagination.itemsPerPage + 1}{" "}
               إلى{" "}
@@ -624,7 +725,7 @@ const UsersListPage = () => {
               من {pagination.totalItems} موظف
             </div>
             <div className="flex gap-2">
-              <Button
+              <EnhancedButton
                 onClick={() =>
                   setPagination((prev) => ({
                     ...prev,
@@ -632,14 +733,15 @@ const UsersListPage = () => {
                   }))
                 }
                 disabled={pagination.currentPage === 1}
-                className="bg-gray-600 hover:bg-gray-700 text-white disabled:opacity-50"
+                variant="secondary"
+                size="sm"
               >
                 السابق
-              </Button>
-              <span className="px-3 py-2 text-sm text-gray-700">
+              </EnhancedButton>
+              <span className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg">
                 صفحة {pagination.currentPage} من {pagination.totalPages}
               </span>
-              <Button
+              <EnhancedButton
                 onClick={() =>
                   setPagination((prev) => ({
                     ...prev,
@@ -647,14 +749,24 @@ const UsersListPage = () => {
                   }))
                 }
                 disabled={pagination.currentPage === pagination.totalPages}
-                className="bg-gray-600 hover:bg-gray-700 text-white disabled:opacity-50"
+                variant="secondary"
+                size="sm"
               >
                 التالي
-              </Button>
+              </EnhancedButton>
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
+
+      {/* Modal الحذف */}
+      <DeleteConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={closeDeleteModal}
+        onConfirm={confirmDelete}
+        itemName={deleteModal.userName}
+        isLoading={deleteModal.isLoading}
+      />
     </div>
   );
 };
