@@ -89,7 +89,13 @@ apiClient.interceptors.response.use(
         // Handle different error status codes
         switch (error.response.status) {
             case 401:
-                // Unauthorized - try to refresh token
+                // Unauthorized - don't retry for auth endpoints to avoid infinite loops
+                if (originalRequest.url.includes('/auth/login') || originalRequest.url.includes('/auth/refresh')) {
+                    // For login/refresh failures, don't retry
+                    return Promise.reject(error);
+                }
+
+                // For other endpoints, try to refresh token
                 if (!originalRequest._retry) {
                     originalRequest._retry = true;
 

@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import Input from "./Input";
 import Button from "./Button";
-import { Card } from "./Card";
+import { Card, CardHeader, CardBody } from "./Card";
 
 const DataTable = ({
   data = [],
@@ -103,7 +103,7 @@ const DataTable = ({
   return (
     <Card className={className}>
       {/* Table Header with Search and Filters */}
-      <Card.Header>
+      <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
@@ -156,10 +156,10 @@ const DataTable = ({
             )}
           </div>
         </div>
-      </Card.Header>
+      </CardHeader>
 
       {/* Table */}
-      <Card.Body>
+      <CardBody>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -281,7 +281,7 @@ const DataTable = ({
             </div>
           </div>
         )}
-      </Card.Body>
+      </CardBody>
     </Card>
   );
 };

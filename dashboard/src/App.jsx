@@ -10,7 +10,6 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 
 // Pages - Authentication
 import LoginPage from "./pages/auth/LoginPage";
-import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 
 // Pages - Dashboard
 import DashboardHomePage from "./pages/dashboard/DashboardHomePage";
@@ -116,9 +115,13 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-primary flex items-center justify-center">
-        <LoadingSpinner size="lg" color="white" />
-      </div>
+      <LoadingSpinner
+        size="2xl"
+        color="white"
+        text="جاري تحميل النظام..."
+        showLogo={true}
+        fullScreen={true}
+      />
     );
   }
 
@@ -142,27 +145,6 @@ function App() {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <LoginPage />
-                      </Suspense>
-                    </motion.div>
-                  </AuthLayout>
-                </PublicRoute>
-              }
-            />
-
-            <Route
-              path="/forgot-password"
-              element={
-                <PublicRoute>
-                  <AuthLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <ForgotPasswordPage />
                       </Suspense>
                     </motion.div>
                   </AuthLayout>

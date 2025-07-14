@@ -142,44 +142,7 @@ class AuthService {
         }
     }
 
-    /**
-     * Request password reset
-     * @param {string} email - User email
-     * @returns {Promise<Object>} Response object
-     */
-    async forgotPassword(email) {
-        try {
-            const response = await this.apiService.post('/auth/forgot-password', { email });
-            return response;
-        } catch (error) {
-            return {
-                success: false,
-                message: error.message || 'خطأ في إرسال رابط الاستعادة'
-            };
-        }
-    }
 
-    /**
-     * Reset password with token
-     * @param {string} token - Reset token
-     * @param {string} password - New password
-     * @returns {Promise<Object>} Response object
-     */
-    async resetPassword(token, password) {
-        try {
-            const response = await this.apiService.post('/auth/reset-password', {
-                token,
-                password,
-                password_confirmation: password
-            });
-            return response;
-        } catch (error) {
-            return {
-                success: false,
-                message: error.message || 'خطأ في إعادة تعيين كلمة المرور'
-            };
-        }
-    }
 
     /**
      * Check if email exists

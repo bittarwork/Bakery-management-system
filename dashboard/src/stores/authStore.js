@@ -113,6 +113,7 @@ export const useAuthStore = create((set, get) => ({
                 errorMessage = error.message;
             }
 
+            // Always set loading to false and return error
             set({
                 error: errorMessage,
                 isAuthenticated: false,

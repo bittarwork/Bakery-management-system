@@ -6,20 +6,12 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Shield,
-  CheckCircle,
   AlertCircle,
   Loader2,
   User,
   ChefHat,
-  Wheat,
-  Cookie,
-  Zap,
-  Users,
-  LogIn,
 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
-import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Logo from "../../components/ui/Logo";
 
@@ -142,14 +134,6 @@ const LoginPage = () => {
     if (error) setError("");
   };
 
-  const fillDemoAccount = (email, password) => {
-    setFormData({
-      usernameOrEmail: email,
-      password: password,
-    });
-    setError("");
-  };
-
   const getSecurityColor = () => {
     if (securityLevel <= 1) return "from-red-500 to-pink-500";
     if (securityLevel <= 2) return "from-orange-500 to-red-500";
@@ -173,11 +157,11 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
-      {/* Subtle Background Elements */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+      {/* Simple Background Elements */}
       <div className="absolute inset-0">
         {/* Soft grid pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:60px_60px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:80px_80px]" />
 
         {/* Gentle floating orbs */}
         <motion.div
@@ -191,7 +175,7 @@ const LoginPage = () => {
             repeat: Infinity,
             ease: "easeInOut",
           }}
-          className="absolute top-20 left-20 w-24 h-24 bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-full blur-xl"
+          className="absolute top-20 left-20 w-32 h-32 bg-gradient-to-r from-amber-500/5 to-orange-500/5 rounded-full blur-3xl"
         />
         <motion.div
           animate={{
@@ -205,250 +189,223 @@ const LoginPage = () => {
             ease: "easeInOut",
             delay: 5,
           }}
-          className="absolute bottom-20 right-20 w-32 h-32 bg-gradient-to-r from-red-500/10 to-pink-500/10 rounded-full blur-xl"
+          className="absolute bottom-20 right-20 w-40 h-40 bg-gradient-to-r from-purple-500/5 to-pink-500/5 rounded-full blur-3xl"
         />
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 min-h-screen flex">
-        {/* Left Side - Branding */}
-        <motion.div
-          initial={{ x: -100, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 1, ease: "easeOut" }}
-          className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12 text-white"
-        >
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-8">
+        <div className="w-full max-w-md">
           {/* Logo */}
-          <Logo size="2xl" animated={true} />
-
-          {/* Tagline */}
-          <motion.p
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.8 }}
-            className="text-lg text-gray-300 text-center max-w-sm leading-relaxed mt-8"
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.8, ease: "backOut" }}
+            className="flex justify-center mb-8"
           >
-            نظام إدارة المخابز الاحترافي للأعمال الحديثة
-          </motion.p>
+            <Logo size="3xl" animated={true} />
+          </motion.div>
 
-          {/* Features */}
-          <div className="grid grid-cols-1 gap-4 text-center mt-12">
-            <div className="flex items-center space-x-3 rtl:space-x-reverse bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <Shield className="w-6 h-6 text-green-300" />
-              <span className="text-amber-100">حماية متقدمة للبيانات</span>
-            </div>
-            <div className="flex items-center space-x-3 rtl:space-x-reverse bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <Zap className="w-6 h-6 text-yellow-300" />
-              <span className="text-amber-100">أداء سريع وموثوق</span>
-            </div>
-            <div className="flex items-center space-x-3 rtl:space-x-reverse bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <Users className="w-6 h-6 text-blue-300" />
-              <span className="text-amber-100">إدارة شاملة للمستخدمين</span>
-            </div>
-          </div>
-        </motion.div>
+          {/* Form Header */}
+          <motion.div
+            initial={{ y: 30, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+            className="text-center mb-8"
+          >
+            <h2 className="text-3xl font-bold text-white mb-3 bg-gradient-to-r from-amber-300 to-orange-300 bg-clip-text text-transparent">
+              أهلاً بك مرة أخرى
+            </h2>
+            <p className="text-gray-300 text-lg">
+              سجل دخولك للوصول إلى لوحة التحكم
+            </p>
+            <div className="w-20 h-1 bg-gradient-to-r from-amber-500 to-orange-500 mx-auto mt-4 rounded-full" />
+          </motion.div>
 
-        {/* Right Side - Login Form */}
-        <motion.div
-          initial={{ x: 100, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 1, ease: "easeOut" }}
-          className="w-full lg:w-1/2 flex items-center justify-center p-8"
-        >
-          <div className="w-full max-w-md">
-            {/* Mobile Logo */}
-            <div className="lg:hidden flex justify-center mb-8">
-              <Logo size="xl" animated={true} />
-            </div>
-
-            {/* Form Header */}
+          {/* Security Status */}
+          {formData.password && (
             <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="text-center mb-8"
+              transition={{ delay: 0.5, duration: 0.6 }}
+              className="mb-6"
             >
-              <h2 className="text-2xl font-bold text-white mb-2">
-                أهلاً بك مرة أخرى
-              </h2>
-              <p className="text-gray-400 text-sm">
-                سجل دخولك للوصول إلى لوحة التحكم
-              </p>
-            </motion.div>
-
-            {/* Security Status - Simplified */}
-            {formData.password && (
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="mb-6"
-              >
-                <div className="flex items-center justify-between p-3 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-blue-400" />
-                    <span className="text-white text-sm">قوة كلمة المرور</span>
+              <div className="p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 hover:bg-white/8 transition-all duration-300">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-500/20 rounded-lg">
+                      <Lock className="w-4 h-4 text-blue-400" />
+                    </div>
+                    <span className="text-white text-sm font-medium">
+                      قوة كلمة المرور
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <span
-                      className={`text-xs font-medium bg-gradient-to-r ${getSecurityColor()} bg-clip-text text-transparent`}
+                      className={`text-xs font-semibold bg-gradient-to-r ${getSecurityColor()} bg-clip-text text-transparent`}
                     >
                       {getSecurityText()}
                     </span>
-                    <div className="w-12 h-1 bg-gray-700 rounded-full">
+                    <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${(securityLevel / 5) * 100}%` }}
-                        className={`h-1 rounded-full bg-gradient-to-r ${getSecurityColor()}`}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                        className={`h-2 rounded-full bg-gradient-to-r ${getSecurityColor()} shadow-lg`}
                       />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Lockout Warning */}
+          <AnimatePresence>
+            {isLocked && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, scale: 0.9 }}
+                animate={{ opacity: 1, height: "auto", scale: 1 }}
+                exit={{ opacity: 0, height: 0, scale: 0.9 }}
+                className="mb-6 p-4 bg-red-500/10 backdrop-blur-md rounded-2xl border border-red-500/20"
+              >
+                <div className="flex items-center gap-3 text-red-400">
+                  <div className="p-2 bg-red-500/20 rounded-lg">
+                    <AlertCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">
+                      الحساب مقفل مؤقتاً
+                    </div>
+                    <div className="text-xs text-red-300">
+                      انتظر {formatTime(lockoutTime)} للمحاولة مرة أخرى
                     </div>
                   </div>
                 </div>
               </motion.div>
             )}
+          </AnimatePresence>
 
-            {/* Lockout Warning */}
+          {/* Login Form */}
+          <motion.form
+            initial={{ y: 30, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.7, duration: 0.8 }}
+            onSubmit={handleSubmit}
+            className="space-y-6"
+          >
             <AnimatePresence>
-              {isLocked && (
+              {error && (
                 <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mb-6 p-4 bg-red-500/10 backdrop-blur-sm rounded-xl border border-red-500/20"
+                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                  className="p-4 bg-red-500/10 backdrop-blur-md rounded-2xl border border-red-500/20"
                 >
                   <div className="flex items-center gap-3 text-red-400">
-                    <AlertCircle className="w-5 h-5" />
-                    <div>
-                      <div className="font-medium text-sm">
-                        الحساب مقفل مؤقتاً
-                      </div>
-                      <div className="text-xs">
-                        انتظر {formatTime(lockoutTime)} للمحاولة مرة أخرى
-                      </div>
+                    <div className="p-1.5 bg-red-500/20 rounded-lg">
+                      <AlertCircle className="w-4 h-4" />
                     </div>
+                    <span className="text-sm font-medium">{error}</span>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Login Form */}
-            <motion.form
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.7 }}
-              onSubmit={handleSubmit}
-              className="space-y-5"
-            >
-              <AnimatePresence>
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="p-3 bg-red-500/10 backdrop-blur-sm rounded-xl border border-red-500/20"
-                  >
-                    <div className="flex items-center gap-2 text-red-400">
-                      <AlertCircle className="w-4 h-4" />
-                      <span className="text-sm">{error}</span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <div className="space-y-4">
-                <div className="relative">
-                  <Input
-                    label="البريد الإلكتروني أو اسم المستخدم"
-                    name="usernameOrEmail"
-                    type="text"
-                    required
-                    value={formData.usernameOrEmail}
-                    onChange={handleChange}
-                    placeholder="أدخل بريدك الإلكتروني أو اسم المستخدم"
-                    disabled={isLocked}
-                    className="bg-white/5 backdrop-blur-sm border-white/10 text-white placeholder-gray-400 focus:border-amber-500/50 focus:ring-amber-500/20"
-                  />
-                  <div className="absolute right-4 top-10 text-gray-400">
-                    <User className="w-5 h-5" />
-                  </div>
-                </div>
-
-                <div className="relative">
-                  <Input
-                    label="كلمة المرور"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="أدخل كلمة المرور"
-                    disabled={isLocked}
-                    className="bg-white/5 backdrop-blur-sm border-white/10 text-white placeholder-gray-400 focus:border-amber-500/50 focus:ring-amber-500/20"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-10 text-gray-400 hover:text-white transition-colors"
-                    disabled={isLocked}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
-                    )}
-                  </button>
+            <div className="space-y-5">
+              <div className="relative group">
+                <Input
+                  label="البريد الإلكتروني أو اسم المستخدم"
+                  name="usernameOrEmail"
+                  type="text"
+                  required
+                  value={formData.usernameOrEmail}
+                  onChange={handleChange}
+                  placeholder="أدخل بريدك الإلكتروني أو اسم المستخدم"
+                  disabled={isLocked}
+                  className="bg-white/5 backdrop-blur-md border-white/10 text-white placeholder-gray-400 focus:border-amber-500/50 focus:ring-amber-500/20 group-hover:border-white/20 transition-all duration-300"
+                />
+                <div className="absolute right-4 top-10 text-gray-400 group-hover:text-amber-400 transition-colors duration-300">
+                  <User className="w-5 h-5" />
                 </div>
               </div>
 
-              <motion.div
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-                className="pt-2"
-              >
+              <div className="relative group">
+                <Input
+                  label="كلمة المرور"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="أدخل كلمة المرور"
+                  disabled={isLocked}
+                  className="bg-white/5 backdrop-blur-md border-white/10 text-white placeholder-gray-400 focus:border-amber-500/50 focus:ring-amber-500/20 group-hover:border-white/20 transition-all duration-300"
+                />
                 <button
-                  type="submit"
-                  disabled={isLocked || isLoading}
-                  className="w-full h-12 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-all duration-300 shadow-lg hover:shadow-amber-500/25"
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-10 text-gray-400 hover:text-amber-400 transition-colors duration-300"
+                  disabled={isLocked}
                 >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>جاري تسجيل الدخول...</span>
-                    </>
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
                   ) : (
-                    <>
-                      <ChefHat className="w-5 h-5" />
-                      <span>تسجيل الدخول</span>
-                    </>
+                    <Eye className="w-5 h-5" />
                   )}
                 </button>
-              </motion.div>
-            </motion.form>
-
-            {/* Security Features - Simplified */}
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 1.0 }}
-              className="mt-8 p-3 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10"
-            >
-              <div className="flex items-center justify-center gap-6 text-xs text-gray-400">
-                <div className="flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3 text-green-400" />
-                  <span>تسجيل دخول آمن</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3 text-green-400" />
-                  <span>حماية البيانات</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3 text-green-400" />
-                  <span>دعم 24/7</span>
-                </div>
               </div>
+            </div>
+
+            {/* Login Button */}
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="pt-2"
+            >
+              <button
+                type="submit"
+                disabled={isLocked || isLoading}
+                className="w-full h-14 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-2xl flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-amber-500/25 hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>جاري تسجيل الدخول...</span>
+                  </>
+                ) : (
+                  <>
+                    <ChefHat className="w-5 h-5" />
+                    <span>تسجيل الدخول</span>
+                  </>
+                )}
+              </button>
             </motion.div>
-          </div>
-        </motion.div>
+          </motion.form>
+
+          {/* Simple Security Features */}
+          <motion.div
+            initial={{ y: 30, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 1.0, duration: 0.8 }}
+            className="mt-8 p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10"
+          >
+            <div className="flex items-center justify-center gap-8 text-xs text-gray-400">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                <span>تسجيل دخول آمن</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                <span>حماية البيانات</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                <span>دعم 24/7</span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       </div>
     </div>
   );
