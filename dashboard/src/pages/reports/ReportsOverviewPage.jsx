@@ -1,226 +1,505 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import {
+  BarChart3,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Package,
+  Store,
+  Users,
+  Calendar,
+  Clock,
+  FileText,
+  Download,
+  RefreshCw,
+  Eye,
+  Filter,
+  Search,
+  PieChart,
+  Activity,
+  Target,
+} from "lucide-react";
 import { Link } from "react-router-dom";
+import { Card, CardHeader, CardBody } from "../../components/ui/Card";
+import Button from "../../components/ui/Button";
+import Input from "../../components/ui/Input";
 
 const ReportsOverviewPage = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedPeriod, setSelectedPeriod] = useState("month");
+  const [filters, setFilters] = useState({
+    store: "",
+    category: "",
+    dateRange: "",
+  });
+
+  useEffect(() => {
+    // Simulate loading data
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const stats = {
+    totalSales: 15250.0,
+    totalOrders: 1247,
+    activeStores: 24,
+    avgOrderValue: 12.24,
+    salesGrowth: 8.5,
+    ordersGrowth: 12,
+    storesGrowth: 2,
+    avgOrderGrowth: -2.1,
+  };
+
+  const reportTypes = [
+    {
+      id: "daily",
+      title: "Daily Reports",
+      description:
+        "View detailed daily sales reports with hourly breakdowns and performance metrics.",
+      icon: Calendar,
+      color: "blue",
+      path: "/reports/daily",
+      features: ["Hourly breakdowns", "Performance metrics", "Real-time data"],
+    },
+    {
+      id: "weekly",
+      title: "Weekly Reports",
+      description:
+        "Analyze weekly trends, compare performance, and identify growth patterns.",
+      icon: BarChart3,
+      color: "green",
+      path: "/reports/weekly",
+      features: ["Trend analysis", "Performance comparison", "Growth patterns"],
+    },
+    {
+      id: "monthly",
+      title: "Monthly Reports",
+      description:
+        "Comprehensive monthly analysis with revenue trends and business insights.",
+      icon: PieChart,
+      color: "purple",
+      path: "/reports/monthly",
+      features: [
+        "Revenue trends",
+        "Business insights",
+        "Comprehensive analysis",
+      ],
+    },
+    {
+      id: "custom",
+      title: "Custom Reports",
+      description:
+        "Create custom reports with specific date ranges and detailed analytics.",
+      icon: FileText,
+      color: "orange",
+      path: "/reports/custom",
+      features: ["Custom date ranges", "Detailed analytics", "Export options"],
+    },
+  ];
+
+  const recentActivities = [
+    {
+      id: 1,
+      type: "daily_report",
+      title: "Daily Report Generated",
+      description: "March 25, 2024 - 09:00 AM",
+      amount: "€2,450.00",
+      status: "completed",
+      icon: Calendar,
+    },
+    {
+      id: 2,
+      type: "weekly_report",
+      title: "Weekly Report Completed",
+      description: "March 24, 2024 - 18:00 PM",
+      amount: "€15,200.00",
+      status: "completed",
+      icon: BarChart3,
+    },
+    {
+      id: 3,
+      type: "monthly_report",
+      title: "Monthly Report Ready",
+      description: "March 23, 2024 - 23:59 PM",
+      amount: "€45,800.00",
+      status: "pending",
+      icon: PieChart,
+    },
+    {
+      id: 4,
+      type: "export",
+      title: "Report Exported",
+      description: "March 22, 2024 - 14:30 PM",
+      amount: "€12,300.00",
+      status: "completed",
+      icon: Download,
+    },
+  ];
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "completed":
+        return "text-green-600 bg-green-100";
+      case "pending":
+        return "text-yellow-600 bg-yellow-100";
+      case "failed":
+        return "text-red-600 bg-red-100";
+      default:
+        return "text-gray-600 bg-gray-100";
+    }
+  };
+
+  const getGrowthIcon = (growth) => {
+    return growth >= 0 ? TrendingUp : TrendingDown;
+  };
+
+  const getGrowthColor = (growth) => {
+    return growth >= 0 ? "text-green-600" : "text-red-600";
+  };
+
+  const handlePeriodChange = (period) => {
+    setSelectedPeriod(period);
+    // Here you would typically fetch data for the new period
+  };
+
+  const handleExport = () => {
+    console.log("Exporting reports...");
+  };
+
+  const handleRefresh = () => {
+    setIsLoading(true);
+    setTimeout(() => setIsLoading(false), 1000);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-6">Reports Overview</h1>
+    <div className="space-y-6">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
+      >
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Reports Overview</h1>
+          <p className="text-gray-600">
+            Comprehensive analytics and business insights
+          </p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <Button
+            variant="outline"
+            icon={<Download className="w-4 h-4" />}
+            onClick={handleExport}
+          >
+            Export All
+          </Button>
+          <Button
+            variant="outline"
+            icon={<RefreshCw className="w-4 h-4" />}
+            onClick={handleRefresh}
+          >
+            Refresh
+          </Button>
+        </div>
+      </motion.div>
+
+      {/* Period Selector */}
+      <Card>
+        <CardBody>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Report Period
+            </h2>
+            <div className="flex space-x-2">
+              {[
+                { key: "week", label: "This Week" },
+                { key: "month", label: "This Month" },
+                { key: "quarter", label: "This Quarter" },
+                { key: "year", label: "This Year" },
+              ].map((period) => (
+                <Button
+                  key={period.key}
+                  variant={
+                    selectedPeriod === period.key ? "primary" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => handlePeriodChange(period.key)}
+                >
+                  {period.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </CardBody>
+      </Card>
 
       {/* Summary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-gray-600 text-sm font-medium">Total Sales</h3>
-          <p className="text-2xl font-bold text-gray-900">€15,250.00</p>
-          <p className="text-green-600 text-sm">+8.5% from last month</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-gray-600 text-sm font-medium">Orders</h3>
-          <p className="text-2xl font-bold text-blue-600">1,247</p>
-          <p className="text-green-600 text-sm">+12% from last month</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-gray-600 text-sm font-medium">Active Stores</h3>
-          <p className="text-2xl font-bold text-purple-600">24</p>
-          <p className="text-gray-600 text-sm">2 new this month</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-gray-600 text-sm font-medium">Avg Order Value</h3>
-          <p className="text-2xl font-bold text-orange-600">€12.24</p>
-          <p className="text-red-600 text-sm">-2.1% from last month</p>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card>
+            <div className="flex items-center">
+              <div className="p-3 bg-blue-100 rounded-full">
+                <DollarSign className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Sales</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  €{stats.totalSales.toLocaleString()}
+                </p>
+                <div className="flex items-center mt-1">
+                  {React.createElement(getGrowthIcon(stats.salesGrowth), {
+                    className: `w-4 h-4 mr-1 ${getGrowthColor(
+                      stats.salesGrowth
+                    )}`,
+                  })}
+                  <span
+                    className={`text-sm font-medium ${getGrowthColor(
+                      stats.salesGrowth
+                    )}`}
+                  >
+                    {stats.salesGrowth > 0 ? "+" : ""}
+                    {stats.salesGrowth}%
+                  </span>
+                  <span className="text-sm text-gray-500 ml-1">
+                    from last month
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card>
+            <div className="flex items-center">
+              <div className="p-3 bg-green-100 rounded-full">
+                <Package className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">
+                  Total Orders
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.totalOrders.toLocaleString()}
+                </p>
+                <div className="flex items-center mt-1">
+                  {React.createElement(getGrowthIcon(stats.ordersGrowth), {
+                    className: `w-4 h-4 mr-1 ${getGrowthColor(
+                      stats.ordersGrowth
+                    )}`,
+                  })}
+                  <span
+                    className={`text-sm font-medium ${getGrowthColor(
+                      stats.ordersGrowth
+                    )}`}
+                  >
+                    {stats.ordersGrowth > 0 ? "+" : ""}
+                    {stats.ordersGrowth}%
+                  </span>
+                  <span className="text-sm text-gray-500 ml-1">
+                    from last month
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Card>
+            <div className="flex items-center">
+              <div className="p-3 bg-purple-100 rounded-full">
+                <Store className="w-6 h-6 text-purple-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">
+                  Active Stores
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.activeStores}
+                </p>
+                <div className="flex items-center mt-1">
+                  {React.createElement(getGrowthIcon(stats.storesGrowth), {
+                    className: `w-4 h-4 mr-1 ${getGrowthColor(
+                      stats.storesGrowth
+                    )}`,
+                  })}
+                  <span
+                    className={`text-sm font-medium ${getGrowthColor(
+                      stats.storesGrowth
+                    )}`}
+                  >
+                    {stats.storesGrowth > 0 ? "+" : ""}
+                    {stats.storesGrowth}
+                  </span>
+                  <span className="text-sm text-gray-500 ml-1">
+                    new this month
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <Card>
+            <div className="flex items-center">
+              <div className="p-3 bg-orange-100 rounded-full">
+                <Target className="w-6 h-6 text-orange-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">
+                  Avg Order Value
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  €{stats.avgOrderValue}
+                </p>
+                <div className="flex items-center mt-1">
+                  {React.createElement(getGrowthIcon(stats.avgOrderGrowth), {
+                    className: `w-4 h-4 mr-1 ${getGrowthColor(
+                      stats.avgOrderGrowth
+                    )}`,
+                  })}
+                  <span
+                    className={`text-sm font-medium ${getGrowthColor(
+                      stats.avgOrderGrowth
+                    )}`}
+                  >
+                    {stats.avgOrderGrowth > 0 ? "+" : ""}
+                    {stats.avgOrderGrowth}%
+                  </span>
+                  <span className="text-sm text-gray-500 ml-1">
+                    from last month
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
       </div>
 
       {/* Report Types */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <Link
-          to="/reports/daily"
-          className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Daily Reports</h3>
-            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-              <svg
-                className="w-5 h-5 text-blue-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-            </div>
-          </div>
-          <p className="text-gray-600 text-sm mb-4">
-            View detailed daily sales reports with hourly breakdowns and
-            performance metrics.
-          </p>
-          <div className="flex items-center text-blue-600 text-sm font-medium">
-            View Reports
-            <svg
-              className="w-4 h-4 ml-1"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {reportTypes.map((report, index) => {
+          const Icon = report.icon;
+          return (
+            <motion.div
+              key={report.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 + index * 0.1 }}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </div>
-        </Link>
-
-        <Link
-          to="/reports/weekly"
-          className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900">
-              Weekly Reports
-            </h3>
-            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-              <svg
-                className="w-5 h-5 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                />
-              </svg>
-            </div>
-          </div>
-          <p className="text-gray-600 text-sm mb-4">
-            Analyze weekly trends, compare performance, and identify growth
-            patterns.
-          </p>
-          <div className="flex items-center text-green-600 text-sm font-medium">
-            View Reports
-            <svg
-              className="w-4 h-4 ml-1"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </div>
-        </Link>
-
-        <Link
-          to="/reports/monthly"
-          className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900">
-              Monthly Reports
-            </h3>
-            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-              <svg
-                className="w-5 h-5 text-purple-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
-                />
-              </svg>
-            </div>
-          </div>
-          <p className="text-gray-600 text-sm mb-4">
-            Comprehensive monthly analysis with revenue trends and business
-            insights.
-          </p>
-          <div className="flex items-center text-purple-600 text-sm font-medium">
-            View Reports
-            <svg
-              className="w-4 h-4 ml-1"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </div>
-        </Link>
+              <Link to={report.path}>
+                <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardBody>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        {report.title}
+                      </h3>
+                      <div
+                        className={`w-8 h-8 bg-${report.color}-100 rounded-lg flex items-center justify-center`}
+                      >
+                        <Icon className={`w-5 h-5 text-${report.color}-600`} />
+                      </div>
+                    </div>
+                    <p className="text-gray-600 text-sm mb-4">
+                      {report.description}
+                    </p>
+                    <div className="space-y-2">
+                      {report.features.map((feature, featureIndex) => (
+                        <div
+                          key={featureIndex}
+                          className="flex items-center text-sm text-gray-500"
+                        >
+                          <div className="w-1 h-1 bg-gray-400 rounded-full mr-2"></div>
+                          {feature}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center text-blue-600 text-sm font-medium mt-4">
+                      View Reports
+                      <Eye className="w-4 h-4 ml-1" />
+                    </div>
+                  </CardBody>
+                </Card>
+              </Link>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium">Recent Report Activity</h2>
-        </div>
-        <div className="p-6">
+      <Card>
+        <CardHeader>
+          <h2 className="text-lg font-semibold text-gray-900">
+            Recent Report Activity
+          </h2>
+        </CardHeader>
+        <CardBody>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-green-400 rounded-full mr-3"></div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    Daily Report Generated
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    March 25, 2024 - 09:00 AM
-                  </p>
-                </div>
-              </div>
-              <span className="text-xs text-gray-500">€2,450.00</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-blue-400 rounded-full mr-3"></div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    Weekly Report Completed
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    March 24, 2024 - 11:30 PM
-                  </p>
-                </div>
-              </div>
-              <span className="text-xs text-gray-500">€15,200.00</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-purple-400 rounded-full mr-3"></div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    Monthly Report Generated
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    March 1, 2024 - 12:00 AM
-                  </p>
-                </div>
-              </div>
-              <span className="text-xs text-gray-500">€58,750.00</span>
-            </div>
+            {recentActivities.map((activity, index) => {
+              const Icon = activity.icon;
+              return (
+                <motion.div
+                  key={activity.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.6 + index * 0.1 }}
+                  className="flex items-center justify-between"
+                >
+                  <div className="flex items-center">
+                    <div
+                      className={`w-2 h-2 rounded-full mr-3 ${
+                        getStatusColor(activity.status).split(" ")[1]
+                      }`}
+                    ></div>
+                    <Icon className="w-5 h-5 text-gray-400 mr-3" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {activity.title}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {activity.description}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    {activity.amount}
+                  </span>
+                </motion.div>
+              );
+            })}
           </div>
-        </div>
-      </div>
+        </CardBody>
+      </Card>
     </div>
   );
 };

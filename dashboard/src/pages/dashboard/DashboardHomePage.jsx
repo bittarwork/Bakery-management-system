@@ -12,7 +12,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
-import { Card } from "../../components/ui/Card";
+import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 
 const DashboardHomePage = () => {
@@ -236,12 +236,12 @@ const DashboardHomePage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Quick Actions */}
         <Card>
-          <Card.Header>
+          <CardHeader>
             <h2 className="text-xl font-semibold text-gray-900">
               Quick Actions
             </h2>
-          </Card.Header>
-          <Card.Body>
+          </CardHeader>
+          <CardBody>
             <div className="space-y-4">
               {quickActions.map((action, index) => {
                 const Icon = action.icon;
@@ -270,17 +270,17 @@ const DashboardHomePage = () => {
                 );
               })}
             </div>
-          </Card.Body>
+          </CardBody>
         </Card>
 
         {/* Recent Activity */}
         <Card>
-          <Card.Header>
+          <CardHeader>
             <h2 className="text-xl font-semibold text-gray-900">
               Recent Activity
             </h2>
-          </Card.Header>
-          <Card.Body>
+          </CardHeader>
+          <CardBody>
             <div className="space-y-4">
               {recentActivities.map((activity, index) => {
                 const Icon = getActivityIcon(activity.type);
@@ -318,7 +318,7 @@ const DashboardHomePage = () => {
                 );
               })}
             </div>
-          </Card.Body>
+          </CardBody>
         </Card>
       </div>
     </div>
