@@ -19,10 +19,10 @@ export const getStores = async (req, res) => {
         // Text search
         if (req.query.search) {
             whereClause[Op.or] = [
-                { name: { [Op.iLike]: `%${req.query.search}%` } },
-                { owner_name: { [Op.iLike]: `%${req.query.search}%` } },
-                { address: { [Op.iLike]: `%${req.query.search}%` } },
-                { phone: { [Op.iLike]: `%${req.query.search}%` } }
+                { name: { [Op.like]: `%${req.query.search}%` } },
+                { owner_name: { [Op.like]: `%${req.query.search}%` } },
+                { address: { [Op.like]: `%${req.query.search}%` } },
+                { phone: { [Op.like]: `%${req.query.search}%` } }
             ];
             filters.search = req.query.search;
         }
@@ -248,6 +248,8 @@ export const createStore = async (req, res) => {
             store_type = 'retail',
             size_category = 'small',
             gps_coordinates,
+            latitude,
+            longitude,
             payment_terms = 'cash',
             credit_limit_eur = 0,
             credit_limit_syp = 0,
@@ -260,22 +262,33 @@ export const createStore = async (req, res) => {
             status = 'active'
         } = req.body;
 
-        // Validate GPS coordinates if provided
+        // Build GPS coordinates object from latitude/longitude or gps_coordinates
+        let finalGpsCoordinates = null;
         if (gps_coordinates) {
-            const { latitude, longitude } = gps_coordinates;
+            finalGpsCoordinates = gps_coordinates;
+        } else if (latitude && longitude) {
+            finalGpsCoordinates = {
+                latitude: parseFloat(latitude),
+                longitude: parseFloat(longitude)
+            };
+        }
 
-            if (latitude && longitude) {
-                const lat = parseFloat(latitude);
-                const lng = parseFloat(longitude);
+        // Validate GPS coordinates if provided
+        if (finalGpsCoordinates) {
+            const { latitude: lat, longitude: lng } = finalGpsCoordinates;
 
-                if (lat < -90 || lat > 90) {
+            if (lat && lng) {
+                const latNum = parseFloat(lat);
+                const lngNum = parseFloat(lng);
+
+                if (latNum < -90 || latNum > 90) {
                     return res.status(400).json({
                         success: false,
                         message: 'خط العرض يجب أن يكون بين -90 و 90'
                     });
                 }
 
-                if (lng < -180 || lng > 180) {
+                if (lngNum < -180 || lngNum > 180) {
                     return res.status(400).json({
                         success: false,
                         message: 'خط الطول يجب أن يكون بين -180 و 180'
@@ -305,7 +318,7 @@ export const createStore = async (req, res) => {
             category,
             store_type,
             size_category,
-            gps_coordinates,
+            gps_coordinates: finalGpsCoordinates,
             payment_terms,
             credit_limit_eur,
             credit_limit_syp,
