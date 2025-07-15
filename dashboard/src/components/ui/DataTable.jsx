@@ -6,6 +6,10 @@ import {
   ChevronUp,
   ChevronDown,
   MoreHorizontal,
+  ChevronLeft,
+  ChevronRight,
+  SkipBack,
+  SkipForward,
 } from "lucide-react";
 import Input from "./Input";
 import Button from "./Button";
@@ -20,6 +24,8 @@ const DataTable = ({
   pagination = true,
   itemsPerPage = 10,
   className = "",
+  title = "Data Table",
+  language = "ar", // ar or en
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
@@ -100,18 +106,91 @@ const DataTable = ({
     return values.filter(Boolean);
   };
 
+  // Generate page numbers with ellipsis
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    if (totalPages <= maxVisiblePages) {
+      // Show all pages if total is small
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Show pages with ellipsis
+      if (currentPage <= 3) {
+        // Show first 3 pages + ellipsis + last page
+        for (let i = 1; i <= 3; i++) {
+          pages.push(i);
+        }
+        pages.push("...");
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        // Show first page + ellipsis + last 3 pages
+        pages.push(1);
+        pages.push("...");
+        for (let i = totalPages - 2; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        // Show first page + ellipsis + current-1, current, current+1 + ellipsis + last page
+        pages.push(1);
+        pages.push("...");
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push("...");
+        pages.push(totalPages);
+      }
+    }
+
+    return pages;
+  };
+
+  // Text translations
+  const texts = {
+    ar: {
+      showing: "عرض",
+      of: "من",
+      results: "نتيجة",
+      search: "البحث...",
+      all: "الكل",
+      previous: "السابق",
+      next: "التالي",
+      first: "الأول",
+      last: "الأخير",
+      page: "صفحة",
+      noData: "لا توجد بيانات",
+      actions: "الإجراءات",
+    },
+    en: {
+      showing: "Showing",
+      of: "of",
+      results: "results",
+      search: "Search...",
+      all: "All",
+      previous: "Previous",
+      next: "Next",
+      first: "First",
+      last: "Last",
+      page: "Page",
+      noData: "No data available",
+      actions: "Actions",
+    },
+  };
+
+  const t = texts[language];
+
   return (
     <Card className={className}>
       {/* Table Header with Search and Filters */}
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              {columns.find((col) => col.key === "title")?.title ||
-                "Data Table"}
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
             <p className="text-sm text-gray-600">
-              Showing {paginatedData.length} of {filteredData.length} results
+              {t.showing} {paginatedData.length} {t.of} {filteredData.length}{" "}
+              {t.results}
             </p>
           </div>
 
@@ -119,7 +198,7 @@ const DataTable = ({
             {searchable && (
               <div className="relative">
                 <Input
-                  placeholder="Search..."
+                  placeholder={t.search}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   icon={<Search className="w-4 h-4" />}
@@ -144,7 +223,9 @@ const DataTable = ({
                       }
                       className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">All {col.title}</option>
+                      <option value="">
+                        {t.all} {col.title}
+                      </option>
                       {getFilterOptions(col.key).map((option) => (
                         <option key={option} value={option}>
                           {option}
@@ -169,14 +250,14 @@ const DataTable = ({
                   .map((column) => (
                     <th
                       key={column.key}
-                      className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                      className={`px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider ${
                         sortable && column.sortable !== false
-                          ? "cursor-pointer hover:bg-gray-100"
+                          ? "cursor-pointer hover:bg-gray-100 transition-colors"
                           : ""
                       }`}
                       onClick={() => handleSort(column.key)}
                     >
-                      <div className="flex items-center space-x-1">
+                      <div className="flex items-center justify-end space-x-1">
                         <span>{column.title}</span>
                         {sortable && column.sortable !== false && (
                           <div className="flex flex-col">
@@ -202,92 +283,163 @@ const DataTable = ({
                     </th>
                   ))}
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  {t.actions}
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedData.map((row, index) => (
+              {paginatedData.length > 0 ? (
+                paginatedData.map((row, index) => (
+                  <motion.tr
+                    key={row.id || index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    {columns
+                      .filter((col) => col.key !== "actions")
+                      .map((column) => (
+                        <td
+                          key={column.key}
+                          className="px-6 py-4 whitespace-nowrap text-right"
+                        >
+                          {column.render ? (
+                            column.render(row[column.key], row)
+                          ) : (
+                            <div className="text-sm text-gray-900">
+                              {row[column.key]}
+                            </div>
+                          )}
+                        </td>
+                      ))}
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      {columns
+                        .find((col) => col.key === "actions")
+                        ?.render?.(null, row) || (
+                        <button className="text-gray-400 hover:text-gray-600 transition-colors">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                      )}
+                    </td>
+                  </motion.tr>
+                ))
+              ) : (
                 <motion.tr
-                  key={row.id || index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   className="hover:bg-gray-50"
                 >
-                  {columns
-                    .filter((col) => col.key !== "actions")
-                    .map((column) => (
-                      <td
-                        key={column.key}
-                        className="px-6 py-4 whitespace-nowrap"
-                      >
-                        {column.render ? (
-                          column.render(row[column.key], row)
-                        ) : (
-                          <div className="text-sm text-gray-900">
-                            {row[column.key]}
-                          </div>
-                        )}
-                      </td>
-                    ))}
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    {columns
-                      .find((col) => col.key === "actions")
-                      ?.render?.(null, row) || (
-                      <button className="text-gray-400 hover:text-gray-600">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
-                    )}
+                  <td
+                    colSpan={columns.length}
+                    className="px-6 py-12 text-center text-gray-500"
+                  >
+                    <div className="flex flex-col items-center space-y-2">
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                        <Search className="w-6 h-6 text-gray-400" />
+                      </div>
+                      <p className="text-sm font-medium">{t.noData}</p>
+                      {searchTerm && (
+                        <p className="text-xs text-gray-400">
+                          لا توجد نتائج للبحث: "{searchTerm}"
+                        </p>
+                      )}
+                    </div>
                   </td>
                 </motion.tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination */}
+        {/* Enhanced Pagination */}
         {pagination && totalPages > 1 && (
-          <div className="flex items-center justify-between mt-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 bg-gray-50 p-4 rounded-xl"
+          >
             <div className="text-sm text-gray-700">
-              Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-              {Math.min(currentPage * itemsPerPage, filteredData.length)} of{" "}
-              {filteredData.length} results
+              {t.showing} {(currentPage - 1) * itemsPerPage + 1} {t.of}{" "}
+              {Math.min(currentPage * itemsPerPage, filteredData.length)} {t.of}{" "}
+              {filteredData.length} {t.results}
             </div>
 
-            <div className="flex space-x-2">
+            <div className="flex items-center space-x-2">
+              {/* First Page Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(1)}
+                className="px-2 py-1"
+                title={t.first}
+              >
+                <SkipBack className="w-4 h-4" />
+              </Button>
+
+              {/* Previous Button */}
               <Button
                 variant="outline"
                 size="sm"
                 disabled={currentPage === 1}
                 onClick={() => handlePageChange(currentPage - 1)}
+                className="px-3 py-1"
               >
-                Previous
+                <ChevronLeft className="w-4 h-4 ml-1" />
+                {t.previous}
               </Button>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (page) => (
-                  <Button
-                    key={page}
-                    variant={currentPage === page ? "primary" : "outline"}
-                    size="sm"
-                    onClick={() => handlePageChange(page)}
-                  >
-                    {page}
-                  </Button>
-                )
-              )}
+              {/* Page Numbers */}
+              <div className="flex items-center space-x-1">
+                {getPageNumbers().map((page, index) => (
+                  <React.Fragment key={index}>
+                    {page === "..." ? (
+                      <span className="px-3 py-1 text-gray-500">...</span>
+                    ) : (
+                      <Button
+                        variant={currentPage === page ? "primary" : "outline"}
+                        size="sm"
+                        onClick={() => handlePageChange(page)}
+                        className="px-3 py-1 min-w-[40px]"
+                      >
+                        {page}
+                      </Button>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
 
+              {/* Next Button */}
               <Button
                 variant="outline"
                 size="sm"
                 disabled={currentPage === totalPages}
                 onClick={() => handlePageChange(currentPage + 1)}
+                className="px-3 py-1"
               >
-                Next
+                {t.next}
+                <ChevronRight className="w-4 h-4 mr-1" />
+              </Button>
+
+              {/* Last Page Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === totalPages}
+                onClick={() => handlePageChange(totalPages)}
+                className="px-2 py-1"
+                title={t.last}
+              >
+                <SkipForward className="w-4 h-4" />
               </Button>
             </div>
-          </div>
+
+            {/* Page Info */}
+            <div className="text-sm text-gray-600 bg-white px-3 py-1 rounded-lg border">
+              {t.page} {currentPage} {t.of} {totalPages}
+            </div>
+          </motion.div>
         )}
       </CardBody>
     </Card>

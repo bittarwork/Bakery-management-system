@@ -735,31 +735,61 @@ export const getStoreOrders = async (req, res) => {
             };
         }
 
-        // For now, return mock data since Order model might not be properly set up
-        // In a real implementation, you would query the actual Order table
-        const mockOrders = [
-            {
-                id: 1,
-                store_id: storeId,
-                status: 'completed',
-                total_amount: 150.00,
-                currency: 'EUR',
-                created_at: new Date(),
-                updated_at: new Date(),
-                items: [
-                    {
-                        id: 1,
-                        product_name: 'Bread',
-                        quantity: 10,
-                        unit_price: 15.00,
-                        total_price: 150.00
-                    }
-                ]
-            }
-        ];
+        // Query actual orders from database
+        const [orderRows] = await db.execute(`
+            SELECT 
+                o.id,
+                o.store_id,
+                o.status,
+                o.total_amount_eur,
+                o.total_amount_syp,
+                o.currency,
+                o.order_date,
+                o.created_at,
+                o.updated_at,
+                u.full_name as distributor_name
+            FROM orders o
+            LEFT JOIN users u ON o.distributor_id = u.id
+            WHERE o.store_id = ?
+            ORDER BY o.order_date DESC
+            LIMIT ? OFFSET ?
+        `, [storeId, limit, offset]);
 
-        const count = mockOrders.length;
-        const rows = mockOrders.slice(offset, offset + limit);
+        // Get order items for each order
+        const ordersWithItems = await Promise.all(
+            orderRows.map(async (order) => {
+                const [itemRows] = await db.execute(`
+                    SELECT 
+                        oi.id,
+                        oi.product_id,
+                        p.name as product_name,
+                        oi.quantity,
+                        oi.unit_price_eur,
+                        oi.unit_price_syp,
+                        oi.total_price_eur,
+                        oi.total_price_syp
+                    FROM order_items oi
+                    JOIN products p ON oi.product_id = p.id
+                    WHERE oi.order_id = ?
+                `, [order.id]);
+
+                return {
+                    ...order,
+                    items: itemRows,
+                    total_amount: order.currency === 'EUR' ? order.total_amount_eur : order.total_amount_syp
+                };
+            })
+        );
+
+        // Get total count
+        const [countRows] = await db.execute(`
+            SELECT COUNT(*) as total
+            FROM orders
+            WHERE store_id = ?
+        `, [storeId]);
+
+        const count = countRows[0].total;
+        const rows = ordersWithItems;
 
         const pagination = {
             page,
@@ -814,32 +844,50 @@ export const getStorePayments = async (req, res) => {
             });
         }
 
-        // For now, we'll return payment data from the store model
-        // In a real implementation, you might have a separate Payment model
-        const payments = [
-            {
-                id: 1,
-                amount: store.total_payments_eur || 0,
-                currency: 'EUR',
-                status: 'completed',
-                created_at: store.last_payment_date || new Date(),
-                payment_method: 'bank_transfer'
-            }
-        ];
+        // Query actual payments from database
+        const [paymentRows] = await db.execute(`
+            SELECT 
+                p.id,
+                p.order_id,
+                p.store_id,
+                p.amount_eur,
+                p.amount_syp,
+                p.currency,
+                p.payment_method,
+                p.payment_type,
+                p.status,
+                p.payment_date,
+                p.created_at,
+                p.updated_at,
+                p.notes
+            FROM payments p
+            WHERE p.store_id = ?
+            ORDER BY p.payment_date DESC
+            LIMIT ? OFFSET ?
+        `, [storeId, limit, offset]);
+
+        // Get total count
+        const [countRows] = await db.execute(`
+            SELECT COUNT(*) as total
+            FROM payments
+            WHERE store_id = ?
+        `, [storeId]);
+
+        const count = countRows[0].total;
 
         const pagination = {
             page,
             limit,
-            total: payments.length,
-            totalPages: Math.ceil(payments.length / limit),
-            hasNext: page < Math.ceil(payments.length / limit),
+            total,
+            totalPages: Math.ceil(count / limit),
+            hasNext: page < Math.ceil(count / limit),
             hasPrev: page > 1
         };
 
         res.json({
             success: true,
             data: {
-                payments: payments.slice(offset, offset + limit),
+                payments: paymentRows,
                 pagination
             }
         });

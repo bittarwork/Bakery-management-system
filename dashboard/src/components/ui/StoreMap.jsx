@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { MapPin, Navigation, Info } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { MapPin, Info } from "lucide-react";
 
 const StoreMap = ({
   stores = [],
@@ -10,44 +10,69 @@ const StoreMap = ({
   interactive = true,
   center = null,
   zoom = 12,
-  mapProvider = "leaflet", // "leaflet" or "google"
+  mapProvider = "leaflet",
   googleMapsApiKey = null,
 }) => {
-  const [map, setMap] = useState(null);
-  const [markers, setMarkers] = useState([]);
   const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Initialize Map
+  // Initialize map
   useEffect(() => {
+    let isMounted = true;
+
     const initMap = async () => {
       try {
         setIsLoading(true);
         setError(null);
 
-        // Check if map is already initialized
-        if (map) {
-          map.remove();
-          setMap(null);
+        // Clean up existing map
+        if (mapInstanceRef.current) {
+          if (mapProvider === "google") {
+            // Google Maps cleanup
+            mapInstanceRef.current = null;
+          } else {
+            // Leaflet cleanup
+            try {
+              mapInstanceRef.current.remove();
+            } catch (e) {
+              console.log("Map already removed");
+            }
+            mapInstanceRef.current = null;
+          }
         }
 
+        // Clear container
+        if (mapRef.current) {
+          mapRef.current.innerHTML = "";
+        }
+
+        if (!isMounted) return;
+
+        // Initialize based on provider
         if (mapProvider === "google" && googleMapsApiKey) {
           await initGoogleMap();
         } else {
           await initLeafletMap();
         }
 
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       } catch (err) {
         console.error("Error initializing map:", err);
-        setError("Failed to load map. Please check your internet connection.");
-        setIsLoading(false);
+        if (isMounted) {
+          setError(
+            "Failed to load map. Please check your internet connection."
+          );
+          setIsLoading(false);
+        }
       }
     };
 
     const initGoogleMap = async () => {
-      // Load Google Maps API
+      // Load Google Maps API if not already loaded
       if (!window.google || !window.google.maps) {
         await loadGoogleMapsAPI();
       }
@@ -64,20 +89,40 @@ const StoreMap = ({
         zoomControl: showControls,
       });
 
-      setMap(mapInstance);
+      mapInstanceRef.current = mapInstance;
+
+      // Add markers
+      addGoogleMarkers(mapInstance);
+
+      // Add click listener if interactive
+      if (interactive && onLocationSelect) {
+        mapInstance.addListener("click", (event) => {
+          const position = event.latLng;
+          onLocationSelect({
+            lat: position.lat(),
+            lng: position.lng(),
+            name: "Selected Location",
+          });
+        });
+      }
     };
 
     const initLeafletMap = async () => {
+      // Load Leaflet
       const L = await import("leaflet");
 
-      // Import Leaflet CSS
+      // Load CSS
       if (!document.querySelector('link[href*="leaflet.css"]')) {
         const link = document.createElement("link");
         link.rel = "stylesheet";
         link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-        link.integrity = "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=";
-        link.crossOrigin = "";
         document.head.appendChild(link);
+
+        // Wait for CSS to load
+        await new Promise((resolve) => {
+          link.onload = resolve;
+          setTimeout(resolve, 100);
+        });
       }
 
       const defaultCenter = center || [33.3152, 44.3661];
@@ -89,11 +134,27 @@ const StoreMap = ({
         attributionControl: false,
       });
 
+      // Add tile layer
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "© OpenStreetMap contributors",
       }).addTo(mapInstance);
 
-      setMap(mapInstance);
+      mapInstanceRef.current = mapInstance;
+
+      // Add markers
+      addLeafletMarkers(mapInstance);
+
+      // Add click listener if interactive
+      if (interactive && onLocationSelect) {
+        mapInstance.on("click", (e) => {
+          const position = e.latlng;
+          onLocationSelect({
+            lat: position.lat,
+            lng: position.lng,
+            name: "Selected Location",
+          });
+        });
+      }
     };
 
     const loadGoogleMapsAPI = () => {
@@ -108,43 +169,11 @@ const StoreMap = ({
       });
     };
 
-    initMap();
+    const addGoogleMarkers = (mapInstance) => {
+      if (!mapInstance || !window.google) return;
 
-    // Cleanup function
-    return () => {
-      if (map) {
-        if (mapProvider === "google") {
-          // Google Maps doesn't need explicit cleanup
-        } else {
-          map.remove();
-        }
-        setMap(null);
-      }
-    };
-  }, [center, zoom, showControls, mapProvider, googleMapsApiKey]);
-
-  // Add markers when stores change
-  useEffect(() => {
-    if (!map || !stores.length) return;
-
-    // Clear existing markers
-    if (mapProvider === "google") {
-      markers.forEach((marker) => marker.setMap(null));
-    } else {
-      markers.forEach((marker) => map.removeLayer(marker));
-    }
-
-    if (mapProvider === "google") {
-      addGoogleMarkers();
-    } else {
-      addLeafletMarkers();
-    }
-  }, [map, stores, interactive, zoom, mapProvider]);
-
-  const addGoogleMarkers = () => {
-    const newMarkers = stores
-      .map((store) => {
-        if (!store.latitude || !store.longitude) return null;
+      stores.forEach((store) => {
+        if (!store.latitude || !store.longitude) return;
 
         const position = {
           lat: parseFloat(store.latitude),
@@ -153,222 +182,148 @@ const StoreMap = ({
 
         const marker = new window.google.maps.Marker({
           position,
-          map,
+          map: mapInstance,
           title: store.name,
-          icon: {
-            url:
-              store.status === "active"
-                ? "data:image/svg+xml;charset=UTF-8," +
-                  encodeURIComponent(`
-                  <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="16" cy="16" r="12" fill="#10B981" stroke="#ffffff" stroke-width="2"/>
-                    <path d="M12 16l3 3 5-5" stroke="#ffffff" stroke-width="2" fill="none"/>
-                  </svg>
-                `)
-                : "data:image/svg+xml;charset=UTF-8," +
-                  encodeURIComponent(`
-                  <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="16" cy="16" r="12" fill="#EF4444" stroke="#ffffff" stroke-width="2"/>
-                    <path d="M12 12l8 8m0-8l-8 8" stroke="#ffffff" stroke-width="2"/>
-                  </svg>
-                `),
-            scaledSize: new window.google.maps.Size(32, 32),
-            anchor: new window.google.maps.Point(16, 16),
-          },
         });
 
         const infoWindow = new window.google.maps.InfoWindow({
           content: `
-            <div class="p-3 max-w-xs">
-              <h3 class="font-semibold text-gray-900 mb-2">${store.name}</h3>
-              <div class="space-y-1 text-sm text-gray-600">
-                ${
-                  store.address
-                    ? `<p><strong>Address:</strong> ${store.address}</p>`
-                    : ""
-                }
-                ${
-                  store.phone
-                    ? `<p><strong>Phone:</strong> ${store.phone}</p>`
-                    : ""
-                }
-                ${
-                  store.email
-                    ? `<p><strong>Email:</strong> ${store.email}</p>`
-                    : ""
-                }
-                <p><strong>Status:</strong> 
-                  <span class="${
-                    store.status === "active"
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }">
-                    ${store.status === "active" ? "Active" : "Inactive"}
-                  </span>
-                </p>
-              </div>
+            <div style="padding: 10px; max-width: 200px;">
+              <h3 style="margin: 0 0 8px 0; font-weight: bold;">${
+                store.name
+              }</h3>
+              ${
+                store.address
+                  ? `<p style="margin: 4px 0;"><strong>Address:</strong> ${store.address}</p>`
+                  : ""
+              }
+              ${
+                store.phone
+                  ? `<p style="margin: 4px 0;"><strong>Phone:</strong> ${store.phone}</p>`
+                  : ""
+              }
+              <p style="margin: 4px 0;"><strong>Status:</strong> 
+                <span style="color: ${
+                  store.status === "active" ? "green" : "red"
+                };">
+                  ${store.status === "active" ? "Active" : "Inactive"}
+                </span>
+              </p>
             </div>
           `,
         });
 
         marker.addListener("click", () => {
-          infoWindow.open(map, marker);
+          infoWindow.open(mapInstance, marker);
         });
+      });
 
-        return marker;
-      })
-      .filter(Boolean);
+      // Fit bounds if multiple stores
+      if (stores.length > 1) {
+        const bounds = new window.google.maps.LatLngBounds();
+        stores.forEach((store) => {
+          if (store.latitude && store.longitude) {
+            bounds.extend({
+              lat: parseFloat(store.latitude),
+              lng: parseFloat(store.longitude),
+            });
+          }
+        });
+        mapInstance.fitBounds(bounds);
+      }
+    };
 
-    setMarkers(newMarkers);
+    const addLeafletMarkers = (mapInstance) => {
+      if (!mapInstance || !window.L) return;
 
-    if (newMarkers.length > 1) {
-      const bounds = new window.google.maps.LatLngBounds();
-      newMarkers.forEach((marker) => bounds.extend(marker.getPosition()));
-      map.fitBounds(bounds);
-    } else if (newMarkers.length === 1) {
-      map.setCenter(newMarkers[0].getPosition());
-    }
-  };
+      const L = window.L;
+      const markers = [];
 
-  const addLeafletMarkers = () => {
-    const L = window.L;
-    if (!L) return;
-
-    const newMarkers = stores
-      .map((store) => {
-        if (!store.latitude || !store.longitude) return null;
+      stores.forEach((store) => {
+        if (!store.latitude || !store.longitude) return;
 
         const position = [
           parseFloat(store.latitude),
           parseFloat(store.longitude),
         ];
 
-        const icon = L.divIcon({
-          className: "custom-marker",
-          html: `
-            <div style="
-              width: 32px; 
-              height: 32px; 
-              background: ${store.status === "active" ? "#10B981" : "#EF4444"}; 
-              border: 2px solid white; 
-              border-radius: 50%; 
-              display: flex; 
-              align-items: center; 
-              justify-content: center;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            ">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-              </svg>
-            </div>
-          `,
-          iconSize: [32, 32],
-          iconAnchor: [16, 32],
-        });
-
-        const marker = L.marker(position, { icon }).addTo(map);
+        const marker = L.marker(position).addTo(mapInstance);
 
         const popupContent = `
-          <div class="p-3 max-w-xs">
-            <h3 class="font-semibold text-gray-900 mb-2">${store.name}</h3>
-            <div class="space-y-1 text-sm text-gray-600">
-              ${
-                store.address
-                  ? `<p><strong>Address:</strong> ${store.address}</p>`
-                  : ""
-              }
-              ${
-                store.phone
-                  ? `<p><strong>Phone:</strong> ${store.phone}</p>`
-                  : ""
-              }
-              ${
-                store.email
-                  ? `<p><strong>Email:</strong> ${store.email}</p>`
-                  : ""
-              }
-              <p><strong>Status:</strong> 
-                <span class="${
-                  store.status === "active" ? "text-green-600" : "text-red-600"
-                }">
-                  ${store.status === "active" ? "Active" : "Inactive"}
-                </span>
-              </p>
-            </div>
+          <div style="padding: 10px; max-width: 200px;">
+            <h3 style="margin: 0 0 8px 0; font-weight: bold;">${store.name}</h3>
+            ${
+              store.address
+                ? `<p style="margin: 4px 0;"><strong>Address:</strong> ${store.address}</p>`
+                : ""
+            }
+            ${
+              store.phone
+                ? `<p style="margin: 4px 0;"><strong>Phone:</strong> ${store.phone}</p>`
+                : ""
+            }
+            <p style="margin: 4px 0;"><strong>Status:</strong> 
+              <span style="color: ${
+                store.status === "active" ? "green" : "red"
+              };">
+                ${store.status === "active" ? "Active" : "Inactive"}
+              </span>
+            </p>
           </div>
         `;
 
         marker.bindPopup(popupContent);
-        return marker;
-      })
-      .filter(Boolean);
-
-    setMarkers(newMarkers);
-
-    if (newMarkers.length > 1) {
-      const group = L.featureGroup(newMarkers);
-      map.fitBounds(group.getBounds());
-    } else if (newMarkers.length === 1) {
-      map.setView(newMarkers[0].getLatLng(), zoom);
-    }
-  };
-
-  // Handle location selection
-  useEffect(() => {
-    if (onLocationSelect) {
-      window.selectStoreLocation = (lat, lng, name) => {
-        onLocationSelect({ lat: parseFloat(lat), lng: parseFloat(lng), name });
-      };
-    }
-  }, [onLocationSelect]);
-
-  // Handle map click for location picking
-  useEffect(() => {
-    if (!map || !interactive || !onLocationSelect) return;
-
-    if (mapProvider === "google") {
-      const clickListener = map.addListener("click", (event) => {
-        const position = event.latLng;
-        onLocationSelect({
-          lat: position.lat(),
-          lng: position.lng(),
-          name: "Selected Location",
-        });
+        markers.push(marker);
       });
 
-      return () => {
-        window.google.maps.event.removeListener(clickListener);
-      };
-    } else {
-      const clickHandler = (e) => {
-        const position = e.latlng;
-        onLocationSelect({
-          lat: position.lat,
-          lng: position.lng,
-          name: "Selected Location",
-        });
-      };
+      // Fit bounds if multiple stores
+      if (markers.length > 1) {
+        const group = L.featureGroup(markers);
+        mapInstance.fitBounds(group.getBounds());
+      }
+    };
 
-      map.on("click", clickHandler);
+    initMap();
 
-      return () => {
-        map.off("click", clickHandler);
-      };
-    }
-  }, [map, interactive, onLocationSelect, mapProvider]);
+    return () => {
+      isMounted = false;
+      if (mapInstanceRef.current) {
+        if (mapProvider === "google") {
+          mapInstanceRef.current = null;
+        } else {
+          try {
+            mapInstanceRef.current.remove();
+          } catch (e) {
+            console.log("Map cleanup error:", e);
+          }
+          mapInstanceRef.current = null;
+        }
+      }
+    };
+  }, [
+    mapProvider,
+    googleMapsApiKey,
+    center,
+    zoom,
+    showControls,
+    interactive,
+    onLocationSelect,
+  ]);
 
-  // Show selected location marker
+  // Handle selected location
   useEffect(() => {
-    if (!map || !selectedLocation) return;
+    if (!mapInstanceRef.current || !selectedLocation) return;
 
     if (mapProvider === "google") {
+      // Remove existing selected marker
       if (window.selectedMarker) {
         window.selectedMarker.setMap(null);
       }
 
+      // Add new selected marker
       const selectedMarker = new window.google.maps.Marker({
         position: selectedLocation,
-        map,
+        map: mapInstanceRef.current,
         title: "Selected Location",
         icon: {
           url:
@@ -382,56 +337,59 @@ const StoreMap = ({
           scaledSize: new window.google.maps.Size(40, 40),
           anchor: new window.google.maps.Point(20, 20),
         },
-        zIndex: 1000,
       });
 
       window.selectedMarker = selectedMarker;
-      map.setCenter(selectedLocation);
-      map.setZoom(15);
+      mapInstanceRef.current.setCenter(selectedLocation);
+      mapInstanceRef.current.setZoom(15);
     } else {
-      const L = window.L;
-      if (!L) return;
-
+      // Remove existing selected marker
       if (window.selectedMarker) {
-        map.removeLayer(window.selectedMarker);
+        mapInstanceRef.current.removeLayer(window.selectedMarker);
       }
 
-      const selectedMarker = L.marker(
-        [selectedLocation.lat, selectedLocation.lng],
-        {
-          icon: L.divIcon({
-            className: "selected-marker",
-            html: `
-            <div style="
-              width: 40px; 
-              height: 40px; 
-              background: #3B82F6; 
-              border: 3px solid white; 
-              border-radius: 50%; 
-              display: flex; 
-              align-items: center; 
-              justify-content: center;
-              box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            ">
+      // Add new selected marker
+      const L = window.L;
+      if (L) {
+        const selectedMarker = L.marker(
+          [selectedLocation.lat, selectedLocation.lng],
+          {
+            icon: L.divIcon({
+              className: "selected-marker",
+              html: `
               <div style="
-                width: 16px; 
-                height: 16px; 
-                background: white; 
-                border-radius: 50%;
-              "></div>
-            </div>
-          `,
-            iconSize: [40, 40],
-            iconAnchor: [20, 40],
-          }),
-          zIndexOffset: 1000,
-        }
-      ).addTo(map);
+                width: 40px; 
+                height: 40px; 
+                background: #3B82F6; 
+                border: 3px solid white; 
+                border-radius: 50%; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+              ">
+                <div style="
+                  width: 16px; 
+                  height: 16px; 
+                  background: white; 
+                  border-radius: 50%;
+                "></div>
+              </div>
+            `,
+              iconSize: [40, 40],
+              iconAnchor: [20, 40],
+            }),
+          }
+        ).addTo(mapInstanceRef.current);
 
-      window.selectedMarker = selectedMarker;
-      map.setView([selectedLocation.lat, selectedLocation.lng], 15);
+        window.selectedMarker = selectedMarker;
+        mapInstanceRef.current.setView(
+          [selectedLocation.lat, selectedLocation.lng],
+          15
+        );
+      }
     }
-  }, [map, selectedLocation, mapProvider]);
+  }, [selectedLocation, mapProvider]);
 
   if (error) {
     return (
@@ -464,7 +422,7 @@ const StoreMap = ({
         className="rounded-lg border border-gray-200"
       />
 
-      {interactive && (
+      {interactive && onLocationSelect && (
         <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-3 text-sm">
           <div className="flex items-center space-x-2 text-gray-600">
             <Info className="w-4 h-4" />
