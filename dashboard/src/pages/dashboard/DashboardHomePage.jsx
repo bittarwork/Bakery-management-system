@@ -10,10 +10,13 @@ import {
   Plus,
   FileText,
   BarChart3,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
-import Card from "../../components/ui/Card";
+import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
+import dashboardService from "../../services/dashboardService";
 
 const DashboardHomePage = () => {
   const { user } = useAuthStore();
@@ -24,52 +27,83 @@ const DashboardHomePage = () => {
     pendingDeliveries: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Get default date range (last 30 days)
+      const { dateFrom, dateTo } = dashboardService.getDefaultDateRange();
+
+      // Fetch comprehensive dashboard statistics
+      const response = await dashboardService.getDashboardStats({
+        dateFrom,
+        dateTo,
+        currency: "EUR",
+      });
+
+      if (response.success && response.data) {
+        const data = response.data;
+
+        // Extract data from daily overview
+        const dailyOverview = data.daily_overview || {};
+
+        setStats({
+          totalOrders: dailyOverview.total_orders || 0,
+          revenue: dailyOverview.total_sales || 0,
+          activeStores: dailyOverview.active_stores || 0,
+          pendingDeliveries: dailyOverview.pending_orders || 0,
+        });
+
+        setLastUpdated(new Date());
+      } else {
+        setError(response.message || "خطأ في جلب البيانات");
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      setError("خطأ في الاتصال بالخادم");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setStats({
-        totalOrders: 1247,
-        revenue: 45680,
-        activeStores: 23,
-        pendingDeliveries: 8,
-      });
-      setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    fetchDashboardData();
   }, []);
 
   const statCards = [
     {
       title: "Total Orders",
-      value: stats.totalOrders,
-      change: "+12.5%",
-      trend: "up",
+      value: stats.totalOrders.toLocaleString(),
+      change: "Real-time",
+      trend: "neutral",
       icon: Package,
       color: "blue",
     },
     {
       title: "Revenue",
-      value: `€${stats.revenue.toLocaleString()}`,
-      change: "+8.2%",
-      trend: "up",
+      value: dashboardService.formatCurrency(stats.revenue, "EUR"),
+      change: "Real-time",
+      trend: "neutral",
       icon: DollarSign,
       color: "green",
     },
     {
       title: "Active Stores",
-      value: stats.activeStores,
-      change: "+2",
-      trend: "up",
+      value: stats.activeStores.toLocaleString(),
+      change: "Real-time",
+      trend: "neutral",
       icon: Store,
       color: "purple",
     },
     {
       title: "Pending Deliveries",
-      value: stats.pendingDeliveries,
-      change: "-3",
-      trend: "down",
+      value: stats.pendingDeliveries.toLocaleString(),
+      change: "Real-time",
+      trend: "neutral",
       icon: Truck,
       color: "orange",
     },
@@ -169,16 +203,62 @@ const DashboardHomePage = () => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600">Welcome back, {user?.name || "Admin"}</p>
+          {lastUpdated && (
+            <p className="text-xs text-gray-400 mt-1">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </p>
+          )}
         </div>
-        <div className="text-sm text-gray-500">
-          {new Date().toLocaleDateString("en-US", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
+        <div className="flex items-center space-x-4">
+          <Button
+            onClick={fetchDashboardData}
+            disabled={isLoading}
+            variant="outline"
+            size="sm"
+            className="flex items-center space-x-2"
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
+            />
+            <span>Refresh</span>
+          </Button>
+          <div className="text-sm text-gray-500">
+            {new Date().toLocaleDateString("en-US", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </div>
         </div>
       </motion.div>
+
+      {/* Error Message */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-50 border border-red-200 rounded-lg p-4"
+        >
+          <div className="flex items-center space-x-3">
+            <AlertCircle className="w-5 h-5 text-red-500" />
+            <div>
+              <h3 className="text-sm font-medium text-red-800">
+                Error Loading Data
+              </h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+            </div>
+            <Button
+              onClick={fetchDashboardData}
+              variant="outline"
+              size="sm"
+              className="ml-auto"
+            >
+              Retry
+            </Button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -203,21 +283,27 @@ const DashboardHomePage = () => {
                     <div className="flex items-center mt-2">
                       {stat.trend === "up" ? (
                         <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
-                      ) : (
+                      ) : stat.trend === "down" ? (
                         <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
+                      ) : (
+                        <div className="w-4 h-4 mr-1" />
                       )}
                       <span
                         className={`text-sm font-medium ${
                           stat.trend === "up"
                             ? "text-green-600"
-                            : "text-red-600"
+                            : stat.trend === "down"
+                            ? "text-red-600"
+                            : "text-blue-600"
                         }`}
                       >
                         {stat.change}
                       </span>
-                      <span className="text-sm text-gray-500 ml-1">
-                        from last month
-                      </span>
+                      {stat.trend !== "neutral" && (
+                        <span className="text-sm text-gray-500 ml-1">
+                          from last month
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div
@@ -236,12 +322,12 @@ const DashboardHomePage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Quick Actions */}
         <Card>
-          <Card.Header>
+          <CardHeader>
             <h2 className="text-xl font-semibold text-gray-900">
               Quick Actions
             </h2>
-          </Card.Header>
-          <Card.Body>
+          </CardHeader>
+          <CardBody>
             <div className="space-y-4">
               {quickActions.map((action, index) => {
                 const Icon = action.icon;
@@ -270,17 +356,17 @@ const DashboardHomePage = () => {
                 );
               })}
             </div>
-          </Card.Body>
+          </CardBody>
         </Card>
 
         {/* Recent Activity */}
         <Card>
-          <Card.Header>
+          <CardHeader>
             <h2 className="text-xl font-semibold text-gray-900">
               Recent Activity
             </h2>
-          </Card.Header>
-          <Card.Body>
+          </CardHeader>
+          <CardBody>
             <div className="space-y-4">
               {recentActivities.map((activity, index) => {
                 const Icon = getActivityIcon(activity.type);
@@ -318,7 +404,7 @@ const DashboardHomePage = () => {
                 );
               })}
             </div>
-          </Card.Body>
+          </CardBody>
         </Card>
       </div>
     </div>

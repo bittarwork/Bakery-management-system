@@ -10,7 +10,6 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 
 // Pages - Authentication
 import LoginPage from "./pages/auth/LoginPage";
-import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 
 // Pages - Dashboard
 import DashboardHomePage from "./pages/dashboard/DashboardHomePage";
@@ -36,6 +35,7 @@ import PaymentRecordPage from "./pages/payments/PaymentRecordPage";
 import StoresListPage from "./pages/stores/StoresListPage";
 import StoreDetailsPage from "./pages/stores/StoreDetailsPage";
 import CreateStorePage from "./pages/stores/CreateStorePage";
+import EditStorePage from "./pages/stores/EditStorePage";
 
 // Pages - Products
 import ProductsListPage from "./pages/products/ProductsListPage";
@@ -52,6 +52,7 @@ import MonthlyReportsPage from "./pages/reports/MonthlyReportsPage";
 import UsersListPage from "./pages/users/UsersListPage";
 import UserDetailsPage from "./pages/users/UserDetailsPage";
 import CreateUserPage from "./pages/users/CreateUserPage";
+import EditUserPage from "./pages/users/EditUserPage";
 
 // Pages - Settings
 import SettingsPage from "./pages/settings/SettingsPage";
@@ -116,9 +117,13 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-primary flex items-center justify-center">
-        <LoadingSpinner size="lg" color="white" />
-      </div>
+      <LoadingSpinner
+        size="2xl"
+        color="white"
+        text="جاري تحميل النظام..."
+        showLogo={true}
+        fullScreen={true}
+      />
     );
   }
 
@@ -142,27 +147,6 @@ function App() {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <LoginPage />
-                      </Suspense>
-                    </motion.div>
-                  </AuthLayout>
-                </PublicRoute>
-              }
-            />
-
-            <Route
-              path="/forgot-password"
-              element={
-                <PublicRoute>
-                  <AuthLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <ForgotPasswordPage />
                       </Suspense>
                     </motion.div>
                   </AuthLayout>
@@ -490,6 +474,27 @@ function App() {
               }
             />
 
+            <Route
+              path="/stores/edit/:id"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <EditStorePage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
             {/* Products Routes */}
             <Route
               path="/products"
@@ -696,6 +701,27 @@ function App() {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <CreateUserPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/users/:id/edit"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <EditUserPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>

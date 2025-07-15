@@ -1,65 +1,93 @@
-import React, { forwardRef } from "react";
+import React from "react";
 import { motion } from "framer-motion";
-import { clsx } from "clsx";
+import { cn } from "../../utils/cn";
 
-const Input = forwardRef(
+const Input = React.forwardRef(
   (
-    { label, error, icon, iconPosition = "left", className = "", ...props },
+    {
+      label,
+      type = "text",
+      placeholder,
+      value,
+      onChange,
+      onBlur,
+      onFocus,
+      disabled = false,
+      required = false,
+      error,
+      className = "",
+      icon,
+      name,
+      id,
+      ...props
+    },
     ref
   ) => {
-    const baseClasses =
-      "block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200";
-
-    const errorClasses =
-      "border-red-300 focus:ring-red-500 focus:border-red-500";
-    const iconClasses = iconPosition === "left" ? "pl-10" : "pr-10";
-
-    const classes = clsx(
-      baseClasses,
-      error && errorClasses,
-      icon && iconClasses,
-      className
-    );
+    const inputId = id || name;
 
     return (
-      <div className="space-y-1">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="form-group"
+      >
         {label && (
-          <label className="block text-sm font-medium text-gray-700">
+          <motion.label
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            htmlFor={inputId}
+            className="form-label"
+          >
             {label}
-          </label>
+            {required && <span className="text-red-400 ml-1">*</span>}
+          </motion.label>
         )}
 
         <div className="relative">
-          {icon && iconPosition === "left" && (
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <span className="text-gray-400 w-5 h-5">{icon}</span>
-            </div>
-          )}
-
           <motion.input
             ref={ref}
-            className={classes}
-            whileFocus={{ scale: 1.01 }}
+            type={type}
+            name={name}
+            id={inputId}
+            placeholder={placeholder}
+            value={value}
+            onChange={onChange}
+            onBlur={onBlur}
+            onFocus={onFocus}
+            disabled={disabled}
+            required={required}
+            className={cn(
+              "form-input",
+              error &&
+                "border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20",
+              disabled && "opacity-50 cursor-not-allowed",
+              className
+            )}
+            whileFocus={{ scale: 1.02 }}
+            transition={{ duration: 0.2 }}
             {...props}
           />
 
-          {icon && iconPosition === "right" && (
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-              <span className="text-gray-400 w-5 h-5">{icon}</span>
+          {icon && (
+            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+              {icon}
             </div>
           )}
         </div>
 
         {error && (
-          <motion.p
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-sm text-red-600"
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mt-1 text-sm text-red-400 flex items-center gap-1"
           >
-            {error}
-          </motion.p>
+            <span>{error}</span>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
     );
   }
 );

@@ -18,6 +18,7 @@ import {
   User,
 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
+import Logo from "../ui/Logo";
 
 const DashboardLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -53,12 +54,10 @@ const DashboardLayout = ({ children }) => {
         } transition-transform duration-300 ease-in-out lg:translate-x-0`}
       >
         {/* Sidebar Header */}
-        <div className="flex items-center justify-between h-16 px-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+        <div className="flex items-center justify-between h-16 px-6 bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 text-white">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-              <span className="text-lg font-bold">🍞</span>
-            </div>
-            <h1 className="text-xl font-bold">Bakery System</h1>
+            <Logo size="sm" variant="icon-only" animated={false} />
+            <h1 className="text-xl font-bold">BakeMaster</h1>
           </div>
           <button
             onClick={() => setIsSidebarOpen(false)}

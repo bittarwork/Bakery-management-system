@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://bakery-management-system-nine.vercel.app/sitemap.xml
+
+# Disallow admin areas
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /api/
+
+# Allow public assets
+Allow: /favicon.svg
+Allow: /manifest.json
+Allow: /assets/ 

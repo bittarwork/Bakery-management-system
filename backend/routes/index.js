@@ -7,6 +7,7 @@ import storeRoutes from './stores.js';
 import productRoutes from './products.js';
 import paymentRoutes from './payments.js';
 import reportRoutes from './reports.js';
+import userRoutes from './userRoutes.js';
 
 // Import new comprehensive routes
 import comprehensiveDistributionRoutes from './comprehensiveDistribution.js';
@@ -39,6 +40,7 @@ router.get('/', (req, res) => {
             products: '/api/products',
             payments: '/api/payments',
             reports: '/api/reports',
+            users: '/api/users',
             distribution: '/api/distribution',
             dashboard: '/api/dashboard',
             notifications: '/api/notifications'
@@ -58,6 +60,7 @@ router.use('/stores', storeRoutes);
 router.use('/products', productRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/reports', reportRoutes);
+router.use('/users', userRoutes);
 
 // Mount new comprehensive routes
 router.use('/distribution', comprehensiveDistributionRoutes);

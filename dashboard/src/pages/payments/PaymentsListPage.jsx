@@ -1,211 +1,560 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import {
+  Plus,
+  DollarSign,
+  CreditCard,
+  Banknote,
+  TrendingUp,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Search,
+  Filter,
+  Calendar,
+  Store,
+  Eye,
+  Edit,
+  Trash2,
+  Download,
+  RefreshCw,
+  Receipt,
+} from "lucide-react";
 import { Link } from "react-router-dom";
+import { Card, CardHeader, CardBody } from "../../components/ui/Card";
+import Button from "../../components/ui/Button";
+import Input from "../../components/ui/Input";
+import DataTable from "../../components/ui/DataTable";
 
 const PaymentsListPage = () => {
-  const [selectedStatus, setSelectedStatus] = useState("all");
-  const [selectedMethod, setSelectedMethod] = useState("all");
+  const [payments, setPayments] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [filters, setFilters] = useState({
+    status: "",
+    method: "",
+    dateRange: "",
+    search: "",
+  });
 
-  // Mock data - replace with API call
-  const payments = [
-    {
-      id: "PAY001",
-      storeName: "Downtown Bakery",
-      amount: 500.0,
-      currency: "EUR",
-      method: "Cash",
-      status: "Completed",
-      date: "2024-03-25",
-      reference: "REF123456",
-    },
-    {
-      id: "PAY002",
-      storeName: "Central Market",
-      amount: 750.0,
-      currency: "EUR",
-      method: "Bank Transfer",
-      status: "Pending",
-      date: "2024-03-24",
-      reference: "REF123457",
-    },
-    {
-      id: "PAY003",
-      storeName: "Westside Store",
-      amount: 300.0,
-      currency: "EUR",
-      method: "Cash",
-      status: "Completed",
-      date: "2024-03-23",
-      reference: "REF123458",
-    },
-  ];
+  useEffect(() => {
+    // Simulate loading data
+    const timer = setTimeout(() => {
+      setPayments([
+        {
+          id: "PAY-001",
+          storeName: "Bakery Central",
+          storeId: 1,
+          amount: 1250.0,
+          currency: "EUR",
+          method: "cash",
+          status: "completed",
+          date: "2024-03-25",
+          time: "14:30",
+          reference: "REF-2024-001",
+          description: "Payment for order ORD-001",
+          customerName: "Ahmed Hassan",
+          notes: "Cash payment received",
+        },
+        {
+          id: "PAY-002",
+          storeName: "Sweet Corner",
+          storeId: 2,
+          amount: 890.5,
+          currency: "EUR",
+          method: "bank_transfer",
+          status: "pending",
+          date: "2024-03-25",
+          time: "10:15",
+          reference: "REF-2024-002",
+          description: "Payment for order ORD-002",
+          customerName: "Fatima Ali",
+          notes: "Bank transfer initiated",
+        },
+        {
+          id: "PAY-003",
+          storeName: "Artisan Bakery",
+          storeId: 4,
+          amount: 2100.0,
+          currency: "EUR",
+          method: "credit_card",
+          status: "completed",
+          date: "2024-03-24",
+          time: "16:45",
+          reference: "REF-2024-003",
+          description: "Payment for order ORD-003",
+          customerName: "Omar Khalil",
+          notes: "Credit card payment processed",
+        },
+        {
+          id: "PAY-004",
+          storeName: "Golden Crust",
+          storeId: 5,
+          amount: 750.0,
+          currency: "EUR",
+          method: "cash",
+          status: "failed",
+          date: "2024-03-24",
+          time: "12:20",
+          reference: "REF-2024-004",
+          description: "Payment for order ORD-004",
+          customerName: "Layla Mansour",
+          notes: "Payment declined",
+        },
+        {
+          id: "PAY-005",
+          storeName: "Bakery Central",
+          storeId: 1,
+          amount: 1650.75,
+          currency: "EUR",
+          method: "bank_transfer",
+          status: "completed",
+          date: "2024-03-23",
+          time: "09:30",
+          reference: "REF-2024-005",
+          description: "Payment for order ORD-005",
+          customerName: "Youssef Ibrahim",
+          notes: "Bank transfer completed",
+        },
+      ]);
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "Completed":
+      case "completed":
         return "bg-green-100 text-green-800";
-      case "Pending":
+      case "pending":
         return "bg-yellow-100 text-yellow-800";
-      case "Failed":
+      case "failed":
         return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
   };
 
-  const filteredPayments = payments.filter((payment) => {
-    const statusMatch =
-      selectedStatus === "all" || payment.status === selectedStatus;
-    const methodMatch =
-      selectedMethod === "all" || payment.method === selectedMethod;
-    return statusMatch && methodMatch;
-  });
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "completed":
+        return CheckCircle;
+      case "pending":
+        return Clock;
+      case "failed":
+        return XCircle;
+      default:
+        return AlertCircle;
+    }
+  };
+
+  const getMethodIcon = (method) => {
+    switch (method) {
+      case "cash":
+        return Banknote;
+      case "credit_card":
+        return CreditCard;
+      case "bank_transfer":
+        return DollarSign;
+      default:
+        return Receipt;
+    }
+  };
+
+  const getMethodText = (method) => {
+    switch (method) {
+      case "cash":
+        return "Cash";
+      case "credit_card":
+        return "Credit Card";
+      case "bank_transfer":
+        return "Bank Transfer";
+      default:
+        return "Unknown";
+    }
+  };
+
+  const columns = [
+    {
+      key: "id",
+      title: "Payment ID",
+      render: (value) => (
+        <div className="font-mono font-medium text-gray-900">{value}</div>
+      ),
+    },
+    {
+      key: "storeName",
+      title: "Store",
+      render: (value, row) => (
+        <div className="flex items-center">
+          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+            <Store className="w-4 h-4 text-blue-600" />
+          </div>
+          <div>
+            <div className="font-medium text-gray-900">{value}</div>
+            <div className="text-sm text-gray-500">ID: {row.storeId}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "customerName",
+      title: "Customer",
+      render: (value) => (
+        <div className="font-medium text-gray-900">{value}</div>
+      ),
+    },
+    {
+      key: "amount",
+      title: "Amount",
+      render: (value, row) => (
+        <div>
+          <div className="font-medium text-gray-900">
+            {row.currency} {value.toFixed(2)}
+          </div>
+          <div className="text-sm text-gray-500">{row.reference}</div>
+        </div>
+      ),
+    },
+    {
+      key: "method",
+      title: "Method",
+      render: (value) => {
+        const Icon = getMethodIcon(value);
+        return (
+          <div className="flex items-center">
+            <Icon className="w-4 h-4 text-gray-400 mr-2" />
+            <span className="text-sm font-medium text-gray-900">
+              {getMethodText(value)}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      key: "status",
+      title: "Status",
+      render: (value) => {
+        const Icon = getStatusIcon(value);
+        return (
+          <span
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
+              value
+            )}`}
+          >
+            <Icon className="w-3 h-3 mr-1" />
+            {value.charAt(0).toUpperCase() + value.slice(1)}
+          </span>
+        );
+      },
+    },
+    {
+      key: "date",
+      title: "Date & Time",
+      render: (value, row) => (
+        <div className="flex items-center text-sm text-gray-900">
+          <Calendar className="w-4 h-4 text-gray-400 mr-2" />
+          <div>
+            <div>{new Date(value).toLocaleDateString()}</div>
+            <div className="text-gray-500">{row.time}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "actions",
+      title: "Actions",
+      render: (value, row) => (
+        <div className="flex items-center space-x-2">
+          <Link to={`/payments/${row.id}`}>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<Eye className="w-4 h-4" />}
+            >
+              View
+            </Button>
+          </Link>
+          <Button variant="ghost" size="sm" icon={<Edit className="w-4 h-4" />}>
+            Edit
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<Trash2 className="w-4 h-4" />}
+            onClick={() => handleDelete(row.id)}
+          >
+            Delete
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  const handleDelete = (paymentId) => {
+    if (window.confirm("Are you sure you want to delete this payment?")) {
+      setPayments(payments.filter((payment) => payment.id !== paymentId));
+    }
+  };
+
+  const handleFilterChange = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleExport = () => {
+    // Export functionality
+    console.log("Exporting payments...");
+  };
+
+  const handleRefresh = () => {
+    setIsLoading(true);
+    // Simulate refresh
+    setTimeout(() => setIsLoading(false), 1000);
+  };
+
+  const stats = {
+    total: payments.length,
+    completed: payments.filter((p) => p.status === "completed").length,
+    pending: payments.filter((p) => p.status === "pending").length,
+    failed: payments.filter((p) => p.status === "failed").length,
+    totalAmount: payments.reduce((sum, payment) => sum + payment.amount, 0),
+    completedAmount: payments
+      .filter((p) => p.status === "completed")
+      .reduce((sum, payment) => sum + payment.amount, 0),
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold">Payments</h1>
-        <Link
-          to="/payments/record"
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Record Payment
-        </Link>
-      </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
+      >
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Payments</h1>
+          <p className="text-gray-600">
+            Manage and track all payment transactions
+          </p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <Button
+            variant="outline"
+            icon={<Download className="w-4 h-4" />}
+            onClick={handleExport}
+          >
+            Export
+          </Button>
+          <Button
+            variant="outline"
+            icon={<RefreshCw className="w-4 h-4" />}
+            onClick={handleRefresh}
+          >
+            Refresh
+          </Button>
+          <Link to="/payments/record">
+            <Button variant="primary" icon={<Plus className="w-4 h-4" />}>
+              Record Payment
+            </Button>
+          </Link>
+        </div>
+      </motion.div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-gray-600 text-sm font-medium">Total Payments</h3>
-          <p className="text-2xl font-bold text-gray-900">€1,550.00</p>
-          <p className="text-green-600 text-sm">+12% from last month</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-gray-600 text-sm font-medium">Completed</h3>
-          <p className="text-2xl font-bold text-green-600">€800.00</p>
-          <p className="text-gray-600 text-sm">2 payments</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-gray-600 text-sm font-medium">Pending</h3>
-          <p className="text-2xl font-bold text-yellow-600">€750.00</p>
-          <p className="text-gray-600 text-sm">1 payment</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-gray-600 text-sm font-medium">Failed</h3>
-          <p className="text-2xl font-bold text-red-600">€0.00</p>
-          <p className="text-gray-600 text-sm">0 payments</p>
-        </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
+        <Card>
+          <div className="flex items-center">
+            <div className="p-3 bg-blue-100 rounded-full">
+              <Receipt className="w-6 h-6 text-blue-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">
+                Total Payments
+              </p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center">
+            <div className="p-3 bg-green-100 rounded-full">
+              <CheckCircle className="w-6 h-6 text-green-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Completed</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {stats.completed}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center">
+            <div className="p-3 bg-yellow-100 rounded-full">
+              <Clock className="w-6 h-6 text-yellow-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Pending</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {stats.pending}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center">
+            <div className="p-3 bg-red-100 rounded-full">
+              <XCircle className="w-6 h-6 text-red-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Failed</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.failed}</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center">
+            <div className="p-3 bg-purple-100 rounded-full">
+              <DollarSign className="w-6 h-6 text-purple-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Total Amount</p>
+              <p className="text-2xl font-bold text-gray-900">
+                €{stats.totalAmount.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center">
+            <div className="p-3 bg-emerald-100 rounded-full">
+              <TrendingUp className="w-6 h-6 text-emerald-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">
+                Completed Amount
+              </p>
+              <p className="text-2xl font-bold text-gray-900">
+                €{stats.completedAmount.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </Card>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-lg font-medium mb-4">Filters</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Status
-            </label>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setFilters({
+                  status: "",
+                  method: "",
+                  dateRange: "",
+                  search: "",
+                })
+              }
             >
-              <option value="all">All Status</option>
-              <option value="Completed">Completed</option>
-              <option value="Pending">Pending</option>
-              <option value="Failed">Failed</option>
-            </select>
+              Clear All
+            </Button>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Payment Method
-            </label>
-            <select
-              value={selectedMethod}
-              onChange={(e) => setSelectedMethod(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Methods</option>
-              <option value="Cash">Cash</option>
-              <option value="Bank Transfer">Bank Transfer</option>
-              <option value="Credit Card">Credit Card</option>
-            </select>
+        </CardHeader>
+        <CardBody>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status
+              </label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={filters.status}
+                onChange={(e) => handleFilterChange("status", e.target.value)}
+              >
+                <option value="">All Status</option>
+                <option value="completed">Completed</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Payment Method
+              </label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={filters.method}
+                onChange={(e) => handleFilterChange("method", e.target.value)}
+              >
+                <option value="">All Methods</option>
+                <option value="cash">Cash</option>
+                <option value="credit_card">Credit Card</option>
+                <option value="bank_transfer">Bank Transfer</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Date Range
+              </label>
+              <input
+                type="date"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={filters.dateRange}
+                onChange={(e) =>
+                  handleFilterChange("dateRange", e.target.value)
+                }
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Search
+              </label>
+              <Input
+                placeholder="Search payments..."
+                value={filters.search}
+                onChange={(e) => handleFilterChange("search", e.target.value)}
+                icon={<Search className="w-4 h-4" />}
+              />
+            </div>
           </div>
-        </div>
-      </div>
+        </CardBody>
+      </Card>
 
       {/* Payments Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium">Payment History</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Payment ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Store
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Method
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredPayments.map((payment) => (
-                <tr key={payment.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {payment.id}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {payment.storeName}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {payment.currency} {payment.amount.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {payment.method}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
-                        payment.status
-                      )}`}
-                    >
-                      {payment.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {payment.date}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <Link
-                      to={`/payments/${payment.id}`}
-                      className="text-blue-600 hover:text-blue-900 mr-4"
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <h2 className="text-lg font-semibold text-gray-900">
+            Payment History
+          </h2>
+        </CardHeader>
+        <CardBody>
+          <DataTable
+            data={payments}
+            columns={columns}
+            searchable={true}
+            sortable={true}
+            pagination={true}
+            itemsPerPage={10}
+          />
+        </CardBody>
+      </Card>
     </div>
   );
 };

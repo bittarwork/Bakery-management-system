@@ -1,0 +1,21 @@
+{
+  "name": "BakeMaster - نظام إدارة المخبزة",
+  "short_name": "BakeMaster",
+  "description": "نظام إدارة المخابز الاحترافي للأعمال الحديثة",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1e293b",
+  "theme_color": "#f97316",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity", "food"],
+  "lang": "ar",
+  "dir": "rtl"
+}

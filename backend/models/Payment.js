@@ -119,91 +119,109 @@ const Payment = sequelize.define('Payment', {
             }
         }
     },
-    status: {
-        type: DataTypes.ENUM(...Object.values(PAYMENT_STATUS)),
-        defaultValue: PAYMENT_STATUS.PENDING,
-        validate: {
-            isIn: {
-                args: [Object.values(PAYMENT_STATUS)],
-                msg: 'حالة الدفع غير صحيحة'
-            }
-        }
+    payment_number: {
+        type: DataTypes.STRING(50),
+        allowNull: false,
+        unique: true
     },
-    due_date: {
+    payment_date: {
         type: DataTypes.DATE,
-        allowNull: true,
-        comment: 'تاريخ الاستحقاق'
+        allowNull: false,
+        defaultValue: DataTypes.NOW
     },
-    actual_payment_date: {
-        type: DataTypes.DATE,
-        allowNull: true,
-        comment: 'تاريخ الدفع الفعلي'
-    },
-    reference_number: {
+    store_name: {
         type: DataTypes.STRING(100),
-        allowNull: true,
-        comment: 'رقم المرجع (رقم الشيك، رقم التحويل، إلخ)'
+        allowNull: false
+    },
+    distributor_name: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    visit_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    amount_eur: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.00
+    },
+    amount_syp: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: false,
+        defaultValue: 0.00
+    },
+    currency: {
+        type: DataTypes.ENUM('EUR', 'SYP', 'MIXED'),
+        allowNull: false,
+        defaultValue: 'EUR'
+    },
+    exchange_rate: {
+        type: DataTypes.DECIMAL(10, 4),
+        allowNull: true
+    },
+    payment_method: {
+        type: DataTypes.ENUM('cash', 'bank_transfer', 'check', 'credit_card', 'mobile_payment', 'crypto'),
+        allowNull: false,
+        defaultValue: 'cash'
+    },
+    payment_type: {
+        type: DataTypes.ENUM('full', 'partial', 'refund'),
+        allowNull: false,
+        defaultValue: 'full'
+    },
+    payment_reference: {
+        type: DataTypes.STRING(100),
+        allowNull: true
     },
     bank_details: {
         type: DataTypes.JSON,
-        allowNull: true,
-        comment: 'تفاصيل البنك للتحويلات البنكية'
+        allowNull: true
     },
-    collected_by: {
-        type: DataTypes.STRING(255),
-        allowNull: true,
-        comment: 'الشخص الذي قام بالتحصيل'
-    },
-    collection_location: {
-        type: DataTypes.JSON,
-        allowNull: true,
-        comment: 'موقع التحصيل GPS'
-    },
-    receipt_number: {
-        type: DataTypes.STRING(100),
-        allowNull: true,
-        comment: 'رقم الإيصال'
-    },
-    receipt_image_url: {
+    payment_proof: {
         type: DataTypes.STRING(500),
-        allowNull: true,
-        comment: 'رابط صورة الإيصال'
+        allowNull: true
+    },
+    status: {
+        type: DataTypes.ENUM('pending', 'completed', 'failed', 'cancelled', 'refunded'),
+        allowNull: false,
+        defaultValue: 'pending'
+    },
+    verification_status: {
+        type: DataTypes.ENUM('pending', 'verified', 'rejected', 'requires_review'),
+        allowNull: false,
+        defaultValue: 'pending'
+    },
+    verified_by: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    verified_by_name: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    verified_at: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    receipt_generated: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    receipt_url: {
+        type: DataTypes.STRING(500),
+        allowNull: true
     },
     notes: {
         type: DataTypes.TEXT,
         allowNull: true
     },
-    internal_notes: {
-        type: DataTypes.TEXT,
-        allowNull: true,
-        comment: 'ملاحظات داخلية'
-    },
     created_by: {
         type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: 'users',
-            key: 'id'
-        }
+        allowNull: false
     },
     created_by_name: {
-        type: DataTypes.STRING(255),
-        allowNull: true
-    },
-    verified_by: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        references: {
-            model: 'users',
-            key: 'id'
-        }
-    },
-    verified_by_name: {
-        type: DataTypes.STRING(255),
-        allowNull: true
-    },
-    verified_at: {
-        type: DataTypes.DATE,
+        type: DataTypes.STRING(100),
         allowNull: true
     }
 }, {
@@ -243,17 +261,18 @@ const Payment = sequelize.define('Payment', {
             fields: ['verified_by']
         },
         {
-            fields: ['reference_number']
+            fields: ['payment_reference']
         },
         {
-            fields: ['receipt_number']
+            fields: ['payment_number']
         }
     ]
 });
 
 // Instance methods
 Payment.prototype.updateStatus = async function (newStatus, transaction = null) {
-    if (!Object.values(PAYMENT_STATUS).includes(newStatus)) {
+    const validStatuses = ['pending', 'completed', 'failed', 'cancelled', 'refunded'];
+    if (!validStatuses.includes(newStatus)) {
         throw new Error('حالة الدفع غير صحيحة');
     }
 
@@ -266,10 +285,11 @@ Payment.prototype.updateStatus = async function (newStatus, transaction = null) 
 
 Payment.prototype.getStatusInfo = function () {
     const statusMap = {
-        [PAYMENT_STATUS.PENDING]: { label: 'معلق', color: 'gray', icon: '⏳' },
-        [PAYMENT_STATUS.PARTIAL]: { label: 'جزئي', color: 'yellow', icon: '💰' },
-        [PAYMENT_STATUS.PAID]: { label: 'مدفوع', color: 'green', icon: '✅' },
-        [PAYMENT_STATUS.OVERDUE]: { label: 'متأخر', color: 'red', icon: '⚠️' }
+        pending: { label: 'معلق', color: 'gray', icon: '⏳' },
+        completed: { label: 'مكتمل', color: 'green', icon: '✅' },
+        failed: { label: 'فشل', color: 'red', icon: '❌' },
+        cancelled: { label: 'ملغى', color: 'orange', icon: '🚫' },
+        refunded: { label: 'مسترد', color: 'blue', icon: '↩️' }
     };
 
     return statusMap[this.status] || { label: this.status, color: 'gray', icon: '❓' };
@@ -281,7 +301,8 @@ Payment.prototype.getMethodInfo = function () {
         bank_transfer: { label: 'تحويل بنكي', color: 'blue', icon: '🏦' },
         credit_card: { label: 'بطاقة ائتمان', color: 'orange', icon: '💳' },
         check: { label: 'شيك', color: 'purple', icon: '📝' },
-        mixed: { label: 'مختلط', color: 'gray', icon: '🔄' }
+        mobile_payment: { label: 'دفع موبايل', color: 'teal', icon: '📱' },
+        crypto: { label: 'عملة رقمية', color: 'yellow', icon: '₿' }
     };
 
     return methodMap[this.payment_method] || { label: this.payment_method, color: 'gray', icon: '❓' };
@@ -289,10 +310,9 @@ Payment.prototype.getMethodInfo = function () {
 
 Payment.prototype.getTypeInfo = function () {
     const typeMap = {
-        collection: { label: 'تحصيل', color: 'green' },
-        payment: { label: 'دفعة', color: 'blue' },
-        refund: { label: 'استرداد', color: 'red' },
-        adjustment: { label: 'تعديل', color: 'yellow' }
+        full: { label: 'كامل', color: 'green' },
+        partial: { label: 'جزئي', color: 'yellow' },
+        refund: { label: 'استرداد', color: 'red' }
     };
 
     return typeMap[this.payment_type] || { label: this.payment_type, color: 'gray' };
@@ -312,52 +332,64 @@ Payment.prototype.verify = async function (verifiedBy, verifiedByName, transacti
     this.verified_by = verifiedBy;
     this.verified_by_name = verifiedByName;
     this.verified_at = new Date();
-    this.status = PAYMENT_STATUS.PAID;
-    this.actual_payment_date = new Date();
+    this.status = 'completed';
+    this.verification_status = 'verified';
 
     await this.save(options);
     return this;
-};
-
-Payment.prototype.isOverdue = function () {
-    if (!this.due_date) return false;
-    return new Date() > new Date(this.due_date) && this.status !== PAYMENT_STATUS.PAID;
-};
-
-Payment.prototype.getDaysOverdue = function () {
-    if (!this.isOverdue()) return 0;
-    const now = new Date();
-    const dueDate = new Date(this.due_date);
-    return Math.ceil((now - dueDate) / (1000 * 60 * 60 * 24));
 };
 
 Payment.prototype.isVerified = function () {
-    return this.verified_by !== null && this.verified_at !== null;
+    return this.verification_status === 'verified';
 };
 
-Payment.prototype.markAsCollected = async function (collectedBy, location = null, transaction = null) {
+Payment.prototype.markAsCompleted = async function (transaction = null) {
     const options = transaction ? { transaction } : {};
 
-    this.collected_by = collectedBy;
-    this.collection_location = location;
-    this.actual_payment_date = new Date();
-    this.status = PAYMENT_STATUS.PAID;
+    this.status = 'completed';
+    this.verification_status = 'verified';
 
     await this.save(options);
     return this;
 };
 
-Payment.prototype.addReceipt = async function (receiptNumber, imageUrl = null, transaction = null) {
+Payment.prototype.addReceipt = async function (receiptUrl = null, transaction = null) {
     const options = transaction ? { transaction } : {};
 
-    this.receipt_number = receiptNumber;
-    this.receipt_image_url = imageUrl;
+    this.receipt_url = receiptUrl;
+    this.receipt_generated = true;
 
     await this.save(options);
     return this;
 };
 
 // Class methods
+Payment.getBasicStatistics = async function (filters = {}) {
+    const whereClause = { ...filters };
+
+    const [
+        totalPayments,
+        totalAmountEur,
+        totalAmountSyp,
+        pendingPayments,
+        completedPayments
+    ] = await Promise.all([
+        Payment.count({ where: whereClause }),
+        Payment.sum('amount_eur', { where: whereClause }),
+        Payment.sum('amount_syp', { where: whereClause }),
+        Payment.count({ where: { ...whereClause, status: 'pending' } }),
+        Payment.count({ where: { ...whereClause, status: 'completed' } })
+    ]);
+
+    return {
+        total_payments: totalPayments,
+        total_amount_eur: totalAmountEur || 0,
+        total_amount_syp: totalAmountSyp || 0,
+        pending_payments: pendingPayments,
+        completed_payments: completedPayments
+    };
+};
+
 Payment.getStatistics = async function (period = 'month', filters = {}) {
     let dateFilter = {};
     const now = new Date();
@@ -535,49 +567,30 @@ Payment.findByStore = async function (storeId, dateFrom = null, dateTo = null) {
     });
 };
 
-Payment.getPendingPayments = async function (daysOverdue = 0) {
-    const whereClause = { status: PAYMENT_STATUS.PENDING };
-
-    if (daysOverdue > 0) {
-        const overdueDate = new Date();
-        overdueDate.setDate(overdueDate.getDate() - daysOverdue);
-        whereClause.due_date = { [Op.lte]: overdueDate };
-    }
-
+Payment.getPendingPayments = async function () {
     return await Payment.findAll({
-        where: whereClause,
-        order: [['due_date', 'ASC'], ['created_at', 'ASC']]
-    });
-};
-
-Payment.getOverduePayments = async function () {
-    return await Payment.findAll({
-        where: {
-            status: { [Op.ne]: PAYMENT_STATUS.PAID },
-            due_date: { [Op.lt]: new Date() }
-        },
-        order: [['due_date', 'ASC']]
+        where: { status: 'pending' },
+        order: [['created_at', 'ASC']]
     });
 };
 
 Payment.getUnverifiedPayments = async function () {
     return await Payment.findAll({
         where: {
-            status: PAYMENT_STATUS.PAID,
-            verified_by: null
+            status: 'completed',
+            verification_status: 'pending'
         },
-        order: [['actual_payment_date', 'DESC']]
+        order: [['payment_date', 'DESC']]
     });
 };
 
 Payment.searchPayments = async function (searchTerm, filters = {}) {
     let whereClause = {};
 
-    // Search in reference_number, receipt_number, and notes
+    // Search in payment_reference and notes
     if (searchTerm) {
         whereClause[Op.or] = [
-            { reference_number: { [Op.like]: `%${searchTerm}%` } },
-            { receipt_number: { [Op.like]: `%${searchTerm}%` } },
+            { payment_reference: { [Op.like]: `%${searchTerm}%` } },
             { notes: { [Op.like]: `%${searchTerm}%` } },
             { store_name: { [Op.like]: `%${searchTerm}%` } }
         ];
@@ -608,28 +621,6 @@ Payment.searchPayments = async function (searchTerm, filters = {}) {
         whereClause.payment_date = {
             [Op.between]: [filters.date_from, filters.date_to]
         };
-    }
-
-    return await Payment.findAll({
-        where: whereClause,
-        order: [['payment_date', 'DESC'], ['created_at', 'DESC']]
-    });
-};
-
-Payment.getCollectionsByDistributor = async function (distributorId, dateFrom = null, dateTo = null) {
-    const whereClause = {
-        distributor_id: distributorId,
-        payment_type: 'collection'
-    };
-
-    if (dateFrom || dateTo) {
-        whereClause.payment_date = {};
-        if (dateFrom) {
-            whereClause.payment_date[Op.gte] = dateFrom;
-        }
-        if (dateTo) {
-            whereClause.payment_date[Op.lte] = dateTo;
-        }
     }
 
     return await Payment.findAll({

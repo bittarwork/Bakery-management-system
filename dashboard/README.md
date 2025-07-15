@@ -1,242 +1,166 @@
-# 🍞 Bakery Management System Dashboard
+# 🍞 BakeMaster - نظام إدارة المخبزة
 
-A modern, responsive dashboard for comprehensive bakery management with advanced features including distribution tracking, payment management, and real-time analytics.
+نظام إدارة المخابز الاحترافي للأعمال الحديثة. يوفر إدارة شاملة للمخابز من الإنتاج إلى التوزيع.
 
-## 🚀 Quick Deploy
+## 🎨 Logo & Branding
 
-### Deploy to Vercel (Recommended)
+### Logo Design
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/bakery-management-system)
+- **Main Icon**: Chef Hat (قبعة الطاهي) - رمز الاحترافية في صناعة المخابز
+- **Colors**: Amber → Orange → Red gradient (تدرج من الكهرماني إلى البرتقالي إلى الأحمر)
+- **Decorative Elements**: Wheat (قمح) و Cookie (كوكيز) مع حركات دوران
+- **Typography**: "BakeMaster" مع تدرج لوني
 
-1. **Fork this repository**
-2. **Click the Deploy button above**
-3. **Add environment variables:**
-   ```
-   VITE_API_BASE_URL=https://bakery-management-system-production.up.railway.app/api/
-   ```
-4. **Deploy!**
+### Favicon & Icons
 
-### Manual Deploy
+- **SVG Favicon**: متوافق مع جميع المتصفحات الحديثة
+- **PWA Support**: manifest.json مع أيقونات متعددة الأحجام
+- **Social Media**: Open Graph و Twitter Card meta tags
 
-```bash
-# Clone the repository
-git clone https://github.com/your-username/bakery-management-system.git
-cd bakery-management-system/dashboard
+## 🚀 Features
 
-# Install dependencies
-npm install --legacy-peer-deps
+### Core Features
 
-# Build for production
-npm run build
+- ✅ **User Authentication** - تسجيل الدخول والخروج
+- ✅ **Dashboard Analytics** - إحصائيات شاملة
+- ✅ **Order Management** - إدارة الطلبات
+- ✅ **Product Management** - إدارة المنتجات
+- ✅ **Store Management** - إدارة المحلات
+- ✅ **Payment Tracking** - تتبع المدفوعات
+- ✅ **Distribution System** - نظام التوزيع
+- ✅ **User Management** - إدارة المستخدمين
+- ✅ **Reports & Analytics** - التقارير والتحليلات
 
-# Deploy to Vercel
-npm run deploy
-```
+### Technical Features
 
-## 🛠️ Technology Stack
+- ✅ **Responsive Design** - تصميم متجاوب
+- ✅ **PWA Ready** - جاهز للتطبيق المحمول
+- ✅ **Modern UI/UX** - واجهة مستخدم حديثة
+- ✅ **Real-time Updates** - تحديثات فورية
+- ✅ **Multi-language Support** - دعم متعدد اللغات
+- ✅ **Dark/Light Theme** - الوضع المظلم/الفاتح
 
-- **Frontend Framework**: React 18 + Vite
-- **Styling**: Tailwind CSS
-- **State Management**: Zustand
-- **Routing**: React Router v6
-- **Charts**: Chart.js + Recharts
-- **Maps**: Leaflet + React Leaflet
-- **Forms**: React Hook Form
-- **Animations**: Framer Motion
-- **Icons**: Lucide React
+## 🛠️ Tech Stack
 
-## 📋 Features
+### Frontend
 
-### 🔐 Authentication & User Management
+- **React 18** - مكتبة واجهة المستخدم
+- **Vite** - أداة البناء السريعة
+- **Tailwind CSS** - إطار عمل CSS
+- **Framer Motion** - مكتبة الحركات
+- **Zustand** - إدارة الحالة
+- **React Router** - التنقل بين الصفحات
 
-- Secure login/logout system
-- Role-based access control
-- User profile management
-- Password reset functionality
+### Backend
 
-### 📊 Dashboard & Analytics
+- **Node.js** - بيئة التشغيل
+- **Express.js** - إطار عمل الخادم
+- **SQLite/MySQL** - قاعدة البيانات
+- **JWT** - المصادقة
+- **Railway** - الاستضافة
 
-- Real-time statistics
-- Interactive charts and graphs
-- Performance metrics
-- Customizable widgets
-
-### 🏪 Store Management
-
-- Store CRUD operations
-- Location mapping with Google Maps
-- Store performance analytics
-- Geographic clustering
-
-### 📦 Product Management
-
-- Product catalog with categories
-- Image upload and management
-- Inventory tracking
-- Product performance analysis
-
-### 📋 Order Management
-
-- Order creation and tracking
-- Status workflow management
-- Multi-currency support (EUR/SYP)
-- Order assignment to distributors
-
-### 💳 Payment Management
-
-- Payment recording and tracking
-- Balance management
-- Payment method analysis
-- Debt aging reports
-
-### 🚚 Distribution Management
-
-- Route optimization
-- Real-time tracking
-- Schedule management
-- Performance monitoring
-
-### 📈 Reports & Analytics
-
-- Daily, weekly, monthly reports
-- Custom date range reports
-- Export functionality (PDF, Excel)
-- Business intelligence dashboards
-
-## 🔧 Development
+## 📦 Installation
 
 ### Prerequisites
 
 - Node.js >= 18.0.0
 - npm >= 8.0.0
 
-### Installation
+### Setup
 
 ```bash
+# Clone the repository
+git clone <repository-url>
+cd bakery-management-system/dashboard
+
 # Install dependencies
-npm install --legacy-peer-deps
+npm install
 
 # Start development server
 npm run dev
 
 # Build for production
 npm run build
-
-# Preview production build
-npm run preview
 ```
 
-### Environment Variables
+## 🎯 Usage
 
-Create `.env.local` file:
+### Logo Component
 
-```env
-VITE_API_BASE_URL=https://bakery-management-system-production.up.railway.app/api/
-VITE_APP_NAME=Bakery Management System
-VITE_APP_VERSION=1.0.0
+```jsx
+import Logo from './components/ui/Logo';
+
+// Default logo
+<Logo />
+
+// Small icon-only logo
+<Logo size="sm" variant="icon-only" />
+
+// Large animated logo
+<Logo size="xl" animated={true} />
 ```
 
-## 🏗️ Project Structure
+### Available Props
 
-```
-src/
-├── components/          # Reusable UI components
-│   ├── layout/         # Layout components
-│   └── ui/            # UI components
-├── pages/              # Page components
-│   ├── auth/          # Authentication pages
-│   ├── dashboard/     # Dashboard pages
-│   ├── distribution/  # Distribution pages
-│   ├── orders/        # Order management pages
-│   ├── payments/      # Payment pages
-│   ├── products/      # Product pages
-│   ├── reports/       # Report pages
-│   ├── stores/        # Store pages
-│   ├── users/         # User management pages
-│   └── settings/      # Settings pages
-├── services/           # API services
-├── stores/            # State management
-├── hooks/             # Custom React hooks
-├── utils/             # Utility functions
-├── styles/            # Global styles
-└── config/            # Configuration files
-```
+- `size`: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
+- `showText`: boolean
+- `animated`: boolean
+- `variant`: 'default' | 'simple' | 'icon-only'
 
-## 🚀 Deployment
+## 🌐 Deployment
 
 ### Vercel (Recommended)
 
-1. **Connect your GitHub repository to Vercel**
-2. **Add environment variables in Vercel dashboard**
-3. **Deploy automatically on every push**
-
-### Other Platforms
-
-- **Netlify**: Drag and drop `dist` folder
-- **GitHub Pages**: Use GitHub Actions workflow
-- **Railway**: Connect repository directly
-
-## 📱 Mobile Support
-
-- Responsive design for all screen sizes
-- Touch-friendly interfaces
-- Progressive Web App (PWA) ready
-- Offline capabilities
-
-## 🔒 Security
-
-- JWT authentication
-- Role-based access control
-- Secure API communication
-- Input validation and sanitization
-
-## 📊 Performance
-
-- Code splitting and lazy loading
-- Image optimization
-- Bundle size optimization
-- CDN integration
-
-## 🧪 Testing
-
 ```bash
-# Run tests
-npm test
-
-# Run tests with coverage
-npm run test:coverage
-
-# Run e2e tests
-npm run test:e2e
+npm run deploy
 ```
 
-## 📈 Monitoring
+### Manual Deployment
 
-- Vercel Analytics integration
-- Error tracking with Sentry
-- Performance monitoring
-- User behavior analytics
+```bash
+npm run build
+# Upload dist/ folder to your hosting provider
+```
+
+## 📱 PWA Features
+
+- **Offline Support** - العمل بدون إنترنت
+- **App-like Experience** - تجربة تشبه التطبيق
+- **Install Prompt** - إمكانية التثبيت
+- **Background Sync** - مزامنة في الخلفية
+
+## 🎨 Design System
+
+### Colors
+
+- **Primary**: Amber (#f59e0b)
+- **Secondary**: Orange (#f97316)
+- **Accent**: Red (#ef4444)
+- **Background**: Slate (#1e293b)
+
+### Typography
+
+- **Font**: Inter (مثالي للعربية)
+- **Direction**: RTL (من اليمين إلى اليسار)
+
+## 📄 License
+
+MIT License - see LICENSE file for details
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
-## 📄 License
+## 📞 Support
 
-This project is licensed under the MIT License.
-
-## 🆘 Support
-
-For support and questions:
-
-- Create an issue on GitHub
-- Check the documentation
-- Contact the development team
+- **Email**: support@bakemaster.com
+- **Documentation**: [docs.bakemaster.com](https://docs.bakemaster.com)
+- **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
 
 ---
 
-**🍞 Built with ❤️ for modern bakery management**
+**BakeMaster** - نظام إدارة المخابز الاحترافي 🍞✨

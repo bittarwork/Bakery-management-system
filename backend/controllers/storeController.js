@@ -1,6 +1,7 @@
 import { validationResult } from 'express-validator';
 import { Op } from 'sequelize';
-import { Store, Order, OrderItem, getSequelizeConnection } from '../models/index.js';
+import sequelize from '../config/database.js';
+import { Store, Order, OrderItem, User, Product, Payment, getSequelizeConnection } from '../models/index.js';
 
 // @desc    الحصول على جميع المحلات مع التصفية والبحث
 // @route   GET /api/stores
@@ -15,15 +16,33 @@ export const getStores = async (req, res) => {
         const whereClause = {};
         const filters = {};
 
-        // Text search
+        // Text search with better Arabic support
         if (req.query.search) {
+            let searchTerm = req.query.search;
+
+            // Log the search term for debugging
+            console.log('Search term received:', searchTerm);
+            console.log('Search term type:', typeof searchTerm);
+            console.log('Search term length:', searchTerm.length);
+
+            // Try to decode if it's URL encoded
+            try {
+                const decoded = decodeURIComponent(searchTerm);
+                if (decoded !== searchTerm) {
+                    console.log('Decoded search term:', decoded);
+                    searchTerm = decoded;
+                }
+            } catch (e) {
+                console.log('Could not decode search term:', e.message);
+            }
+
             whereClause[Op.or] = [
-                { name: { [Op.iLike]: `%${req.query.search}%` } },
-                { owner_name: { [Op.iLike]: `%${req.query.search}%` } },
-                { address: { [Op.iLike]: `%${req.query.search}%` } },
-                { phone: { [Op.iLike]: `%${req.query.search}%` } }
+                { name: { [Op.like]: `%${searchTerm}%` } },
+                { owner_name: { [Op.like]: `%${searchTerm}%` } },
+                { address: { [Op.like]: `%${searchTerm}%` } },
+                { phone: { [Op.like]: `%${searchTerm}%` } }
             ];
-            filters.search = req.query.search;
+            filters.search = searchTerm;
         }
 
         // Status filter
@@ -80,6 +99,8 @@ export const getStores = async (req, res) => {
             filters.lng = lng;
             filters.radius = radius;
         }
+
+        console.log('Final whereClause:', JSON.stringify(whereClause, null, 2));
 
         const { count, rows } = await Store.findAndCountAll({
             where: whereClause,
@@ -143,6 +164,7 @@ export const getStores = async (req, res) => {
 
     } catch (error) {
         console.error('[STORES] Failed to fetch stores:', error.message);
+        console.error('[STORES] Stack trace:', error.stack);
         res.status(500).json({
             success: false,
             message: 'خطأ في جلب المحلات',
@@ -247,6 +269,8 @@ export const createStore = async (req, res) => {
             store_type = 'retail',
             size_category = 'small',
             gps_coordinates,
+            latitude,
+            longitude,
             payment_terms = 'cash',
             credit_limit_eur = 0,
             credit_limit_syp = 0,
@@ -259,22 +283,33 @@ export const createStore = async (req, res) => {
             status = 'active'
         } = req.body;
 
-        // Validate GPS coordinates if provided
+        // Build GPS coordinates object from latitude/longitude or gps_coordinates
+        let finalGpsCoordinates = null;
         if (gps_coordinates) {
-            const { latitude, longitude } = gps_coordinates;
+            finalGpsCoordinates = gps_coordinates;
+        } else if (latitude && longitude) {
+            finalGpsCoordinates = {
+                latitude: parseFloat(latitude),
+                longitude: parseFloat(longitude)
+            };
+        }
 
-            if (latitude && longitude) {
-                const lat = parseFloat(latitude);
-                const lng = parseFloat(longitude);
+        // Validate GPS coordinates if provided
+        if (finalGpsCoordinates) {
+            const { latitude: lat, longitude: lng } = finalGpsCoordinates;
 
-                if (lat < -90 || lat > 90) {
+            if (lat && lng) {
+                const latNum = parseFloat(lat);
+                const lngNum = parseFloat(lng);
+
+                if (latNum < -90 || latNum > 90) {
                     return res.status(400).json({
                         success: false,
                         message: 'خط العرض يجب أن يكون بين -90 و 90'
                     });
                 }
 
-                if (lng < -180 || lng > 180) {
+                if (lngNum < -180 || lngNum > 180) {
                     return res.status(400).json({
                         success: false,
                         message: 'خط الطول يجب أن يكون بين -180 و 180'
@@ -304,7 +339,7 @@ export const createStore = async (req, res) => {
             category,
             store_type,
             size_category,
-            gps_coordinates,
+            gps_coordinates: finalGpsCoordinates,
             payment_terms,
             credit_limit_eur,
             credit_limit_syp,
@@ -610,7 +645,29 @@ export const getNearbyStores = async (req, res) => {
 // @access  Private
 export const getStoreStatistics = async (req, res) => {
     try {
-        const stats = await Store.getStoreStatistics();
+        // Get general store statistics
+        const [totalStores, activeStores, inactiveStores] = await Promise.all([
+            Store.count(),
+            Store.count({ where: { status: 'active' } }),
+            Store.count({ where: { status: 'inactive' } })
+        ]);
+
+        // Get total revenue
+        const revenueResult = await Store.findOne({
+            attributes: [
+                [sequelize.fn('SUM', sequelize.col('total_purchases_eur')), 'total_revenue_eur'],
+                [sequelize.fn('SUM', sequelize.col('total_purchases_syp')), 'total_revenue_syp']
+            ],
+            raw: true
+        });
+
+        const stats = {
+            total: totalStores,
+            active: activeStores,
+            inactive: inactiveStores,
+            total_revenue_eur: parseFloat(revenueResult?.total_revenue_eur || 0),
+            total_revenue_syp: parseFloat(revenueResult?.total_revenue_syp || 0)
+        };
 
         res.json({
             success: true,
@@ -668,6 +725,281 @@ export const getStoresMap = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'خطأ في جلب خريطة المحلات',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// @desc    الحصول على طلبات محل محدد
+// @route   GET /api/stores/:id/orders
+// @access  Private
+export const getStoreOrders = async (req, res) => {
+    try {
+        const storeId = parseInt(req.params.id);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        if (isNaN(storeId) || storeId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'معرف المحل غير صحيح'
+            });
+        }
+
+        // Check if store exists
+        const store = await Store.findByPk(storeId);
+        if (!store) {
+            return res.status(404).json({
+                success: false,
+                message: 'المحل غير موجود'
+            });
+        }
+
+        // Build where clause
+        const whereClause = { store_id: storeId };
+
+        if (req.query.status) {
+            whereClause.status = req.query.status;
+        }
+
+        if (req.query.startDate && req.query.endDate) {
+            whereClause.created_at = {
+                [Op.between]: [new Date(req.query.startDate), new Date(req.query.endDate)]
+            };
+        }
+
+        // Query actual orders from database
+        const orders = await Order.findAll({
+            where: whereClause,
+            include: [
+                {
+                    association: 'items',
+                    include: [
+                        {
+                            association: 'product',
+                            attributes: ['name']
+                        }
+                    ],
+                    attributes: ['id', 'product_id', 'quantity', 'unit_price_eur', 'unit_price_syp', 'total_price_eur', 'total_price_syp']
+                },
+                {
+                    association: 'creator',
+                    attributes: ['full_name']
+                }
+            ],
+            order: [['order_date', 'DESC']],
+            limit: limit,
+            offset: offset
+        });
+
+        // Get total count
+        const count = await Order.count({
+            where: whereClause
+        });
+
+        const rows = orders;
+
+        const pagination = {
+            page,
+            limit,
+            total: count,
+            totalPages: Math.ceil(count / limit),
+            hasNext: page < Math.ceil(count / limit),
+            hasPrev: page > 1
+        };
+
+        res.json({
+            success: true,
+            data: {
+                orders: rows,
+                pagination
+            }
+        });
+
+    } catch (error) {
+        console.error('[STORES] Failed to fetch store orders:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في جلب طلبات المحل',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// @desc    الحصول على مدفوعات محل محدد
+// @route   GET /api/stores/:id/payments
+// @access  Private
+export const getStorePayments = async (req, res) => {
+    try {
+        const storeId = parseInt(req.params.id);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        if (isNaN(storeId) || storeId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'معرف المحل غير صحيح'
+            });
+        }
+
+        // Check if store exists
+        const store = await Store.findByPk(storeId);
+        if (!store) {
+            return res.status(404).json({
+                success: false,
+                message: 'المحل غير موجود'
+            });
+        }
+
+        // Query actual payments from database
+        const payments = await Payment.findAll({
+            where: { store_id: storeId },
+            order: [['payment_date', 'DESC']],
+            limit: limit,
+            offset: offset
+        });
+
+        // Get total count
+        const count = await Payment.count({
+            where: { store_id: storeId }
+        });
+
+        const pagination = {
+            page,
+            limit,
+            total: count,
+            totalPages: Math.ceil(count / limit),
+            hasNext: page < Math.ceil(count / limit),
+            hasPrev: page > 1
+        };
+
+        res.json({
+            success: true,
+            data: {
+                payments: payments,
+                pagination
+            }
+        });
+
+    } catch (error) {
+        console.error('[STORES] Failed to fetch store payments:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في جلب مدفوعات المحل',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// @desc    الحصول على إحصائيات محل محدد
+// @route   GET /api/stores/:id/statistics
+// @access  Private
+export const getStoreSpecificStatistics = async (req, res) => {
+    try {
+        const storeId = parseInt(req.params.id);
+
+        if (isNaN(storeId) || storeId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'معرف المحل غير صحيح'
+            });
+        }
+
+        const store = await Store.findByPk(storeId);
+        if (!store) {
+            return res.status(404).json({
+                success: false,
+                message: 'المحل غير موجود'
+            });
+        }
+
+        // Get store-specific statistics directly from store data
+        const stats = {
+            store_id: storeId,
+            store_name: store.name,
+            statistics: {
+                total_orders: store.total_orders || 0,
+                completed_orders: store.completed_orders || 0,
+                total_revenue: parseFloat(store.total_purchases_eur || 0),
+                average_order_value: parseFloat(store.average_order_value_eur || 0),
+                monthly_orders: 0, // Will be calculated if needed
+                performance_rating: parseFloat(store.performance_rating || 0),
+                last_order_date: store.last_order_date,
+                last_payment_date: store.last_payment_date,
+                current_balance: parseFloat(store.current_balance_eur || 0),
+                credit_limit: parseFloat(store.credit_limit_eur || 0),
+                status: store.status,
+                category: store.category,
+                store_type: store.store_type
+            }
+        };
+
+        res.json({
+            success: true,
+            data: stats
+        });
+
+    } catch (error) {
+        console.error('[STORES] Failed to fetch store statistics:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في جلب إحصائيات المحل',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// @desc    تحديث حالة محل
+// @route   PATCH /api/stores/:id/status
+// @access  Private (Manager/Admin)
+export const updateStoreStatus = async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                message: 'بيانات غير صحيحة',
+                errors: errors.array()
+            });
+        }
+
+        const storeId = parseInt(req.params.id);
+        const { status } = req.body;
+
+        if (isNaN(storeId) || storeId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'معرف المحل غير صحيح'
+            });
+        }
+
+        const store = await Store.findByPk(storeId);
+        if (!store) {
+            return res.status(404).json({
+                success: false,
+                message: 'المحل غير موجود'
+            });
+        }
+
+        // Update store status
+        await store.update({ status });
+
+        res.json({
+            success: true,
+            message: 'تم تحديث حالة المحل بنجاح',
+            data: {
+                store_id: storeId,
+                status: status
+            }
+        });
+
+    } catch (error) {
+        console.error('[STORES] Failed to update store status:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في تحديث حالة المحل',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
