@@ -187,7 +187,7 @@ class DashboardAPI {
                     },
                     status: 'delivered'
                 },
-                attributes: ['order_date', amountField, 'store_id', 'distributor_id']
+                attributes: ['order_date', amountField, 'store_id']
             });
 
             // Group by date for trends
@@ -219,7 +219,6 @@ class DashboardAPI {
                 salesTrends[date].orders_count += 1;
                 salesTrends[date].total_sales += parseFloat(order[amountField] || 0);
                 if (order.store_id) salesTrends[date].unique_stores.add(order.store_id);
-                if (order.distributor_id) salesTrends[date].active_distributors.add(order.distributor_id);
             });
 
             // Convert sets to counts
@@ -228,7 +227,7 @@ class DashboardAPI {
                 orders_count: trend.orders_count,
                 total_sales: trend.total_sales,
                 unique_stores: trend.unique_stores.size,
-                active_distributors: trend.active_distributors.size
+                active_distributors: 0 // Set to 0 since we don't have distributor_id in orders
             }));
 
             return {
