@@ -27,7 +27,7 @@ const StoreMap = ({
         setIsLoading(true);
         setError(null);
 
-        // Clean up existing map
+        // Clean up existing map more thoroughly
         if (mapInstanceRef.current) {
           if (mapProvider === "google") {
             // Google Maps cleanup
@@ -35,18 +35,29 @@ const StoreMap = ({
           } else {
             // Leaflet cleanup
             try {
-              mapInstanceRef.current.remove();
+              if (mapInstanceRef.current.remove) {
+                mapInstanceRef.current.remove();
+              }
             } catch (e) {
-              console.log("Map already removed");
+              console.log("Map cleanup error:", e.message);
             }
             mapInstanceRef.current = null;
           }
         }
 
-        // Clear container
+        // Clear container completely
         if (mapRef.current) {
           mapRef.current.innerHTML = "";
+          // Remove any existing map-related attributes
+          mapRef.current.removeAttribute("data-leaflet-map");
+          mapRef.current.className = mapRef.current.className.replace(
+            /leaflet-container.*?(\s|$)/g,
+            ""
+          );
         }
+
+        // Small delay to ensure cleanup is complete
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
         if (!isMounted) return;
 
@@ -125,35 +136,53 @@ const StoreMap = ({
         });
       }
 
+      // Ensure container is ready
+      if (!mapRef.current) {
+        throw new Error("Map container not available");
+      }
+
+      // Check if container already has a map
+      if (mapRef.current._leaflet_id) {
+        console.warn(
+          "Container already has a Leaflet map, skipping initialization"
+        );
+        return;
+      }
+
       const defaultCenter = center || [33.3152, 44.3661];
 
-      const mapInstance = L.map(mapRef.current, {
-        center: defaultCenter,
-        zoom: zoom,
-        zoomControl: showControls,
-        attributionControl: false,
-      });
-
-      // Add tile layer
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-      }).addTo(mapInstance);
-
-      mapInstanceRef.current = mapInstance;
-
-      // Add markers
-      addLeafletMarkers(mapInstance);
-
-      // Add click listener if interactive
-      if (interactive && onLocationSelect) {
-        mapInstance.on("click", (e) => {
-          const position = e.latlng;
-          onLocationSelect({
-            lat: position.lat,
-            lng: position.lng,
-            name: "Selected Location",
-          });
+      try {
+        const mapInstance = L.map(mapRef.current, {
+          center: defaultCenter,
+          zoom: zoom,
+          zoomControl: showControls,
+          attributionControl: false,
         });
+
+        // Add tile layer
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap contributors",
+        }).addTo(mapInstance);
+
+        mapInstanceRef.current = mapInstance;
+
+        // Add markers
+        addLeafletMarkers(mapInstance);
+
+        // Add click listener if interactive
+        if (interactive && onLocationSelect) {
+          mapInstance.on("click", (e) => {
+            const position = e.latlng;
+            onLocationSelect({
+              lat: position.lat,
+              lng: position.lng,
+              name: "Selected Location",
+            });
+          });
+        }
+      } catch (error) {
+        console.error("Error creating Leaflet map:", error);
+        throw error;
       }
     };
 
@@ -287,17 +316,48 @@ const StoreMap = ({
 
     return () => {
       isMounted = false;
+
+      // More thorough cleanup
       if (mapInstanceRef.current) {
         if (mapProvider === "google") {
           mapInstanceRef.current = null;
         } else {
           try {
-            mapInstanceRef.current.remove();
+            if (mapInstanceRef.current.remove) {
+              mapInstanceRef.current.remove();
+            }
           } catch (e) {
-            console.log("Map cleanup error:", e);
+            console.log("Map cleanup error:", e.message);
           }
           mapInstanceRef.current = null;
         }
+      }
+
+      // Clean up container
+      if (mapRef.current) {
+        mapRef.current.innerHTML = "";
+        mapRef.current.removeAttribute("data-leaflet-map");
+        mapRef.current.className = mapRef.current.className.replace(
+          /leaflet-container.*?(\s|$)/g,
+          ""
+        );
+      }
+
+      // Clean up global markers
+      if (window.selectedMarker) {
+        try {
+          if (mapProvider === "google") {
+            window.selectedMarker.setMap(null);
+          } else if (
+            mapInstanceRef.current &&
+            mapInstanceRef.current.removeLayer
+          ) {
+            mapInstanceRef.current.removeLayer(window.selectedMarker);
+          }
+        } catch (e) {
+          console.log("Marker cleanup error:", e.message);
+        }
+        window.selectedMarker = null;
       }
     };
   }, [
