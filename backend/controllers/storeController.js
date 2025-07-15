@@ -774,20 +774,17 @@ export const getStoreOrders = async (req, res) => {
             where: whereClause,
             include: [
                 {
-                    model: OrderItem,
-                    as: 'items',
+                    association: 'items',
                     include: [
                         {
-                            model: Product,
-                            as: 'product',
+                            association: 'product',
                             attributes: ['name']
                         }
                     ],
                     attributes: ['id', 'product_id', 'quantity', 'unit_price_eur', 'unit_price_syp', 'total_price_eur', 'total_price_syp']
                 },
                 {
-                    model: User,
-                    as: 'creator',
+                    association: 'creator',
                     attributes: ['full_name']
                 }
             ],
