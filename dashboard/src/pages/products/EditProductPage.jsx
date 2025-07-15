@@ -1,5 +1,5 @@
-import React, { useState, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import {
@@ -19,23 +19,24 @@ import {
   Star,
   Scale,
   Calendar,
-  Thermometer,
-  Truck,
-  Heart,
   AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import { productService } from "../../services/productService";
 
-const CreateProductPage = () => {
+const EditProductPage = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCostFields, setShowCostFields] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [originalProduct, setOriginalProduct] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -59,6 +60,65 @@ const CreateProductPage = () => {
     allergen_info: "",
   });
   const [errors, setErrors] = useState({});
+
+  // Fetch product data
+  const fetchProduct = async () => {
+    try {
+      setIsLoading(true);
+      const response = await productService.getProduct(id);
+
+      if (response.success) {
+        const product = response.data;
+        setOriginalProduct(product);
+        setFormData({
+          name: product.name || "",
+          description: product.description || "",
+          category: product.category || "",
+          unit: product.unit || "",
+          price_eur: product.price_eur || "",
+          price_syp: product.price_syp || "",
+          cost_eur: product.cost_eur || "",
+          cost_syp: product.cost_syp || "",
+          stock_quantity: product.stock_quantity || "",
+          minimum_stock: product.minimum_stock || "",
+          barcode: product.barcode || "",
+          is_featured: product.is_featured || false,
+          status: product.status || "active",
+          image_url: product.image_url || "",
+          weight_grams: product.weight_grams || "",
+          shelf_life_days: product.shelf_life_days || "",
+          storage_conditions: product.storage_conditions || "",
+          supplier_info: product.supplier_info || "",
+          nutritional_info: product.nutritional_info || "",
+          allergen_info: product.allergen_info || "",
+        });
+
+        if (product.image_url) {
+          setImagePreview(product.image_url);
+        }
+
+        // Show cost fields if they have values
+        if (product.cost_eur > 0 || product.cost_syp > 0) {
+          setShowCostFields(true);
+        }
+      } else {
+        throw new Error(response.message || "Failed to fetch product");
+      }
+    } catch (error) {
+      console.error("Error fetching product:", error);
+      toast.error("Failed to load product");
+      navigate("/products");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load product data on component mount
+  useEffect(() => {
+    if (id) {
+      fetchProduct();
+    }
+  }, [id]);
 
   // Handle form field changes
   const handleChange = (field, value) => {
@@ -106,9 +166,26 @@ const CreateProductPage = () => {
   // Remove image
   const handleRemoveImage = () => {
     setSelectedImage(null);
-    setImagePreview(null);
+    setImagePreview(originalProduct?.image_url || null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+  };
+
+  // Delete existing image
+  const handleDeleteImage = async () => {
+    if (!window.confirm("Are you sure you want to delete the current image?")) {
+      return;
+    }
+
+    try {
+      await productService.deleteProductImage(id);
+      setImagePreview(null);
+      setFormData((prev) => ({ ...prev, image_url: "" }));
+      toast.success("Image deleted successfully");
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      toast.error("Failed to delete image");
     }
   };
 
@@ -184,35 +261,32 @@ const CreateProductPage = () => {
         is_featured: formData.is_featured,
       };
 
-      // Create product
-      const response = await productService.createProduct(productData);
+      // Update product
+      const response = await productService.updateProduct(id, productData);
 
       if (response.success) {
-        // Upload image if selected
-        if (selectedImage && response.data.id) {
+        // Upload new image if selected
+        if (selectedImage) {
           try {
-            await productService.uploadProductImage(
-              selectedImage,
-              response.data.id
-            );
-            toast.success("Product created successfully with image");
+            await productService.uploadProductImage(selectedImage, id);
+            toast.success("Product updated successfully with new image");
           } catch (imageError) {
             toast.success(
-              "Product created successfully, but image upload failed"
+              "Product updated successfully, but image upload failed"
             );
           }
         } else {
-          toast.success("Product created successfully");
+          toast.success("Product updated successfully");
         }
 
-        // Navigate to product list
-        navigate("/products");
+        // Navigate back to product details
+        navigate(`/products/${id}`);
       } else {
-        throw new Error(response.message || "Failed to create product");
+        throw new Error(response.message || "Failed to update product");
       }
     } catch (error) {
-      console.error("Error creating product:", error);
-      toast.error(error.message || "Failed to create product");
+      console.error("Error updating product:", error);
+      toast.error(error.message || "Failed to update product");
     } finally {
       setIsSubmitting(false);
     }
@@ -237,6 +311,18 @@ const CreateProductPage = () => {
     { value: "pack", label: "Pack" },
   ];
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading product data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
@@ -246,16 +332,15 @@ const CreateProductPage = () => {
         className="flex items-center justify-between"
       >
         <div className="flex items-center space-x-4">
-          <Link to="/products" className="text-gray-500 hover:text-gray-700">
+          <Link
+            to={`/products/${id}`}
+            className="text-gray-500 hover:text-gray-700"
+          >
             <ArrowLeft className="w-6 h-6" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Add New Product
-            </h1>
-            <p className="text-gray-600">
-              Create a new product for your bakery
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900">Edit Product</h1>
+            <p className="text-gray-600">Update {originalProduct?.name}</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -504,7 +589,7 @@ const CreateProductPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Initial Stock Quantity
+                  Stock Quantity
                 </label>
                 <Input
                   type="number"
@@ -569,18 +654,44 @@ const CreateProductPage = () => {
                     alt="Product preview"
                     className="w-full h-64 object-cover rounded-lg border"
                   />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute top-2 right-2 bg-white shadow-md"
-                    onClick={handleRemoveImage}
-                    icon={<X className="w-4 h-4" />}
-                  >
-                    Remove
-                  </Button>
+                  <div className="absolute top-2 right-2 flex space-x-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="bg-white shadow-md"
+                      onClick={handleRemoveImage}
+                      icon={<X className="w-4 h-4" />}
+                    >
+                      Remove
+                    </Button>
+                    {originalProduct?.image_url && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="bg-white shadow-md"
+                        onClick={handleDeleteImage}
+                        icon={<Trash2 className="w-4 h-4" />}
+                      >
+                        Delete
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
+
+              <div className="flex justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  icon={<Upload className="w-4 h-4" />}
+                >
+                  {imagePreview ? "Change Image" : "Upload Image"}
+                </Button>
+              </div>
 
               <input
                 ref={fileInputRef}
@@ -699,7 +810,7 @@ const CreateProductPage = () => {
 
         {/* Action Buttons */}
         <div className="flex justify-end space-x-3">
-          <Link to="/products">
+          <Link to={`/products/${id}`}>
             <Button variant="outline">Cancel</Button>
           </Link>
           <Button
@@ -714,7 +825,7 @@ const CreateProductPage = () => {
               )
             }
           >
-            {isSubmitting ? "Creating..." : "Create Product"}
+            {isSubmitting ? "Updating..." : "Update Product"}
           </Button>
         </div>
       </form>
@@ -722,4 +833,4 @@ const CreateProductPage = () => {
   );
 };
 
-export default CreateProductPage;
+export default EditProductPage;

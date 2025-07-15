@@ -18,123 +18,174 @@ import {
   Package2,
   TrendingUp,
   TrendingDown,
+  Image,
+  Star,
+  StarOff,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "react-hot-toast";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import DataTable from "../../components/ui/DataTable";
+import { productService } from "../../services/productService";
 
 const ProductsListPage = () => {
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+  const [productStats, setProductStats] = useState(null);
+  const [error, setError] = useState(null);
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 10,
+  });
   const [filters, setFilters] = useState({
     category: "",
     status: "",
     search: "",
+    sortBy: "name",
+    sortOrder: "ASC",
   });
 
-  useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setProducts([
-        {
-          id: 1,
-          name: "White Bread",
-          code: "WB-001",
-          category: "Bread",
-          price: 2.5,
-          cost: 1.2,
-          stock: 150,
-          minStock: 50,
-          status: "active",
-          description: "Fresh white bread made daily",
-          image: "bread-white.jpg",
-          supplier: "Local Flour Co.",
-          lastRestock: "2024-03-20",
-        },
-        {
-          id: 2,
-          name: "Croissant",
-          code: "CR-002",
-          category: "Pastry",
-          price: 3.5,
-          cost: 1.8,
-          stock: 45,
-          minStock: 30,
-          status: "active",
-          description: "Buttery French croissant",
-          image: "croissant.jpg",
-          supplier: "Butter Delights",
-          lastRestock: "2024-03-22",
-        },
-        {
-          id: 3,
-          name: "Chocolate Cake",
-          code: "CC-003",
-          category: "Cake",
-          price: 25.0,
-          cost: 12.0,
-          stock: 8,
-          minStock: 10,
-          status: "active",
-          description: "Rich chocolate layer cake",
-          image: "chocolate-cake.jpg",
-          supplier: "Sweet Supplies",
-          lastRestock: "2024-03-18",
-        },
-        {
-          id: 4,
-          name: "Whole Wheat Bread",
-          code: "WW-004",
-          category: "Bread",
-          price: 3.0,
-          cost: 1.5,
-          stock: 25,
-          minStock: 40,
-          status: "active",
-          description: "Healthy whole wheat bread",
-          image: "bread-whole-wheat.jpg",
-          supplier: "Local Flour Co.",
-          lastRestock: "2024-03-21",
-        },
-        {
-          id: 5,
-          name: "Danish Pastry",
-          code: "DP-005",
-          category: "Pastry",
-          price: 4.0,
-          cost: 2.2,
-          stock: 0,
-          minStock: 20,
-          status: "inactive",
-          description: "Traditional Danish pastry",
-          image: "danish-pastry.jpg",
-          supplier: "Butter Delights",
-          lastRestock: "2024-03-15",
-        },
-        {
-          id: 6,
-          name: "Cheesecake",
-          code: "CS-006",
-          category: "Cake",
-          price: 30.0,
-          cost: 15.0,
-          stock: 5,
-          minStock: 8,
-          status: "active",
-          description: "New York style cheesecake",
-          image: "cheesecake.jpg",
-          supplier: "Sweet Supplies",
-          lastRestock: "2024-03-19",
-        },
-      ]);
-      setIsLoading(false);
-    }, 1000);
+  // Fetch products and statistics
+  const fetchProducts = async (page = 1, currentFilters = filters) => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-    return () => clearTimeout(timer);
+      const params = {
+        page,
+        limit: pagination.itemsPerPage,
+        ...currentFilters,
+      };
+
+      const response = await productService.getProducts(params);
+
+      if (response.success) {
+        setProducts(response.data.products);
+        setPagination((prev) => ({
+          ...prev,
+          currentPage: response.data.pagination.current_page,
+          totalPages: response.data.pagination.total_pages,
+          totalItems: response.data.pagination.total_items,
+        }));
+
+        // Set statistics if available
+        if (response.data.statistics) {
+          setProductStats(response.data.statistics);
+        }
+      } else {
+        throw new Error(response.message || "Failed to fetch products");
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      setError(error.message);
+      toast.error("Failed to load products");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch product statistics
+  const fetchProductStats = async () => {
+    try {
+      const response = await productService.getProductStatistics();
+      if (response.success) {
+        setProductStats(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching product statistics:", error);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchProducts();
+    fetchProductStats();
   }, []);
 
+  // Handle pagination
+  const handlePageChange = (newPage) => {
+    fetchProducts(newPage);
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (key, value) => {
+    const newFilters = { ...filters, [key]: value };
+    setFilters(newFilters);
+    fetchProducts(1, newFilters);
+  };
+
+  // Handle delete product
+  const handleDelete = async (productId) => {
+    if (!window.confirm("Are you sure you want to delete this product?")) {
+      return;
+    }
+
+    try {
+      const response = await productService.deleteProduct(productId);
+      if (response.success) {
+        toast.success("Product deleted successfully");
+        fetchProducts(pagination.currentPage);
+        fetchProductStats();
+      } else {
+        throw new Error(response.message || "Failed to delete product");
+      }
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      toast.error("Failed to delete product");
+    }
+  };
+
+  // Handle toggle product status
+  const handleToggleStatus = async (productId) => {
+    try {
+      const response = await productService.toggleProductStatus(productId);
+      if (response.success) {
+        toast.success("Product status updated successfully");
+        fetchProducts(pagination.currentPage);
+        fetchProductStats();
+      } else {
+        throw new Error(response.message || "Failed to update product status");
+      }
+    } catch (error) {
+      console.error("Error toggling product status:", error);
+      toast.error("Failed to update product status");
+    }
+  };
+
+  // Handle export
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const response = await productService.exportProducts(filters);
+      if (response.success) {
+        toast.success("Products exported successfully");
+        // Handle download if needed
+      } else {
+        throw new Error(response.message || "Failed to export products");
+      }
+    } catch (error) {
+      console.error("Error exporting products:", error);
+      toast.error("Failed to export products");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Handle refresh
+  const handleRefresh = () => {
+    fetchProducts(pagination.currentPage);
+    fetchProductStats();
+  };
+
+  // Get status color
   const getStatusColor = (status) => {
     switch (status) {
       case "active":
@@ -146,6 +197,7 @@ const ProductsListPage = () => {
     }
   };
 
+  // Get status icon
   const getStatusIcon = (status) => {
     switch (status) {
       case "active":
@@ -157,6 +209,7 @@ const ProductsListPage = () => {
     }
   };
 
+  // Get stock status
   const getStockStatus = (stock, minStock) => {
     if (stock === 0)
       return { status: "out", color: "text-red-600", bg: "bg-red-100" };
@@ -165,6 +218,7 @@ const ProductsListPage = () => {
     return { status: "good", color: "text-green-600", bg: "bg-green-100" };
   };
 
+  // Get stock icon
   const getStockIcon = (stock, minStock) => {
     const stockStatus = getStockStatus(stock, minStock);
     switch (stockStatus.status) {
@@ -179,56 +233,64 @@ const ProductsListPage = () => {
     }
   };
 
+  // Table columns
   const columns = [
     {
       key: "name",
       title: "Product",
       render: (value, row) => (
         <div className="flex items-center">
-          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
-            <Package className="w-5 h-5 text-gray-600" />
+          <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+            {row.image_url ? (
+              <img
+                src={row.image_url}
+                alt={value}
+                className="w-full h-full object-cover rounded-lg"
+              />
+            ) : (
+              <Package className="w-6 h-6 text-gray-400" />
+            )}
           </div>
           <div>
-            <div className="font-medium text-gray-900">{value}</div>
-            <div className="text-sm text-gray-500">Code: {row.code}</div>
+            <div className="font-medium text-gray-900 flex items-center">
+              {value}
+              {row.is_featured && (
+                <Star className="w-4 h-4 text-yellow-500 ml-1" />
+              )}
+            </div>
+            <div className="text-sm text-gray-500">
+              {row.category} • {row.unit}
+            </div>
           </div>
         </div>
       ),
     },
     {
-      key: "category",
-      title: "Category",
-      render: (value) => (
-        <div className="flex items-center">
-          <Tag className="w-4 h-4 text-gray-400 mr-2" />
-          <span className="text-sm font-medium text-gray-900">{value}</span>
-        </div>
-      ),
-    },
-    {
-      key: "price",
+      key: "price_eur",
       title: "Price",
       render: (value, row) => (
         <div>
           <div className="font-medium text-gray-900">€{value.toFixed(2)}</div>
           <div className="text-sm text-gray-500">
-            Cost: €{row.cost.toFixed(2)}
+            Cost: €{row.cost_eur.toFixed(2)}
           </div>
         </div>
       ),
     },
     {
-      key: "stock",
+      key: "stock_quantity",
       title: "Stock",
       render: (value, row) => {
-        const stockStatus = getStockStatus(value, row.minStock);
-        const StockIcon = getStockIcon(value, row.minStock);
+        const stockStatus = getStockStatus(value, row.minimum_stock);
+        const StockIcon = getStockIcon(value, row.minimum_stock);
         return (
           <div className="flex items-center">
             <StockIcon className={`w-4 h-4 mr-2 ${stockStatus.color}`} />
             <div>
               <div className={`font-medium ${stockStatus.color}`}>{value}</div>
-              <div className="text-sm text-gray-500">Min: {row.minStock}</div>
+              <div className="text-sm text-gray-500">
+                Min: {row.minimum_stock}
+              </div>
             </div>
           </div>
         );
@@ -265,8 +327,28 @@ const ProductsListPage = () => {
               View
             </Button>
           </Link>
-          <Button variant="ghost" size="sm" icon={<Edit className="w-4 h-4" />}>
-            Edit
+          <Link to={`/products/${row.id}/edit`}>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<Edit className="w-4 h-4" />}
+            >
+              Edit
+            </Button>
+          </Link>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={
+              row.is_featured ? (
+                <StarOff className="w-4 h-4" />
+              ) : (
+                <Star className="w-4 h-4" />
+              )
+            }
+            onClick={() => handleToggleStatus(row.id)}
+          >
+            {row.is_featured ? "Unfeature" : "Feature"}
           </Button>
           <Button
             variant="ghost"
@@ -281,43 +363,46 @@ const ProductsListPage = () => {
     },
   ];
 
-  const handleDelete = (productId) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
-      setProducts(products.filter((product) => product.id !== productId));
-    }
-  };
-
-  const handleFilterChange = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleExport = () => {
-    // Export functionality
-    console.log("Exporting products...");
-  };
-
-  const handleRefresh = () => {
-    setIsLoading(true);
-    // Simulate refresh
-    setTimeout(() => setIsLoading(false), 1000);
-  };
-
-  const stats = {
+  // Calculate stats from current data if not provided by API
+  const stats = productStats || {
     total: products.length,
     active: products.filter((p) => p.status === "active").length,
-    lowStock: products.filter((p) => p.stock <= p.minStock && p.stock > 0)
-      .length,
-    outOfStock: products.filter((p) => p.stock === 0).length,
+    lowStock: products.filter(
+      (p) => p.stock_quantity <= p.minimum_stock && p.stock_quantity > 0
+    ).length,
+    outOfStock: products.filter((p) => p.stock_quantity === 0).length,
     totalValue: products.reduce(
-      (sum, product) => sum + product.price * product.stock,
+      (sum, product) => sum + product.price_eur * product.stock_quantity,
       0
     ),
   };
 
-  if (isLoading) {
+  // Loading state
+  if (isLoading && products.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading products...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && products.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertCircle className="w-8 h-8 text-red-600 mx-auto mb-4" />
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button
+            onClick={handleRefresh}
+            icon={<RefreshCw className="w-4 h-4" />}
+          >
+            Try Again
+          </Button>
+        </div>
       </div>
     );
   }
@@ -337,8 +422,15 @@ const ProductsListPage = () => {
         <div className="flex items-center space-x-3">
           <Button
             variant="outline"
-            icon={<Download className="w-4 h-4" />}
+            icon={
+              isExporting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )
+            }
             onClick={handleExport}
+            disabled={isExporting}
           >
             Export
           </Button>
@@ -438,16 +530,24 @@ const ProductsListPage = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() =>
-                setFilters({ category: "", status: "", search: "" })
-              }
+              onClick={() => {
+                const resetFilters = {
+                  category: "",
+                  status: "",
+                  search: "",
+                  sortBy: "name",
+                  sortOrder: "ASC",
+                };
+                setFilters(resetFilters);
+                fetchProducts(1, resetFilters);
+              }}
             >
               Clear All
             </Button>
           </div>
         </CardHeader>
         <CardBody>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Category
@@ -458,9 +558,11 @@ const ProductsListPage = () => {
                 onChange={(e) => handleFilterChange("category", e.target.value)}
               >
                 <option value="">All Categories</option>
-                <option value="Bread">Bread</option>
-                <option value="Pastry">Pastry</option>
-                <option value="Cake">Cake</option>
+                <option value="bread">Bread</option>
+                <option value="pastry">Pastry</option>
+                <option value="cake">Cake</option>
+                <option value="cookies">Cookies</option>
+                <option value="other">Other</option>
               </select>
             </div>
             <div>
@@ -479,10 +581,25 @@ const ProductsListPage = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                Sort By
+              </label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={filters.sortBy}
+                onChange={(e) => handleFilterChange("sortBy", e.target.value)}
+              >
+                <option value="name">Name</option>
+                <option value="price_eur">Price</option>
+                <option value="stock_quantity">Stock</option>
+                <option value="created_at">Created Date</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Search
               </label>
               <Input
-                placeholder="Search by name or code..."
+                placeholder="Search by name, description..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange("search", e.target.value)}
                 icon={<Search className="w-4 h-4" />}
@@ -501,10 +618,15 @@ const ProductsListPage = () => {
           <DataTable
             data={products}
             columns={columns}
-            searchable={true}
-            sortable={true}
+            searchable={false}
+            sortable={false}
             pagination={true}
-            itemsPerPage={10}
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            onPageChange={handlePageChange}
+            itemsPerPage={pagination.itemsPerPage}
+            totalItems={pagination.totalItems}
+            loading={isLoading}
           />
         </CardBody>
       </Card>
