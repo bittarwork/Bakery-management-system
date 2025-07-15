@@ -16,15 +16,24 @@ export const getStores = async (req, res) => {
         const whereClause = {};
         const filters = {};
 
-        // Text search
+        // Text search with better Arabic support
         if (req.query.search) {
-            // Decode URI component to handle Arabic characters properly
             let searchTerm = req.query.search;
+
+            // Log the search term for debugging
+            console.log('Search term received:', searchTerm);
+            console.log('Search term type:', typeof searchTerm);
+            console.log('Search term length:', searchTerm.length);
+
+            // Try to decode if it's URL encoded
             try {
-                searchTerm = decodeURIComponent(req.query.search);
+                const decoded = decodeURIComponent(searchTerm);
+                if (decoded !== searchTerm) {
+                    console.log('Decoded search term:', decoded);
+                    searchTerm = decoded;
+                }
             } catch (e) {
-                // If decoding fails, use original search term
-                searchTerm = req.query.search;
+                console.log('Could not decode search term:', e.message);
             }
 
             whereClause[Op.or] = [
@@ -91,6 +100,8 @@ export const getStores = async (req, res) => {
             filters.radius = radius;
         }
 
+        console.log('Final whereClause:', JSON.stringify(whereClause, null, 2));
+
         const { count, rows } = await Store.findAndCountAll({
             where: whereClause,
             limit,
@@ -153,6 +164,7 @@ export const getStores = async (req, res) => {
 
     } catch (error) {
         console.error('[STORES] Failed to fetch stores:', error.message);
+        console.error('[STORES] Stack trace:', error.stack);
         res.status(500).json({
             success: false,
             message: 'خطأ في جلب المحلات',
