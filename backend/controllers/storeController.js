@@ -1,7 +1,7 @@
 import { validationResult } from 'express-validator';
 import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
-import { Store, Order, OrderItem, getSequelizeConnection } from '../models/index.js';
+import { Store, Order, OrderItem, User, Product, Payment, getSequelizeConnection } from '../models/index.js';
 
 // @desc    الحصول على جميع المحلات مع التصفية والبحث
 // @route   GET /api/stores
@@ -18,13 +18,22 @@ export const getStores = async (req, res) => {
 
         // Text search
         if (req.query.search) {
+            // Decode URI component to handle Arabic characters properly
+            let searchTerm = req.query.search;
+            try {
+                searchTerm = decodeURIComponent(req.query.search);
+            } catch (e) {
+                // If decoding fails, use original search term
+                searchTerm = req.query.search;
+            }
+
             whereClause[Op.or] = [
-                { name: { [Op.like]: `%${req.query.search}%` } },
-                { owner_name: { [Op.like]: `%${req.query.search}%` } },
-                { address: { [Op.like]: `%${req.query.search}%` } },
-                { phone: { [Op.like]: `%${req.query.search}%` } }
+                { name: { [Op.like]: `%${searchTerm}%` } },
+                { owner_name: { [Op.like]: `%${searchTerm}%` } },
+                { address: { [Op.like]: `%${searchTerm}%` } },
+                { phone: { [Op.like]: `%${searchTerm}%` } }
             ];
-            filters.search = req.query.search;
+            filters.search = searchTerm;
         }
 
         // Status filter
@@ -749,60 +758,35 @@ export const getStoreOrders = async (req, res) => {
         }
 
         // Query actual orders from database
-        const [orderRows] = await db.execute(`
-            SELECT 
-                o.id,
-                o.store_id,
-                o.status,
-                o.total_amount_eur,
-                o.total_amount_syp,
-                o.currency,
-                o.order_date,
-                o.created_at,
-                o.updated_at,
-                u.full_name as distributor_name
-            FROM orders o
-            LEFT JOIN users u ON o.distributor_id = u.id
-            WHERE o.store_id = ?
-            ORDER BY o.order_date DESC
-            LIMIT ? OFFSET ?
-        `, [storeId, limit, offset]);
-
-        // Get order items for each order
-        const ordersWithItems = await Promise.all(
-            orderRows.map(async (order) => {
-                const [itemRows] = await db.execute(`
-                    SELECT 
-                        oi.id,
-                        oi.product_id,
-                        p.name as product_name,
-                        oi.quantity,
-                        oi.unit_price_eur,
-                        oi.unit_price_syp,
-                        oi.total_price_eur,
-                        oi.total_price_syp
-                    FROM order_items oi
-                    JOIN products p ON oi.product_id = p.id
-                    WHERE oi.order_id = ?
-                `, [order.id]);
-
-                return {
-                    ...order,
-                    items: itemRows,
-                    total_amount: order.currency === 'EUR' ? order.total_amount_eur : order.total_amount_syp
-                };
-            })
-        );
+        const orders = await Order.findAll({
+            where: whereClause,
+            include: [
+                {
+                    model: OrderItem,
+                    include: [
+                        {
+                            model: Product,
+                            attributes: ['name']
+                        }
+                    ],
+                    attributes: ['id', 'product_id', 'quantity', 'unit_price_eur', 'unit_price_syp', 'total_price_eur', 'total_price_syp']
+                },
+                {
+                    model: User,
+                    attributes: ['full_name']
+                }
+            ],
+            order: [['order_date', 'DESC']],
+            limit: limit,
+            offset: offset
+        });
 
         // Get total count
-        const [countRows] = await db.execute(`
-            SELECT COUNT(*) as total
-            FROM orders
-            WHERE store_id = ?
-        `, [storeId]);
+        const count = await Order.count({
+            where: whereClause
+        });
 
-        const count = countRows[0].total;
-        const rows = ordersWithItems;
+        const rows = orders;
 
         const pagination = {
             page,
@@ -858,40 +842,22 @@ export const getStorePayments = async (req, res) => {
         }
 
         // Query actual payments from database
-        const [paymentRows] = await db.execute(`
-            SELECT 
-                p.id,
-                p.order_id,
-                p.store_id,
-                p.amount_eur,
-                p.amount_syp,
-                p.currency,
-                p.payment_method,
-                p.payment_type,
-                p.status,
-                p.payment_date,
-                p.created_at,
-                p.updated_at,
-                p.notes
-            FROM payments p
-            WHERE p.store_id = ?
-            ORDER BY p.payment_date DESC
-            LIMIT ? OFFSET ?
-        `, [storeId, limit, offset]);
+        const payments = await Payment.findAll({
+            where: { store_id: storeId },
+            order: [['payment_date', 'DESC']],
+            limit: limit,
+            offset: offset
+        });
 
         // Get total count
-        const [countRows] = await db.execute(`
-            SELECT COUNT(*) as total
-            FROM payments
-            WHERE store_id = ?
-        `, [storeId]);
-
-        const count = countRows[0].total;
+        const count = await Payment.count({
+            where: { store_id: storeId }
+        });
 
         const pagination = {
             page,
             limit,
-            total,
+            total: count,
             totalPages: Math.ceil(count / limit),
             hasNext: page < Math.ceil(count / limit),
             hasPrev: page > 1
@@ -900,7 +866,7 @@ export const getStorePayments = async (req, res) => {
         res.json({
             success: true,
             data: {
-                payments: paymentRows,
+                payments: payments,
                 pagination
             }
         });

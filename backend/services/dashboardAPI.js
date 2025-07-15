@@ -193,7 +193,20 @@ class DashboardAPI {
             // Group by date for trends
             const salesTrends = {};
             deliveredOrders.forEach(order => {
-                const date = order.order_date.toISOString().split('T')[0];
+                // Handle different date formats safely
+                let date;
+                if (order.order_date) {
+                    if (typeof order.order_date === 'string') {
+                        date = order.order_date.split('T')[0];
+                    } else if (order.order_date instanceof Date) {
+                        date = order.order_date.toISOString().split('T')[0];
+                    } else {
+                        date = new Date(order.order_date).toISOString().split('T')[0];
+                    }
+                } else {
+                    date = new Date().toISOString().split('T')[0]; // fallback to today
+                }
+
                 if (!salesTrends[date]) {
                     salesTrends[date] = {
                         date,
@@ -205,8 +218,8 @@ class DashboardAPI {
                 }
                 salesTrends[date].orders_count += 1;
                 salesTrends[date].total_sales += parseFloat(order[amountField] || 0);
-                salesTrends[date].unique_stores.add(order.store_id);
-                salesTrends[date].active_distributors.add(order.distributor_id);
+                if (order.store_id) salesTrends[date].unique_stores.add(order.store_id);
+                if (order.distributor_id) salesTrends[date].active_distributors.add(order.distributor_id);
             });
 
             // Convert sets to counts
