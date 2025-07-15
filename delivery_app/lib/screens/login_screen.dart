@@ -50,10 +50,14 @@ class LoginScreen extends StatelessWidget {
                         rootScaffoldMessengerKey.currentState?.showSnackBar(
                           const SnackBar(content: Text('تم تسجيل الدخول بنجاح!')),
                         );
-                        // يمكنك هنا التنقل إلى الشاشة الرئيسية
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(builder: (_) => const HomeScreen()),
-                        );
+                        // حماية من تكرار التنقل
+                        Future.microtask(() {
+                          if (ModalRoute.of(context)?.isCurrent ?? true) {
+                            Navigator.of(context, rootNavigator: true).pushReplacement(
+                              MaterialPageRoute(builder: (_) => const HomeScreen()),
+                            );
+                          }
+                        });
                       }
                     },
                     builder: (context, state) {

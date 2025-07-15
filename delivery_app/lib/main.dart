@@ -9,10 +9,13 @@ import 'cubits/inventory_cubit.dart';
 import 'cubits/expenses_cubit.dart';
 import 'cubits/daily_report_cubit.dart';
 import 'cubits/notifications_cubit.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 // سيتم استيراد LoginScreen لاحقًا من screens/login_screen.dart
 final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
   runApp(const BakeryDistributorApp());
 }
 
