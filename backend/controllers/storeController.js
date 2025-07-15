@@ -775,9 +775,11 @@ export const getStoreOrders = async (req, res) => {
             include: [
                 {
                     model: OrderItem,
+                    as: 'items',
                     include: [
                         {
                             model: Product,
+                            as: 'product',
                             attributes: ['name']
                         }
                     ],
@@ -785,6 +787,7 @@ export const getStoreOrders = async (req, res) => {
                 },
                 {
                     model: User,
+                    as: 'creator',
                     attributes: ['full_name']
                 }
             ],
