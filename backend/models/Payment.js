@@ -223,14 +223,6 @@ const Payment = sequelize.define('Payment', {
     created_by_name: {
         type: DataTypes.STRING(100),
         allowNull: true
-    },
-    updated_by: {
-        type: DataTypes.INTEGER,
-        allowNull: true
-    },
-    updated_by_name: {
-        type: DataTypes.STRING(100),
-        allowNull: true
     }
 }, {
     tableName: 'payments',
