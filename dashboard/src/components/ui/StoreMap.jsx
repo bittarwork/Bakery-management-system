@@ -54,6 +54,9 @@ const StoreMap = ({
             /leaflet-container.*?(\s|$)/g,
             ""
           );
+          // Clean up Leaflet specific properties
+          delete mapRef.current._leaflet_id;
+          delete mapRef.current._leaflet_map;
         }
 
         // Small delay to ensure cleanup is complete
@@ -141,19 +144,44 @@ const StoreMap = ({
         throw new Error("Map container not available");
       }
 
-      // Check if container already has a map
+      // Properly clean up existing Leaflet instance
       if (mapRef.current._leaflet_id) {
-        console.warn(
-          "Container already has a Leaflet map, skipping initialization"
-        );
-        return;
+        // Remove existing map instance
+        const existingMap = mapRef.current._leaflet_map;
+        if (existingMap) {
+          existingMap.remove();
+        }
+        // Clear the container
+        mapRef.current.innerHTML = "";
+        delete mapRef.current._leaflet_id;
+        delete mapRef.current._leaflet_map;
       }
 
-      const defaultCenter = center || [33.3152, 44.3661];
+      // Get user location first, then fall back to center or default
+      let mapCenter = center || [33.5138, 36.2765]; // Default to Damascus
+
+      // Try to get user's current location if not provided
+      if (!center && navigator.geolocation) {
+        try {
+          const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 5000,
+              maximumAge: 300000, // 5 minutes
+            });
+          });
+          mapCenter = [position.coords.latitude, position.coords.longitude];
+        } catch (error) {
+          console.warn("Could not get user location, using default:", error);
+          // Keep default center
+        }
+      } else if (center) {
+        mapCenter = [center.lat, center.lng];
+      }
 
       try {
         const mapInstance = L.map(mapRef.current, {
-          center: defaultCenter,
+          center: mapCenter,
           zoom: zoom,
           zoomControl: showControls,
           attributionControl: false,
@@ -164,6 +192,8 @@ const StoreMap = ({
           attribution: "© OpenStreetMap contributors",
         }).addTo(mapInstance);
 
+        // Store reference to map instance
+        mapRef.current._leaflet_map = mapInstance;
         mapInstanceRef.current = mapInstance;
 
         // Add markers
@@ -341,6 +371,9 @@ const StoreMap = ({
           /leaflet-container.*?(\s|$)/g,
           ""
         );
+        // Clean up Leaflet specific properties
+        delete mapRef.current._leaflet_id;
+        delete mapRef.current._leaflet_map;
       }
 
       // Clean up global markers

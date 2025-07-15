@@ -8,7 +8,6 @@ import {
   Mail,
   User,
   CreditCard,
-  Globe,
   Edit,
   Trash2,
   Calendar,
@@ -25,12 +24,26 @@ import {
   CheckCircle,
   XCircle,
   Activity,
+  Loader2,
+  Home,
+  Info,
+  DollarSign,
+  Users,
+  ShoppingCart,
+  BarChart3,
+  MapIcon,
+  Target,
+  Zap,
+  Award,
+  TrendingDown,
 } from "lucide-react";
-import { Card } from "../../components/ui/Card";
-import Button from "../../components/ui/Button";
+import { Card, CardHeader, CardBody } from "../../components/ui/Card";
+import EnhancedButton from "../../components/ui/EnhancedButton";
+import BackButton from "../../components/ui/BackButton";
 import StoreMap from "../../components/ui/StoreMap";
 import storeService from "../../services/storeService";
 import { toast } from "react-hot-toast";
+import { AnimatePresence } from "framer-motion";
 
 const StoreDetailsPage = () => {
   const { id } = useParams();
@@ -42,6 +55,48 @@ const StoreDetailsPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [copiedField, setCopiedField] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+
+  // Get user's current location
+  useEffect(() => {
+    const getUserLocation = async () => {
+      if (navigator.geolocation) {
+        setIsLoadingLocation(true);
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setUserLocation({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            });
+            setIsLoadingLocation(false);
+          },
+          (error) => {
+            console.warn("Could not get user location:", error);
+            // Default to Damascus, Syria
+            setUserLocation({
+              lat: 33.5138,
+              lng: 36.2765,
+            });
+            setIsLoadingLocation(false);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000, // 5 minutes
+          }
+        );
+      } else {
+        // Default to Damascus, Syria
+        setUserLocation({
+          lat: 33.5138,
+          lng: 36.2765,
+        });
+      }
+    };
+
+    getUserLocation();
+  }, []);
 
   // Load store data
   useEffect(() => {
@@ -82,7 +137,7 @@ const StoreDetailsPage = () => {
         }
       } catch (error) {
         console.error("Error loading store data:", error);
-        toast.error("Failed to load store data");
+        toast.error("فشل في تحميل بيانات المتجر");
         navigate("/stores");
       } finally {
         setIsLoading(false);
@@ -97,35 +152,68 @@ const StoreDetailsPage = () => {
   const handleDelete = async () => {
     try {
       await storeService.deleteStore(id);
-      toast.success("Store deleted successfully");
+      toast.success("تم حذف المتجر بنجاح");
       navigate("/stores");
     } catch (error) {
       console.error("Error deleting store:", error);
-      toast.error("Failed to delete store");
+      toast.error("فشل في حذف المتجر");
     }
   };
 
   const copyToClipboard = (text, field) => {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
-    toast.success(`${field} copied to clipboard`);
+    toast.success(`تم نسخ ${field} بنجاح`);
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const getStatusIcon = (status) => {
-    return status === "active" ? (
-      <CheckCircle className="w-4 h-4 text-green-500" />
-    ) : (
-      <XCircle className="w-4 h-4 text-red-500" />
-    );
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "active":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "inactive":
+        return "bg-red-100 text-red-800 border-red-200";
+      case "suspended":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case "active":
+        return "نشط";
+      case "inactive":
+        return "غير نشط";
+      case "suspended":
+        return "معلق";
+      default:
+        return "غير معروف";
+    }
+  };
+
+  const getPaymentMethodText = (method) => {
+    switch (method) {
+      case "cash":
+        return "نقدي";
+      case "bank":
+        return "بنكي";
+      case "mixed":
+        return "مختلط";
+      default:
+        return "نقدي";
+    }
   };
 
   const getOrderStatusColor = (status) => {
     switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-800 border-green-200";
       case "pending":
         return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "processing":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "completed":
+        return "bg-green-100 text-green-800 border-green-200";
       case "cancelled":
         return "bg-red-100 text-red-800 border-red-200";
       default:
@@ -133,12 +221,27 @@ const StoreDetailsPage = () => {
     }
   };
 
+  const getOrderStatusText = (status) => {
+    switch (status) {
+      case "pending":
+        return "في الانتظار";
+      case "processing":
+        return "قيد المعالجة";
+      case "completed":
+        return "مكتمل";
+      case "cancelled":
+        return "ملغي";
+      default:
+        return "غير معروف";
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading store details...</p>
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 text-lg">جاري تحميل بيانات المتجر...</p>
         </div>
       </div>
     );
@@ -146,168 +249,103 @@ const StoreDetailsPage = () => {
 
   if (!store) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center max-w-md mx-auto">
-          <div className="bg-red-50 rounded-full p-4 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-            <AlertCircle className="w-10 h-10 text-red-500" />
-          </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-3">
-            Store Not Found
-          </h3>
-          <p className="text-gray-600 mb-8 leading-relaxed">
-            The store you're looking for doesn't exist or may have been removed.
-          </p>
-          <Link to="/stores">
-            <Button variant="primary" className="px-8 py-3">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Stores
-            </Button>
-          </Link>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            المتجر غير موجود
+          </h2>
+          <p className="text-gray-600 mb-6">لم يتم العثور على المتجر المطلوب</p>
+          <BackButton />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-      {/* Header Section */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
-              <Link
-                to="/stores"
-                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-600" />
-              </Link>
+              <BackButton />
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                  <Building2 className="w-8 h-8 mr-3 text-blue-600" />
+                <h1 className="text-4xl font-bold text-gray-900 mb-2">
                   {store.name}
                 </h1>
-                <p className="text-gray-500 mt-1">Store ID: #{store.id}</p>
+                <div className="flex items-center space-x-3">
+                  <span
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(
+                      store.status
+                    )}`}
+                  >
+                    <Activity className="w-4 h-4 mr-1" />
+                    {getStatusText(store.status)}
+                  </span>
+                  <span className="text-gray-500">•</span>
+                  <span className="text-gray-600 text-sm">
+                    تم الإنشاء:{" "}
+                    {new Date(store.created_at).toLocaleDateString("ar-EG")}
+                  </span>
+                </div>
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-full">
-                {getStatusIcon(store.status)}
-                <span
-                  className={`text-sm font-medium ${
-                    store.status === "active"
-                      ? "text-green-700"
-                      : "text-red-700"
-                  }`}
-                >
-                  {store.status === "active" ? "Active" : "Inactive"}
-                </span>
-              </div>
-              <Link to={`/stores/edit/${id}`}>
-                <Button
-                  variant="outline"
-                  icon={<Edit className="w-4 h-4" />}
-                  className="bg-white hover:bg-gray-50"
-                >
-                  Edit Store
-                </Button>
-              </Link>
-              <Button
-                variant="outline"
-                icon={<Trash2 className="w-4 h-4" />}
-                onClick={() => setShowDeleteConfirm(true)}
-                className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
+              <EnhancedButton
+                variant="primary"
+                size="lg"
+                icon={<Edit className="w-5 h-5" />}
+                onClick={() => navigate(`/stores/${id}/edit`)}
               >
-                Delete
-              </Button>
+                تعديل المتجر
+              </EnhancedButton>
+              <EnhancedButton
+                variant="danger"
+                size="lg"
+                icon={<Trash2 className="w-5 h-5" />}
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                حذف المتجر
+              </EnhancedButton>
             </div>
           </div>
-        </div>
-      </motion.div>
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-        >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl"
-          >
-            <div className="flex items-center space-x-4 mb-6">
-              <div className="p-3 bg-red-100 rounded-full">
-                <Trash2 className="w-8 h-8 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">
-                  Delete Store
-                </h3>
-                <p className="text-gray-500">This action cannot be undone</p>
-              </div>
-            </div>
-            <p className="text-gray-700 mb-8 leading-relaxed">
-              Are you sure you want to delete <strong>"{store.name}"</strong>?
-              This will permanently remove all associated data including orders,
-              payments, and statistics.
-            </p>
-            <div className="flex justify-end space-x-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-6"
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                icon={<Trash2 className="w-4 h-4" />}
-                onClick={handleDelete}
-                className="px-6"
-              >
-                Delete Store
-              </Button>
-            </div>
-          </motion.div>
         </motion.div>
-      )}
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Store Info & Orders */}
-          <div className="xl:col-span-3 space-y-8">
+          <div className="lg:col-span-2 space-y-8">
             {/* Store Information Card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <Card className="overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
-                  <h2 className="text-xl font-bold text-white flex items-center">
-                    <Globe className="w-6 h-6 mr-3" />
-                    Store Information
+              <Card className="border-0 shadow-lg">
+                <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                    <Info className="w-5 h-5 ml-2 text-blue-600" />
+                    معلومات المتجر
                   </h2>
-                </div>
-                <div className="p-6">
+                </CardHeader>
+                <CardBody className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Basic Info */}
                     <div className="space-y-4">
                       <div className="bg-gray-50 rounded-lg p-4">
                         <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                          <Building2 className="w-4 h-4 mr-2" />
-                          Basic Information
+                          <Building2 className="w-4 h-4 ml-2" />
+                          المعلومات الأساسية
                         </h3>
                         <div className="space-y-3">
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-600">
-                              Store Name
+                              اسم المتجر
                             </span>
                             <span className="text-sm font-medium text-gray-900">
                               {store.name}
@@ -315,36 +353,69 @@ const StoreDetailsPage = () => {
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-600">
-                              Region
+                              اسم المالك
                             </span>
                             <span className="text-sm font-medium text-gray-900">
-                              {store.region
-                                ? store.region.charAt(0).toUpperCase() +
-                                  store.region.slice(1)
-                                : "Not specified"}
+                              {store.owner_name || "غير محدد"}
                             </span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-600">
-                              Payment Method
+                              المنطقة
                             </span>
                             <span className="text-sm font-medium text-gray-900">
-                              {store.payment_method
-                                ? store.payment_method.charAt(0).toUpperCase() +
-                                  store.payment_method.slice(1)
-                                : "Cash"}
+                              {store.region || "غير محدد"}
                             </span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-600">
-                              Credit Limit
+                              نوع المتجر
+                            </span>
+                            <span className="text-sm font-medium text-gray-900">
+                              {store.store_type || "تجزئة"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Financial Info */}
+                    <div className="space-y-4">
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                          <DollarSign className="w-4 h-4 ml-2" />
+                          المعلومات المالية
+                        </h3>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">
+                              طريقة الدفع
+                            </span>
+                            <span className="text-sm font-medium text-gray-900">
+                              {getPaymentMethodText(store.payment_method)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">
+                              الحد الائتماني
                             </span>
                             <span className="text-sm font-medium text-gray-900">
                               {store.credit_limit || store.credit_limit_eur
                                 ? `€${parseFloat(
                                     store.credit_limit || store.credit_limit_eur
                                   ).toLocaleString()}`
-                                : "No limit"}
+                                : "بدون حد"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">
+                              الرصيد الحالي
+                            </span>
+                            <span className="text-sm font-medium text-gray-900">
+                              €
+                              {parseFloat(
+                                store.current_balance_eur || 0
+                              ).toLocaleString()}
                             </span>
                           </div>
                         </div>
@@ -355,32 +426,34 @@ const StoreDetailsPage = () => {
                     <div className="space-y-4">
                       <div className="bg-gray-50 rounded-lg p-4">
                         <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                          <User className="w-4 h-4 mr-2" />
-                          Contact Information
+                          <User className="w-4 h-4 ml-2" />
+                          معلومات الاتصال
                         </h3>
                         <div className="space-y-3">
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-600">
-                              Contact Person
+                              الشخص المسؤول
                             </span>
                             <span className="text-sm font-medium text-gray-900">
-                              {store.contact_person || "Not specified"}
+                              {store.contact_person || "غير محدد"}
                             </span>
                           </div>
                           <div className="flex justify-between items-center group">
-                            <span className="text-sm text-gray-600">Phone</span>
+                            <span className="text-sm text-gray-600">
+                              الهاتف
+                            </span>
                             <div className="flex items-center space-x-2">
                               <span className="text-sm font-medium text-gray-900">
-                                {store.phone || "Not specified"}
+                                {store.phone || "غير محدد"}
                               </span>
                               {store.phone && (
                                 <button
                                   onClick={() =>
-                                    copyToClipboard(store.phone, "Phone")
+                                    copyToClipboard(store.phone, "الهاتف")
                                   }
                                   className="opacity-0 group-hover:opacity-100 transition-opacity"
                                 >
-                                  {copiedField === "Phone" ? (
+                                  {copiedField === "الهاتف" ? (
                                     <CheckCircle className="w-4 h-4 text-green-500" />
                                   ) : (
                                     <Copy className="w-4 h-4 text-gray-400 hover:text-gray-600" />
@@ -390,19 +463,24 @@ const StoreDetailsPage = () => {
                             </div>
                           </div>
                           <div className="flex justify-between items-center group">
-                            <span className="text-sm text-gray-600">Email</span>
+                            <span className="text-sm text-gray-600">
+                              البريد الإلكتروني
+                            </span>
                             <div className="flex items-center space-x-2">
                               <span className="text-sm font-medium text-gray-900">
-                                {store.email || "Not specified"}
+                                {store.email || "غير محدد"}
                               </span>
                               {store.email && (
                                 <button
                                   onClick={() =>
-                                    copyToClipboard(store.email, "Email")
+                                    copyToClipboard(
+                                      store.email,
+                                      "البريد الإلكتروني"
+                                    )
                                   }
                                   className="opacity-0 group-hover:opacity-100 transition-opacity"
                                 >
-                                  {copiedField === "Email" ? (
+                                  {copiedField === "البريد الإلكتروني" ? (
                                     <CheckCircle className="w-4 h-4 text-green-500" />
                                   ) : (
                                     <Copy className="w-4 h-4 text-gray-400 hover:text-gray-600" />
@@ -414,27 +492,31 @@ const StoreDetailsPage = () => {
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Address Section */}
-                  <div className="mt-6 bg-gray-50 rounded-lg p-4">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                      <MapPin className="w-4 h-4 mr-2" />
-                      Address
-                    </h3>
-                    <p className="text-sm text-gray-900">
-                      {store.address || "No address available"}
-                    </p>
-                    {store.notes && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                          Notes
-                        </h4>
-                        <p className="text-sm text-gray-600">{store.notes}</p>
+                    {/* Address Section */}
+                    <div className="space-y-4">
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                          <Home className="w-4 h-4 ml-2" />
+                          العنوان
+                        </h3>
+                        <p className="text-sm text-gray-900">
+                          {store.address || "العنوان غير متوفر"}
+                        </p>
+                        {store.notes && (
+                          <div className="mt-4 pt-4 border-t border-gray-200">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                              ملاحظات
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              {store.notes}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
-                </div>
+                </CardBody>
               </Card>
             </motion.div>
 
@@ -444,14 +526,14 @@ const StoreDetailsPage = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <Card className="overflow-hidden">
-                <div className="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4">
-                  <h2 className="text-xl font-bold text-white flex items-center">
-                    <Package className="w-6 h-6 mr-3" />
-                    Recent Orders
+              <Card className="border-0 shadow-lg">
+                <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
+                  <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                    <Package className="w-5 h-5 ml-2 text-green-600" />
+                    الطلبات الأخيرة
                   </h2>
-                </div>
-                <div className="p-6">
+                </CardHeader>
+                <CardBody className="p-6">
                   {recentOrders.length > 0 ? (
                     <div className="space-y-4">
                       {recentOrders.map((order, index) => (
@@ -469,13 +551,13 @@ const StoreDetailsPage = () => {
                               </div>
                               <div>
                                 <h3 className="font-semibold text-gray-900">
-                                  Order #{order.id}
+                                  طلب رقم #{order.id}
                                 </h3>
                                 <p className="text-sm text-gray-500 flex items-center">
-                                  <Clock className="w-3 h-3 mr-1" />
+                                  <Clock className="w-3 h-3 ml-1" />
                                   {new Date(
                                     order.created_at
-                                  ).toLocaleDateString()}
+                                  ).toLocaleDateString("ar-EG")}
                                 </p>
                               </div>
                             </div>
@@ -491,7 +573,7 @@ const StoreDetailsPage = () => {
                                   order.status
                                 )}`}
                               >
-                                {order.status}
+                                {getOrderStatusText(order.status)}
                               </span>
                             </div>
                           </div>
@@ -504,14 +586,14 @@ const StoreDetailsPage = () => {
                         <Package className="w-8 h-8 text-gray-400" />
                       </div>
                       <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        No Orders Yet
+                        لا توجد طلبات بعد
                       </h3>
                       <p className="text-gray-600">
-                        This store hasn't received any orders yet.
+                        لم يتم تسجيل أي طلبات لهذا المتجر حتى الآن
                       </p>
                     </div>
                   )}
-                </div>
+                </CardBody>
               </Card>
             </motion.div>
           </div>
@@ -524,133 +606,104 @@ const StoreDetailsPage = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Card className="overflow-hidden">
-                <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
-                  <h2 className="text-xl font-bold text-white flex items-center">
-                    <TrendingUp className="w-6 h-6 mr-3" />
-                    Statistics
+              <Card className="border-0 shadow-lg">
+                <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-purple-50 to-violet-50">
+                  <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                    <BarChart3 className="w-5 h-5 ml-2 text-purple-600" />
+                    الإحصائيات
                   </h2>
-                </div>
-                <div className="p-6 space-y-6">
+                </CardHeader>
+                <CardBody className="p-6 space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-center p-4 bg-blue-50 rounded-lg">
                       <div className="bg-blue-100 rounded-full p-2 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
                         <Package className="w-6 h-6 text-blue-600" />
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {statistics?.total_orders || 0}
+                      <p className="text-2xl font-bold text-blue-600">
+                        {store.total_orders || 0}
                       </p>
-                      <p className="text-sm text-gray-600">Total Orders</p>
+                      <p className="text-sm text-gray-600">إجمالي الطلبات</p>
                     </div>
                     <div className="text-center p-4 bg-green-50 rounded-lg">
                       <div className="bg-green-100 rounded-full p-2 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
                         <Euro className="w-6 h-6 text-green-600" />
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">
-                        €{(statistics?.total_revenue || 0).toLocaleString()}
+                      <p className="text-2xl font-bold text-green-600">
+                        €
+                        {parseFloat(
+                          store.total_purchases_eur || 0
+                        ).toLocaleString()}
                       </p>
-                      <p className="text-sm text-gray-600">Total Revenue</p>
+                      <p className="text-sm text-gray-600">إجمالي المشتريات</p>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
                     <div className="text-center p-4 bg-yellow-50 rounded-lg">
                       <div className="bg-yellow-100 rounded-full p-2 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                        <Activity className="w-6 h-6 text-yellow-600" />
+                        <TrendingUp className="w-6 h-6 text-yellow-600" />
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">
-                        €
-                        {statistics?.average_order_value
-                          ? parseFloat(
-                              statistics.average_order_value
-                            ).toLocaleString()
-                          : "0.00"}
+                      <p className="text-2xl font-bold text-yellow-600">
+                        {store.completed_orders || 0}
                       </p>
-                      <p className="text-sm text-gray-600">Avg. Order</p>
+                      <p className="text-sm text-gray-600">الطلبات المكتملة</p>
                     </div>
-                    <div className="text-center p-4 bg-indigo-50 rounded-lg">
-                      <div className="bg-indigo-100 rounded-full p-2 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                        <Calendar className="w-6 h-6 text-indigo-600" />
+                    <div className="text-center p-4 bg-red-50 rounded-lg">
+                      <div className="bg-red-100 rounded-full p-2 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                        <XCircle className="w-6 h-6 text-red-600" />
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {statistics?.monthly_orders || 0}
+                      <p className="text-2xl font-bold text-red-600">
+                        {store.cancelled_orders || 0}
                       </p>
-                      <p className="text-sm text-gray-600">This Month</p>
+                      <p className="text-sm text-gray-600">الطلبات الملغية</p>
                     </div>
                   </div>
-                </div>
-              </Card>
-            </motion.div>
 
-            {/* Recent Payments Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <Card className="overflow-hidden">
-                <div className="bg-gradient-to-r from-orange-600 to-orange-700 px-6 py-4">
-                  <h2 className="text-xl font-bold text-white flex items-center">
-                    <CreditCard className="w-6 h-6 mr-3" />
-                    Recent Payments
-                  </h2>
-                </div>
-                <div className="p-6">
-                  {recentPayments.length > 0 ? (
-                    <div className="space-y-4">
-                      {recentPayments.map((payment, index) => (
-                        <motion.div
-                          key={payment.id}
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <div className="bg-green-100 rounded-full p-2">
-                                <CreditCard className="w-4 h-4 text-green-600" />
-                              </div>
-                              <div>
-                                <h3 className="font-semibold text-gray-900">
-                                  Payment #{payment.id}
-                                </h3>
-                                <p className="text-sm text-gray-500">
-                                  {new Date(
-                                    payment.created_at
-                                  ).toLocaleDateString()}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-lg font-bold text-gray-900">
-                                €
-                                {parseFloat(
-                                  payment.amount || 0
-                                ).toLocaleString()}
-                              </p>
-                              <span
-                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getOrderStatusColor(
-                                  payment.status
-                                )}`}
-                              >
-                                {payment.status}
-                              </span>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <div className="bg-gray-100 rounded-full p-3 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                        <CreditCard className="w-6 h-6 text-gray-400" />
+                  {/* Performance Rating */}
+                  <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium text-gray-700">
+                        تقييم الأداء
+                      </span>
+                      <div className="flex items-center space-x-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-4 h-4 ${
+                              i < Math.floor(store.performance_rating || 0)
+                                ? "text-yellow-400 fill-current"
+                                : "text-gray-300"
+                            }`}
+                          />
+                        ))}
                       </div>
-                      <p className="text-gray-600 text-sm">
-                        No payment history
-                      </p>
                     </div>
-                  )}
-                </div>
+                    <p className="text-2xl font-bold text-indigo-600">
+                      {parseFloat(store.performance_rating || 0).toFixed(1)}/5.0
+                    </p>
+                  </div>
+
+                  {/* Last Activity */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">آخر طلب</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {store.last_order_date
+                          ? new Date(store.last_order_date).toLocaleDateString(
+                              "ar-EG"
+                            )
+                          : "لا يوجد"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">آخر دفعة</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {store.last_payment_date
+                          ? new Date(
+                              store.last_payment_date
+                            ).toLocaleDateString("ar-EG")
+                          : "لا يوجد"}
+                      </span>
+                    </div>
+                  </div>
+                </CardBody>
               </Card>
             </motion.div>
 
@@ -658,45 +711,33 @@ const StoreDetailsPage = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
+              transition={{ delay: 0.4 }}
             >
-              <Card className="overflow-hidden">
-                <div className="bg-gradient-to-r from-red-600 to-red-700 px-6 py-4">
-                  <h2 className="text-xl font-bold text-white flex items-center">
-                    <MapPin className="w-6 h-6 mr-3" />
-                    Location
+              <Card className="border-0 shadow-lg">
+                <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-orange-50 to-red-50">
+                  <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                    <MapPin className="w-5 h-5 ml-2 text-orange-600" />
+                    الموقع
                   </h2>
-                </div>
-                <div className="p-6 space-y-4">
-                  {/* Address Info */}
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex items-start space-x-3">
-                      <MapPin className="w-5 h-5 text-gray-500 mt-0.5" />
-                      <div className="flex-1">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-2">
-                          Store Address
-                        </h3>
-                        <p className="text-sm text-gray-600 mb-2">
-                          {store.address || "No address available"}
-                        </p>
-                        {store.latitude && store.longitude && (
-                          <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded border">
-                            <span className="font-medium">Coordinates:</span>{" "}
+                </CardHeader>
+                <CardBody className="p-6">
+                  {store.latitude && store.longitude ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">
+                          الإحداثيات
+                        </span>
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500">
                             {parseFloat(store.latitude).toFixed(6)},{" "}
                             {parseFloat(store.longitude).toFixed(6)}
-                          </div>
-                        )}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Map Display */}
-                  {store.latitude && store.longitude ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-gray-900">
-                          Location on Map
-                        </h3>
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-sm text-gray-600">
+                          فتح في الخرائط
+                        </span>
                         <button
                           onClick={() => {
                             const url = `https://www.google.com/maps?q=${store.latitude},${store.longitude}`;
@@ -705,21 +746,34 @@ const StoreDetailsPage = () => {
                           className="text-xs text-blue-600 hover:text-blue-800 flex items-center space-x-1 bg-blue-50 px-2 py-1 rounded"
                         >
                           <ExternalLink className="w-3 h-3" />
-                          <span>Open Maps</span>
+                          <span>Google Maps</span>
                         </button>
                       </div>
                       <div className="rounded-lg overflow-hidden border border-gray-200">
-                        <StoreMap
-                          stores={[store]}
-                          height="250px"
-                          showControls={true}
-                          interactive={true}
-                          center={{
-                            lat: parseFloat(store.latitude),
-                            lng: parseFloat(store.longitude),
-                          }}
-                          zoom={15}
-                        />
+                        {isLoadingLocation ? (
+                          <div className="h-64 bg-gray-100 flex items-center justify-center">
+                            <div className="text-center">
+                              <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-2" />
+                              <p className="text-sm text-gray-600">
+                                جاري تحديد الموقع...
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <StoreMap
+                            stores={[store]}
+                            height="250px"
+                            showControls={true}
+                            interactive={true}
+                            center={
+                              userLocation || {
+                                lat: parseFloat(store.latitude),
+                                lng: parseFloat(store.longitude),
+                              }
+                            }
+                            zoom={15}
+                          />
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -727,10 +781,10 @@ const StoreDetailsPage = () => {
                       <div className="text-center">
                         <MapPin className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                         <p className="text-gray-600 mb-2 font-medium">
-                          No location data
+                          لا توجد بيانات موقع
                         </p>
                         <p className="text-xs text-gray-500">
-                          Add coordinates to display map
+                          أضف الإحداثيات لعرض الخريطة
                         </p>
                       </div>
                     </div>
@@ -738,36 +792,85 @@ const StoreDetailsPage = () => {
 
                   {/* Location Actions */}
                   {store.latitude && store.longitude && (
-                    <div className="space-y-2">
-                      <button
+                    <div className="space-y-2 mt-4">
+                      <EnhancedButton
+                        variant="primary"
+                        size="sm"
+                        icon={<Navigation className="w-4 h-4" />}
                         onClick={() => {
                           const url = `https://www.google.com/maps/dir/?api=1&destination=${store.latitude},${store.longitude}`;
                           window.open(url, "_blank");
                         }}
-                        className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        className="w-full"
                       >
-                        <Navigation className="w-4 h-4" />
-                        <span className="font-medium">Get Directions</span>
-                      </button>
-                      <button
+                        الحصول على الاتجاهات
+                      </EnhancedButton>
+                      <EnhancedButton
+                        variant="secondary"
+                        size="sm"
+                        icon={<MapPin className="w-4 h-4" />}
                         onClick={() => {
                           const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
                             store.address || store.name
                           )}`;
                           window.open(url, "_blank");
                         }}
-                        className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        className="w-full"
                       >
-                        <MapPin className="w-4 h-4" />
-                        <span className="font-medium">Search Address</span>
-                      </button>
+                        البحث عن العنوان
+                      </EnhancedButton>
                     </div>
                   )}
-                </div>
+                </CardBody>
               </Card>
             </motion.div>
           </div>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        <AnimatePresence>
+          {showDeleteConfirm && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-lg p-6 max-w-md w-full mx-4"
+              >
+                <div className="flex items-center mb-4">
+                  <AlertCircle className="w-6 h-6 text-red-600 ml-2" />
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    تأكيد الحذف
+                  </h3>
+                </div>
+                <p className="text-gray-600 mb-6">
+                  هل أنت متأكد من حذف المتجر "{store.name}"؟ هذا الإجراء لا يمكن
+                  التراجع عنه.
+                </p>
+                <div className="flex justify-end space-x-3">
+                  <EnhancedButton
+                    variant="secondary"
+                    onClick={() => setShowDeleteConfirm(false)}
+                  >
+                    إلغاء
+                  </EnhancedButton>
+                  <EnhancedButton
+                    variant="danger"
+                    onClick={handleDelete}
+                    icon={<Trash2 className="w-4 h-4" />}
+                  >
+                    حذف المتجر
+                  </EnhancedButton>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
