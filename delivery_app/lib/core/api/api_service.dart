@@ -16,18 +16,19 @@ class ApiService {
   // مثال: تسجيل الدخول
   Future<Response> login(String username, String password) async {
     // هنا تضع عنوان الـ API الحقيقي
-    // return await _dio.post('https://your.api/login', data: { ... });
-    return Response(
-      requestOptions: RequestOptions(path: ''),
-      statusCode: 200,
-      data: {'token': 'dummy_token'},
+    return await _dio.post(
+      'https://bakery-management-system-production.up.railway.app/api/auth/login',
+      data: {
+        'username': username,
+        'password': password,
+      },
     );
   }
 
   Future<DistributionSchedule> getDistributionSchedule(String date) async {
     final token = await LocalStorage.getToken();
     final response = await _dio.get(
-      'https://your.api/distribution/schedule/daily',
+      'https://bakery-management-system-production.up.railway.app/api/distribution/schedule/daily',
       queryParameters: {'date': date},
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
@@ -37,7 +38,7 @@ class ApiService {
   Future<Delivery> getStoreDeliveryDetails(int storeId) async {
     final token = await LocalStorage.getToken();
     final response = await _dio.get(
-      'https://your.api/distribution/store/$storeId/details',
+      'https://bakery-management-system-production.up.railway.app/api/distribution/store/$storeId/details',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return Delivery.fromJson(response.data);
@@ -46,7 +47,7 @@ class ApiService {
   Future<void> updateDeliveryQuantities(int deliveryId, List<Map<String, dynamic>> items) async {
     final token = await LocalStorage.getToken();
     await _dio.patch(
-      'https://your.api/distribution/delivery/$deliveryId/quantities',
+      'https://bakery-management-system-production.up.railway.app/api/distribution/delivery/$deliveryId/quantities',
       data: {'items': items},
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
@@ -55,7 +56,7 @@ class ApiService {
   Future<List<Payment>> getPayments(int storeId) async {
     final token = await LocalStorage.getToken();
     final response = await _dio.get(
-      'https://your.api/payments',
+      'https://bakery-management-system-production.up.railway.app/api/payments',
       queryParameters: {'storeId': storeId},
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
@@ -71,7 +72,7 @@ class ApiService {
   }) async {
     final token = await LocalStorage.getToken();
     await _dio.post(
-      'https://your.api/payments/flexible',
+      'https://bakery-management-system-production.up.railway.app/api/payments/flexible',
       data: {
         'storeId': storeId,
         'amount': amount,
@@ -86,7 +87,7 @@ class ApiService {
   Future<Inventory> getInventory(int vehicleId) async {
     final token = await LocalStorage.getToken();
     final response = await _dio.get(
-      'https://your.api/distribution/vehicle/inventory',
+      'https://bakery-management-system-production.up.railway.app/api/distribution/vehicle/inventory',
       queryParameters: {'vehicleId': vehicleId},
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
@@ -96,7 +97,7 @@ class ApiService {
   Future<void> updateInventory(int vehicleId, List<Map<String, dynamic>> items) async {
     final token = await LocalStorage.getToken();
     await _dio.patch(
-      'https://your.api/distribution/vehicle/inventory',
+      'https://bakery-management-system-production.up.railway.app/api/distribution/vehicle/inventory',
       data: {'vehicleId': vehicleId, 'items': items},
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
@@ -105,7 +106,7 @@ class ApiService {
   Future<List<Expense>> getExpenses(int vehicleId) async {
     final token = await LocalStorage.getToken();
     final response = await _dio.get(
-      'https://your.api/expenses',
+      'https://bakery-management-system-production.up.railway.app/api/expenses',
       queryParameters: {'vehicleId': vehicleId},
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
@@ -130,7 +131,7 @@ class ApiService {
       if (receiptPath != null) 'receipt': await MultipartFile.fromFile(receiptPath),
     });
     await _dio.post(
-      'https://your.api/expenses/record',
+      'https://bakery-management-system-production.up.railway.app/api/expenses/record',
       data: formData,
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
@@ -139,7 +140,7 @@ class ApiService {
   Future<List<DailyReport>> getDailyReports(int vehicleId) async {
     final token = await LocalStorage.getToken();
     final response = await _dio.get(
-      'https://your.api/reports/daily',
+      'https://bakery-management-system-production.up.railway.app/api/reports/daily',
       queryParameters: {'vehicleId': vehicleId},
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
@@ -156,7 +157,7 @@ class ApiService {
   }) async {
     final token = await LocalStorage.getToken();
     await _dio.post(
-      'https://your.api/distribution/report/daily/submit',
+      'https://bakery-management-system-production.up.railway.app/api/distribution/report/daily/submit',
       data: {
         'vehicleId': vehicleId,
         'date': date,
@@ -172,7 +173,7 @@ class ApiService {
   Future<List<NotificationModel>> getNotifications(int userId) async {
     final token = await LocalStorage.getToken();
     final response = await _dio.get(
-      'https://your.api/notifications',
+      'https://bakery-management-system-production.up.railway.app/api/notifications',
       queryParameters: {'userId': userId},
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
