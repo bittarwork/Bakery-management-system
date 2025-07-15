@@ -238,9 +238,20 @@ export const updateStore = async (req, res) => {
             }
         }
 
+        // Convert credit_limit to number if provided
+        if (updateData.credit_limit !== undefined) {
+            updateData.credit_limit = updateData.credit_limit ? parseFloat(updateData.credit_limit) : 0;
+        }
+
+        // Handle credit_limit_eur if provided (for compatibility with old system)
+        if (updateData.credit_limit_eur !== undefined) {
+            updateData.credit_limit = updateData.credit_limit_eur ? parseFloat(updateData.credit_limit_eur) : 0;
+            delete updateData.credit_limit_eur; // Remove to avoid confusion
+        }
+
         await store.update({
             ...updateData,
-            updated_by: req.user.id
+            last_updated_by: req.user.id
         });
 
         res.json({
@@ -326,7 +337,8 @@ export const updateCreditLimit = async (req, res) => {
         }
 
         const oldLimit = store.credit_limit;
-        await store.updateCreditLimit(credit_limit);
+        // Update the credit_limit field directly
+        await store.update({ credit_limit: parseFloat(credit_limit) });
 
         // تسجيل التغيير
         const changeLog = {
@@ -368,7 +380,18 @@ export const getCreditStatus = async (req, res) => {
             });
         }
 
-        const creditStatus = await store.getCreditStatus();
+        // Return credit status directly
+        const creditStatus = {
+            credit_limit: parseFloat(store.credit_limit),
+            current_balance: parseFloat(store.current_balance),
+            credit_used: parseFloat(store.current_balance),
+            credit_available: parseFloat(store.credit_limit) - parseFloat(store.current_balance),
+            credit_utilization_percentage: store.credit_limit > 0 ?
+                (parseFloat(store.current_balance) / parseFloat(store.credit_limit)) * 100 : 0,
+            is_within_limit: parseFloat(store.current_balance) <= parseFloat(store.credit_limit),
+            last_payment_date: store.last_payment_date,
+            last_order_date: store.last_order_date
+        };
 
         res.json({
             success: true,

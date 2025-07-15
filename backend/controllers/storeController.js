@@ -144,6 +144,13 @@ export const getStores = async (req, res) => {
             });
         }
 
+        // Add credit_limit field for frontend compatibility
+        const storesWithCreditLimit = filteredRows.map(store => {
+            const storeData = store.toJSON();
+            storeData.credit_limit = storeData.credit_limit_eur;
+            return storeData;
+        });
+
         const pagination = {
             page,
             limit,
@@ -156,7 +163,7 @@ export const getStores = async (req, res) => {
         res.json({
             success: true,
             data: {
-                stores: filteredRows,
+                stores: storesWithCreditLimit,
                 pagination,
                 filters
             }
@@ -222,9 +229,13 @@ export const getStore = async (req, res) => {
             });
         }
 
+        // Add credit_limit field for frontend compatibility
+        const storeData = store.toJSON();
+        storeData.credit_limit = storeData.credit_limit_eur;
+
         res.json({
             success: true,
-            data: store
+            data: storeData
         });
 
     } catch (error) {
@@ -274,6 +285,7 @@ export const createStore = async (req, res) => {
             payment_terms = 'cash',
             credit_limit_eur = 0,
             credit_limit_syp = 0,
+            credit_limit, // Add support for credit_limit field
             assigned_distributor_id,
             opening_hours,
             contact_person,
@@ -282,6 +294,9 @@ export const createStore = async (req, res) => {
             notes,
             status = 'active'
         } = req.body;
+
+        // Use credit_limit if provided, otherwise use credit_limit_eur
+        const finalCreditLimitEur = credit_limit ? parseFloat(credit_limit) : parseFloat(credit_limit_eur);
 
         // Build GPS coordinates object from latitude/longitude or gps_coordinates
         let finalGpsCoordinates = null;
@@ -341,7 +356,7 @@ export const createStore = async (req, res) => {
             size_category,
             gps_coordinates: finalGpsCoordinates,
             payment_terms,
-            credit_limit_eur,
+            credit_limit_eur: finalCreditLimitEur,
             credit_limit_syp,
             assigned_distributor_id,
             opening_hours,
@@ -475,8 +490,8 @@ export const updateStore = async (req, res) => {
         if (size_category !== undefined) updateData.size_category = size_category;
         if (gps_coordinates !== undefined) updateData.gps_coordinates = gps_coordinates;
         if (payment_terms !== undefined) updateData.payment_terms = payment_terms;
-        if (credit_limit_eur !== undefined) updateData.credit_limit_eur = credit_limit_eur;
-        if (credit_limit_syp !== undefined) updateData.credit_limit_syp = credit_limit_syp;
+        if (credit_limit_eur !== undefined) updateData.credit_limit_eur = parseFloat(credit_limit_eur);
+        if (credit_limit_syp !== undefined) updateData.credit_limit_syp = parseFloat(credit_limit_syp);
         if (assigned_distributor_id !== undefined) updateData.assigned_distributor_id = assigned_distributor_id;
         if (opening_hours !== undefined) updateData.opening_hours = opening_hours;
         if (contact_person !== undefined) updateData.contact_person = contact_person;
@@ -484,6 +499,11 @@ export const updateStore = async (req, res) => {
         if (business_license !== undefined) updateData.business_license = business_license;
         if (notes !== undefined) updateData.notes = notes;
         if (status !== undefined) updateData.status = status;
+
+        // Handle credit_limit if provided (for compatibility with enhanced system)
+        if (req.body.credit_limit !== undefined) {
+            updateData.credit_limit_eur = req.body.credit_limit ? parseFloat(req.body.credit_limit) : 0;
+        }
 
         await store.update(updateData);
 

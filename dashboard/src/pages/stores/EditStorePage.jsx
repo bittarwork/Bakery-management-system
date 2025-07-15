@@ -130,7 +130,8 @@ const EditStorePage = () => {
           phone: store.phone || "",
           email: store.email || "",
           payment_method: store.payment_method || "cash",
-          credit_limit: store.credit_limit || "",
+          // Load credit_limit_eur as credit_limit for the form
+          credit_limit: store.credit_limit_eur || store.credit_limit || "",
           notes: store.notes || "",
           status: store.status || "active",
         });
@@ -230,6 +231,12 @@ const EditStorePage = () => {
         ...formData,
         latitude: selectedLocation?.lat,
         longitude: selectedLocation?.lng,
+        // Convert credit_limit to number and send as credit_limit_eur
+        credit_limit_eur: formData.credit_limit
+          ? parseFloat(formData.credit_limit)
+          : 0,
+        // Remove the original credit_limit field to avoid confusion
+        credit_limit: undefined,
       };
 
       const response = await storeService.updateStore(id, storeData);

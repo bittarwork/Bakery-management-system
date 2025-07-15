@@ -340,9 +340,9 @@ const StoreDetailsPage = () => {
                               Credit Limit
                             </span>
                             <span className="text-sm font-medium text-gray-900">
-                              {store.credit_limit
+                              {store.credit_limit || store.credit_limit_eur
                                 ? `€${parseFloat(
-                                    store.credit_limit
+                                    store.credit_limit || store.credit_limit_eur
                                   ).toLocaleString()}`
                                 : "No limit"}
                             </span>
