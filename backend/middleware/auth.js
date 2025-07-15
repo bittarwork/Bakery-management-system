@@ -22,13 +22,31 @@ export const protect = async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         // Check if user still exists and is active
-        const user = await User.findOne({
-            where: {
-                id: decoded.userId,
-                status: 'active'
-            },
-            attributes: { exclude: ['password'] }
-        });
+        // Use cache to avoid repeated database queries
+        const cacheKey = `user_${decoded.userId}`;
+        let user = req.app.locals.userCache?.[cacheKey];
+
+        if (!user) {
+            user = await User.findOne({
+                where: {
+                    id: decoded.userId,
+                    status: 'active'
+                },
+                attributes: { exclude: ['password'] }
+            });
+
+            // Cache user for 5 minutes
+            if (!req.app.locals.userCache) {
+                req.app.locals.userCache = {};
+            }
+            if (user) {
+                req.app.locals.userCache[cacheKey] = user;
+                // Clear cache after 5 minutes
+                setTimeout(() => {
+                    delete req.app.locals.userCache[cacheKey];
+                }, 5 * 60 * 1000);
+            }
+        }
 
         if (!user) {
             return res.status(401).json({

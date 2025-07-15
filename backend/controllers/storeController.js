@@ -1,5 +1,6 @@
 import { validationResult } from 'express-validator';
 import { Op } from 'sequelize';
+import sequelize from '../config/database.js';
 import { Store, Order, OrderItem, getSequelizeConnection } from '../models/index.js';
 
 // @desc    الحصول على جميع المحلات مع التصفية والبحث
@@ -610,7 +611,29 @@ export const getNearbyStores = async (req, res) => {
 // @access  Private
 export const getStoreStatistics = async (req, res) => {
     try {
-        const stats = await Store.getStoreStatistics();
+        // Get general store statistics
+        const [totalStores, activeStores, inactiveStores] = await Promise.all([
+            Store.count(),
+            Store.count({ where: { status: 'active' } }),
+            Store.count({ where: { status: 'inactive' } })
+        ]);
+
+        // Get total revenue
+        const revenueResult = await Store.findOne({
+            attributes: [
+                [sequelize.fn('SUM', sequelize.col('total_purchases_eur')), 'total_revenue_eur'],
+                [sequelize.fn('SUM', sequelize.col('total_purchases_syp')), 'total_revenue_syp']
+            ],
+            raw: true
+        });
+
+        const stats = {
+            total: totalStores,
+            active: activeStores,
+            inactive: inactiveStores,
+            total_revenue_eur: parseFloat(revenueResult?.total_revenue_eur || 0),
+            total_revenue_syp: parseFloat(revenueResult?.total_revenue_syp || 0)
+        };
 
         res.json({
             success: true,

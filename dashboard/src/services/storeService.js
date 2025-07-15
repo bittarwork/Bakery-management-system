@@ -42,8 +42,13 @@ class StoreService {
     }
 
     // Get store statistics
-    async getStoreStatistics(id) {
-        return this.apiService.get(`/stores/${id}/statistics`);
+    async getStoreStatistics(id = null) {
+        if (id) {
+            return this.apiService.get(`/stores/${id}/statistics`);
+        } else {
+            // Get general store statistics
+            return this.apiService.get('/stores/statistics');
+        }
     }
 
     // Get stores map data
