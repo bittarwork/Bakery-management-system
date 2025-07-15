@@ -20,14 +20,15 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       final response = await ApiService().login(username, password);
       final data = response.data;
-      if (data['success'] == true && data['token'] != null) {
-        await LocalStorage.saveToken(data['token']);
+      print('API login response: ' + data.toString());
+      if (data['success'] == true && data['data'] != null && data['data']['token'] != null) {
+        await LocalStorage.saveToken(data['data']['token']);
         // إذا كان الـ backend يرجع userId أو vehicleId أضفهم هنا
-        if (data['userId'] != null) {
-          await SessionManager.saveUserId(data['userId']);
+        if (data['data']['user'] != null && data['data']['user']['id'] != null) {
+          await SessionManager.saveUserId(data['data']['user']['id']);
         }
-        if (data['vehicleId'] != null) {
-          await SessionManager.saveVehicleId(data['vehicleId']);
+        if (data['data']['user'] != null && data['data']['user']['vehicleId'] != null) {
+          await SessionManager.saveVehicleId(data['data']['user']['vehicleId']);
         }
         emit(AuthSuccess());
       } else {

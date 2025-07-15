@@ -38,6 +38,7 @@ class DistributionScheduleCubit extends Cubit<DistributionScheduleState> {
       await distributionScheduleOfflineCache.save(schedule);
       emit(DistributionScheduleLoaded(schedule));
     } catch (e) {
+      print('DistributionScheduleCubit error: ' + e.toString());
       emit(DistributionScheduleError('فشل في جلب جدول التوزيع'));
     }
   }

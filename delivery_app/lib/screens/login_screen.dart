@@ -53,8 +53,7 @@ class LoginScreen extends StatelessWidget {
                         // حماية من تكرار التنقل
                         Future.microtask(() {
                           if (ModalRoute.of(context)?.isCurrent ?? true) {
-                            Navigator.pushReplacement(
-                              context,
+                            Navigator.of(context, rootNavigator: true).pushReplacement(
                               MaterialPageRoute(builder: (_) => const HomeScreen()),
                             );
                           }
