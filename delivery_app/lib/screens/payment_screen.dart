@@ -35,6 +35,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         final storeId = snapshot.data!; // مؤقتًا نستخدم userId كمحاكاة للـ storeId
+        print('PaymentScreen storeId: ' + storeId.toString());
         return BlocProvider(
           create: (_) => PaymentCubit(ApiService())..fetchPayments(storeId),
           child: BlocConsumer<PaymentCubit, PaymentState>(
