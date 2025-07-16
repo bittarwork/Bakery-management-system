@@ -43,6 +43,7 @@ import EditStorePage from "./pages/stores/EditStorePage";
 import ProductsListPage from "./pages/products/ProductsListPage";
 import ProductDetailsPage from "./pages/products/ProductDetailsPage";
 import CreateProductPage from "./pages/products/CreateProductPage";
+import EditProductPage from "./pages/products/EditProductPage";
 
 // Pages - Reports
 import ReportsOverviewPage from "./pages/reports/ReportsOverviewPage";
@@ -575,6 +576,27 @@ function App() {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <ProductDetailsPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/products/:id/edit"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <EditProductPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>

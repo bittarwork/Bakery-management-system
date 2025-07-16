@@ -316,7 +316,7 @@ const ProductsListPage = () => {
   // Handle bulk actions
   const handleBulkAction = async (action) => {
     if (selectedProducts.length === 0) {
-      toast.error("يرجى اختيار منتج واحد على الأقل");
+      setError("يرجى اختيار منتج واحد على الأقل");
       return;
     }
 
@@ -400,6 +400,9 @@ const ProductsListPage = () => {
   const handleExport = async (format) => {
     try {
       setIsExporting(true);
+      setError("");
+      setSuccess("");
+
       const response = await productService.exportProducts({ format, filters });
       if (response.success) {
         setSuccess(`تم تصدير المنتجات بتنسيق ${format.toUpperCase()} بنجاح`);

@@ -31,17 +31,17 @@ export const getProducts = async (req, res) => {
         }
 
         // تطبيق فلتر الحالة
-        if (status !== null) {
+        if (status !== null && status !== undefined && status !== '') {
             whereClause.status = status;
         }
 
         // تطبيق فلتر الفئة
-        if (category !== null) {
+        if (category !== null && category !== undefined && category !== '') {
             whereClause.category = category;
         }
 
         // تطبيق فلتر المنتجات المميزة
-        if (is_featured !== null) {
+        if (is_featured !== null && is_featured !== undefined && is_featured !== '') {
             whereClause.is_featured = is_featured === 'true';
         }
 
@@ -462,11 +462,17 @@ export const searchProducts = async (req, res) => {
 
 // دالة مساعدة للحصول على إحصائيات المنتجات
 const getProductStats = async () => {
-    const [totalProducts, activeProducts, priceRange, categoryStats] = await Promise.all([
+    const [totalProducts, activeProducts, categoryStats] = await Promise.all([
         Product.count(),
         Product.count({ where: { status: 'active' } }),
-        Product.getPriceRange(),
-        Product.getProductStatistics()
+        Product.findAll({
+            attributes: [
+                'category',
+                [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+            ],
+            where: { status: 'active' },
+            group: ['category']
+        })
     ]);
 
     const averageMarginEur = await Product.findOne({
@@ -497,10 +503,13 @@ const getProductStats = async () => {
         active: activeProducts,
         inactive: totalProducts - activeProducts,
         low_stock: lowStockCount,
-        priceRange,
+        featured: await Product.count({ where: { is_featured: true, status: 'active' } }),
         averageMarginEur: Math.round(parseFloat(averageMarginEur?.dataValues?.avg_margin_eur || 0) * 100) / 100,
         averageMarginSyp: Math.round(parseFloat(averageMarginSyp?.dataValues?.avg_margin_syp || 0) * 100) / 100,
-        categoryStats
+        categoryStats: categoryStats.map(item => ({
+            category: item.category,
+            count: parseInt(item.dataValues.count)
+        }))
     };
 };
 
@@ -970,17 +979,17 @@ export const exportProducts = async (req, res) => {
         }
 
         // Apply status filter
-        if (status !== null) {
+        if (status !== null && status !== undefined && status !== '') {
             whereClause.status = status;
         }
 
         // Apply category filter
-        if (category !== null) {
+        if (category !== null && category !== undefined && category !== '') {
             whereClause.category = category;
         }
 
         // Apply featured filter
-        if (is_featured !== null) {
+        if (is_featured !== null && is_featured !== undefined && is_featured !== '') {
             whereClause.is_featured = is_featured === 'true';
         }
 

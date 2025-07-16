@@ -450,7 +450,17 @@ class ProductService {
      */
     async exportProducts(params = {}) {
         try {
-            const response = await apiService.exportData(`${this.baseEndpoint}/export`, params);
+            const { format = 'csv', filters = {}, ...otherParams } = params;
+
+            // Combine format and filters into query parameters
+            const queryParams = {
+                format,
+                ...filters,
+                ...otherParams
+            };
+
+            const queryString = new URLSearchParams(queryParams).toString();
+            const response = await apiService.exportData(`${this.baseEndpoint}/export?${queryString}`, format, 'products');
             return response;
         } catch (error) {
             throw new Error(`Failed to export products: ${error.message}`);
