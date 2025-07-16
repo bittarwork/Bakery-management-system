@@ -16,39 +16,95 @@ export const validateCreateProduct = [
         .trim(),
 
     body('unit')
-        .notEmpty()
-        .withMessage('وحدة القياس مطلوبة')
+        .optional()
         .isLength({ min: 1, max: 20 })
         .withMessage('وحدة القياس يجب أن تكون بين 1 و 20 حرف')
         .trim(),
 
-    body('price')
-        .isNumeric()
-        .withMessage('السعر يجب أن يكون رقماً')
-        .isFloat({ min: 0 })
-        .withMessage('السعر لا يمكن أن يكون سالباً')
-        .toFloat(),
-
-    body('cost')
+    body('price_eur')
         .optional()
         .isNumeric()
-        .withMessage('التكلفة يجب أن تكون رقماً')
+        .withMessage('السعر باليورو يجب أن يكون رقماً')
         .isFloat({ min: 0 })
-        .withMessage('التكلفة لا يمكن أن تكون سالبة')
+        .withMessage('السعر باليورو لا يمكن أن يكون سالباً')
         .toFloat(),
 
-    body('is_active')
+    body('price_syp')
+        .optional()
+        .isNumeric()
+        .withMessage('السعر بالليرة يجب أن يكون رقماً')
+        .isFloat({ min: 0 })
+        .withMessage('السعر بالليرة لا يمكن أن يكون سالباً')
+        .toFloat(),
+
+    body('cost_eur')
+        .optional()
+        .isNumeric()
+        .withMessage('التكلفة باليورو يجب أن تكون رقماً')
+        .isFloat({ min: 0 })
+        .withMessage('التكلفة باليورو لا يمكن أن تكون سالبة')
+        .toFloat(),
+
+    body('cost_syp')
+        .optional()
+        .isNumeric()
+        .withMessage('التكلفة بالليرة يجب أن تكون رقماً')
+        .isFloat({ min: 0 })
+        .withMessage('التكلفة بالليرة لا يمكن أن تكون سالبة')
+        .toFloat(),
+
+    body('stock_quantity')
+        .optional()
+        .isInt({ min: 0 })
+        .withMessage('الكمية في المخزون يجب أن تكون عدد صحيح غير سالب')
+        .toInt(),
+
+    body('minimum_stock')
+        .optional()
+        .isInt({ min: 0 })
+        .withMessage('الحد الأدنى للمخزون يجب أن يكون عدد صحيح غير سالب')
+        .toInt(),
+
+    body('category')
+        .optional()
+        .isIn(['bread', 'pastry', 'cake', 'drink', 'snack', 'seasonal', 'other'])
+        .withMessage('فئة المنتج غير صحيحة'),
+
+    body('weight_grams')
+        .optional()
+        .isInt({ min: 0 })
+        .withMessage('الوزن يجب أن يكون عدد صحيح غير سالب')
+        .toInt(),
+
+    body('shelf_life_days')
+        .optional()
+        .isInt({ min: 0 })
+        .withMessage('مدة الصلاحية يجب أن تكون عدد صحيح غير سالب')
+        .toInt(),
+
+    body('is_featured')
         .optional()
         .isBoolean()
-        .withMessage('حالة المنتج يجب أن تكون true أو false')
+        .withMessage('حالة المنتج المميز يجب أن تكون true أو false')
         .toBoolean(),
+
+    body('status')
+        .optional()
+        .isIn(['active', 'inactive', 'discontinued'])
+        .withMessage('حالة المنتج يجب أن تكون active أو inactive أو discontinued'),
 
     // تحقق مخصص للتأكد من أن السعر أكبر من أو يساوي التكلفة
     body().custom((value, { req }) => {
-        const { price, cost } = req.body;
-        if (cost !== undefined && parseFloat(price) < parseFloat(cost)) {
-            throw new Error('السعر لا يمكن أن يكون أقل من التكلفة');
+        const { price_eur, cost_eur, price_syp, cost_syp } = req.body;
+
+        if (price_eur !== undefined && cost_eur !== undefined && parseFloat(price_eur) < parseFloat(cost_eur)) {
+            throw new Error('السعر باليورو لا يمكن أن يكون أقل من التكلفة');
         }
+
+        if (price_syp !== undefined && cost_syp !== undefined && parseFloat(price_syp) < parseFloat(cost_syp)) {
+            throw new Error('السعر بالليرة لا يمكن أن يكون أقل من التكلفة');
+        }
+
         return true;
     })
 ];
@@ -77,34 +133,90 @@ export const validateUpdateProduct = [
         .withMessage('وحدة القياس يجب أن تكون بين 1 و 20 حرف')
         .trim(),
 
-    body('price')
+    body('price_eur')
         .optional()
         .isNumeric()
-        .withMessage('السعر يجب أن يكون رقماً')
+        .withMessage('السعر باليورو يجب أن يكون رقماً')
         .isFloat({ min: 0 })
-        .withMessage('السعر لا يمكن أن يكون سالباً')
+        .withMessage('السعر باليورو لا يمكن أن يكون سالباً')
         .toFloat(),
 
-    body('cost')
+    body('price_syp')
         .optional()
         .isNumeric()
-        .withMessage('التكلفة يجب أن تكون رقماً')
+        .withMessage('السعر بالليرة يجب أن يكون رقماً')
         .isFloat({ min: 0 })
-        .withMessage('التكلفة لا يمكن أن تكون سالبة')
+        .withMessage('السعر بالليرة لا يمكن أن يكون سالباً')
         .toFloat(),
 
-    body('is_active')
+    body('cost_eur')
+        .optional()
+        .isNumeric()
+        .withMessage('التكلفة باليورو يجب أن تكون رقماً')
+        .isFloat({ min: 0 })
+        .withMessage('التكلفة باليورو لا يمكن أن تكون سالبة')
+        .toFloat(),
+
+    body('cost_syp')
+        .optional()
+        .isNumeric()
+        .withMessage('التكلفة بالليرة يجب أن تكون رقماً')
+        .isFloat({ min: 0 })
+        .withMessage('التكلفة بالليرة لا يمكن أن تكون سالبة')
+        .toFloat(),
+
+    body('stock_quantity')
+        .optional()
+        .isInt({ min: 0 })
+        .withMessage('الكمية في المخزون يجب أن تكون عدد صحيح غير سالب')
+        .toInt(),
+
+    body('minimum_stock')
+        .optional()
+        .isInt({ min: 0 })
+        .withMessage('الحد الأدنى للمخزون يجب أن يكون عدد صحيح غير سالب')
+        .toInt(),
+
+    body('category')
+        .optional()
+        .isIn(['bread', 'pastry', 'cake', 'drink', 'snack', 'seasonal', 'other'])
+        .withMessage('فئة المنتج غير صحيحة'),
+
+    body('weight_grams')
+        .optional()
+        .isInt({ min: 0 })
+        .withMessage('الوزن يجب أن يكون عدد صحيح غير سالب')
+        .toInt(),
+
+    body('shelf_life_days')
+        .optional()
+        .isInt({ min: 0 })
+        .withMessage('مدة الصلاحية يجب أن تكون عدد صحيح غير سالب')
+        .toInt(),
+
+    body('is_featured')
         .optional()
         .isBoolean()
-        .withMessage('حالة المنتج يجب أن تكون true أو false')
+        .withMessage('حالة المنتج المميز يجب أن تكون true أو false')
         .toBoolean(),
+
+    body('status')
+        .optional()
+        .isIn(['active', 'inactive', 'discontinued'])
+        .withMessage('حالة المنتج يجب أن تكون active أو inactive أو discontinued'),
 
     // تحقق مخصص للتأكد من أن السعر أكبر من أو يساوي التكلفة
     body().custom((value, { req }) => {
-        const { price, cost } = req.body;
-        if (price !== undefined && cost !== undefined && parseFloat(price) < parseFloat(cost)) {
-            throw new Error('السعر لا يمكن أن يكون أقل من التكلفة');
+        const { price_eur, cost_eur, price_syp, cost_syp } = req.body;
+
+        if (price_eur !== undefined && cost_eur !== undefined && parseFloat(price_eur) < parseFloat(cost_eur)) {
+            throw new Error('السعر باليورو لا يمكن أن يكون أقل من التكلفة');
         }
+
+        if (price_syp !== undefined && cost_syp !== undefined && parseFloat(price_syp) < parseFloat(cost_syp)) {
+            throw new Error('السعر بالليرة لا يمكن أن يكون أقل من التكلفة');
+        }
+
         return true;
     })
 ];
