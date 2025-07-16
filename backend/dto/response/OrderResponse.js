@@ -10,12 +10,14 @@ export class OrderResponse {
         this.store_id = order.store_id;
         this.order_date = order.order_date;
         this.delivery_date = order.delivery_date;
-        this.total_amount = parseFloat(order.total_amount);
-        this.discount_amount = parseFloat(order.discount_amount);
-        this.final_amount = parseFloat(order.final_amount);
+        this.total_amount_eur = parseFloat(order.total_amount_eur || 0);
+        this.total_amount_syp = parseFloat(order.total_amount_syp || 0);
+        this.discount_amount_eur = parseFloat(order.discount_amount_eur || 0);
+        this.discount_amount_syp = parseFloat(order.discount_amount_syp || 0);
+        this.final_amount_eur = parseFloat(order.final_amount_eur || 0);
+        this.final_amount_syp = parseFloat(order.final_amount_syp || 0);
         this.status = order.status;
         this.payment_status = order.payment_status;
-        this.gift_applied = order.gift_applied;
         this.notes = order.notes;
         this.created_by = order.created_by;
         this.created_at = order.created_at;
@@ -126,8 +128,10 @@ export class OrderResponse {
             order_number: this.order_number,
             order_date: this.order_date,
             delivery_date: this.delivery_date,
-            final_amount: this.final_amount,
-            discount_amount: this.discount_amount,
+            final_amount_eur: this.final_amount_eur,
+            final_amount_syp: this.final_amount_syp,
+            discount_amount_eur: this.discount_amount_eur,
+            discount_amount_syp: this.discount_amount_syp,
             status: this.status,
             status_info: this.status_info,
             payment_status: this.payment_status,
@@ -153,20 +157,46 @@ export class OrderItemResponse {
         this.id = orderItem.id;
         this.order_id = orderItem.order_id;
         this.product_id = orderItem.product_id;
-        this.quantity = parseInt(orderItem.quantity);
-        this.unit_price = parseFloat(orderItem.unit_price);
-        this.total_price = parseFloat(orderItem.total_price);
-        this.discount_amount = parseFloat(orderItem.discount_amount);
-        this.final_price = parseFloat(orderItem.final_price);
-        this.gift_quantity = parseInt(orderItem.gift_quantity) || 0;
-        this.gift_reason = orderItem.gift_reason;
+        this.product_name = orderItem.product_name;
+        this.product_barcode = orderItem.product_barcode;
+        this.product_sku = orderItem.product_sku;
+        this.product_description = orderItem.product_description;
+        this.supplier_id = orderItem.supplier_id;
+        this.supplier_name = orderItem.supplier_name;
+        this.unit = orderItem.unit;
+        this.product_category = orderItem.product_category;
+        this.quantity = parseInt(orderItem.quantity) || 0;
+        this.delivered_quantity = parseInt(orderItem.delivered_quantity) || 0;
+        this.returned_quantity = parseInt(orderItem.returned_quantity) || 0;
+        this.damaged_quantity = parseInt(orderItem.damaged_quantity) || 0;
+        this.delivery_date = orderItem.delivery_date;
+        this.delivery_status = orderItem.delivery_status;
+        this.delivery_notes = orderItem.delivery_notes;
+        this.delivery_confirmed_by = orderItem.delivery_confirmed_by;
+        this.delivery_confirmed_at = orderItem.delivery_confirmed_at;
+        this.tracking_number = orderItem.tracking_number;
+        this.delivery_method = orderItem.delivery_method;
+        this.estimated_delivery_date = orderItem.estimated_delivery_date;
+        this.actual_delivery_date = orderItem.actual_delivery_date;
+        this.unit_price_eur = parseFloat(orderItem.unit_price_eur) || 0;
+        this.unit_price_syp = parseFloat(orderItem.unit_price_syp) || 0;
+        this.total_price_eur = parseFloat(orderItem.total_price_eur) || 0;
+        this.total_price_syp = parseFloat(orderItem.total_price_syp) || 0;
+        this.discount_amount_eur = parseFloat(orderItem.discount_amount_eur) || 0;
+        this.discount_amount_syp = parseFloat(orderItem.discount_amount_syp) || 0;
+        this.final_price_eur = parseFloat(orderItem.final_price_eur) || 0;
+        this.final_price_syp = parseFloat(orderItem.final_price_syp) || 0;
+        this.notes = orderItem.notes;
+        this.return_reason = orderItem.return_reason;
         this.created_at = orderItem.created_at;
         this.updated_at = orderItem.updated_at;
 
         // Add computed properties
-        this.total_quantity = this.quantity + this.gift_quantity;
-        this.has_gift = this.gift_quantity > 0;
-        this.discount_percentage = this.getDiscountPercentage();
+        this.total_quantity = this.quantity + this.delivered_quantity;
+        this.has_delivery_info = this.delivery_date || this.tracking_number || this.delivery_status !== 'pending';
+        this.is_delivered = this.delivery_status === 'delivered';
+        this.is_returned = this.returned_quantity > 0;
+        this.is_damaged = this.damaged_quantity > 0;
 
         // Include product info if available
         if (orderItem.Product || orderItem.product) {
@@ -181,12 +211,19 @@ export class OrderItemResponse {
     }
 
     /**
-     * Calculate discount percentage
-     * @returns {number} discount percentage
+     * Get delivery status information with label and color
+     * @returns {Object} delivery status info
      */
-    getDiscountPercentage() {
-        if (this.total_price === 0) return 0;
-        return Math.round((this.discount_amount / this.total_price) * 100 * 100) / 100;
+    getDeliveryStatusInfo() {
+        const statusMap = {
+            'pending': { label: 'في الانتظار', color: 'gray', icon: '⏳' },
+            'in_transit': { label: 'في الطريق', color: 'yellow', icon: '🚚' },
+            'delivered': { label: 'تم التسليم', color: 'green', icon: '✅' },
+            'returned': { label: 'مرتجع', color: 'red', icon: '↩️' },
+            'cancelled': { label: 'ملغي', color: 'red', icon: '❌' }
+        };
+
+        return statusMap[this.delivery_status] || { label: this.delivery_status, color: 'gray', icon: '❓' };
     }
 }
 
@@ -213,7 +250,8 @@ export class OrdersListResponse {
      * @returns {Object} summary
      */
     getSummary() {
-        const totalAmount = this.orders.reduce((sum, order) => sum + order.final_amount, 0);
+        const totalAmountEur = this.orders.reduce((sum, order) => sum + order.final_amount_eur, 0);
+        const totalAmountSyp = this.orders.reduce((sum, order) => sum + order.final_amount_syp, 0);
         const statusCounts = {};
         const paymentStatusCounts = {};
 
@@ -224,7 +262,8 @@ export class OrdersListResponse {
 
         return {
             total_orders: this.orders.length,
-            total_amount: Math.round(totalAmount * 100) / 100,
+            total_amount_eur: Math.round(totalAmountEur * 100) / 100,
+            total_amount_syp: Math.round(totalAmountSyp * 100) / 100,
             status_counts: statusCounts,
             payment_status_counts: paymentStatusCounts
         };
