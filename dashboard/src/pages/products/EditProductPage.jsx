@@ -300,40 +300,46 @@ const EditProductPage = () => {
         ...formData,
         price_eur:
           formData.price_eur &&
+          formData.price_eur !== "" &&
           !isNaN(parseFloat(formData.price_eur)) &&
           parseFloat(formData.price_eur) > 0
             ? parseFloat(formData.price_eur)
-            : 0,
+            : 0.01,
         price_syp:
           formData.price_syp &&
+          formData.price_syp !== "" &&
           !isNaN(parseFloat(formData.price_syp)) &&
           parseFloat(formData.price_syp) > 0
             ? parseFloat(formData.price_syp)
-            : 0,
+            : null,
         cost_eur:
           formData.cost_eur &&
+          formData.cost_eur !== "" &&
           !isNaN(parseFloat(formData.cost_eur)) &&
           parseFloat(formData.cost_eur) >= 0
             ? parseFloat(formData.cost_eur)
-            : 0,
+            : null,
         cost_syp:
           formData.cost_syp &&
+          formData.cost_syp !== "" &&
           !isNaN(parseFloat(formData.cost_syp)) &&
           parseFloat(formData.cost_syp) >= 0
             ? parseFloat(formData.cost_syp)
-            : 0,
+            : null,
         stock_quantity:
           formData.stock_quantity &&
+          formData.stock_quantity !== "" &&
           !isNaN(parseInt(formData.stock_quantity)) &&
           parseInt(formData.stock_quantity) >= 0
             ? parseInt(formData.stock_quantity)
-            : 0,
+            : null,
         minimum_stock:
           formData.minimum_stock &&
+          formData.minimum_stock !== "" &&
           !isNaN(parseInt(formData.minimum_stock)) &&
           parseInt(formData.minimum_stock) >= 0
             ? parseInt(formData.minimum_stock)
-            : 0,
+            : null,
         weight_grams:
           formData.weight_grams &&
           !isNaN(parseFloat(formData.weight_grams)) &&

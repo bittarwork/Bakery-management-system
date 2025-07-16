@@ -65,6 +65,9 @@ class ProductService {
      */
     async createProduct(productData) {
         try {
+            // Log the data being sent for debugging
+            console.log('[FRONTEND] Sending product data:', JSON.stringify(productData, null, 2));
+
             const response = await apiService.post(this.baseEndpoint, productData);
             return response;
         } catch (error) {
