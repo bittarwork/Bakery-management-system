@@ -1,57 +1,5 @@
 import { body } from 'express-validator';
 
-// Helper function to validate optional numeric values
-const validateOptionalNumeric = (field, min = 0) => {
-    return body(field)
-        .optional()
-        .custom((value) => {
-            // Allow empty values
-            if (value === '' || value === null || value === undefined) {
-                return true;
-            }
-
-            // Check if it's a valid number
-            const numValue = parseFloat(value);
-            if (isNaN(numValue)) {
-                throw new Error(`${getFieldName(field)} يجب أن يكون رقماً`);
-            }
-
-            // Check minimum value
-            if (numValue < min) {
-                throw new Error(`${getFieldName(field)} لا يمكن أن يكون ${min === 0 ? 'سالباً' : 'أقل من ' + min}`);
-            }
-
-            return true;
-        })
-        .toFloat();
-};
-
-// Helper function to validate optional integer values
-const validateOptionalInteger = (field, min = 0) => {
-    return body(field)
-        .optional()
-        .custom((value) => {
-            // Allow empty values
-            if (value === '' || value === null || value === undefined) {
-                return true;
-            }
-
-            // Check if it's a valid integer
-            const numValue = parseInt(value);
-            if (isNaN(numValue)) {
-                throw new Error(`${getFieldName(field)} يجب أن يكون عدد صحيح`);
-            }
-
-            // Check minimum value
-            if (numValue < min) {
-                throw new Error(`${getFieldName(field)} يجب أن يكون عدد صحيح ${min === 0 ? 'غير سالب' : 'أكبر من أو يساوي ' + min}`);
-            }
-
-            return true;
-        })
-        .toInt();
-};
-
 // Helper function to get field display name
 const getFieldName = (field) => {
     const fieldNames = {
@@ -103,46 +51,95 @@ export const validateCreateProduct = [
 
     // Validate other numeric fields as optional but positive when provided
     body('price_syp')
-        .optional()
-        .isFloat({ min: 0.01 })
-        .withMessage('السعر بالليرة يجب أن يكون رقماً موجباً')
-        .toFloat(),
+        .optional({ nullable: true })
+        .custom((value) => {
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue <= 0) {
+                throw new Error('السعر بالليرة يجب أن يكون رقماً موجباً');
+            }
+            return true;
+        }),
 
     body('cost_eur')
-        .optional()
-        .isFloat({ min: 0 })
-        .withMessage('التكلفة باليورو لا يمكن أن تكون سالبة')
-        .toFloat(),
+        .optional({ nullable: true })
+        .custom((value) => {
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue < 0) {
+                throw new Error('التكلفة باليورو لا يمكن أن تكون سالبة');
+            }
+            return true;
+        }),
 
     body('cost_syp')
-        .optional()
-        .isFloat({ min: 0 })
-        .withMessage('التكلفة بالليرة لا يمكن أن تكون سالبة')
-        .toFloat(),
+        .optional({ nullable: true })
+        .custom((value) => {
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue < 0) {
+                throw new Error('التكلفة بالليرة لا يمكن أن تكون سالبة');
+            }
+            return true;
+        }),
 
     body('stock_quantity')
-        .optional()
-        .isInt({ min: 0 })
-        .withMessage('الكمية في المخزون لا يمكن أن تكون سالبة')
-        .toInt(),
+        .optional({ nullable: true })
+        .custom((value) => {
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+            const numValue = parseInt(value);
+            if (isNaN(numValue) || numValue < 0) {
+                throw new Error('الكمية في المخزون لا يمكن أن تكون سالبة');
+            }
+            return true;
+        }),
 
     body('minimum_stock')
-        .optional()
-        .isInt({ min: 0 })
-        .withMessage('الحد الأدنى للمخزون لا يمكن أن يكون سالباً')
-        .toInt(),
+        .optional({ nullable: true })
+        .custom((value) => {
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+            const numValue = parseInt(value);
+            if (isNaN(numValue) || numValue < 0) {
+                throw new Error('الحد الأدنى للمخزون لا يمكن أن يكون سالباً');
+            }
+            return true;
+        }),
 
     body('weight_grams')
-        .optional()
-        .isFloat({ min: 0.01 })
-        .withMessage('الوزن يجب أن يكون رقماً موجباً')
-        .toFloat(),
+        .optional({ nullable: true })
+        .custom((value) => {
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue <= 0) {
+                throw new Error('الوزن يجب أن يكون رقماً موجباً');
+            }
+            return true;
+        }),
 
     body('shelf_life_days')
-        .optional()
-        .isInt({ min: 1 })
-        .withMessage('مدة الصلاحية يجب أن تكون رقماً صحيحاً موجباً')
-        .toInt(),
+        .optional({ nullable: true })
+        .custom((value) => {
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+            const numValue = parseInt(value);
+            if (isNaN(numValue) || numValue <= 0) {
+                throw new Error('مدة الصلاحية يجب أن تكون رقماً صحيحاً موجباً');
+            }
+            return true;
+        }),
 
     body('category')
         .optional()
@@ -234,52 +231,108 @@ export const validateUpdateProduct = [
     // Validate price_eur - if provided, must be positive
     body('price_eur')
         .optional()
-        .isFloat({ min: 0.01 })
-        .withMessage('السعر باليورو يجب أن يكون رقماً موجباً')
-        .toFloat(),
+        .custom((value) => {
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue <= 0) {
+                throw new Error('السعر باليورو يجب أن يكون رقماً موجباً');
+            }
+            return true;
+        }),
 
     // Validate other numeric fields as optional but positive when provided
     body('price_syp')
-        .optional()
-        .isFloat({ min: 0.01 })
-        .withMessage('السعر بالليرة يجب أن يكون رقماً موجباً')
-        .toFloat(),
+        .optional({ nullable: true })
+        .custom((value) => {
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue <= 0) {
+                throw new Error('السعر بالليرة يجب أن يكون رقماً موجباً');
+            }
+            return true;
+        }),
 
     body('cost_eur')
-        .optional()
-        .isFloat({ min: 0 })
-        .withMessage('التكلفة باليورو لا يمكن أن تكون سالبة')
-        .toFloat(),
+        .optional({ nullable: true })
+        .custom((value) => {
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue < 0) {
+                throw new Error('التكلفة باليورو لا يمكن أن تكون سالبة');
+            }
+            return true;
+        }),
 
     body('cost_syp')
-        .optional()
-        .isFloat({ min: 0 })
-        .withMessage('التكلفة بالليرة لا يمكن أن تكون سالبة')
-        .toFloat(),
+        .optional({ nullable: true })
+        .custom((value) => {
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue < 0) {
+                throw new Error('التكلفة بالليرة لا يمكن أن تكون سالبة');
+            }
+            return true;
+        }),
 
     body('stock_quantity')
-        .optional()
-        .isInt({ min: 0 })
-        .withMessage('الكمية في المخزون لا يمكن أن تكون سالبة')
-        .toInt(),
+        .optional({ nullable: true })
+        .custom((value) => {
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+            const numValue = parseInt(value);
+            if (isNaN(numValue) || numValue < 0) {
+                throw new Error('الكمية في المخزون لا يمكن أن تكون سالبة');
+            }
+            return true;
+        }),
 
     body('minimum_stock')
-        .optional()
-        .isInt({ min: 0 })
-        .withMessage('الحد الأدنى للمخزون لا يمكن أن يكون سالباً')
-        .toInt(),
+        .optional({ nullable: true })
+        .custom((value) => {
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+            const numValue = parseInt(value);
+            if (isNaN(numValue) || numValue < 0) {
+                throw new Error('الحد الأدنى للمخزون لا يمكن أن يكون سالباً');
+            }
+            return true;
+        }),
 
     body('weight_grams')
-        .optional()
-        .isFloat({ min: 0.01 })
-        .withMessage('الوزن يجب أن يكون رقماً موجباً')
-        .toFloat(),
+        .optional({ nullable: true })
+        .custom((value) => {
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue <= 0) {
+                throw new Error('الوزن يجب أن يكون رقماً موجباً');
+            }
+            return true;
+        }),
 
     body('shelf_life_days')
-        .optional()
-        .isInt({ min: 1 })
-        .withMessage('مدة الصلاحية يجب أن تكون رقماً صحيحاً موجباً')
-        .toInt(),
+        .optional({ nullable: true })
+        .custom((value) => {
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+            const numValue = parseInt(value);
+            if (isNaN(numValue) || numValue <= 0) {
+                throw new Error('مدة الصلاحية يجب أن تكون رقماً صحيحاً موجباً');
+            }
+            return true;
+        }),
 
     body('category')
         .optional()
@@ -371,6 +424,6 @@ export const validateProductQuery = [
 
     body('sortOrder')
         .optional()
-        .isIn(['ASC', 'DESC', 'asc', 'desc'])
+        .isIn(['ASC', 'DESC'])
         .withMessage('اتجاه الترتيب يجب أن يكون ASC أو DESC')
 ]; 
