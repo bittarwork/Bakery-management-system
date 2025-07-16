@@ -1,5 +1,4 @@
 import React from "react";
-import { motion } from "framer-motion";
 import { cn } from "../../utils/cn";
 
 const Input = React.forwardRef(
@@ -55,14 +54,15 @@ const Input = React.forwardRef(
               error &&
                 "border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20",
               disabled && "opacity-50 cursor-not-allowed",
+              icon && "pr-12",
               className
             )}
             {...props}
           />
 
           {icon && (
-            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400">
-              {icon}
+            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+              {React.isValidElement(icon) ? icon : <span>{icon}</span>}
             </div>
           )}
         </div>

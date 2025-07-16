@@ -651,7 +651,7 @@ const OrdersListPage = () => {
                 placeholder="Search orders..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange("search", e.target.value)}
-                icon={Search}
+                icon={<Search className="w-4 h-4" />}
               />
             </div>
             <div className="flex space-x-2">

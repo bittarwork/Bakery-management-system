@@ -435,7 +435,7 @@ const CreateOrderPage = () => {
             placeholder="Search products..."
             value={productSearch}
             onChange={(e) => setProductSearch(e.target.value)}
-            icon={Search}
+            icon={<Search className="w-4 h-4" />}
           />
         </div>
 
