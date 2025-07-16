@@ -170,18 +170,46 @@ const CreateProductPage = () => {
     setIsSubmitting(true);
 
     try {
-      // Prepare form data
+      // Prepare form data with proper validation
       const productData = {
         ...formData,
-        price_eur: parseFloat(formData.price_eur) || 0,
-        price_syp: parseFloat(formData.price_syp) || 0,
-        cost_eur: parseFloat(formData.cost_eur) || 0,
-        cost_syp: parseFloat(formData.cost_syp) || 0,
-        stock_quantity: parseInt(formData.stock_quantity) || 0,
-        minimum_stock: parseInt(formData.minimum_stock) || 0,
-        weight_grams: parseFloat(formData.weight_grams) || null,
-        shelf_life_days: parseInt(formData.shelf_life_days) || null,
+        price_eur:
+          formData.price_eur && !isNaN(parseFloat(formData.price_eur))
+            ? parseFloat(formData.price_eur)
+            : 0,
+        price_syp:
+          formData.price_syp && !isNaN(parseFloat(formData.price_syp))
+            ? parseFloat(formData.price_syp)
+            : 0,
+        cost_eur:
+          formData.cost_eur && !isNaN(parseFloat(formData.cost_eur))
+            ? parseFloat(formData.cost_eur)
+            : 0,
+        cost_syp:
+          formData.cost_syp && !isNaN(parseFloat(formData.cost_syp))
+            ? parseFloat(formData.cost_syp)
+            : 0,
+        stock_quantity:
+          formData.stock_quantity && !isNaN(parseInt(formData.stock_quantity))
+            ? parseInt(formData.stock_quantity)
+            : 0,
+        minimum_stock:
+          formData.minimum_stock && !isNaN(parseInt(formData.minimum_stock))
+            ? parseInt(formData.minimum_stock)
+            : 0,
+        weight_grams:
+          formData.weight_grams && !isNaN(parseFloat(formData.weight_grams))
+            ? parseFloat(formData.weight_grams)
+            : null,
+        shelf_life_days:
+          formData.shelf_life_days && !isNaN(parseInt(formData.shelf_life_days))
+            ? parseInt(formData.shelf_life_days)
+            : null,
         is_featured: formData.is_featured,
+        image_url:
+          formData.image_url && formData.image_url.trim() !== ""
+            ? formData.image_url
+            : null,
       };
 
       // Create product

@@ -181,6 +181,7 @@ const Product = sequelize.define('Product', {
         allowNull: true,
         validate: {
             isUrl: {
+                args: true,
                 msg: 'رابط الصورة غير صحيح'
             }
         }
@@ -247,13 +248,21 @@ const Product = sequelize.define('Product', {
     ],
     validate: {
         priceNotLessThanCostEur() {
-            if (this.price_eur < this.cost_eur) {
-                throw new Error('السعر باليورو لا يمكن أن يكون أقل من التكلفة');
+            // Only validate if both values are provided and not null
+            if (this.price_eur !== null && this.cost_eur !== null &&
+                this.price_eur !== undefined && this.cost_eur !== undefined) {
+                if (parseFloat(this.price_eur) < parseFloat(this.cost_eur)) {
+                    throw new Error('السعر باليورو لا يمكن أن يكون أقل من التكلفة');
+                }
             }
         },
         priceNotLessThanCostSyp() {
-            if (this.price_syp < this.cost_syp) {
-                throw new Error('السعر بالليرة لا يمكن أن يكون أقل من التكلفة');
+            // Only validate if both values are provided and not null
+            if (this.price_syp !== null && this.cost_syp !== null &&
+                this.price_syp !== undefined && this.cost_syp !== undefined) {
+                if (parseFloat(this.price_syp) < parseFloat(this.cost_syp)) {
+                    throw new Error('السعر بالليرة لا يمكن أن يكون أقل من التكلفة');
+                }
             }
         }
     }
