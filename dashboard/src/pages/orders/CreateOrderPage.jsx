@@ -28,6 +28,7 @@ import {
   MapPin,
   Phone,
   User,
+  X,
   Building,
   TrendingUp,
   Settings,

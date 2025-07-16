@@ -100,7 +100,17 @@ const OrdersListPage = () => {
       const response = await orderService.getOrders(queryParams);
 
       if (response.success) {
-        setOrders(response.data.orders || []);
+        console.log("Orders API Response:", response);
+        console.log("Raw orders data:", response.data);
+
+        // Filter out any null/undefined orders
+        const validOrders = (response.data.orders || []).filter(
+          (order) => order && order.id !== undefined && order.id !== null
+        );
+
+        console.log("Valid orders after filtering:", validOrders);
+
+        setOrders(validOrders);
         setStatistics(response.data.statistics || {});
 
         // Update pagination if needed
@@ -110,6 +120,7 @@ const OrdersListPage = () => {
       }
     } catch (error) {
       console.error("Error fetching orders:", error);
+      console.error("Error details:", error.response?.data || error.message);
       toast.error("Failed to fetch orders");
     } finally {
       setIsLoading(false);
@@ -487,7 +498,10 @@ const OrdersListPage = () => {
           checked={selectedOrders.length === orders.length && orders.length > 0}
           onChange={(e) => {
             if (e.target.checked) {
-              setSelectedOrders(orders.map((order) => order.id));
+              const validOrderIds = orders
+                .filter((order) => order && order.id)
+                .map((order) => order.id);
+              setSelectedOrders(validOrderIds);
             } else {
               setSelectedOrders([]);
             }
@@ -497,12 +511,18 @@ const OrdersListPage = () => {
       render: (order) => (
         <input
           type="checkbox"
-          checked={selectedOrders.includes(order.id)}
+          checked={
+            order && order.id ? selectedOrders.includes(order.id) : false
+          }
           onChange={(e) => {
-            if (e.target.checked) {
-              setSelectedOrders((prev) => [...prev, order.id]);
-            } else {
-              setSelectedOrders((prev) => prev.filter((id) => id !== order.id));
+            if (order && order.id) {
+              if (e.target.checked) {
+                setSelectedOrders((prev) => [...prev, order.id]);
+              } else {
+                setSelectedOrders((prev) =>
+                  prev.filter((id) => id !== order.id)
+                );
+              }
             }
           }}
         />
@@ -514,9 +534,13 @@ const OrdersListPage = () => {
       sortable: true,
       render: (order) => (
         <div className="font-medium text-blue-600">
-          <Link to={`/orders/${order.id}`} className="hover:underline">
-            {order.order_number}
-          </Link>
+          {order && order.id ? (
+            <Link to={`/orders/${order.id}`} className="hover:underline">
+              {order.order_number || "N/A"}
+            </Link>
+          ) : (
+            <span>N/A</span>
+          )}
         </div>
       ),
     },
@@ -527,7 +551,7 @@ const OrdersListPage = () => {
       render: (order) => (
         <div className="flex items-center space-x-2">
           <Store className="w-4 h-4 text-gray-400" />
-          <span>{order.store_name}</span>
+          <span>{order && order.store_name ? order.store_name : "N/A"}</span>
         </div>
       ),
     },
@@ -538,20 +562,34 @@ const OrdersListPage = () => {
       render: (order) => (
         <div className="flex items-center space-x-2">
           <CalendarIcon className="w-4 h-4 text-gray-400" />
-          <span>{new Date(order.order_date).toLocaleDateString()}</span>
+          <span>
+            {order && order.order_date
+              ? new Date(order.order_date).toLocaleDateString()
+              : "N/A"}
+          </span>
         </div>
       ),
     },
     {
       key: "status",
       header: "Status",
-      render: (order) => <StatusBadge status={order.status} type="order" />,
+      render: (order) => (
+        <StatusBadge
+          status={order && order.status ? order.status : "unknown"}
+          type="order"
+        />
+      ),
     },
     {
       key: "payment_status",
       header: "Payment",
       render: (order) => (
-        <StatusBadge status={order.payment_status} type="payment" />
+        <StatusBadge
+          status={
+            order && order.payment_status ? order.payment_status : "unknown"
+          }
+          type="payment"
+        />
       ),
     },
     {
@@ -559,7 +597,9 @@ const OrdersListPage = () => {
       header: "Amount (EUR)",
       render: (order) => (
         <div className="font-medium text-green-600">
-          {formatCurrency(order.final_amount_eur, "EUR")}
+          {order && order.final_amount_eur !== undefined
+            ? formatCurrency(order.final_amount_eur, "EUR")
+            : "N/A"}
         </div>
       ),
     },
@@ -568,7 +608,9 @@ const OrdersListPage = () => {
       header: "Amount (SYP)",
       render: (order) => (
         <div className="font-medium text-purple-600">
-          {formatCurrency(order.final_amount_syp, "SYP")}
+          {order && order.final_amount_syp !== undefined
+            ? formatCurrency(order.final_amount_syp, "SYP")
+            : "N/A"}
         </div>
       ),
     },
@@ -577,28 +619,48 @@ const OrdersListPage = () => {
       header: "Actions",
       render: (order) => (
         <div className="flex items-center space-x-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => (window.location.href = `/orders/${order.id}`)}
-          >
-            <Eye className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => (window.location.href = `/orders/${order.id}/edit`)}
-          >
-            <Edit className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleDeleteOrder(order.id)}
-            className="text-red-600 hover:text-red-700"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          {order && order.id ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => (window.location.href = `/orders/${order.id}`)}
+            >
+              <Eye className="w-4 h-4" />
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" disabled>
+              <Eye className="w-4 h-4" />
+            </Button>
+          )}
+          {order && order.id ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                (window.location.href = `/orders/${order.id}/edit`)
+              }
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" disabled>
+              <Edit className="w-4 h-4" />
+            </Button>
+          )}
+          {order && order.id ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDeleteOrder(order.id)}
+              className="text-red-600 hover:text-red-700"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" disabled>
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       ),
     },

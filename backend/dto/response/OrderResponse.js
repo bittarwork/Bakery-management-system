@@ -140,6 +140,7 @@ export class OrderResponse {
             items_count: this.items_count || 0,
             total_quantity: this.total_quantity || 0,
             store: this.store,
+            store_name: this.store ? this.store.name : null,
             creator: this.creator,
             notes: this.notes,
             can_be_modified: this.can_be_modified,
