@@ -88,14 +88,61 @@ export const validateCreateProduct = [
         .withMessage('وحدة القياس يجب أن تكون بين 1 و 20 حرف')
         .trim(),
 
-    validateOptionalNumeric('price_eur'),
-    validateOptionalNumeric('price_syp'),
-    validateOptionalNumeric('cost_eur'),
-    validateOptionalNumeric('cost_syp'),
-    validateOptionalInteger('stock_quantity'),
-    validateOptionalInteger('minimum_stock'),
-    validateOptionalInteger('weight_grams'),
-    validateOptionalInteger('shelf_life_days'),
+    // Validate price_eur - required and must be positive
+    body('price_eur')
+        .notEmpty()
+        .withMessage('السعر باليورو مطلوب')
+        .custom((value) => {
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue <= 0) {
+                throw new Error('السعر باليورو يجب أن يكون رقماً موجباً');
+            }
+            return true;
+        })
+        .toFloat(),
+
+    // Validate other numeric fields as optional but positive when provided
+    body('price_syp')
+        .optional()
+        .isFloat({ min: 0.01 })
+        .withMessage('السعر بالليرة يجب أن يكون رقماً موجباً')
+        .toFloat(),
+
+    body('cost_eur')
+        .optional()
+        .isFloat({ min: 0 })
+        .withMessage('التكلفة باليورو لا يمكن أن تكون سالبة')
+        .toFloat(),
+
+    body('cost_syp')
+        .optional()
+        .isFloat({ min: 0 })
+        .withMessage('التكلفة بالليرة لا يمكن أن تكون سالبة')
+        .toFloat(),
+
+    body('stock_quantity')
+        .optional()
+        .isInt({ min: 0 })
+        .withMessage('الكمية في المخزون لا يمكن أن تكون سالبة')
+        .toInt(),
+
+    body('minimum_stock')
+        .optional()
+        .isInt({ min: 0 })
+        .withMessage('الحد الأدنى للمخزون لا يمكن أن يكون سالباً')
+        .toInt(),
+
+    body('weight_grams')
+        .optional()
+        .isFloat({ min: 0.01 })
+        .withMessage('الوزن يجب أن يكون رقماً موجباً')
+        .toFloat(),
+
+    body('shelf_life_days')
+        .optional()
+        .isInt({ min: 1 })
+        .withMessage('مدة الصلاحية يجب أن تكون رقماً صحيحاً موجباً')
+        .toInt(),
 
     body('category')
         .optional()
@@ -184,14 +231,55 @@ export const validateUpdateProduct = [
         })
         .trim(),
 
-    validateOptionalNumeric('price_eur'),
-    validateOptionalNumeric('price_syp'),
-    validateOptionalNumeric('cost_eur'),
-    validateOptionalNumeric('cost_syp'),
-    validateOptionalInteger('stock_quantity'),
-    validateOptionalInteger('minimum_stock'),
-    validateOptionalInteger('weight_grams'),
-    validateOptionalInteger('shelf_life_days'),
+    // Validate price_eur - if provided, must be positive
+    body('price_eur')
+        .optional()
+        .isFloat({ min: 0.01 })
+        .withMessage('السعر باليورو يجب أن يكون رقماً موجباً')
+        .toFloat(),
+
+    // Validate other numeric fields as optional but positive when provided
+    body('price_syp')
+        .optional()
+        .isFloat({ min: 0.01 })
+        .withMessage('السعر بالليرة يجب أن يكون رقماً موجباً')
+        .toFloat(),
+
+    body('cost_eur')
+        .optional()
+        .isFloat({ min: 0 })
+        .withMessage('التكلفة باليورو لا يمكن أن تكون سالبة')
+        .toFloat(),
+
+    body('cost_syp')
+        .optional()
+        .isFloat({ min: 0 })
+        .withMessage('التكلفة بالليرة لا يمكن أن تكون سالبة')
+        .toFloat(),
+
+    body('stock_quantity')
+        .optional()
+        .isInt({ min: 0 })
+        .withMessage('الكمية في المخزون لا يمكن أن تكون سالبة')
+        .toInt(),
+
+    body('minimum_stock')
+        .optional()
+        .isInt({ min: 0 })
+        .withMessage('الحد الأدنى للمخزون لا يمكن أن يكون سالباً')
+        .toInt(),
+
+    body('weight_grams')
+        .optional()
+        .isFloat({ min: 0.01 })
+        .withMessage('الوزن يجب أن يكون رقماً موجباً')
+        .toFloat(),
+
+    body('shelf_life_days')
+        .optional()
+        .isInt({ min: 1 })
+        .withMessage('مدة الصلاحية يجب أن تكون رقماً صحيحاً موجباً')
+        .toInt(),
 
     body('category')
         .optional()

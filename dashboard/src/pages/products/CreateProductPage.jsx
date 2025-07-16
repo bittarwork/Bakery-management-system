@@ -129,28 +129,76 @@ const CreateProductPage = () => {
       newErrors.unit = "Unit is required";
     }
 
-    if (!formData.price_eur || formData.price_eur <= 0) {
-      newErrors.price_eur = "Valid price in EUR is required";
+    // Validate price_eur - must be positive number
+    if (
+      !formData.price_eur ||
+      formData.price_eur === "" ||
+      parseFloat(formData.price_eur) <= 0
+    ) {
+      newErrors.price_eur =
+        "Valid price in EUR is required (must be greater than 0)";
     }
 
-    // Validate numbers
-    if (formData.price_syp && formData.price_syp <= 0) {
+    // Validate price_syp - if provided, must be positive
+    if (
+      formData.price_syp &&
+      formData.price_syp !== "" &&
+      parseFloat(formData.price_syp) <= 0
+    ) {
       newErrors.price_syp = "Price in SYP must be positive";
     }
 
-    if (formData.stock_quantity && formData.stock_quantity < 0) {
+    // Validate cost_eur - if provided, must be positive
+    if (
+      formData.cost_eur &&
+      formData.cost_eur !== "" &&
+      parseFloat(formData.cost_eur) < 0
+    ) {
+      newErrors.cost_eur = "Cost in EUR cannot be negative";
+    }
+
+    // Validate cost_syp - if provided, must be positive
+    if (
+      formData.cost_syp &&
+      formData.cost_syp !== "" &&
+      parseFloat(formData.cost_syp) < 0
+    ) {
+      newErrors.cost_syp = "Cost in SYP cannot be negative";
+    }
+
+    // Validate stock_quantity - if provided, must be non-negative
+    if (
+      formData.stock_quantity &&
+      formData.stock_quantity !== "" &&
+      parseInt(formData.stock_quantity) < 0
+    ) {
       newErrors.stock_quantity = "Stock quantity cannot be negative";
     }
 
-    if (formData.minimum_stock && formData.minimum_stock < 0) {
+    // Validate minimum_stock - if provided, must be non-negative
+    if (
+      formData.minimum_stock &&
+      formData.minimum_stock !== "" &&
+      parseInt(formData.minimum_stock) < 0
+    ) {
       newErrors.minimum_stock = "Minimum stock cannot be negative";
     }
 
-    if (formData.weight_grams && formData.weight_grams <= 0) {
+    // Validate weight_grams - if provided, must be positive
+    if (
+      formData.weight_grams &&
+      formData.weight_grams !== "" &&
+      parseFloat(formData.weight_grams) <= 0
+    ) {
       newErrors.weight_grams = "Weight must be positive";
     }
 
-    if (formData.shelf_life_days && formData.shelf_life_days <= 0) {
+    // Validate shelf_life_days - if provided, must be positive
+    if (
+      formData.shelf_life_days &&
+      formData.shelf_life_days !== "" &&
+      parseInt(formData.shelf_life_days) <= 0
+    ) {
       newErrors.shelf_life_days = "Shelf life must be positive";
     }
 
@@ -170,39 +218,55 @@ const CreateProductPage = () => {
     setIsSubmitting(true);
 
     try {
-      // Prepare form data with proper validation
+      // Prepare form data with proper validation and ensure no negative values
       const productData = {
         ...formData,
         price_eur:
-          formData.price_eur && !isNaN(parseFloat(formData.price_eur))
+          formData.price_eur &&
+          !isNaN(parseFloat(formData.price_eur)) &&
+          parseFloat(formData.price_eur) > 0
             ? parseFloat(formData.price_eur)
             : 0,
         price_syp:
-          formData.price_syp && !isNaN(parseFloat(formData.price_syp))
+          formData.price_syp &&
+          !isNaN(parseFloat(formData.price_syp)) &&
+          parseFloat(formData.price_syp) > 0
             ? parseFloat(formData.price_syp)
             : 0,
         cost_eur:
-          formData.cost_eur && !isNaN(parseFloat(formData.cost_eur))
+          formData.cost_eur &&
+          !isNaN(parseFloat(formData.cost_eur)) &&
+          parseFloat(formData.cost_eur) >= 0
             ? parseFloat(formData.cost_eur)
             : 0,
         cost_syp:
-          formData.cost_syp && !isNaN(parseFloat(formData.cost_syp))
+          formData.cost_syp &&
+          !isNaN(parseFloat(formData.cost_syp)) &&
+          parseFloat(formData.cost_syp) >= 0
             ? parseFloat(formData.cost_syp)
             : 0,
         stock_quantity:
-          formData.stock_quantity && !isNaN(parseInt(formData.stock_quantity))
+          formData.stock_quantity &&
+          !isNaN(parseInt(formData.stock_quantity)) &&
+          parseInt(formData.stock_quantity) >= 0
             ? parseInt(formData.stock_quantity)
             : 0,
         minimum_stock:
-          formData.minimum_stock && !isNaN(parseInt(formData.minimum_stock))
+          formData.minimum_stock &&
+          !isNaN(parseInt(formData.minimum_stock)) &&
+          parseInt(formData.minimum_stock) >= 0
             ? parseInt(formData.minimum_stock)
             : 0,
         weight_grams:
-          formData.weight_grams && !isNaN(parseFloat(formData.weight_grams))
+          formData.weight_grams &&
+          !isNaN(parseFloat(formData.weight_grams)) &&
+          parseFloat(formData.weight_grams) > 0
             ? parseFloat(formData.weight_grams)
             : null,
         shelf_life_days:
-          formData.shelf_life_days && !isNaN(parseInt(formData.shelf_life_days))
+          formData.shelf_life_days &&
+          !isNaN(parseInt(formData.shelf_life_days)) &&
+          parseInt(formData.shelf_life_days) > 0
             ? parseInt(formData.shelf_life_days)
             : null,
         is_featured: formData.is_featured,

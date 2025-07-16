@@ -49,8 +49,8 @@ const Product = sequelize.define('Product', {
         defaultValue: 0.00,
         validate: {
             min: {
-                args: 0,
-                msg: 'السعر باليورو لا يمكن أن يكون سالباً'
+                args: 0.01,
+                msg: 'السعر باليورو يجب أن يكون رقماً موجباً'
             },
             isDecimal: {
                 msg: 'السعر باليورو يجب أن يكون رقماً صحيحاً'
@@ -63,8 +63,8 @@ const Product = sequelize.define('Product', {
         defaultValue: 0.00,
         validate: {
             min: {
-                args: 0,
-                msg: 'السعر بالليرة لا يمكن أن يكون سالباً'
+                args: 0.01,
+                msg: 'السعر بالليرة يجب أن يكون رقماً موجباً'
             },
             isDecimal: {
                 msg: 'السعر بالليرة يجب أن يكون رقماً صحيحاً'
@@ -149,12 +149,24 @@ const Product = sequelize.define('Product', {
     shelf_life_days: {
         type: DataTypes.INTEGER,
         allowNull: true,
-        comment: 'مدة الصلاحية بالأيام'
+        comment: 'مدة الصلاحية بالأيام',
+        validate: {
+            min: {
+                args: 1,
+                msg: 'مدة الصلاحية يجب أن تكون رقماً صحيحاً موجباً'
+            }
+        }
     },
     weight_grams: {
         type: DataTypes.INTEGER,
         allowNull: true,
-        comment: 'الوزن بالجرام'
+        comment: 'الوزن بالجرام',
+        validate: {
+            min: {
+                args: 1,
+                msg: 'الوزن يجب أن يكون رقماً موجباً'
+            }
+        }
     },
     dimensions: {
         type: DataTypes.JSON,

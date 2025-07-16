@@ -176,30 +176,33 @@ export const createProduct = async (req, res) => {
             }
         }
 
-        const product = await Product.create({
+        // Ensure all numeric values are valid and non-negative
+        const productData = {
             name,
             description,
             category,
             unit,
-            price_eur: price_eur || 0,
-            price_syp: price_syp || 0,
-            cost_eur: cost_eur || 0,
-            cost_syp: cost_syp || 0,
-            stock_quantity,
-            minimum_stock,
+            price_eur: Math.max(0.01, parseFloat(price_eur) || 0.01),
+            price_syp: price_syp ? Math.max(0.01, parseFloat(price_syp)) : 0,
+            cost_eur: cost_eur ? Math.max(0, parseFloat(cost_eur)) : 0,
+            cost_syp: cost_syp ? Math.max(0, parseFloat(cost_syp)) : 0,
+            stock_quantity: Math.max(0, parseInt(stock_quantity) || 0),
+            minimum_stock: Math.max(0, parseInt(minimum_stock) || 0),
             barcode,
             is_featured,
             status,
             image_url,
-            weight_grams,
-            shelf_life_days,
+            weight_grams: weight_grams ? Math.max(1, parseInt(weight_grams)) : null,
+            shelf_life_days: shelf_life_days ? Math.max(1, parseInt(shelf_life_days)) : null,
             storage_conditions,
             supplier_info,
             nutritional_info,
             allergen_info,
             created_by: req.userId,
             created_by_name
-        });
+        };
+
+        const product = await Product.create(productData);
 
         res.status(201).json({
             success: true,
@@ -302,18 +305,18 @@ export const updateProduct = async (req, res) => {
         if (description !== undefined) updateData.description = description;
         if (category !== undefined) updateData.category = category;
         if (unit !== undefined) updateData.unit = unit;
-        if (price_eur !== undefined) updateData.price_eur = price_eur;
-        if (price_syp !== undefined) updateData.price_syp = price_syp;
-        if (cost_eur !== undefined) updateData.cost_eur = cost_eur;
-        if (cost_syp !== undefined) updateData.cost_syp = cost_syp;
-        if (stock_quantity !== undefined) updateData.stock_quantity = stock_quantity;
-        if (minimum_stock !== undefined) updateData.minimum_stock = minimum_stock;
+        if (price_eur !== undefined) updateData.price_eur = Math.max(0.01, parseFloat(price_eur) || 0.01);
+        if (price_syp !== undefined) updateData.price_syp = price_syp ? Math.max(0.01, parseFloat(price_syp)) : 0;
+        if (cost_eur !== undefined) updateData.cost_eur = cost_eur ? Math.max(0, parseFloat(cost_eur)) : 0;
+        if (cost_syp !== undefined) updateData.cost_syp = cost_syp ? Math.max(0, parseFloat(cost_syp)) : 0;
+        if (stock_quantity !== undefined) updateData.stock_quantity = Math.max(0, parseInt(stock_quantity) || 0);
+        if (minimum_stock !== undefined) updateData.minimum_stock = Math.max(0, parseInt(minimum_stock) || 0);
         if (barcode !== undefined) updateData.barcode = barcode;
         if (is_featured !== undefined) updateData.is_featured = is_featured;
         if (status !== undefined) updateData.status = status;
         if (image_url !== undefined) updateData.image_url = image_url;
-        if (weight_grams !== undefined) updateData.weight_grams = weight_grams;
-        if (shelf_life_days !== undefined) updateData.shelf_life_days = shelf_life_days;
+        if (weight_grams !== undefined) updateData.weight_grams = weight_grams ? Math.max(1, parseInt(weight_grams)) : null;
+        if (shelf_life_days !== undefined) updateData.shelf_life_days = shelf_life_days ? Math.max(1, parseInt(shelf_life_days)) : null;
         if (storage_conditions !== undefined) updateData.storage_conditions = storage_conditions;
         if (supplier_info !== undefined) updateData.supplier_info = supplier_info;
         if (nutritional_info !== undefined) updateData.nutritional_info = nutritional_info;
