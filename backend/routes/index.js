@@ -14,6 +14,11 @@ import comprehensiveDistributionRoutes from './comprehensiveDistribution.js';
 import dashboardRoutes from './dashboard.js';
 import notificationRoutes from './notificationRoutes.js';
 
+// Import new enhanced routes
+import taxRoutes from './taxRoutes.js';
+import priceHistoryRoutes from './priceHistoryRoutes.js';
+import refundRoutes from './refundRoutes.js';
+
 const router = express.Router();
 
 // API Documentation endpoint
@@ -43,7 +48,10 @@ router.get('/', (req, res) => {
             users: '/api/users',
             distribution: '/api/distribution',
             dashboard: '/api/dashboard',
-            notifications: '/api/notifications'
+            notifications: '/api/notifications',
+            tax: '/api/tax',
+            priceHistory: '/api/price-history',
+            refunds: '/api/refunds'
         },
         documentation: {
             api_docs: '/api/docs',
@@ -66,6 +74,11 @@ router.use('/users', userRoutes);
 router.use('/distribution', comprehensiveDistributionRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/notifications', notificationRoutes);
+
+// Mount enhanced routes
+router.use('/tax', taxRoutes);
+router.use('/price-history', priceHistoryRoutes);
+router.use('/refunds', refundRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {

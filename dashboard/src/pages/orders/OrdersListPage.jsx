@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Package,
@@ -26,24 +27,511 @@ import {
   User,
   Calendar as CalendarIcon,
   BarChart3,
+  TrendingUp,
+  Activity,
+  Award,
+  Target,
+  Zap,
+  Shield,
+  Info,
+  Settings,
+  MoreVertical,
+  Calculator,
+  Coins,
+  DollarSign,
+  Globe,
+  Loader2,
+  Grid,
+  List,
+  Archive,
+  Star,
+  Heart,
+  Bookmark,
+  Tag,
+  MapPin,
+  Building,
+  Receipt,
+  Copy,
+  ExternalLink,
+  Share,
+  Bell,
+  Mail,
+  MessageSquare,
+  Phone,
+  Calendar,
+  Map,
+  Layers,
+  ArrowUpDown,
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+  SortAsc,
+  SortDesc,
+  Filter as FilterIcon,
+  Trash2,
+  Archive as ArchiveIcon,
+  Send,
+  Printer,
+  FileText as FileTextIcon,
+  Download as DownloadIcon,
+  Share2,
+  Save,
+  Upload,
+  Import,
+  Export,
+  Refresh,
+  Sync,
+  Power,
+  Pause,
+  Play,
+  FastForward,
+  Rewind,
+  Volume2,
+  VolumeX,
+  Wifi,
+  WifiOff,
+  Cloud,
+  CloudOff,
+  Database,
+  Server,
+  HardDrive,
+  Monitor,
+  Smartphone,
+  Tablet,
+  Laptop,
+  Desktop,
+  Watch,
+  Headphones,
+  Speaker,
+  Microphone,
+  Camera,
+  Video,
+  Image,
+  Music,
+  Film,
+  Gamepad2,
+  Joystick,
+  Dice1,
+  Dice2,
+  Dice3,
+  Dice4,
+  Dice5,
+  Dice6,
+  Spade,
+  Club,
+  Heart as HeartCard,
+  Diamond,
+  Crown,
+  Gem,
+  Key,
+  Lock,
+  Unlock,
+  Shield as ShieldIcon,
+  ShieldCheck,
+  ShieldAlert,
+  ShieldX,
+  Eye as EyeIcon,
+  EyeOff,
+  Glasses,
+  Sun,
+  Moon,
+  Star as StarIcon,
+  Cloud as CloudIcon,
+  CloudRain,
+  CloudSnow,
+  CloudLightning,
+  CloudDrizzle,
+  Sunrise,
+  Sunset,
+  Thermometer,
+  Droplets,
+  Wind,
+  Tornado,
+  Umbrella,
+  Snowflake,
+  Zap as ZapIcon,
+  Flame,
+  Waves,
+  Mountain,
+  Tree,
+  Flower,
+  Leaf,
+  Seedling,
+  Sprout,
+  Cactus,
+  PalmTree,
+  Evergreen,
+  Deciduous,
+  Mushroom,
+  Clover,
+  Cherry,
+  Apple,
+  Banana,
+  Orange,
+  Grape,
+  Strawberry,
+  Lemon,
+  Lime,
+  Coconut,
+  Carrot,
+  Corn,
+  Wheat,
+  Rice,
+  Bread,
+  Croissant,
+  Pretzel,
+  Bagel,
+  Donut,
+  Cookie,
+  Cake,
+  Cupcake,
+  Pie,
+  Pizza,
+  Burger,
+  Sandwich,
+  Taco,
+  Salad,
+  Soup,
+  Stew,
+  Meat,
+  Poultry,
+  Fish,
+  Egg,
+  Cheese,
+  Milk,
+  Butter,
+  Yogurt,
+  IceCream,
+  Candy,
+  Chocolate,
+  Honey,
+  Coffee,
+  Tea,
+  Wine,
+  Beer,
+  Cocktail,
+  Juice,
+  Soda,
+  Water,
+  Droplet,
+  Snowflake as SnowflakeIcon,
+  Thermometer as ThermometerIcon,
+  Gauge,
+  Speedometer,
+  Compass,
+  Navigation,
+  Route,
+  Directions,
+  Map as MapIcon,
+  Globe as GlobeIcon,
+  Earth,
+  Satellite,
+  Rocket,
+  Plane,
+  Car,
+  Taxi,
+  Bus,
+  Train,
+  Subway,
+  Tram,
+  Bike,
+  Scooter,
+  Motorcycle,
+  Truck as TruckIcon,
+  Van,
+  Ambulance,
+  FireTruck,
+  PoliceCar,
+  Helicopter,
+  Boat,
+  Ship,
+  Anchor,
+  Waves as WavesIcon,
+  Lighthouse,
+  Ferry,
+  Sailboat,
+  Canoe,
+  Kayak,
+  Surfboard,
+  SwimmingPool,
+  Tent,
+  Campfire,
+  Lantern,
+  Flashlight,
+  Candle,
+  Lightbulb,
+  Lamp,
+  Torch,
+  Sparkles,
+  Sparkle,
+  Glitter,
+  Rainbow,
+  Prism,
+  Crystal,
+  Diamond as DiamondIcon,
+  Ring,
+  Necklace,
+  Watch as WatchIcon,
+  Bracelet,
+  Earrings,
+  Tiara,
+  Crown as CrownIcon,
+  Medal,
+  Trophy,
+  Award as AwardIcon,
+  Certificate,
+  Ribbon,
+  Flag,
+  Pennant,
+  Banner,
+  Sign,
+  Signpost,
+  Milestone,
+  Waypoint,
+  Checkpoint,
+  Target as TargetIcon,
+  Bullseye,
+  Crosshair,
+  Focus,
+  Zoom,
+  ZoomIn,
+  ZoomOut,
+  Maximize,
+  Minimize,
+  Expand,
+  Shrink,
+  Resize,
+  Move,
+  Grab,
+  Hand,
+  Pointer,
+  Click,
+  Tap,
+  Swipe,
+  Drag,
+  Drop,
+  Select,
+  Deselect,
+  SelectAll,
+  DeselectAll,
+  Copy as CopyIcon,
+  Paste,
+  Cut,
+  Scissors,
+  Paperclip,
+  Unlink,
+  Chain,
+  Anchor as AnchorIcon,
+  Pin,
+  Pushpin,
+  Paperclip as PaperclipIcon,
+  Stapler,
+  Eraser,
+  Highlighter,
+  Marker,
+  Pencil,
+  Pen,
+  PenTool,
+  Paintbrush,
+  Palette,
+  Pipette,
+  Swatch,
+  Layers as LayersIcon,
+  Group,
+  Ungroup,
+  Align,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  AlignTop,
+  AlignMiddle,
+  AlignBottom,
+  Distribute,
+  Order,
+  BringToFront,
+  SendToBack,
+  Flip,
+  Rotate,
+  Transform,
+  Crop,
+  Trim,
+  Adjust,
+  Brightness,
+  Contrast,
+  Saturation,
+  Hue,
+  Exposure,
+  Shadows,
+  Highlights,
+  Clarity,
+  Vibrance,
+  Warmth,
+  Tint,
+  Grain,
+  Vignette,
+  Blur,
+  Sharpen,
+  Noise,
+  Pixelate,
+  Mosaic,
+  Posterize,
+  Invert,
+  Sepia,
+  Grayscale,
+  Duotone,
+  Vintage,
+  Retro,
+  Film as FilmIcon,
+  Polaroid,
+  Slide,
+  Negative,
+  Darkroom,
+  Enlarger,
+  Tripod,
+  Lens,
+  Aperture,
+  Shutter,
+  Flash,
+  Timer,
+  Remote,
+  Selfie,
+  Portrait,
+  Landscape,
+  Panorama,
+  Macro,
+  Telephoto,
+  Wideangle,
+  Fisheye,
+  Zoom as ZoomIcon,
+  Focus as FocusIcon,
+  Exposure as ExposureIcon,
+  Iso,
+  WhiteBalance,
+  Metering,
+  Histogram,
+  Grid as GridIcon,
+  Rule,
+  Measure,
+  Scale,
+  Ruler,
+  Protractor,
+  Triangle,
+  Square,
+  Circle,
+  Pentagon,
+  Hexagon,
+  Octagon,
+  Polygon,
+  Star as StarPolygon,
+  Heart as HeartShape,
+  Diamond as DiamondShape,
+  Oval,
+  Rectangle,
+  RoundedRectangle,
+  Trapezoid,
+  Parallelogram,
+  Rhombus,
+  Kite,
+  Arrow,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpLeft,
+  ArrowUpRight,
+  ArrowDownLeft,
+  ArrowDownRight,
+  ArrowBigUp,
+  ArrowBigDown,
+  ArrowBigLeft,
+  ArrowBigRight,
+  ArrowBigUpDash,
+  ArrowBigDownDash,
+  ArrowBigLeftDash,
+  ArrowBigRightDash,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  ArrowLeftCircle,
+  ArrowRightCircle,
+  ArrowUpSquare,
+  ArrowDownSquare,
+  ArrowLeftSquare,
+  ArrowRightSquare,
+  ArrowUpFromLine,
+  ArrowDownFromLine,
+  ArrowLeftFromLine,
+  ArrowRightFromLine,
+  ArrowUpToLine,
+  ArrowDownToLine,
+  ArrowLeftToLine,
+  ArrowRightToLine,
+  ArrowUpDown as ArrowUpDownIcon,
+  ArrowLeftRight,
+  ArrowUpDownLeft,
+  ArrowUpDownRight,
+  ArrowLeftRightUp,
+  ArrowLeftRightDown,
+  ArrowsExpand,
+  ArrowsContract,
+  ArrowsShuffle,
+  ArrowsSort,
+  ArrowsResize,
+  ArrowsMerge,
+  ArrowsSplit,
+  ArrowsJoin,
+  ArrowsSeparate,
+  ArrowsAlignCenter,
+  ArrowsAlignLeft,
+  ArrowsAlignRight,
+  ArrowsAlignTop,
+  ArrowsAlignBottom,
+  ArrowsDistribute,
+  ArrowsBalance,
+  ArrowsEqualize,
+  ArrowsSymmetry,
+  ArrowsParallel,
+  ArrowsPerpendicular,
+  ArrowsIntersect,
+  ArrowsOverlap,
+  ArrowsApart,
+  ArrowsTogether,
+  ArrowsAway,
+  ArrowsToward,
+  ArrowsOut,
+  ArrowsIn,
+  ArrowsUp,
+  ArrowsDown,
+  ArrowsLeft,
+  ArrowsRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
-import Button from "../../components/ui/Button";
-import Input from "../../components/ui/Input";
-import DataTable from "../../components/ui/DataTable";
+import EnhancedButton from "../../components/ui/EnhancedButton";
+import EnhancedInput from "../../components/ui/EnhancedInput";
+import LoadingSpinner from "../../components/ui/LoadingSpinner";
+import { DeleteConfirmationModal } from "../../components/ui/Modal";
 import orderService from "../../services/orderService";
 import storeService from "../../services/storeService";
 import userService from "../../services/userService";
 import { toast } from "react-hot-toast";
 
 const OrdersListPage = () => {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [stores, setStores] = useState([]);
   const [distributors, setDistributors] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState([]);
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    orderId: null,
+    isLoading: false,
+  });
+
+  // Enhanced filters state
   const [filters, setFilters] = useState({
     status: "",
     payment_status: "",
@@ -56,22 +544,42 @@ const OrdersListPage = () => {
     delivery_date_to: "",
     amount_min: "",
     amount_max: "",
+    currency: "",
     search: "",
     page: 1,
     limit: 10,
+    sortBy: "created_at",
+    sortOrder: "DESC",
   });
 
   // Statistics state
   const [statistics, setStatistics] = useState({
     total_orders: 0,
     total_amount_eur: 0,
+    total_amount_syp: 0,
     orders_by_status: {},
     orders_by_payment_status: {},
     orders_by_priority: {},
+    orders_by_currency: {},
     average_order_value: 0,
     pending_orders: 0,
     completed_orders: 0,
+    urgent_orders: 0,
+    overdue_orders: 0,
+    monthly_growth: 0,
+    revenue_growth: 0,
   });
+
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 10,
+  });
+
+  // View mode state
+  const [viewMode, setViewMode] = useState("table"); // "table" or "cards"
 
   // Fetch orders with current filters
   const fetchOrders = async (resetPage = false) => {
@@ -98,6 +606,12 @@ const OrdersListPage = () => {
 
         setOrders(validOrders);
         setStatistics(response.data.statistics || {});
+        setPagination({
+          currentPage: response.data.pagination?.page || 1,
+          totalPages: response.data.pagination?.totalPages || 1,
+          totalItems: response.data.pagination?.total || 0,
+          itemsPerPage: response.data.pagination?.limit || 10,
+        });
 
         // Update pagination if needed
         if (resetPage) {
@@ -408,111 +922,150 @@ const OrdersListPage = () => {
     );
   };
 
-  // Currency formatter
-  const formatCurrency = (amount, currency = "EUR") => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 2,
-    }).format(amount);
-  };
-
-  // Enhanced Statistics cards
+  // Statistics Cards Component
   const StatisticsCards = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-6">
-      <Card>
-        <CardBody>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Orders</p>
-              <p className="text-2xl font-bold">{statistics.total_orders}</p>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      {/* Total Orders */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center space-x-2">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Package className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      Total Orders
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {statistics.total_orders?.toLocaleString() || 0}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center space-x-1">
+                  <TrendingUp className="w-4 h-4 text-green-600" />
+                  <span className="text-sm text-green-600 font-medium">
+                    +{statistics.monthly_growth || 0}%
+                  </span>
+                  <span className="text-sm text-gray-500">vs last month</span>
+                </div>
+              </div>
             </div>
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <ShoppingCart className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </CardBody>
-      </Card>
+          </CardBody>
+        </Card>
+      </motion.div>
 
-      <Card>
-        <CardBody>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(statistics.total_amount_eur || 0, "EUR")}
-              </p>
+      {/* Total Revenue EUR */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center space-x-2">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <Euro className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      Revenue (EUR)
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      €{formatCurrency(statistics.total_amount_eur || 0)}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center space-x-1">
+                  <TrendingUp className="w-4 h-4 text-green-600" />
+                  <span className="text-sm text-green-600 font-medium">
+                    +{statistics.revenue_growth || 0}%
+                  </span>
+                  <span className="text-sm text-gray-500">vs last month</span>
+                </div>
+              </div>
             </div>
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Euro className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </CardBody>
-      </Card>
+          </CardBody>
+        </Card>
+      </motion.div>
 
-      <Card>
-        <CardBody>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Avg Order Value</p>
-              <p className="text-2xl font-bold text-purple-600">
-                {formatCurrency(statistics.average_order_value || 0, "EUR")}
-              </p>
+      {/* Total Revenue SYP */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+      >
+        <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center space-x-2">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <Coins className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      Revenue (SYP)
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {formatCurrency(statistics.total_amount_syp || 0, "SYP")}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center space-x-1">
+                  <Globe className="w-4 h-4 text-purple-600" />
+                  <span className="text-sm text-purple-600 font-medium">
+                    Multi-Currency
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <BarChart3 className="w-6 h-6 text-purple-600" />
-            </div>
-          </div>
-        </CardBody>
-      </Card>
+          </CardBody>
+        </Card>
+      </motion.div>
 
-      <Card>
-        <CardBody>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Pending Orders</p>
-              <p className="text-2xl font-bold text-yellow-600">
-                {statistics.orders_by_status?.pending || 0}
-              </p>
+      {/* Pending Orders */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+      >
+        <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardBody className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center space-x-2">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <Clock className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      Pending Orders
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {statistics.pending_orders || 0}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center space-x-1">
+                  <AlertTriangle className="w-4 h-4 text-orange-600" />
+                  <span className="text-sm text-orange-600 font-medium">
+                    {statistics.urgent_orders || 0} urgent
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <Clock className="w-6 h-6 text-yellow-600" />
-            </div>
-          </div>
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardBody>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Completed</p>
-              <p className="text-2xl font-bold text-green-600">
-                {statistics.orders_by_status?.delivered || 0}
-              </p>
-            </div>
-            <div className="p-2 bg-green-100 rounded-lg">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardBody>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Cancelled</p>
-              <p className="text-2xl font-bold text-red-600">
-                {statistics.orders_by_status?.cancelled || 0}
-              </p>
-            </div>
-            <div className="p-2 bg-red-100 rounded-lg">
-              <XCircle className="w-6 h-6 text-red-600" />
-            </div>
-          </div>
-        </CardBody>
-      </Card>
+          </CardBody>
+        </Card>
+      </motion.div>
     </div>
   );
 
@@ -961,99 +1514,486 @@ const OrdersListPage = () => {
     },
   ];
 
+  // Format currency helper
+  const formatCurrency = (amount, currency = "EUR") => {
+    if (currency === "SYP") {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "SYP",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(amount);
+    }
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "EUR",
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+      {/* Enhanced Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border border-blue-100"
+      >
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Orders Management
           </h1>
-          <p className="text-gray-600 mt-1">Manage and track all orders</p>
+          <p className="text-gray-600 flex items-center space-x-2">
+            <Package className="w-4 h-4" />
+            <span>Manage and track all bakery orders</span>
+          </p>
         </div>
-        <div className="flex space-x-3 mt-4 sm:mt-0">
-          <Button
+        <div className="flex flex-wrap items-center gap-3 mt-4 sm:mt-0">
+          <EnhancedButton
             variant="outline"
+            size="sm"
             onClick={() => setShowFilters(!showFilters)}
+            icon={<Filter className="w-4 h-4" />}
+            className="bg-white hover:bg-gray-50"
           >
-            <Filter className="w-4 h-4 mr-2" />
-            Filters
-          </Button>
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="w-4 h-4 mr-2" />
+            {showFilters ? "Hide Filters" : "Show Filters"}
+          </EnhancedButton>
+          <EnhancedButton
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            icon={<Download className="w-4 h-4" />}
+            loading={isExporting}
+            className="bg-white hover:bg-gray-50"
+          >
             Export
-          </Button>
-          <Button variant="outline" onClick={() => fetchOrders()}>
-            <RefreshCw className="w-4 h-4 mr-2" />
+          </EnhancedButton>
+          <EnhancedButton
+            variant="outline"
+            size="sm"
+            onClick={() => fetchOrders()}
+            icon={<RefreshCw className="w-4 h-4" />}
+            className="bg-white hover:bg-gray-50"
+          >
             Refresh
-          </Button>
+          </EnhancedButton>
+          <EnhancedButton
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setViewMode(viewMode === "table" ? "cards" : "table")
+            }
+            icon={
+              viewMode === "table" ? (
+                <Grid className="w-4 h-4" />
+              ) : (
+                <List className="w-4 h-4" />
+              )
+            }
+            className="bg-white hover:bg-gray-50"
+          >
+            {viewMode === "table" ? "Card View" : "Table View"}
+          </EnhancedButton>
           <Link to="/orders/create">
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
+            <EnhancedButton
+              variant="primary"
+              size="sm"
+              icon={<Plus className="w-4 h-4" />}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            >
               New Order
-            </Button>
+            </EnhancedButton>
           </Link>
         </div>
-      </div>
+      </motion.div>
 
       {/* Statistics */}
       <StatisticsCards />
 
-      {/* Search and Quick Filters */}
-      <Card>
-        <CardBody>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <Input
-                placeholder="Search orders..."
-                value={filters.search}
-                onChange={(e) => handleFilterChange("search", e.target.value)}
-                icon={<Search className="w-4 h-4" />}
-              />
+      {/* Enhanced Search and Quick Filters */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <Card className="border-0 shadow-lg">
+          <CardBody className="p-6">
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex-1">
+                <EnhancedInput
+                  placeholder="Search orders by number, store, or customer..."
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange("search", e.target.value)}
+                  icon={<Search className="w-4 h-4" />}
+                  className="w-full"
+                />
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <select
+                  value={filters.status}
+                  onChange={(e) => handleFilterChange("status", e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 min-w-32"
+                >
+                  <option value="">All Statuses</option>
+                  {orderService.getStatusOptions().map((status) => (
+                    <option key={status.value} value={status.value}>
+                      {status.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={filters.store_id}
+                  onChange={(e) =>
+                    handleFilterChange("store_id", e.target.value)
+                  }
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 min-w-32"
+                >
+                  <option value="">All Stores</option>
+                  {stores.map((store) => (
+                    <option key={store.id} value={store.id}>
+                      {store.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={filters.priority}
+                  onChange={(e) =>
+                    handleFilterChange("priority", e.target.value)
+                  }
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 min-w-32"
+                >
+                  <option value="">All Priorities</option>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+                <select
+                  value={filters.currency}
+                  onChange={(e) =>
+                    handleFilterChange("currency", e.target.value)
+                  }
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 min-w-32"
+                >
+                  <option value="">All Currencies</option>
+                  <option value="EUR">EUR</option>
+                  <option value="SYP">SYP</option>
+                </select>
+              </div>
             </div>
-            <div className="flex space-x-2">
-              <select
-                value={filters.status}
-                onChange={(e) => handleFilterChange("status", e.target.value)}
-                className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Statuses</option>
-                {orderService.getStatusOptions().map((status) => (
-                  <option key={status.value} value={status.value}>
-                    {status.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={filters.store_id}
-                onChange={(e) => handleFilterChange("store_id", e.target.value)}
-                className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Stores</option>
-                {stores.map((store) => (
-                  <option key={store.id} value={store.id}>
-                    {store.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={filters.priority}
-                onChange={(e) => handleFilterChange("priority", e.target.value)}
-                className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Priorities</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-            </div>
-          </div>
-        </CardBody>
-      </Card>
+          </CardBody>
+        </Card>
+      </motion.div>
 
-      {/* Filters Panel */}
-      <FiltersPanel />
+      {/* Enhanced Filters Panel */}
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <FilterIcon className="w-5 h-5 text-gray-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Advanced Filters
+                    </h3>
+                  </div>
+                  <EnhancedButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowFilters(false)}
+                    icon={<X className="w-4 h-4" />}
+                  />
+                </div>
+              </CardHeader>
+              <CardBody className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {/* Status filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Order Status
+                    </label>
+                    <select
+                      value={filters.status}
+                      onChange={(e) =>
+                        handleFilterChange("status", e.target.value)
+                      }
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                    >
+                      <option value="">All Statuses</option>
+                      {orderService.getStatusOptions().map((status) => (
+                        <option key={status.value} value={status.value}>
+                          {status.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Payment Status filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Payment Status
+                    </label>
+                    <select
+                      value={filters.payment_status}
+                      onChange={(e) =>
+                        handleFilterChange("payment_status", e.target.value)
+                      }
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                    >
+                      <option value="">All Payment Statuses</option>
+                      {orderService.getPaymentStatusOptions().map((status) => (
+                        <option key={status.value} value={status.value}>
+                          {status.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Priority filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Priority Level
+                    </label>
+                    <select
+                      value={filters.priority}
+                      onChange={(e) =>
+                        handleFilterChange("priority", e.target.value)
+                      }
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                    >
+                      <option value="">All Priorities</option>
+                      <option value="low">Low Priority</option>
+                      <option value="medium">Medium Priority</option>
+                      <option value="high">High Priority</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
+
+                  {/* Store filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Store
+                    </label>
+                    <select
+                      value={filters.store_id}
+                      onChange={(e) =>
+                        handleFilterChange("store_id", e.target.value)
+                      }
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                    >
+                      <option value="">All Stores</option>
+                      {stores.map((store) => (
+                        <option key={store.id} value={store.id}>
+                          {store.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Distributor filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Distributor
+                    </label>
+                    <select
+                      value={filters.distributor_id}
+                      onChange={(e) =>
+                        handleFilterChange("distributor_id", e.target.value)
+                      }
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                    >
+                      <option value="">All Distributors</option>
+                      {distributors.map((distributor) => (
+                        <option key={distributor.id} value={distributor.id}>
+                          {distributor.full_name || distributor.username}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Currency filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Currency
+                    </label>
+                    <select
+                      value={filters.currency}
+                      onChange={(e) =>
+                        handleFilterChange("currency", e.target.value)
+                      }
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                    >
+                      <option value="">All Currencies</option>
+                      <option value="EUR">EUR - Euro</option>
+                      <option value="SYP">SYP - Syrian Pound</option>
+                    </select>
+                  </div>
+
+                  {/* Date From */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Order Date From
+                    </label>
+                    <EnhancedInput
+                      type="date"
+                      value={filters.date_from}
+                      onChange={(e) =>
+                        handleFilterChange("date_from", e.target.value)
+                      }
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* Date To */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Order Date To
+                    </label>
+                    <EnhancedInput
+                      type="date"
+                      value={filters.date_to}
+                      onChange={(e) =>
+                        handleFilterChange("date_to", e.target.value)
+                      }
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* Amount Min */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Min Amount (EUR)
+                    </label>
+                    <EnhancedInput
+                      type="number"
+                      placeholder="0.00"
+                      value={filters.amount_min}
+                      onChange={(e) =>
+                        handleFilterChange("amount_min", e.target.value)
+                      }
+                      icon={<Euro className="w-4 h-4" />}
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* Amount Max */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Max Amount (EUR)
+                    </label>
+                    <EnhancedInput
+                      type="number"
+                      placeholder="1000.00"
+                      value={filters.amount_max}
+                      onChange={(e) =>
+                        handleFilterChange("amount_max", e.target.value)
+                      }
+                      icon={<Euro className="w-4 h-4" />}
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* Delivery Date From */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Delivery Date From
+                    </label>
+                    <EnhancedInput
+                      type="date"
+                      value={filters.delivery_date_from}
+                      onChange={(e) =>
+                        handleFilterChange("delivery_date_from", e.target.value)
+                      }
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* Delivery Date To */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Delivery Date To
+                    </label>
+                    <EnhancedInput
+                      type="date"
+                      value={filters.delivery_date_to}
+                      onChange={(e) =>
+                        handleFilterChange("delivery_date_to", e.target.value)
+                      }
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap justify-between items-center mt-8 pt-6 border-t border-gray-200">
+                  <div className="flex flex-wrap gap-2">
+                    <EnhancedButton
+                      variant="outline"
+                      size="sm"
+                      onClick={() => applyQuickFilter("status", "pending")}
+                      icon={<Clock className="w-4 h-4" />}
+                      className="bg-yellow-50 hover:bg-yellow-100 text-yellow-700 border-yellow-300"
+                    >
+                      Pending Orders
+                    </EnhancedButton>
+                    <EnhancedButton
+                      variant="outline"
+                      size="sm"
+                      onClick={() => applyQuickFilter("status", "confirmed")}
+                      icon={<CheckCircle className="w-4 h-4" />}
+                      className="bg-green-50 hover:bg-green-100 text-green-700 border-green-300"
+                    >
+                      Confirmed Orders
+                    </EnhancedButton>
+                    <EnhancedButton
+                      variant="outline"
+                      size="sm"
+                      onClick={() => applyQuickFilter("priority", "urgent")}
+                      icon={<AlertTriangle className="w-4 h-4" />}
+                      className="bg-red-50 hover:bg-red-100 text-red-700 border-red-300"
+                    >
+                      Urgent Orders
+                    </EnhancedButton>
+                    <EnhancedButton
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        applyQuickFilter("payment_status", "pending")
+                      }
+                      icon={<CreditCard className="w-4 h-4" />}
+                      className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300"
+                    >
+                      Payment Due
+                    </EnhancedButton>
+                  </div>
+                  <div className="flex flex-wrap gap-3 mt-4 lg:mt-0">
+                    <EnhancedButton
+                      variant="outline"
+                      onClick={clearFilters}
+                      icon={<X className="w-4 h-4" />}
+                    >
+                      Clear Filters
+                    </EnhancedButton>
+                    <EnhancedButton
+                      variant="primary"
+                      onClick={() => setShowFilters(false)}
+                      icon={<Check className="w-4 h-4" />}
+                    >
+                      Apply Filters
+                    </EnhancedButton>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Enhanced Bulk Actions */}
       {selectedOrders.length > 0 && (
