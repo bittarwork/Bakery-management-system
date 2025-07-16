@@ -18,6 +18,7 @@ export class OrderResponse {
         this.final_amount_syp = parseFloat(order.final_amount_syp || 0);
         this.status = order.status;
         this.payment_status = order.payment_status;
+        this.priority = order.priority || 'medium';
         this.notes = order.notes;
         this.created_by = order.created_by;
         this.created_at = order.created_at;
@@ -126,8 +127,11 @@ export class OrderResponse {
         return {
             id: this.id,
             order_number: this.order_number,
+            store_id: this.store_id,
             order_date: this.order_date,
             delivery_date: this.delivery_date,
+            total_amount_eur: this.total_amount_eur,
+            total_amount_syp: this.total_amount_syp,
             final_amount_eur: this.final_amount_eur,
             final_amount_syp: this.final_amount_syp,
             discount_amount_eur: this.discount_amount_eur,
@@ -136,16 +140,19 @@ export class OrderResponse {
             status_info: this.status_info,
             payment_status: this.payment_status,
             payment_status_info: this.payment_status_info,
+            priority: this.priority || 'medium',
             items: this.items || [],
             items_count: this.items_count || 0,
             total_quantity: this.total_quantity || 0,
             store: this.store,
-            store_name: this.store ? this.store.name : null,
+            store_name: this.store ? this.store.name : 'N/A',
             creator: this.creator,
             notes: this.notes,
             can_be_modified: this.can_be_modified,
             can_be_cancelled: this.can_be_cancelled,
-            is_overdue: this.is_overdue
+            is_overdue: this.is_overdue,
+            created_at: this.created_at,
+            updated_at: this.updated_at
         };
     }
 }
