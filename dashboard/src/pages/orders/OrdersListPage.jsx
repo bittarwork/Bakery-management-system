@@ -6,51 +6,26 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle,
+  AlertTriangle,
   Search,
   Filter,
-  Calendar,
   Store,
-  DollarSign,
   Eye,
   Edit,
-  Trash2,
   Download,
   RefreshCw,
   Euro,
   ShoppingCart,
-  TrendingUp,
   CreditCard,
   FileText,
-  MoreVertical,
-  ArrowUpDown,
   Users,
-  MapPin,
   Truck,
-  Receipt,
-  Settings,
   X,
   ChevronLeft,
   ChevronRight,
-  CheckSquare,
-  Square,
-  Globe,
-  Calculator,
-  Target,
-  Zap,
-  Activity,
   User,
-  Building,
-  Phone,
   Calendar as CalendarIcon,
-  Clock as ClockIcon,
-  Star,
-  AlertTriangle,
-  Info,
-  Check,
-  Minus,
-  ExternalLink,
-  Printer,
+  BarChart3,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
@@ -59,11 +34,13 @@ import Input from "../../components/ui/Input";
 import DataTable from "../../components/ui/DataTable";
 import orderService from "../../services/orderService";
 import storeService from "../../services/storeService";
+import userService from "../../services/userService";
 import { toast } from "react-hot-toast";
 
 const OrdersListPage = () => {
   const [orders, setOrders] = useState([]);
   const [stores, setStores] = useState([]);
+  const [distributors, setDistributors] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState([]);
@@ -71,8 +48,14 @@ const OrdersListPage = () => {
     status: "",
     payment_status: "",
     store_id: "",
+    distributor_id: "",
+    priority: "",
     date_from: "",
     date_to: "",
+    delivery_date_from: "",
+    delivery_date_to: "",
+    amount_min: "",
+    amount_max: "",
     search: "",
     page: 1,
     limit: 10,
@@ -82,9 +65,12 @@ const OrdersListPage = () => {
   const [statistics, setStatistics] = useState({
     total_orders: 0,
     total_amount_eur: 0,
-    total_amount_syp: 0,
     orders_by_status: {},
     orders_by_payment_status: {},
+    orders_by_priority: {},
+    average_order_value: 0,
+    pending_orders: 0,
+    completed_orders: 0,
   });
 
   // Fetch orders with current filters
@@ -139,10 +125,26 @@ const OrdersListPage = () => {
     }
   };
 
+  // Fetch distributors for filter dropdown
+  const fetchDistributors = async () => {
+    try {
+      const response = await userService.getUsers({
+        role: "distributor",
+        limit: 1000,
+      });
+      if (response.success) {
+        setDistributors(response.data.users || []);
+      }
+    } catch (error) {
+      console.error("Error fetching distributors:", error);
+    }
+  };
+
   // Initialize data
   useEffect(() => {
     fetchOrders();
     fetchStores();
+    fetchDistributors();
   }, []);
 
   // Refetch when filters change
@@ -156,8 +158,14 @@ const OrdersListPage = () => {
     filters.status,
     filters.payment_status,
     filters.store_id,
+    filters.distributor_id,
+    filters.priority,
     filters.date_from,
     filters.date_to,
+    filters.delivery_date_from,
+    filters.delivery_date_to,
+    filters.amount_min,
+    filters.amount_max,
     filters.search,
   ]);
 
@@ -176,12 +184,27 @@ const OrdersListPage = () => {
       status: "",
       payment_status: "",
       store_id: "",
+      distributor_id: "",
+      priority: "",
       date_from: "",
       date_to: "",
+      delivery_date_from: "",
+      delivery_date_to: "",
+      amount_min: "",
+      amount_max: "",
       search: "",
       page: 1,
       limit: 10,
     });
+  };
+
+  // Apply quick filters
+  const applyQuickFilter = (filterType, value) => {
+    setFilters((prev) => ({
+      ...prev,
+      [filterType]: value,
+      page: 1,
+    }));
   };
 
   // Handle order status update
@@ -244,6 +267,52 @@ const OrdersListPage = () => {
     }
   };
 
+  // Handle bulk assignment to distributor
+  const handleBulkAssignDistributor = async (distributorId) => {
+    if (selectedOrders.length === 0) {
+      toast.error("Please select orders first");
+      return;
+    }
+
+    try {
+      await Promise.all(
+        selectedOrders.map((orderId) =>
+          orderService.assignDistributor(orderId, distributorId)
+        )
+      );
+      toast.success(`${selectedOrders.length} orders assigned successfully`);
+      setSelectedOrders([]);
+      fetchOrders();
+    } catch (error) {
+      console.error("Error assigning orders:", error);
+      toast.error("Failed to assign selected orders");
+    }
+  };
+
+  // Handle bulk priority update
+  const handleBulkPriorityUpdate = async (priority) => {
+    if (selectedOrders.length === 0) {
+      toast.error("Please select orders first");
+      return;
+    }
+
+    try {
+      await Promise.all(
+        selectedOrders.map((orderId) =>
+          orderService.updateOrderPriority(orderId, priority)
+        )
+      );
+      toast.success(
+        `${selectedOrders.length} orders priority updated successfully`
+      );
+      setSelectedOrders([]);
+      fetchOrders();
+    } catch (error) {
+      console.error("Error updating priority:", error);
+      toast.error("Failed to update priority for selected orders");
+    }
+  };
+
   // Handle export
   const handleExport = async () => {
     try {
@@ -301,6 +370,44 @@ const OrdersListPage = () => {
     );
   };
 
+  // Priority badge component
+  const PriorityBadge = ({ priority }) => {
+    const priorityConfig = {
+      low: {
+        label: "Low",
+        color: "bg-gray-100 text-gray-800",
+        icon: AlertTriangle,
+      },
+      medium: {
+        label: "Medium",
+        color: "bg-blue-100 text-blue-800",
+        icon: AlertTriangle,
+      },
+      high: {
+        label: "High",
+        color: "bg-orange-100 text-orange-800",
+        icon: AlertTriangle,
+      },
+      urgent: {
+        label: "Urgent",
+        color: "bg-red-100 text-red-800",
+        icon: AlertTriangle,
+      },
+    };
+
+    const config = priorityConfig[priority] || priorityConfig.medium;
+    const IconComponent = config.icon;
+
+    return (
+      <span
+        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${config.color}`}
+      >
+        <IconComponent className="w-3 h-3 mr-1" />
+        {config.label}
+      </span>
+    );
+  };
+
   // Currency formatter
   const formatCurrency = (amount, currency = "EUR") => {
     return new Intl.NumberFormat("en-US", {
@@ -310,9 +417,9 @@ const OrdersListPage = () => {
     }).format(amount);
   };
 
-  // Statistics cards
+  // Enhanced Statistics cards
   const StatisticsCards = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-6">
       <Card>
         <CardBody>
           <div className="flex items-center justify-between">
@@ -331,7 +438,7 @@ const OrdersListPage = () => {
         <CardBody>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Revenue (EUR)</p>
+              <p className="text-sm text-gray-600">Total Revenue</p>
               <p className="text-2xl font-bold text-green-600">
                 {formatCurrency(statistics.total_amount_eur || 0, "EUR")}
               </p>
@@ -347,13 +454,13 @@ const OrdersListPage = () => {
         <CardBody>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Revenue (SYP)</p>
+              <p className="text-sm text-gray-600">Avg Order Value</p>
               <p className="text-2xl font-bold text-purple-600">
-                {formatCurrency(statistics.total_amount_syp || 0, "SYP")}
+                {formatCurrency(statistics.average_order_value || 0, "EUR")}
               </p>
             </div>
             <div className="p-2 bg-purple-100 rounded-lg">
-              <DollarSign className="w-6 h-6 text-purple-600" />
+              <BarChart3 className="w-6 h-6 text-purple-600" />
             </div>
           </div>
         </CardBody>
@@ -374,10 +481,42 @@ const OrdersListPage = () => {
           </div>
         </CardBody>
       </Card>
+
+      <Card>
+        <CardBody>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Completed</p>
+              <p className="text-2xl font-bold text-green-600">
+                {statistics.orders_by_status?.delivered || 0}
+              </p>
+            </div>
+            <div className="p-2 bg-green-100 rounded-lg">
+              <CheckCircle className="w-6 h-6 text-green-600" />
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardBody>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Cancelled</p>
+              <p className="text-2xl font-bold text-red-600">
+                {statistics.orders_by_status?.cancelled || 0}
+              </p>
+            </div>
+            <div className="p-2 bg-red-100 rounded-lg">
+              <XCircle className="w-6 h-6 text-red-600" />
+            </div>
+          </div>
+        </CardBody>
+      </Card>
     </div>
   );
 
-  // Filters component
+  // Enhanced Filters component
   const FiltersPanel = () => (
     <Card className={`mb-6 ${showFilters ? "block" : "hidden"}`}>
       <CardHeader>
@@ -434,6 +573,24 @@ const OrdersListPage = () => {
             </select>
           </div>
 
+          {/* Priority filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Priority
+            </label>
+            <select
+              value={filters.priority}
+              onChange={(e) => handleFilterChange("priority", e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Priorities</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </div>
+
           {/* Store filter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -453,10 +610,31 @@ const OrdersListPage = () => {
             </select>
           </div>
 
+          {/* Distributor filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Distributor
+            </label>
+            <select
+              value={filters.distributor_id}
+              onChange={(e) =>
+                handleFilterChange("distributor_id", e.target.value)
+              }
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Distributors</option>
+              {distributors.map((distributor) => (
+                <option key={distributor.id} value={distributor.id}>
+                  {distributor.full_name || distributor.username}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Date From */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Date From
+              Order Date From
             </label>
             <Input
               type="date"
@@ -468,7 +646,7 @@ const OrdersListPage = () => {
           {/* Date To */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Date To
+              Order Date To
             </label>
             <Input
               type="date"
@@ -476,13 +654,103 @@ const OrdersListPage = () => {
               onChange={(e) => handleFilterChange("date_to", e.target.value)}
             />
           </div>
+
+          {/* Delivery Date From */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Delivery Date From
+            </label>
+            <Input
+              type="date"
+              value={filters.delivery_date_from}
+              onChange={(e) =>
+                handleFilterChange("delivery_date_from", e.target.value)
+              }
+            />
+          </div>
+
+          {/* Delivery Date To */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Delivery Date To
+            </label>
+            <Input
+              type="date"
+              value={filters.delivery_date_to}
+              onChange={(e) =>
+                handleFilterChange("delivery_date_to", e.target.value)
+              }
+            />
+          </div>
+
+          {/* Amount Min */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Min Amount (EUR)
+            </label>
+            <Input
+              type="number"
+              placeholder="0.00"
+              value={filters.amount_min}
+              onChange={(e) => handleFilterChange("amount_min", e.target.value)}
+            />
+          </div>
+
+          {/* Amount Max */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Max Amount (EUR)
+            </label>
+            <Input
+              type="number"
+              placeholder="1000.00"
+              value={filters.amount_max}
+              onChange={(e) => handleFilterChange("amount_max", e.target.value)}
+            />
+          </div>
         </div>
 
-        <div className="flex justify-end space-x-3 mt-4">
-          <Button variant="outline" onClick={clearFilters}>
-            Clear Filters
-          </Button>
-          <Button onClick={() => setShowFilters(false)}>Apply Filters</Button>
+        <div className="flex justify-between items-center mt-6">
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => applyQuickFilter("status", "pending")}
+            >
+              <Clock className="w-4 h-4 mr-1" />
+              Pending
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => applyQuickFilter("status", "confirmed")}
+            >
+              <CheckCircle className="w-4 h-4 mr-1" />
+              Confirmed
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => applyQuickFilter("priority", "urgent")}
+            >
+              <AlertTriangle className="w-4 h-4 mr-1" />
+              Urgent
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => applyQuickFilter("payment_status", "pending")}
+            >
+              <CreditCard className="w-4 h-4 mr-1" />
+              Payment Pending
+            </Button>
+          </div>
+          <div className="flex space-x-3">
+            <Button variant="outline" onClick={clearFilters}>
+              Clear Filters
+            </Button>
+            <Button onClick={() => setShowFilters(false)}>Apply Filters</Button>
+          </div>
         </div>
       </CardBody>
     </Card>
@@ -556,6 +824,15 @@ const OrdersListPage = () => {
       ),
     },
     {
+      key: "priority",
+      header: "Priority",
+      render: (order) => (
+        <PriorityBadge
+          priority={order && order.priority ? order.priority : "medium"}
+        />
+      ),
+    },
+    {
       key: "order_date",
       header: "Date",
       sortable: true,
@@ -566,6 +843,21 @@ const OrdersListPage = () => {
             {order && order.order_date
               ? new Date(order.order_date).toLocaleDateString()
               : "N/A"}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: "delivery_date",
+      header: "Delivery",
+      sortable: true,
+      render: (order) => (
+        <div className="flex items-center space-x-2">
+          <Truck className="w-4 h-4 text-gray-400" />
+          <span>
+            {order && order.delivery_date
+              ? new Date(order.delivery_date).toLocaleDateString()
+              : "Not scheduled"}
           </span>
         </div>
       ),
@@ -604,13 +896,16 @@ const OrdersListPage = () => {
       ),
     },
     {
-      key: "final_amount_syp",
-      header: "Amount (SYP)",
+      key: "distributor",
+      header: "Distributor",
       render: (order) => (
-        <div className="font-medium text-purple-600">
-          {order && order.final_amount_syp !== undefined
-            ? formatCurrency(order.final_amount_syp, "SYP")
-            : "N/A"}
+        <div className="flex items-center space-x-2">
+          <User className="w-4 h-4 text-gray-400" />
+          <span>
+            {order && order.distributor_name
+              ? order.distributor_name
+              : "Unassigned"}
+          </span>
         </div>
       ),
     },
@@ -654,11 +949,11 @@ const OrdersListPage = () => {
               onClick={() => handleDeleteOrder(order.id)}
               className="text-red-600 hover:text-red-700"
             >
-              <Trash2 className="w-4 h-4" />
+              <X className="w-4 h-4" />
             </Button>
           ) : (
             <Button variant="ghost" size="sm" disabled>
-              <Trash2 className="w-4 h-4" />
+              <X className="w-4 h-4" />
             </Button>
           )}
         </div>
@@ -741,6 +1036,17 @@ const OrdersListPage = () => {
                   </option>
                 ))}
               </select>
+              <select
+                value={filters.priority}
+                onChange={(e) => handleFilterChange("priority", e.target.value)}
+                className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">All Priorities</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
             </div>
           </div>
         </CardBody>
@@ -749,7 +1055,7 @@ const OrdersListPage = () => {
       {/* Filters Panel */}
       <FiltersPanel />
 
-      {/* Bulk Actions */}
+      {/* Enhanced Bulk Actions */}
       {selectedOrders.length > 0 && (
         <Card>
           <CardBody>
@@ -763,15 +1069,64 @@ const OrdersListPage = () => {
                   size="sm"
                   onClick={() => handleBulkStatusUpdate("confirmed")}
                 >
-                  Mark as Confirmed
+                  <CheckCircle className="w-4 h-4 mr-1" />
+                  Confirm
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleBulkStatusUpdate("in_progress")}
+                >
+                  <Clock className="w-4 h-4 mr-1" />
+                  In Progress
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleBulkStatusUpdate("delivered")}
+                >
+                  <Package className="w-4 h-4 mr-1" />
+                  Delivered
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleBulkStatusUpdate("cancelled")}
                 >
-                  Cancel Selected
+                  <XCircle className="w-4 h-4 mr-1" />
+                  Cancel
                 </Button>
+                <select
+                  className="p-2 border border-gray-300 rounded-lg text-sm"
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleBulkPriorityUpdate(e.target.value);
+                      e.target.value = "";
+                    }
+                  }}
+                >
+                  <option value="">Set Priority</option>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+                <select
+                  className="p-2 border border-gray-300 rounded-lg text-sm"
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleBulkAssignDistributor(e.target.value);
+                      e.target.value = "";
+                    }
+                  }}
+                >
+                  <option value="">Assign Distributor</option>
+                  {distributors.map((distributor) => (
+                    <option key={distributor.id} value={distributor.id}>
+                      {distributor.full_name || distributor.username}
+                    </option>
+                  ))}
+                </select>
                 <Button
                   variant="outline"
                   size="sm"

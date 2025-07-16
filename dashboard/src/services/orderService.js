@@ -22,8 +22,14 @@ class OrderService {
                 status: params.status || null,
                 payment_status: params.payment_status || null,
                 store_id: params.store_id || null,
+                distributor_id: params.distributor_id || null,
+                priority: params.priority || null,
                 date_from: params.date_from || null,
                 date_to: params.date_to || null,
+                delivery_date_from: params.delivery_date_from || null,
+                delivery_date_to: params.delivery_date_to || null,
+                amount_min: params.amount_min || null,
+                amount_max: params.amount_max || null,
                 search: params.search || '',
                 sortBy: params.sortBy || 'created_at',
                 sortOrder: params.sortOrder || 'DESC'
@@ -131,6 +137,131 @@ class OrderService {
     }
 
     /**
+     * Assign distributor to order
+     * @param {number} id - Order ID
+     * @param {number} distributorId - Distributor ID
+     * @returns {Promise} API response
+     */
+    async assignDistributor(id, distributorId) {
+        try {
+            const response = await apiService.patch(`${this.baseEndpoint}/${id}/assign-distributor`, {
+                distributor_id: distributorId
+            });
+            return response;
+        } catch (error) {
+            throw new Error(`Failed to assign distributor: ${error.message}`);
+        }
+    }
+
+    /**
+     * Update order priority
+     * @param {number} id - Order ID
+     * @param {string} priority - New priority
+     * @returns {Promise} API response
+     */
+    async updateOrderPriority(id, priority) {
+        try {
+            const response = await apiService.patch(`${this.baseEndpoint}/${id}/priority`, { priority });
+            return response;
+        } catch (error) {
+            throw new Error(`Failed to update order priority: ${error.message}`);
+        }
+    }
+
+    /**
+     * Update order delivery date
+     * @param {number} id - Order ID
+     * @param {string} deliveryDate - New delivery date
+     * @returns {Promise} API response
+     */
+    async updateDeliveryDate(id, deliveryDate) {
+        try {
+            const response = await apiService.patch(`${this.baseEndpoint}/${id}/delivery-date`, {
+                delivery_date: deliveryDate
+            });
+            return response;
+        } catch (error) {
+            throw new Error(`Failed to update delivery date: ${error.message}`);
+        }
+    }
+
+    /**
+     * Add note to order
+     * @param {number} id - Order ID
+     * @param {string} note - Note content
+     * @returns {Promise} API response
+     */
+    async addOrderNote(id, note) {
+        try {
+            const response = await apiService.post(`${this.baseEndpoint}/${id}/notes`, { note });
+            return response;
+        } catch (error) {
+            throw new Error(`Failed to add order note: ${error.message}`);
+        }
+    }
+
+    /**
+     * Cancel order with reason
+     * @param {number} id - Order ID
+     * @param {string} reason - Cancellation reason
+     * @returns {Promise} API response
+     */
+    async cancelOrder(id, reason) {
+        try {
+            const response = await apiService.patch(`${this.baseEndpoint}/${id}/cancel`, {
+                reason,
+                status: 'cancelled'
+            });
+            return response;
+        } catch (error) {
+            throw new Error(`Failed to cancel order: ${error.message}`);
+        }
+    }
+
+    /**
+     * Request refund for order
+     * @param {number} id - Order ID
+     * @param {Object} refundData - Refund information
+     * @returns {Promise} API response
+     */
+    async requestRefund(id, refundData) {
+        try {
+            const response = await apiService.post(`${this.baseEndpoint}/${id}/refund`, refundData);
+            return response;
+        } catch (error) {
+            throw new Error(`Failed to request refund: ${error.message}`);
+        }
+    }
+
+    /**
+     * Duplicate order
+     * @param {number} id - Order ID
+     * @returns {Promise} API response
+     */
+    async duplicateOrder(id) {
+        try {
+            const response = await apiService.post(`${this.baseEndpoint}/${id}/duplicate`);
+            return response;
+        } catch (error) {
+            throw new Error(`Failed to duplicate order: ${error.message}`);
+        }
+    }
+
+    /**
+     * Get order history/timeline
+     * @param {number} id - Order ID
+     * @returns {Promise} API response
+     */
+    async getOrderHistory(id) {
+        try {
+            const response = await apiService.get(`${this.baseEndpoint}/${id}/history`);
+            return response;
+        } catch (error) {
+            throw new Error(`Failed to fetch order history: ${error.message}`);
+        }
+    }
+
+    /**
      * Get today's orders
      * @returns {Promise} API response
      */
@@ -181,8 +312,14 @@ class OrderService {
                 status: params.status || null,
                 payment_status: params.payment_status || null,
                 store_id: params.store_id || null,
+                distributor_id: params.distributor_id || null,
+                priority: params.priority || null,
                 date_from: params.date_from || null,
-                date_to: params.date_to || null
+                date_to: params.date_to || null,
+                delivery_date_from: params.delivery_date_from || null,
+                delivery_date_to: params.delivery_date_to || null,
+                amount_min: params.amount_min || null,
+                amount_max: params.amount_max || null
             };
 
             // Remove null values
@@ -196,6 +333,59 @@ class OrderService {
             return response;
         } catch (error) {
             throw new Error(`Failed to export orders: ${error.message}`);
+        }
+    }
+
+    /**
+     * Get order reports
+     * @param {Object} params - Query parameters
+     * @returns {Promise} API response
+     */
+    async getOrderReports(params = {}) {
+        try {
+            const queryParams = {
+                date_from: params.date_from || null,
+                date_to: params.date_to || null,
+                payment_status: params.payment_status || null,
+                order_status: params.order_status || null,
+                currency: params.currency || null,
+                min_amount: params.min_amount || null,
+                max_amount: params.max_amount || null
+            };
+
+            // Remove null values
+            Object.keys(queryParams).forEach(key => {
+                if (queryParams[key] === null) {
+                    delete queryParams[key];
+                }
+            });
+
+            const response = await apiService.get(`${this.baseEndpoint}/reports`, queryParams);
+            return response;
+        } catch (error) {
+            throw new Error(`Failed to fetch order reports: ${error.message}`);
+        }
+    }
+
+    /**
+     * Export order reports
+     * @param {string} format - Export format (csv, json)
+     * @param {string} reportType - Report type
+     * @param {Object} params - Query parameters
+     * @returns {Promise} API response
+     */
+    async exportOrderReports(format, reportType, params = {}) {
+        try {
+            const queryParams = {
+                format,
+                type: reportType,
+                ...params
+            };
+
+            const response = await apiService.get(`${this.baseEndpoint}/reports/export`, queryParams);
+            return response;
+        } catch (error) {
+            throw new Error(`Failed to export order reports: ${error.message}`);
         }
     }
 
@@ -227,6 +417,19 @@ class OrderService {
     }
 
     /**
+     * Get priority options
+     * @returns {Array} Priority options
+     */
+    getPriorityOptions() {
+        return [
+            { value: 'low', label: 'Low', color: 'gray' },
+            { value: 'medium', label: 'Medium', color: 'blue' },
+            { value: 'high', label: 'High', color: 'orange' },
+            { value: 'urgent', label: 'Urgent', color: 'red' }
+        ];
+    }
+
+    /**
      * Get status badge color
      * @param {string} status - Order status
      * @returns {string} Badge color
@@ -249,6 +452,17 @@ class OrderService {
     }
 
     /**
+     * Get priority badge color
+     * @param {string} priority - Priority
+     * @returns {string} Badge color
+     */
+    getPriorityBadgeColor(priority) {
+        const priorityOptions = this.getPriorityOptions();
+        const priorityOption = priorityOptions.find(option => option.value === priority);
+        return priorityOption ? priorityOption.color : 'gray';
+    }
+
+    /**
      * Format order for display
      * @param {Object} order - Order object
      * @returns {Object} Formatted order
@@ -265,8 +479,14 @@ class OrderService {
                 hour: '2-digit',
                 minute: '2-digit'
             }),
+            formattedDeliveryDate: order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            }) : 'Not scheduled',
             statusBadge: this.getStatusBadgeColor(order.status),
-            paymentStatusBadge: this.getPaymentStatusBadgeColor(order.payment_status)
+            paymentStatusBadge: this.getPaymentStatusBadgeColor(order.payment_status),
+            priorityBadge: this.getPriorityBadgeColor(order.priority)
         };
     }
 
@@ -324,10 +544,136 @@ class OrderService {
             });
         }
 
+        // Validate priority
+        if (orderData.priority && !['low', 'medium', 'high', 'urgent'].includes(orderData.priority)) {
+            errors.priority = 'Invalid priority value';
+        }
+
+        // Validate delivery date
+        if (orderData.delivery_date && new Date(orderData.delivery_date) < new Date()) {
+            errors.delivery_date = 'Delivery date cannot be in the past';
+        }
+
         return {
             isValid: Object.keys(errors).length === 0,
             errors
         };
+    }
+
+    /**
+     * Get order workflow steps
+     * @param {string} currentStatus - Current order status
+     * @returns {Array} Available next steps
+     */
+    getOrderWorkflowSteps(currentStatus) {
+        const workflows = {
+            draft: ['confirmed', 'cancelled'],
+            confirmed: ['in_progress', 'cancelled'],
+            in_progress: ['delivered', 'cancelled'],
+            delivered: [],
+            cancelled: []
+        };
+
+        return workflows[currentStatus] || [];
+    }
+
+    /**
+     * Check if status transition is allowed
+     * @param {string} fromStatus - Current status
+     * @param {string} toStatus - Target status
+     * @returns {boolean} Whether transition is allowed
+     */
+    isStatusTransitionAllowed(fromStatus, toStatus) {
+        const allowedSteps = this.getOrderWorkflowSteps(fromStatus);
+        return allowedSteps.includes(toStatus);
+    }
+
+    /**
+     * Get order priority level
+     * @param {string} priority - Priority string
+     * @returns {number} Priority level (1-4)
+     */
+    getPriorityLevel(priority) {
+        const levels = {
+            low: 1,
+            medium: 2,
+            high: 3,
+            urgent: 4
+        };
+        return levels[priority] || 2;
+    }
+
+    /**
+     * Sort orders by priority
+     * @param {Array} orders - Orders array
+     * @returns {Array} Sorted orders
+     */
+    sortOrdersByPriority(orders) {
+        return orders.sort((a, b) => {
+            const priorityA = this.getPriorityLevel(a.priority);
+            const priorityB = this.getPriorityLevel(b.priority);
+            return priorityB - priorityA; // Higher priority first
+        });
+    }
+
+    /**
+     * Filter orders by date range
+     * @param {Array} orders - Orders array
+     * @param {string} dateFrom - Start date
+     * @param {string} dateTo - End date
+     * @returns {Array} Filtered orders
+     */
+    filterOrdersByDateRange(orders, dateFrom, dateTo) {
+        if (!dateFrom && !dateTo) return orders;
+
+        return orders.filter(order => {
+            const orderDate = new Date(order.order_date);
+
+            if (dateFrom && orderDate < new Date(dateFrom)) {
+                return false;
+            }
+
+            if (dateTo && orderDate > new Date(dateTo)) {
+                return false;
+            }
+
+            return true;
+        });
+    }
+
+    /**
+     * Get orders summary
+     * @param {Array} orders - Orders array
+     * @returns {Object} Summary statistics
+     */
+    getOrdersSummary(orders) {
+        const summary = {
+            total: orders.length,
+            totalAmount: 0,
+            byStatus: {},
+            byPaymentStatus: {},
+            byPriority: {},
+            avgOrderValue: 0
+        };
+
+        orders.forEach(order => {
+            // Total amount
+            summary.totalAmount += parseFloat(order.final_amount_eur || 0);
+
+            // By status
+            summary.byStatus[order.status] = (summary.byStatus[order.status] || 0) + 1;
+
+            // By payment status
+            summary.byPaymentStatus[order.payment_status] = (summary.byPaymentStatus[order.payment_status] || 0) + 1;
+
+            // By priority
+            summary.byPriority[order.priority] = (summary.byPriority[order.priority] || 0) + 1;
+        });
+
+        // Calculate average order value
+        summary.avgOrderValue = summary.total > 0 ? summary.totalAmount / summary.total : 0;
+
+        return summary;
     }
 }
 
