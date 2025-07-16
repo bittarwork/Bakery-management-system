@@ -25,6 +25,8 @@ import DistributionReportsPage from "./pages/distribution/DistributionReportsPag
 import OrdersListPage from "./pages/orders/OrdersListPage";
 import OrderDetailsPage from "./pages/orders/OrderDetailsPage";
 import CreateOrderPage from "./pages/orders/CreateOrderPage";
+import EditOrderPage from "./pages/orders/EditOrderPage";
+import OrderReportsPage from "./pages/orders/OrderReportsPage";
 
 // Pages - Payments
 import PaymentsListPage from "./pages/payments/PaymentsListPage";
@@ -339,6 +341,48 @@ function App() {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <CreateOrderPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/orders/:id/edit"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <EditOrderPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/orders/reports"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <OrderReportsPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>

@@ -57,7 +57,7 @@ import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import DataTable from "../../components/ui/DataTable";
-import { orderService } from "../../services/orderService";
+import orderService from "../../services/orderService";
 import storeService from "../../services/storeService";
 import { toast } from "react-hot-toast";
 

@@ -64,7 +64,7 @@ import {
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
-import { orderService } from "../../services/orderService";
+import orderService from "../../services/orderService";
 import { toast } from "react-hot-toast";
 
 const OrderDetailsPage = () => {

@@ -386,7 +386,7 @@ import {
 import { Card, CardHeader, CardBody } from "../ui/Card";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
-import { orderService } from "../../services/orderService";
+import orderService from "../../services/orderService";
 import { toast } from "react-hot-toast";
 
 const BulkOperations = ({
