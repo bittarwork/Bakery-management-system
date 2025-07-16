@@ -33,6 +33,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         final vehicleId = snapshot.data!;
+        print('InventoryScreen vehicleId: ' + vehicleId.toString());
         return BlocProvider(
           create: (_) => InventoryCubit(ApiService())..fetchInventory(vehicleId),
           child: BlocConsumer<InventoryCubit, InventoryState>(

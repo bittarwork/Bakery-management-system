@@ -19,6 +19,7 @@ class DistributionScheduleScreen extends StatelessWidget {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
+        print('DistributionScheduleScreen userId: ' + snapshot.data.toString());
         // يمكن استخدام userId أو vehicleId هنا حسب الحاجة
         return BlocProvider(
           create: (_) => DistributionScheduleCubit(ApiService())..fetchSchedule(today),
