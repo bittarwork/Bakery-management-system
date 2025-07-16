@@ -204,32 +204,16 @@ const ProductDetailsPage = () => {
         throw new Error(productResponse.message || "فشل في تحميل المنتج");
       }
 
-      // Advanced APIs disabled until backend implementation
-      console.log(
-        "Advanced product APIs disabled until backend implementation"
-      );
-
-      // Set empty data for advanced features
-      setAnalytics({
-        views: 0,
-        sales: 0,
-        revenue: 0,
-        rating: 0,
-        reviews: 0,
-      });
-
-      setPerformance({
-        salesTrend: [],
-        profitMargin: 0,
-        stockTurnover: 0,
-        customerSatisfaction: 0,
-      });
-
-      setSalesHistory([]);
-      setInventory({ current: 0, reserved: 0, available: 0 });
-      setRecommendations([]);
-      setPriceHistory([]);
-      setVariants([]);
+      // Load additional data in parallel
+      await Promise.allSettled([
+        loadAnalytics(),
+        loadPerformance(),
+        loadSalesHistory(),
+        loadInventory(),
+        loadRecommendations(),
+        loadPriceHistory(),
+        loadVariants(),
+      ]);
     } catch (error) {
       console.error("Error loading product:", error);
       setError(error.message);

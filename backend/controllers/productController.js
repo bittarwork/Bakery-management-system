@@ -502,4 +502,407 @@ const getProductStats = async () => {
         averageMarginSyp: Math.round(parseFloat(averageMarginSyp?.dataValues?.avg_margin_syp || 0) * 100) / 100,
         categoryStats
     };
+};
+
+// @desc    نسخ منتج
+// @route   POST /api/products/:id/duplicate
+// @access  Private
+export const duplicateProduct = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // البحث عن المنتج الأصلي
+        const originalProduct = await Product.findByPk(id);
+        if (!originalProduct) {
+            return res.status(404).json({
+                success: false,
+                message: 'المنتج غير موجود'
+            });
+        }
+
+        // إنشاء نسخة من المنتج مع تغيير الاسم
+        const duplicatedData = {
+            ...originalProduct.dataValues,
+            name: `${originalProduct.name} - نسخة`,
+            barcode: null, // إزالة الباركود لتجنب التكرار
+            total_sold: 0,
+            total_revenue_eur: 0,
+            total_revenue_syp: 0,
+            created_at: new Date(),
+            updated_at: new Date()
+        };
+
+        // حذف الـ id لإنشاء منتج جديد
+        delete duplicatedData.id;
+
+        const duplicatedProduct = await Product.create(duplicatedData);
+
+        res.status(201).json({
+            success: true,
+            message: 'تم نسخ المنتج بنجاح',
+            data: duplicatedProduct
+        });
+    } catch (error) {
+        console.error('Error duplicating product:', error);
+        res.status(500).json({
+            success: false,
+            message: 'فشل في نسخ المنتج',
+            error: error.message
+        });
+    }
+};
+
+// @desc    أرشفة منتج (تغيير الحالة إلى discontinued)
+// @route   POST /api/products/:id/archive
+// @access  Private
+export const archiveProduct = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const product = await Product.findByPk(id);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'المنتج غير موجود'
+            });
+        }
+
+        // تحديث حالة المنتج إلى discontinued
+        product.status = 'discontinued';
+        await product.save();
+
+        res.json({
+            success: true,
+            message: 'تم أرشفة المنتج بنجاح',
+            data: product
+        });
+    } catch (error) {
+        console.error('Error archiving product:', error);
+        res.status(500).json({
+            success: false,
+            message: 'فشل في أرشفة المنتج',
+            error: error.message
+        });
+    }
+};
+
+// @desc    استعادة منتج من الأرشيف
+// @route   POST /api/products/:id/restore
+// @access  Private
+export const restoreProduct = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const product = await Product.findByPk(id);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'المنتج غير موجود'
+            });
+        }
+
+        // تحديث حالة المنتج إلى active
+        product.status = 'active';
+        await product.save();
+
+        res.json({
+            success: true,
+            message: 'تم استعادة المنتج من الأرشيف بنجاح',
+            data: product
+        });
+    } catch (error) {
+        console.error('Error restoring product:', error);
+        res.status(500).json({
+            success: false,
+            message: 'فشل في استعادة المنتج',
+            error: error.message
+        });
+    }
+};
+
+// @desc    الحصول على تحليلات المنتج (بيانات وهمية)
+// @route   GET /api/products/:id/analytics
+// @access  Private
+export const getProductAnalytics = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const product = await Product.findByPk(id);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'المنتج غير موجود'
+            });
+        }
+
+        // بيانات وهمية للتحليلات
+        const analytics = {
+            views: Math.floor(Math.random() * 1000) + 100,
+            sales: product.total_sold || 0,
+            revenue: parseFloat(product.total_revenue_eur) || 0,
+            rating: (Math.random() * 2 + 3).toFixed(1),
+            reviews: Math.floor(Math.random() * 50) + 5,
+            conversionRate: (Math.random() * 10 + 2).toFixed(2),
+            avgOrderValue: (Math.random() * 50 + 20).toFixed(2),
+            returnRate: (Math.random() * 5).toFixed(2)
+        };
+
+        res.json({
+            success: true,
+            data: analytics
+        });
+    } catch (error) {
+        console.error('Error fetching product analytics:', error);
+        res.status(500).json({
+            success: false,
+            message: 'فشل في جلب تحليلات المنتج',
+            error: error.message
+        });
+    }
+};
+
+// @desc    الحصول على أداء المنتج (بيانات وهمية)
+// @route   GET /api/products/:id/performance
+// @access  Private
+export const getProductPerformance = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const product = await Product.findByPk(id);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'المنتج غير موجود'
+            });
+        }
+
+        // بيانات وهمية للأداء
+        const performance = {
+            salesTrend: [
+                { date: '2024-01-01', sales: 10 },
+                { date: '2024-01-02', sales: 15 },
+                { date: '2024-01-03', sales: 12 },
+                { date: '2024-01-04', sales: 20 },
+                { date: '2024-01-05', sales: 18 }
+            ],
+            profitMargin: product.getMarginPercentageEur(),
+            stockTurnover: (Math.random() * 5 + 1).toFixed(2),
+            customerSatisfaction: (Math.random() * 2 + 3).toFixed(1)
+        };
+
+        res.json({
+            success: true,
+            data: performance
+        });
+    } catch (error) {
+        console.error('Error fetching product performance:', error);
+        res.status(500).json({
+            success: false,
+            message: 'فشل في جلب أداء المنتج',
+            error: error.message
+        });
+    }
+};
+
+// @desc    الحصول على تاريخ مبيعات المنتج (بيانات وهمية)
+// @route   GET /api/products/:id/sales
+// @access  Private
+export const getProductSalesHistory = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const product = await Product.findByPk(id);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'المنتج غير موجود'
+            });
+        }
+
+        // بيانات وهمية لتاريخ المبيعات
+        const salesHistory = [];
+        for (let i = 0; i < 10; i++) {
+            salesHistory.push({
+                date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                quantity: Math.floor(Math.random() * 20) + 1,
+                revenue: (Math.random() * 100 + 50).toFixed(2),
+                customer: `Customer ${i + 1}`
+            });
+        }
+
+        res.json({
+            success: true,
+            data: salesHistory
+        });
+    } catch (error) {
+        console.error('Error fetching product sales history:', error);
+        res.status(500).json({
+            success: false,
+            message: 'فشل في جلب تاريخ مبيعات المنتج',
+            error: error.message
+        });
+    }
+};
+
+// @desc    الحصول على مخزون المنتج (بيانات وهمية)
+// @route   GET /api/products/:id/inventory
+// @access  Private
+export const getProductInventory = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const product = await Product.findByPk(id);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'المنتج غير موجود'
+            });
+        }
+
+        // بيانات وهمية للمخزون
+        const inventory = {
+            current: product.stock_quantity || 0,
+            reserved: Math.floor(Math.random() * 10),
+            available: Math.max(0, (product.stock_quantity || 0) - Math.floor(Math.random() * 10)),
+            minimum: product.minimum_stock || 0,
+            movements: [
+                { date: '2024-01-01', type: 'in', quantity: 50, reason: 'Purchase' },
+                { date: '2024-01-02', type: 'out', quantity: 5, reason: 'Sale' },
+                { date: '2024-01-03', type: 'out', quantity: 3, reason: 'Sale' }
+            ]
+        };
+
+        res.json({
+            success: true,
+            data: inventory
+        });
+    } catch (error) {
+        console.error('Error fetching product inventory:', error);
+        res.status(500).json({
+            success: false,
+            message: 'فشل في جلب مخزون المنتج',
+            error: error.message
+        });
+    }
+};
+
+// @desc    الحصول على توصيات المنتج (بيانات وهمية)
+// @route   GET /api/products/:id/recommendations
+// @access  Private
+export const getProductRecommendations = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const product = await Product.findByPk(id);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'المنتج غير موجود'
+            });
+        }
+
+        // الحصول على منتجات مشابهة
+        const recommendations = await Product.findAll({
+            where: {
+                category: product.category,
+                status: 'active',
+                id: { [Op.ne]: id }
+            },
+            limit: 5,
+            order: [['total_sold', 'DESC']]
+        });
+
+        res.json({
+            success: true,
+            data: recommendations
+        });
+    } catch (error) {
+        console.error('Error fetching product recommendations:', error);
+        res.status(500).json({
+            success: false,
+            message: 'فشل في جلب توصيات المنتج',
+            error: error.message
+        });
+    }
+};
+
+// @desc    الحصول على تاريخ الأسعار (بيانات وهمية)
+// @route   GET /api/products/:id/price-history
+// @access  Private
+export const getProductPriceHistory = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const product = await Product.findByPk(id);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'المنتج غير موجود'
+            });
+        }
+
+        // بيانات وهمية لتاريخ الأسعار
+        const priceHistory = [];
+        let currentPrice = parseFloat(product.price_eur);
+
+        for (let i = 0; i < 5; i++) {
+            priceHistory.push({
+                date: new Date(Date.now() - i * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                price_eur: currentPrice.toFixed(2),
+                price_syp: (currentPrice * 1500).toFixed(2),
+                reason: i === 0 ? 'Current Price' : 'Price Update'
+            });
+            currentPrice = currentPrice * (0.9 + Math.random() * 0.2);
+        }
+
+        res.json({
+            success: true,
+            data: priceHistory.reverse()
+        });
+    } catch (error) {
+        console.error('Error fetching product price history:', error);
+        res.status(500).json({
+            success: false,
+            message: 'فشل في جلب تاريخ أسعار المنتج',
+            error: error.message
+        });
+    }
+};
+
+// @desc    الحصول على متغيرات المنتج (بيانات وهمية)
+// @route   GET /api/products/:id/variants
+// @access  Private
+export const getProductVariants = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const product = await Product.findByPk(id);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'المنتج غير موجود'
+            });
+        }
+
+        // بيانات وهمية للمتغيرات
+        const variants = [];
+        if (product.category === 'bread') {
+            variants.push(
+                { id: 1, name: 'Small Size', price_eur: parseFloat(product.price_eur) * 0.8, stock: 50 },
+                { id: 2, name: 'Large Size', price_eur: parseFloat(product.price_eur) * 1.2, stock: 30 }
+            );
+        }
+
+        res.json({
+            success: true,
+            data: variants
+        });
+    } catch (error) {
+        console.error('Error fetching product variants:', error);
+        res.status(500).json({
+            success: false,
+            message: 'فشل في جلب متغيرات المنتج',
+            error: error.message
+        });
+    }
 }; 

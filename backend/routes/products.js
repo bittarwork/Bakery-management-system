@@ -7,7 +7,17 @@ import {
     deleteProduct,
     toggleProductStatus,
     getProductStatistics,
-    searchProducts
+    searchProducts,
+    duplicateProduct,
+    archiveProduct,
+    restoreProduct,
+    getProductAnalytics,
+    getProductPerformance,
+    getProductSalesHistory,
+    getProductInventory,
+    getProductRecommendations,
+    getProductPriceHistory,
+    getProductVariants
 } from '../controllers/productController.js';
 import {
     validateCreateProduct,
@@ -44,6 +54,56 @@ router.get('/:id', getProduct);
 // @route   POST /api/products
 // @access  Private
 router.post('/', validateCreateProduct, createProduct);
+
+// @desc    نسخ منتج
+// @route   POST /api/products/:id/duplicate
+// @access  Private
+router.post('/:id/duplicate', duplicateProduct);
+
+// @desc    أرشفة منتج
+// @route   POST /api/products/:id/archive
+// @access  Private
+router.post('/:id/archive', archiveProduct);
+
+// @desc    استعادة منتج من الأرشيف
+// @route   POST /api/products/:id/restore
+// @access  Private
+router.post('/:id/restore', restoreProduct);
+
+// @desc    الحصول على تحليلات المنتج
+// @route   GET /api/products/:id/analytics
+// @access  Private
+router.get('/:id/analytics', getProductAnalytics);
+
+// @desc    الحصول على أداء المنتج
+// @route   GET /api/products/:id/performance
+// @access  Private
+router.get('/:id/performance', getProductPerformance);
+
+// @desc    الحصول على تاريخ مبيعات المنتج
+// @route   GET /api/products/:id/sales
+// @access  Private
+router.get('/:id/sales', getProductSalesHistory);
+
+// @desc    الحصول على مخزون المنتج
+// @route   GET /api/products/:id/inventory
+// @access  Private
+router.get('/:id/inventory', getProductInventory);
+
+// @desc    الحصول على توصيات المنتج
+// @route   GET /api/products/:id/recommendations
+// @access  Private
+router.get('/:id/recommendations', getProductRecommendations);
+
+// @desc    الحصول على تاريخ أسعار المنتج
+// @route   GET /api/products/:id/price-history
+// @access  Private
+router.get('/:id/price-history', getProductPriceHistory);
+
+// @desc    الحصول على متغيرات المنتج
+// @route   GET /api/products/:id/variants
+// @access  Private
+router.get('/:id/variants', getProductVariants);
 
 // @desc    تحديث منتج
 // @route   PUT /api/products/:id
