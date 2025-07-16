@@ -125,7 +125,7 @@ export const createProduct = async (req, res) => {
             console.log('[PRODUCTS] Validation errors:', errors.array());
             return res.status(400).json({
                 success: false,
-                message: 'بيانات غير صحيحة',
+                message: 'Invalid data provided',
                 errors: errors.array()
             });
         }
@@ -162,11 +162,11 @@ export const createProduct = async (req, res) => {
         if (existingProduct) {
             return res.status(400).json({
                 success: false,
-                message: 'يوجد منتج بهذا الاسم مسبقاً'
+                message: 'A product with this name already exists'
             });
         }
 
-        // التحقق من عدم وجود منتج بنفس الباركود
+        // Check if product with same barcode exists
         if (barcode) {
             const existingBarcode = await Product.findOne({
                 where: { barcode }
@@ -175,35 +175,35 @@ export const createProduct = async (req, res) => {
             if (existingBarcode) {
                 return res.status(400).json({
                     success: false,
-                    message: 'يوجد منتج بهذا الباركود مسبقاً'
+                    message: 'A product with this barcode already exists'
                 });
             }
         }
 
-        // Ensure all numeric values are valid and non-negative
+        // Prepare product data with proper validation
         const productData = {
             name,
-            description,
-            category,
-            unit,
-            price_eur: Math.max(0.01, parseFloat(price_eur) || 0.01),
-            price_syp: price_syp && price_syp !== null ? Math.max(0.01, parseFloat(price_syp)) : 0,
-            cost_eur: cost_eur && cost_eur !== null ? Math.max(0, parseFloat(cost_eur)) : 0,
-            cost_syp: cost_syp && cost_syp !== null ? Math.max(0, parseFloat(cost_syp)) : 0,
-            stock_quantity: stock_quantity && stock_quantity !== null ? Math.max(0, parseInt(stock_quantity)) : 0,
-            minimum_stock: minimum_stock && minimum_stock !== null ? Math.max(0, parseInt(minimum_stock)) : 0,
-            barcode,
-            is_featured,
-            status,
-            image_url,
-            weight_grams: weight_grams && weight_grams !== null ? Math.max(1, parseInt(weight_grams)) : null,
-            shelf_life_days: shelf_life_days && shelf_life_days !== null ? Math.max(1, parseInt(shelf_life_days)) : null,
-            storage_conditions,
-            supplier_info,
-            nutritional_info,
-            allergen_info,
+            description: description || null,
+            category: category || 'other',
+            unit: unit || 'piece',
+            price_eur: parseFloat(price_eur) > 0 ? parseFloat(price_eur) : 0.01,
+            price_syp: price_syp && parseFloat(price_syp) > 0 ? parseFloat(price_syp) : null,
+            cost_eur: cost_eur && parseFloat(cost_eur) >= 0 ? parseFloat(cost_eur) : null,
+            cost_syp: cost_syp && parseFloat(cost_syp) >= 0 ? parseFloat(cost_syp) : null,
+            stock_quantity: stock_quantity && parseInt(stock_quantity) >= 0 ? parseInt(stock_quantity) : null,
+            minimum_stock: minimum_stock && parseInt(minimum_stock) >= 0 ? parseInt(minimum_stock) : null,
+            barcode: barcode || null,
+            is_featured: is_featured || false,
+            status: status || 'active',
+            image_url: image_url || null,
+            weight_grams: weight_grams && parseInt(weight_grams) > 0 ? parseInt(weight_grams) : null,
+            shelf_life_days: shelf_life_days && parseInt(shelf_life_days) > 0 ? parseInt(shelf_life_days) : null,
+            storage_conditions: storage_conditions || null,
+            supplier_info: supplier_info || null,
+            nutritional_info: nutritional_info || null,
+            allergen_info: allergen_info || null,
             created_by: req.userId,
-            created_by_name
+            created_by_name: created_by_name || null
         };
 
         console.log('[PRODUCTS] Final product data before creation:', JSON.stringify(productData, null, 2));
@@ -213,13 +213,13 @@ export const createProduct = async (req, res) => {
         res.status(201).json({
             success: true,
             data: product,
-            message: 'تم إنشاء المنتج بنجاح'
+            message: 'Product created successfully'
         });
     } catch (error) {
         console.error('[PRODUCTS] Failed to create product:', error.message);
         res.status(500).json({
             success: false,
-            message: 'خطأ في إنشاء المنتج',
+            message: 'Failed to create product',
             error: error.message
         });
     }
@@ -234,7 +234,7 @@ export const updateProduct = async (req, res) => {
         if (!errors.isEmpty()) {
             return res.status(400).json({
                 success: false,
-                message: 'بيانات غير صحيحة',
+                message: 'Invalid data provided',
                 errors: errors.array()
             });
         }
@@ -268,11 +268,11 @@ export const updateProduct = async (req, res) => {
         if (!product) {
             return res.status(404).json({
                 success: false,
-                message: 'المنتج غير موجود'
+                message: 'Product not found'
             });
         }
 
-        // التحقق من عدم وجود منتج آخر بنفس الاسم
+        // Check if another product with same name exists
         if (name && name !== product.name) {
             const existingProduct = await Product.findOne({
                 where: {
@@ -284,12 +284,12 @@ export const updateProduct = async (req, res) => {
             if (existingProduct) {
                 return res.status(400).json({
                     success: false,
-                    message: 'يوجد منتج بهذا الاسم مسبقاً'
+                    message: 'A product with this name already exists'
                 });
             }
         }
 
-        // التحقق من عدم وجود منتج آخر بنفس الباركود
+        // Check if another product with same barcode exists
         if (barcode && barcode !== product.barcode) {
             const existingBarcode = await Product.findOne({
                 where: {
@@ -301,32 +301,32 @@ export const updateProduct = async (req, res) => {
             if (existingBarcode) {
                 return res.status(400).json({
                     success: false,
-                    message: 'يوجد منتج بهذا الباركود مسبقاً'
+                    message: 'A product with this barcode already exists'
                 });
             }
         }
 
         const updateData = {};
         if (name !== undefined) updateData.name = name;
-        if (description !== undefined) updateData.description = description;
-        if (category !== undefined) updateData.category = category;
-        if (unit !== undefined) updateData.unit = unit;
-        if (price_eur !== undefined) updateData.price_eur = Math.max(0.01, parseFloat(price_eur) || 0.01);
-        if (price_syp !== undefined) updateData.price_syp = price_syp && price_syp !== null ? Math.max(0.01, parseFloat(price_syp)) : 0;
-        if (cost_eur !== undefined) updateData.cost_eur = cost_eur && cost_eur !== null ? Math.max(0, parseFloat(cost_eur)) : 0;
-        if (cost_syp !== undefined) updateData.cost_syp = cost_syp && cost_syp !== null ? Math.max(0, parseFloat(cost_syp)) : 0;
-        if (stock_quantity !== undefined) updateData.stock_quantity = stock_quantity && stock_quantity !== null ? Math.max(0, parseInt(stock_quantity)) : 0;
-        if (minimum_stock !== undefined) updateData.minimum_stock = minimum_stock && minimum_stock !== null ? Math.max(0, parseInt(minimum_stock)) : 0;
-        if (barcode !== undefined) updateData.barcode = barcode;
-        if (is_featured !== undefined) updateData.is_featured = is_featured;
-        if (status !== undefined) updateData.status = status;
-        if (image_url !== undefined) updateData.image_url = image_url;
-        if (weight_grams !== undefined) updateData.weight_grams = weight_grams && weight_grams !== null ? Math.max(1, parseInt(weight_grams)) : null;
-        if (shelf_life_days !== undefined) updateData.shelf_life_days = shelf_life_days && shelf_life_days !== null ? Math.max(1, parseInt(shelf_life_days)) : null;
-        if (storage_conditions !== undefined) updateData.storage_conditions = storage_conditions;
-        if (supplier_info !== undefined) updateData.supplier_info = supplier_info;
-        if (nutritional_info !== undefined) updateData.nutritional_info = nutritional_info;
-        if (allergen_info !== undefined) updateData.allergen_info = allergen_info;
+        if (description !== undefined) updateData.description = description || null;
+        if (category !== undefined) updateData.category = category || 'other';
+        if (unit !== undefined) updateData.unit = unit || 'piece';
+        if (price_eur !== undefined) updateData.price_eur = parseFloat(price_eur) > 0 ? parseFloat(price_eur) : 0.01;
+        if (price_syp !== undefined) updateData.price_syp = price_syp && parseFloat(price_syp) > 0 ? parseFloat(price_syp) : null;
+        if (cost_eur !== undefined) updateData.cost_eur = cost_eur && parseFloat(cost_eur) >= 0 ? parseFloat(cost_eur) : null;
+        if (cost_syp !== undefined) updateData.cost_syp = cost_syp && parseFloat(cost_syp) >= 0 ? parseFloat(cost_syp) : null;
+        if (stock_quantity !== undefined) updateData.stock_quantity = stock_quantity && parseInt(stock_quantity) >= 0 ? parseInt(stock_quantity) : null;
+        if (minimum_stock !== undefined) updateData.minimum_stock = minimum_stock && parseInt(minimum_stock) >= 0 ? parseInt(minimum_stock) : null;
+        if (barcode !== undefined) updateData.barcode = barcode || null;
+        if (is_featured !== undefined) updateData.is_featured = is_featured || false;
+        if (status !== undefined) updateData.status = status || 'active';
+        if (image_url !== undefined) updateData.image_url = image_url || null;
+        if (weight_grams !== undefined) updateData.weight_grams = weight_grams && parseInt(weight_grams) > 0 ? parseInt(weight_grams) : null;
+        if (shelf_life_days !== undefined) updateData.shelf_life_days = shelf_life_days && parseInt(shelf_life_days) > 0 ? parseInt(shelf_life_days) : null;
+        if (storage_conditions !== undefined) updateData.storage_conditions = storage_conditions || null;
+        if (supplier_info !== undefined) updateData.supplier_info = supplier_info || null;
+        if (nutritional_info !== undefined) updateData.nutritional_info = nutritional_info || null;
+        if (allergen_info !== undefined) updateData.allergen_info = allergen_info || null;
 
         await product.update(updateData);
 

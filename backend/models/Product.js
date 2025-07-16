@@ -12,11 +12,11 @@ const Product = sequelize.define('Product', {
         allowNull: false,
         validate: {
             notEmpty: {
-                msg: 'اسم المنتج مطلوب'
+                msg: 'Product name is required'
             },
             len: {
                 args: [2, 100],
-                msg: 'اسم المنتج يجب أن يكون بين 2 و 100 حرف'
+                msg: 'Product name must be between 2 and 100 characters'
             }
         }
     },
@@ -30,7 +30,7 @@ const Product = sequelize.define('Product', {
         validate: {
             isIn: {
                 args: [['bread', 'pastry', 'cake', 'drink', 'snack', 'seasonal', 'other']],
-                msg: 'فئة المنتج غير صحيحة'
+                msg: 'Invalid product category'
             }
         }
     },
@@ -39,83 +39,91 @@ const Product = sequelize.define('Product', {
         defaultValue: 'piece',
         validate: {
             notEmpty: {
-                msg: 'وحدة القياس مطلوبة'
+                msg: 'Unit is required'
             }
         }
     },
     price_eur: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
-        defaultValue: 0.00,
+        defaultValue: 0.01,
         validate: {
             min: {
                 args: 0.01,
-                msg: 'السعر باليورو يجب أن يكون رقماً موجباً'
+                msg: 'Price in EUR must be a positive number'
             },
             isDecimal: {
-                msg: 'السعر باليورو يجب أن يكون رقماً صحيحاً'
+                msg: 'Price in EUR must be a valid decimal number'
             }
         }
     },
     price_syp: {
         type: DataTypes.DECIMAL(15, 2),
-        allowNull: false,
-        defaultValue: 0.00,
+        allowNull: true,
+        defaultValue: null,
         validate: {
-            min: {
-                args: 0.01,
-                msg: 'السعر بالليرة يجب أن يكون رقماً موجباً'
-            },
-            isDecimal: {
-                msg: 'السعر بالليرة يجب أن يكون رقماً صحيحاً'
+            isPositive(value) {
+                if (value !== null && value !== undefined && value !== '') {
+                    if (parseFloat(value) <= 0) {
+                        throw new Error('Price in SYP must be a positive number');
+                    }
+                }
             }
         }
     },
     cost_eur: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        defaultValue: 0.00,
+        allowNull: true,
+        defaultValue: null,
         validate: {
-            min: {
-                args: 0,
-                msg: 'التكلفة باليورو لا يمكن أن تكون سالبة'
-            },
-            isDecimal: {
-                msg: 'التكلفة باليورو يجب أن تكون رقماً صحيحاً'
+            isNonNegative(value) {
+                if (value !== null && value !== undefined && value !== '') {
+                    if (parseFloat(value) < 0) {
+                        throw new Error('Cost in EUR cannot be negative');
+                    }
+                }
             }
         }
     },
     cost_syp: {
         type: DataTypes.DECIMAL(15, 2),
-        allowNull: false,
-        defaultValue: 0.00,
+        allowNull: true,
+        defaultValue: null,
         validate: {
-            min: {
-                args: 0,
-                msg: 'التكلفة بالليرة لا يمكن أن تكون سالبة'
-            },
-            isDecimal: {
-                msg: 'التكلفة بالليرة يجب أن تكون رقماً صحيحاً'
+            isNonNegative(value) {
+                if (value !== null && value !== undefined && value !== '') {
+                    if (parseFloat(value) < 0) {
+                        throw new Error('Cost in SYP cannot be negative');
+                    }
+                }
             }
         }
     },
     stock_quantity: {
         type: DataTypes.INTEGER,
-        defaultValue: 0,
+        allowNull: true,
+        defaultValue: null,
         validate: {
-            min: {
-                args: 0,
-                msg: 'الكمية في المخزون لا يمكن أن تكون سالبة'
+            isNonNegative(value) {
+                if (value !== null && value !== undefined && value !== '') {
+                    if (parseInt(value) < 0) {
+                        throw new Error('Stock quantity cannot be negative');
+                    }
+                }
             }
         }
     },
     minimum_stock: {
         type: DataTypes.INTEGER,
-        defaultValue: 0,
+        allowNull: true,
+        defaultValue: null,
         validate: {
-            min: {
-                args: 0,
-                msg: 'الحد الأدنى للمخزون لا يمكن أن يكون سالباً'
+            isNonNegative(value) {
+                if (value !== null && value !== undefined && value !== '') {
+                    if (parseInt(value) < 0) {
+                        throw new Error('Minimum stock cannot be negative');
+                    }
+                }
             }
         }
     },
@@ -149,22 +157,28 @@ const Product = sequelize.define('Product', {
     shelf_life_days: {
         type: DataTypes.INTEGER,
         allowNull: true,
-        comment: 'مدة الصلاحية بالأيام',
+        comment: 'Shelf life in days',
         validate: {
-            min: {
-                args: 1,
-                msg: 'مدة الصلاحية يجب أن تكون رقماً صحيحاً موجباً'
+            isPositive(value) {
+                if (value !== null && value !== undefined && value !== '') {
+                    if (parseInt(value) <= 0) {
+                        throw new Error('Shelf life must be a positive number');
+                    }
+                }
             }
         }
     },
     weight_grams: {
         type: DataTypes.INTEGER,
         allowNull: true,
-        comment: 'الوزن بالجرام',
+        comment: 'Weight in grams',
         validate: {
-            min: {
-                args: 1,
-                msg: 'الوزن يجب أن يكون رقماً موجباً'
+            isPositive(value) {
+                if (value !== null && value !== undefined && value !== '') {
+                    if (parseInt(value) <= 0) {
+                        throw new Error('Weight must be a positive number');
+                    }
+                }
             }
         }
     },
@@ -192,9 +206,13 @@ const Product = sequelize.define('Product', {
         type: DataTypes.STRING(500),
         allowNull: true,
         validate: {
-            isUrl: {
-                args: true,
-                msg: 'رابط الصورة غير صحيح'
+            isValidUrl(value) {
+                if (value !== null && value !== undefined && value !== '') {
+                    const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+                    if (!urlPattern.test(value)) {
+                        throw new Error('Image URL must be a valid URL');
+                    }
+                }
             }
         }
     },
@@ -213,7 +231,7 @@ const Product = sequelize.define('Product', {
         validate: {
             isIn: {
                 args: [['active', 'inactive', 'discontinued']],
-                msg: 'حالة المنتج غير صحيحة'
+                msg: 'Invalid product status'
             }
         }
     },
@@ -264,7 +282,7 @@ const Product = sequelize.define('Product', {
             if (this.price_eur !== null && this.cost_eur !== null &&
                 this.price_eur !== undefined && this.cost_eur !== undefined) {
                 if (parseFloat(this.price_eur) < parseFloat(this.cost_eur)) {
-                    throw new Error('السعر باليورو لا يمكن أن يكون أقل من التكلفة');
+                    throw new Error('Price in EUR cannot be less than cost');
                 }
             }
         },
@@ -273,7 +291,7 @@ const Product = sequelize.define('Product', {
             if (this.price_syp !== null && this.cost_syp !== null &&
                 this.price_syp !== undefined && this.cost_syp !== undefined) {
                 if (parseFloat(this.price_syp) < parseFloat(this.cost_syp)) {
-                    throw new Error('السعر بالليرة لا يمكن أن يكون أقل من التكلفة');
+                    throw new Error('Price in SYP cannot be less than cost');
                 }
             }
         }
@@ -315,11 +333,11 @@ Product.prototype.calculateTotalSyp = function (quantity) {
 
 Product.prototype.updatePrices = async function (newPriceEur, newPriceSyp, transaction = null) {
     if (newPriceEur < this.cost_eur) {
-        throw new Error('السعر الجديد باليورو لا يمكن أن يكون أقل من التكلفة');
+        throw new Error('New price in EUR cannot be less than cost');
     }
 
     if (newPriceSyp < this.cost_syp) {
-        throw new Error('السعر الجديد بالليرة لا يمكن أن يكون أقل من التكلفة');
+        throw new Error('New price in SYP cannot be less than cost');
     }
 
     const options = transaction ? { transaction } : {};
