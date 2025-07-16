@@ -25,6 +25,8 @@ import DistributionReportsPage from "./pages/distribution/DistributionReportsPag
 import OrdersListPage from "./pages/orders/OrdersListPage";
 import OrderDetailsPage from "./pages/orders/OrderDetailsPage";
 import CreateOrderPage from "./pages/orders/CreateOrderPage";
+import EditOrderPage from "./pages/orders/EditOrderPage";
+import OrderReportsPage from "./pages/orders/OrderReportsPage";
 
 // Pages - Payments
 import PaymentsListPage from "./pages/payments/PaymentsListPage";
@@ -41,6 +43,7 @@ import EditStorePage from "./pages/stores/EditStorePage";
 import ProductsListPage from "./pages/products/ProductsListPage";
 import ProductDetailsPage from "./pages/products/ProductDetailsPage";
 import CreateProductPage from "./pages/products/CreateProductPage";
+import EditProductPage from "./pages/products/EditProductPage";
 
 // Pages - Reports
 import ReportsOverviewPage from "./pages/reports/ReportsOverviewPage";
@@ -346,6 +349,48 @@ function App() {
               }
             />
 
+            <Route
+              path="/orders/:id/edit"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <EditOrderPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/orders/reports"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <OrderReportsPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
             {/* Payments Routes */}
             <Route
               path="/payments"
@@ -531,6 +576,27 @@ function App() {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <ProductDetailsPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/products/:id/edit"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <EditProductPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>

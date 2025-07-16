@@ -1,5 +1,4 @@
 import React from "react";
-import { motion } from "framer-motion";
 import { cn } from "../../utils/cn";
 
 const Input = React.forwardRef(
@@ -26,27 +25,19 @@ const Input = React.forwardRef(
     const inputId = id || name;
 
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="form-group"
-      >
+      <div className="form-group">
         {label && (
-          <motion.label
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1 }}
+          <label
             htmlFor={inputId}
-            className="form-label"
+            className="block text-sm font-medium text-gray-700 mb-1"
           >
             {label}
             {required && <span className="text-red-400 ml-1">*</span>}
-          </motion.label>
+          </label>
         )}
 
         <div className="relative">
-          <motion.input
+          <input
             ref={ref}
             type={type}
             name={name}
@@ -59,35 +50,29 @@ const Input = React.forwardRef(
             disabled={disabled}
             required={required}
             className={cn(
-              "form-input",
+              "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900",
               error &&
                 "border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20",
               disabled && "opacity-50 cursor-not-allowed",
+              icon && "pr-12",
               className
             )}
-            whileFocus={{ scale: 1.02 }}
-            transition={{ duration: 0.2 }}
             {...props}
           />
 
           {icon && (
-            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400">
-              {icon}
+            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+              {React.isValidElement(icon) ? icon : <span>{icon}</span>}
             </div>
           )}
         </div>
 
         {error && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mt-1 text-sm text-red-400 flex items-center gap-1"
-          >
+          <div className="mt-1 text-sm text-red-400 flex items-center gap-1">
             <span>{error}</span>
-          </motion.div>
+          </div>
         )}
-      </motion.div>
+      </div>
     );
   }
 );

@@ -96,6 +96,22 @@ router.post('/', [
         }
         return true;
     }),
+    body('credit_limit_eur').optional().custom((value) => {
+        if (value === null || value === undefined || value === '' || value === 0 || value === '0') return true;
+        const num = parseFloat(value);
+        if (isNaN(num) || num < 0) {
+            throw new Error('حد الائتمان باليورو يجب أن يكون رقماً موجباً');
+        }
+        return true;
+    }),
+    body('credit_limit_syp').optional().custom((value) => {
+        if (value === null || value === undefined || value === '' || value === 0 || value === '0') return true;
+        const num = parseFloat(value);
+        if (isNaN(num) || num < 0) {
+            throw new Error('حد الائتمان بالليرة السورية يجب أن يكون رقماً موجباً');
+        }
+        return true;
+    }),
     body('latitude').optional().custom((value) => {
         if (value === null || value === undefined || value === '') return true;
         const num = parseFloat(value);
@@ -139,6 +155,22 @@ router.put('/:id', [
         const num = parseFloat(value);
         if (isNaN(num) || num < 0) {
             throw new Error('حد الائتمان يجب أن يكون رقماً موجباً');
+        }
+        return true;
+    }),
+    body('credit_limit_eur').optional().custom((value) => {
+        if (value === null || value === undefined || value === '' || value === 0 || value === '0') return true;
+        const num = parseFloat(value);
+        if (isNaN(num) || num < 0) {
+            throw new Error('حد الائتمان باليورو يجب أن يكون رقماً موجباً');
+        }
+        return true;
+    }),
+    body('credit_limit_syp').optional().custom((value) => {
+        if (value === null || value === undefined || value === '' || value === 0 || value === '0') return true;
+        const num = parseFloat(value);
+        if (isNaN(num) || num < 0) {
+            throw new Error('حد الائتمان بالليرة السورية يجب أن يكون رقماً موجباً');
         }
         return true;
     }),
