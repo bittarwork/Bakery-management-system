@@ -6,6 +6,8 @@ import {
     updateProduct,
     deleteProduct,
     toggleProductStatus,
+    toggleProductFeatured,
+    exportProducts,
     getProductStatistics,
     searchProducts,
     duplicateProduct,
@@ -29,6 +31,11 @@ const router = express.Router();
 
 // تطبيق middleware المصادقة على جميع المسارات (مُعطل مؤقتاً للاختبار)
 // router.use(protect);
+
+// @desc    تصدير المنتجات
+// @route   GET /api/products/export
+// @access  Private
+router.get('/export', exportProducts);
 
 // @desc    الحصول على إحصائيات المنتجات
 // @route   GET /api/products/stats
@@ -114,6 +121,11 @@ router.put('/:id', validateUpdateProduct, updateProduct);
 // @route   PATCH /api/products/:id/toggle-status
 // @access  Private
 router.patch('/:id/toggle-status', toggleProductStatus);
+
+// @desc    تحديث حالة المنتج المميز
+// @route   PATCH /api/products/:id/toggle-featured
+// @access  Private
+router.patch('/:id/toggle-featured', toggleProductFeatured);
 
 // @desc    حذف منتج
 // @route   DELETE /api/products/:id

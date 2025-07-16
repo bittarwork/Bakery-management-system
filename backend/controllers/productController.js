@@ -905,4 +905,139 @@ export const getProductVariants = async (req, res) => {
             error: error.message
         });
     }
+};
+
+// @desc    Toggle product featured status
+// @route   PATCH /api/products/:id/toggle-featured
+// @access  Private
+export const toggleProductFeatured = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const product = await Product.findByPk(id);
+
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'المنتج غير موجود'
+            });
+        }
+
+        const newFeaturedStatus = !product.is_featured;
+        await product.update({
+            is_featured: newFeaturedStatus
+        });
+
+        res.json({
+            success: true,
+            data: product,
+            message: `تم ${newFeaturedStatus ? 'إضافة' : 'إزالة'} المنتج ${newFeaturedStatus ? 'إلى' : 'من'} المنتجات المميزة بنجاح`
+        });
+    } catch (error) {
+        console.error('Error toggling product featured status:', error);
+        res.status(500).json({
+            success: false,
+            message: 'فشل في تحديث حالة المنتج المميز',
+            error: error.message
+        });
+    }
+};
+
+// @desc    Export products to CSV/Excel
+// @route   GET /api/products/export
+// @access  Private
+export const exportProducts = async (req, res) => {
+    try {
+        const {
+            format = 'csv',
+            search = '',
+            status = null,
+            category = null,
+            is_featured = null,
+            sortBy = 'name',
+            sortOrder = 'ASC'
+        } = req.query;
+
+        const whereClause = {};
+
+        // Apply search filter
+        if (search) {
+            whereClause[Op.or] = [
+                { name: { [Op.like]: `%${search}%` } },
+                { description: { [Op.like]: `%${search}%` } },
+                { barcode: { [Op.like]: `%${search}%` } }
+            ];
+        }
+
+        // Apply status filter
+        if (status !== null) {
+            whereClause.status = status;
+        }
+
+        // Apply category filter
+        if (category !== null) {
+            whereClause.category = category;
+        }
+
+        // Apply featured filter
+        if (is_featured !== null) {
+            whereClause.is_featured = is_featured === 'true';
+        }
+
+        const products = await Product.findAll({
+            where: whereClause,
+            order: [[sortBy, sortOrder.toUpperCase()]],
+            attributes: [
+                'id', 'name', 'description', 'barcode', 'category',
+                'price_eur', 'price_syp', 'cost_eur', 'cost_syp',
+                'stock_quantity', 'minimum_stock', 'weight_grams',
+                'shelf_life_days', 'is_featured', 'status', 'created_at'
+            ]
+        });
+
+        // Create CSV format
+        if (format === 'csv') {
+            const csvHeader = 'ID,Name,Description,Barcode,Category,Price EUR,Price SYP,Cost EUR,Cost SYP,Stock,Min Stock,Weight (g),Shelf Life,Featured,Status,Created At\n';
+            const csvData = products.map(product => [
+                product.id,
+                `"${product.name || ''}"`,
+                `"${product.description || ''}"`,
+                product.barcode || '',
+                product.category || '',
+                product.price_eur || 0,
+                product.price_syp || 0,
+                product.cost_eur || 0,
+                product.cost_syp || 0,
+                product.stock_quantity || 0,
+                product.minimum_stock || 0,
+                product.weight_grams || 0,
+                product.shelf_life_days || 0,
+                product.is_featured ? 'Yes' : 'No',
+                product.status || 'active',
+                product.created_at ? new Date(product.created_at).toISOString().split('T')[0] : ''
+            ].join(','));
+
+            const csvContent = csvHeader + csvData.join('\n');
+
+            res.setHeader('Content-Type', 'text/csv');
+            res.setHeader('Content-Disposition', 'attachment; filename="products.csv"');
+            return res.send(csvContent);
+        }
+
+        // JSON format (default)
+        res.json({
+            success: true,
+            data: products,
+            count: products.length,
+            message: 'تم جلب المنتجات بنجاح'
+        });
+
+    } catch (error) {
+        console.error('Error exporting products:', error);
+        res.status(500).json({
+            success: false,
+            message: 'فشل في تصدير المنتجات',
+            error: error.message
+        });
+    }
 }; 
