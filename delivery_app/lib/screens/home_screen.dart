@@ -19,7 +19,6 @@ class _HomeScreenState extends State<HomeScreen> {
     DistributionScheduleScreen(),
     PaymentScreen(),
     InventoryScreen(),
-    NotificationsScreen(),
     SettingsScreen(),
   ];
 
@@ -27,7 +26,6 @@ class _HomeScreenState extends State<HomeScreen> {
     'جدول التوزيع',
     'المدفوعات',
     'المخزون',
-    'الإشعارات',
     'الإعدادات',
   ];
 
@@ -54,10 +52,6 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.inventory),
             label: 'المخزون',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
-            label: 'الإشعارات',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
