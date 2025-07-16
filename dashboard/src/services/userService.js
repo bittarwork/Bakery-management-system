@@ -164,6 +164,24 @@ class UserService {
     }
 
     /**
+     * الحصول على الموزعين فقط
+     * @returns {Promise<Object>} استجابة API
+     */
+    async getDistributors() {
+        try {
+            const response = await apiService.get('/users', {
+                params: { role: 'distributor' }
+            });
+            return response;
+        } catch (error) {
+            return {
+                success: false,
+                message: error.message || 'خطأ في جلب بيانات الموزعين'
+            };
+        }
+    }
+
+    /**
      * التحقق من صحة بيانات الموظف
      * @param {Object} userData - بيانات الموظف
      * @returns {Object} نتيجة التحقق
