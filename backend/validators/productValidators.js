@@ -1,5 +1,72 @@
 import { body } from 'express-validator';
 
+// Helper function to validate optional numeric values
+const validateOptionalNumeric = (field, min = 0) => {
+    return body(field)
+        .optional()
+        .custom((value) => {
+            // Allow empty values
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+
+            // Check if it's a valid number
+            const numValue = parseFloat(value);
+            if (isNaN(numValue)) {
+                throw new Error(`${getFieldName(field)} يجب أن يكون رقماً`);
+            }
+
+            // Check minimum value
+            if (numValue < min) {
+                throw new Error(`${getFieldName(field)} لا يمكن أن يكون ${min === 0 ? 'سالباً' : 'أقل من ' + min}`);
+            }
+
+            return true;
+        })
+        .toFloat();
+};
+
+// Helper function to validate optional integer values
+const validateOptionalInteger = (field, min = 0) => {
+    return body(field)
+        .optional()
+        .custom((value) => {
+            // Allow empty values
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+
+            // Check if it's a valid integer
+            const numValue = parseInt(value);
+            if (isNaN(numValue)) {
+                throw new Error(`${getFieldName(field)} يجب أن يكون عدد صحيح`);
+            }
+
+            // Check minimum value
+            if (numValue < min) {
+                throw new Error(`${getFieldName(field)} يجب أن يكون عدد صحيح ${min === 0 ? 'غير سالب' : 'أكبر من أو يساوي ' + min}`);
+            }
+
+            return true;
+        })
+        .toInt();
+};
+
+// Helper function to get field display name
+const getFieldName = (field) => {
+    const fieldNames = {
+        'price_eur': 'السعر باليورو',
+        'price_syp': 'السعر بالليرة',
+        'cost_eur': 'التكلفة باليورو',
+        'cost_syp': 'التكلفة بالليرة',
+        'stock_quantity': 'الكمية في المخزون',
+        'minimum_stock': 'الحد الأدنى للمخزون',
+        'weight_grams': 'الوزن',
+        'shelf_life_days': 'مدة الصلاحية'
+    };
+    return fieldNames[field] || field;
+};
+
 // تحقق من صحة بيانات إنشاء منتج جديد
 export const validateCreateProduct = [
     body('name')
@@ -21,66 +88,19 @@ export const validateCreateProduct = [
         .withMessage('وحدة القياس يجب أن تكون بين 1 و 20 حرف')
         .trim(),
 
-    body('price_eur')
-        .optional()
-        .isNumeric()
-        .withMessage('السعر باليورو يجب أن يكون رقماً')
-        .isFloat({ min: 0 })
-        .withMessage('السعر باليورو لا يمكن أن يكون سالباً')
-        .toFloat(),
-
-    body('price_syp')
-        .optional()
-        .isNumeric()
-        .withMessage('السعر بالليرة يجب أن يكون رقماً')
-        .isFloat({ min: 0 })
-        .withMessage('السعر بالليرة لا يمكن أن يكون سالباً')
-        .toFloat(),
-
-    body('cost_eur')
-        .optional()
-        .isNumeric()
-        .withMessage('التكلفة باليورو يجب أن تكون رقماً')
-        .isFloat({ min: 0 })
-        .withMessage('التكلفة باليورو لا يمكن أن تكون سالبة')
-        .toFloat(),
-
-    body('cost_syp')
-        .optional()
-        .isNumeric()
-        .withMessage('التكلفة بالليرة يجب أن تكون رقماً')
-        .isFloat({ min: 0 })
-        .withMessage('التكلفة بالليرة لا يمكن أن تكون سالبة')
-        .toFloat(),
-
-    body('stock_quantity')
-        .optional()
-        .isInt({ min: 0 })
-        .withMessage('الكمية في المخزون يجب أن تكون عدد صحيح غير سالب')
-        .toInt(),
-
-    body('minimum_stock')
-        .optional()
-        .isInt({ min: 0 })
-        .withMessage('الحد الأدنى للمخزون يجب أن يكون عدد صحيح غير سالب')
-        .toInt(),
+    validateOptionalNumeric('price_eur'),
+    validateOptionalNumeric('price_syp'),
+    validateOptionalNumeric('cost_eur'),
+    validateOptionalNumeric('cost_syp'),
+    validateOptionalInteger('stock_quantity'),
+    validateOptionalInteger('minimum_stock'),
+    validateOptionalInteger('weight_grams'),
+    validateOptionalInteger('shelf_life_days'),
 
     body('category')
         .optional()
         .isIn(['bread', 'pastry', 'cake', 'drink', 'snack', 'seasonal', 'other'])
         .withMessage('فئة المنتج غير صحيحة'),
-
-    body('weight_grams')
-        .optional()
-        .isInt({ min: 0 })
-        .withMessage('الوزن يجب أن يكون عدد صحيح غير سالب')
-        .toInt(),
-
-    body('shelf_life_days')
-        .optional()
-        .isInt({ min: 0 })
-        .withMessage('مدة الصلاحية يجب أن تكون عدد صحيح غير سالب')
-        .toInt(),
 
     body('is_featured')
         .optional()
@@ -93,16 +113,42 @@ export const validateCreateProduct = [
         .isIn(['active', 'inactive', 'discontinued'])
         .withMessage('حالة المنتج يجب أن تكون active أو inactive أو discontinued'),
 
+    body('image_url')
+        .optional()
+        .custom((value) => {
+            // Allow empty values
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+
+            // Simple URL validation
+            const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+            if (!urlPattern.test(value)) {
+                throw new Error('رابط الصورة غير صحيح');
+            }
+
+            return true;
+        }),
+
     // تحقق مخصص للتأكد من أن السعر أكبر من أو يساوي التكلفة
     body().custom((value, { req }) => {
         const { price_eur, cost_eur, price_syp, cost_syp } = req.body;
 
-        if (price_eur !== undefined && cost_eur !== undefined && parseFloat(price_eur) < parseFloat(cost_eur)) {
-            throw new Error('السعر باليورو لا يمكن أن يكون أقل من التكلفة');
+        // Only check if both values are provided and not empty
+        if (price_eur && cost_eur && price_eur !== '' && cost_eur !== '') {
+            const priceEur = parseFloat(price_eur);
+            const costEur = parseFloat(cost_eur);
+            if (!isNaN(priceEur) && !isNaN(costEur) && priceEur < costEur) {
+                throw new Error('السعر باليورو لا يمكن أن يكون أقل من التكلفة');
+            }
         }
 
-        if (price_syp !== undefined && cost_syp !== undefined && parseFloat(price_syp) < parseFloat(cost_syp)) {
-            throw new Error('السعر بالليرة لا يمكن أن يكون أقل من التكلفة');
+        if (price_syp && cost_syp && price_syp !== '' && cost_syp !== '') {
+            const priceSyp = parseFloat(price_syp);
+            const costSyp = parseFloat(cost_syp);
+            if (!isNaN(priceSyp) && !isNaN(costSyp) && priceSyp < costSyp) {
+                throw new Error('السعر بالليرة لا يمكن أن يكون أقل من التكلفة');
+            }
         }
 
         return true;
@@ -127,72 +173,30 @@ export const validateUpdateProduct = [
 
     body('unit')
         .optional()
-        .notEmpty()
-        .withMessage('وحدة القياس لا يمكن أن تكون فارغة')
-        .isLength({ min: 1, max: 20 })
-        .withMessage('وحدة القياس يجب أن تكون بين 1 و 20 حرف')
+        .custom((value) => {
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+            if (value.length < 1 || value.length > 20) {
+                throw new Error('وحدة القياس يجب أن تكون بين 1 و 20 حرف');
+            }
+            return true;
+        })
         .trim(),
 
-    body('price_eur')
-        .optional()
-        .isNumeric()
-        .withMessage('السعر باليورو يجب أن يكون رقماً')
-        .isFloat({ min: 0 })
-        .withMessage('السعر باليورو لا يمكن أن يكون سالباً')
-        .toFloat(),
-
-    body('price_syp')
-        .optional()
-        .isNumeric()
-        .withMessage('السعر بالليرة يجب أن يكون رقماً')
-        .isFloat({ min: 0 })
-        .withMessage('السعر بالليرة لا يمكن أن يكون سالباً')
-        .toFloat(),
-
-    body('cost_eur')
-        .optional()
-        .isNumeric()
-        .withMessage('التكلفة باليورو يجب أن تكون رقماً')
-        .isFloat({ min: 0 })
-        .withMessage('التكلفة باليورو لا يمكن أن تكون سالبة')
-        .toFloat(),
-
-    body('cost_syp')
-        .optional()
-        .isNumeric()
-        .withMessage('التكلفة بالليرة يجب أن تكون رقماً')
-        .isFloat({ min: 0 })
-        .withMessage('التكلفة بالليرة لا يمكن أن تكون سالبة')
-        .toFloat(),
-
-    body('stock_quantity')
-        .optional()
-        .isInt({ min: 0 })
-        .withMessage('الكمية في المخزون يجب أن تكون عدد صحيح غير سالب')
-        .toInt(),
-
-    body('minimum_stock')
-        .optional()
-        .isInt({ min: 0 })
-        .withMessage('الحد الأدنى للمخزون يجب أن يكون عدد صحيح غير سالب')
-        .toInt(),
+    validateOptionalNumeric('price_eur'),
+    validateOptionalNumeric('price_syp'),
+    validateOptionalNumeric('cost_eur'),
+    validateOptionalNumeric('cost_syp'),
+    validateOptionalInteger('stock_quantity'),
+    validateOptionalInteger('minimum_stock'),
+    validateOptionalInteger('weight_grams'),
+    validateOptionalInteger('shelf_life_days'),
 
     body('category')
         .optional()
         .isIn(['bread', 'pastry', 'cake', 'drink', 'snack', 'seasonal', 'other'])
         .withMessage('فئة المنتج غير صحيحة'),
-
-    body('weight_grams')
-        .optional()
-        .isInt({ min: 0 })
-        .withMessage('الوزن يجب أن يكون عدد صحيح غير سالب')
-        .toInt(),
-
-    body('shelf_life_days')
-        .optional()
-        .isInt({ min: 0 })
-        .withMessage('مدة الصلاحية يجب أن تكون عدد صحيح غير سالب')
-        .toInt(),
 
     body('is_featured')
         .optional()
@@ -205,16 +209,42 @@ export const validateUpdateProduct = [
         .isIn(['active', 'inactive', 'discontinued'])
         .withMessage('حالة المنتج يجب أن تكون active أو inactive أو discontinued'),
 
+    body('image_url')
+        .optional()
+        .custom((value) => {
+            // Allow empty values
+            if (value === '' || value === null || value === undefined) {
+                return true;
+            }
+
+            // Simple URL validation
+            const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+            if (!urlPattern.test(value)) {
+                throw new Error('رابط الصورة غير صحيح');
+            }
+
+            return true;
+        }),
+
     // تحقق مخصص للتأكد من أن السعر أكبر من أو يساوي التكلفة
     body().custom((value, { req }) => {
         const { price_eur, cost_eur, price_syp, cost_syp } = req.body;
 
-        if (price_eur !== undefined && cost_eur !== undefined && parseFloat(price_eur) < parseFloat(cost_eur)) {
-            throw new Error('السعر باليورو لا يمكن أن يكون أقل من التكلفة');
+        // Only check if both values are provided and not empty
+        if (price_eur && cost_eur && price_eur !== '' && cost_eur !== '') {
+            const priceEur = parseFloat(price_eur);
+            const costEur = parseFloat(cost_eur);
+            if (!isNaN(priceEur) && !isNaN(costEur) && priceEur < costEur) {
+                throw new Error('السعر باليورو لا يمكن أن يكون أقل من التكلفة');
+            }
         }
 
-        if (price_syp !== undefined && cost_syp !== undefined && parseFloat(price_syp) < parseFloat(cost_syp)) {
-            throw new Error('السعر بالليرة لا يمكن أن يكون أقل من التكلفة');
+        if (price_syp && cost_syp && price_syp !== '' && cost_syp !== '') {
+            const priceSyp = parseFloat(price_syp);
+            const costSyp = parseFloat(cost_syp);
+            if (!isNaN(priceSyp) && !isNaN(costSyp) && priceSyp < costSyp) {
+                throw new Error('السعر بالليرة لا يمكن أن يكون أقل من التكلفة');
+            }
         }
 
         return true;

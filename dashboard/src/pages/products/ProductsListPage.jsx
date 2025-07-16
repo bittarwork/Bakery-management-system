@@ -691,7 +691,7 @@ const ProductsListPage = () => {
                         إجمالي المنتجات
                       </p>
                       <p className="text-3xl font-bold mt-1">
-                        {statistics.totalProducts}
+                        {statistics.total || 0}
                       </p>
                     </div>
                     <div className="p-3 bg-white/20 rounded-xl">
@@ -715,7 +715,7 @@ const ProductsListPage = () => {
                         المنتجات النشطة
                       </p>
                       <p className="text-3xl font-bold mt-1">
-                        {statistics.activeProducts}
+                        {statistics.active || 0}
                       </p>
                     </div>
                     <div className="p-3 bg-white/20 rounded-xl">
@@ -739,7 +739,7 @@ const ProductsListPage = () => {
                         المنتجات المميزة
                       </p>
                       <p className="text-3xl font-bold mt-1">
-                        {statistics.featuredProducts}
+                        {statistics.featured || 0}
                       </p>
                     </div>
                     <div className="p-3 bg-white/20 rounded-xl">
@@ -763,7 +763,7 @@ const ProductsListPage = () => {
                         مخزون منخفض
                       </p>
                       <p className="text-3xl font-bold mt-1">
-                        {statistics.lowStockProducts}
+                        {statistics.low_stock || 0}
                       </p>
                     </div>
                     <div className="p-3 bg-white/20 rounded-xl">
