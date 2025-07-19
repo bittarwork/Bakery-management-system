@@ -71,17 +71,59 @@ class ApiService {
     String? note,
   }) async {
     final token = await LocalStorage.getToken();
-    await _dio.post(
-      'https://bakery-management-system-production.up.railway.app/api/payments/flexible',
-      data: {
-        'storeId': storeId,
-        'amount': amount,
-        'currency': currency,
-        'method': method,
-        if (note != null) 'note': note,
-      },
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
+    print('ApiService: Recording payment with token: ${token?.substring(0, 20)}...');
+    print('ApiService: storeId = $storeId, amount = $amount, currency = $currency, method = $method');
+    
+    try {
+      // تحضير البيانات حسب controller الخادم
+      final Map<String, dynamic> paymentData = {
+        'store_id': int.parse(storeId.toString()),
+        'payment_method': method.toString(),
+        'payment_type': 'payment', // كما في controller
+        'payment_date': DateTime.now().toIso8601String(),
+        if (note != null) 'notes': note.toString(),
+      };
+
+      // إضافة المبلغ حسب العملة
+      if (currency == 'EUR') {
+        paymentData['amount_eur'] = double.parse(amount.toString());
+        paymentData['amount_syp'] = 0;
+      } else if (currency == 'SYP') {
+        paymentData['amount_syp'] = double.parse(amount.toString());
+        paymentData['amount_eur'] = 0;
+      }
+
+      print('ApiService: Sending payment data: $paymentData');
+      print('ApiService: store_id = ${paymentData['store_id']} (${paymentData['store_id'].runtimeType})');
+      print('ApiService: amount_eur = ${paymentData['amount_eur']} (${paymentData['amount_eur'].runtimeType})');
+      print('ApiService: amount_syp = ${paymentData['amount_syp']} (${paymentData['amount_syp'].runtimeType})');
+      print('ApiService: payment_method = ${paymentData['payment_method']} (${paymentData['payment_method'].runtimeType})');
+      print('ApiService: payment_type = ${paymentData['payment_type']} (${paymentData['payment_type'].runtimeType})');
+      print('ApiService: payment_date = ${paymentData['payment_date']} (${paymentData['payment_date'].runtimeType})');
+
+      // طباعة البيانات كـ JSON للتأكد
+      print('ApiService: JSON data: ${paymentData.toString()}');
+
+      final response = await _dio.post(
+        'https://bakery-management-system-production.up.railway.app/api/payments',
+        data: paymentData,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+      print('ApiService: Payment recorded successfully. Response status: ${response.statusCode}');
+    } catch (e) {
+      print('ApiService: Error recording payment: $e');
+      if (e is DioException) {
+        print('ApiService: DioException type: ${e.type}');
+        print('ApiService: Response status: ${e.response?.statusCode}');
+        print('ApiService: Response data: ${e.response?.data}');
+      }
+      rethrow;
+    }
   }
 
   Future<Inventory> getInventory(int vehicleId) async {

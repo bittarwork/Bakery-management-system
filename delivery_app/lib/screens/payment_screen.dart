@@ -94,6 +94,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       child: ElevatedButton(
                         onPressed: () {
                           final amount = double.tryParse(_amountController.text) ?? 0;
+                          print('PaymentScreen: Attempting to record payment');
+                          print('PaymentScreen: amount = $amount, currency = $_currency, method = $_method');
+                          print('PaymentScreen: storeId = $storeId');
                           if (amount > 0) {
                             context.read<PaymentCubit>().recordPayment(
                               storeId: storeId,
@@ -102,6 +105,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                               method: _method,
                             );
                             _amountController.clear();
+                          } else {
+                            rootScaffoldMessengerKey.currentState?.showSnackBar(
+                              const SnackBar(content: Text('يرجى إدخال مبلغ صحيح')),
+                            );
                           }
                         },
                         child: const Text('تسجيل الدفعة'),

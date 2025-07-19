@@ -27,6 +27,7 @@ class BakeryDistributorApp extends StatelessWidget {
     return ConnectivityListener(
       child: MaterialApp(
         title: 'تطبيق الموزعين',
+        debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         scaffoldMessengerKey: rootScaffoldMessengerKey,
         localizationsDelegates: const [
