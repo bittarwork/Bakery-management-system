@@ -224,7 +224,7 @@ const CreateProductPage = () => {
         JSON.stringify(formData, null, 2)
       );
 
-      // Prepare form data with proper validation and ensure no negative values
+      // Prepare form data with database-compatible values (no nulls for numeric fields)
       const productData = {
         ...formData,
         price_eur:
@@ -240,47 +240,47 @@ const CreateProductPage = () => {
           !isNaN(parseFloat(formData.price_syp)) &&
           parseFloat(formData.price_syp) > 0
             ? parseFloat(formData.price_syp)
-            : null,
+            : 0, // Changed from null to 0
         cost_eur:
           formData.cost_eur &&
           formData.cost_eur !== "" &&
           !isNaN(parseFloat(formData.cost_eur)) &&
           parseFloat(formData.cost_eur) >= 0
             ? parseFloat(formData.cost_eur)
-            : null,
+            : 0, // Changed from null to 0
         cost_syp:
           formData.cost_syp &&
           formData.cost_syp !== "" &&
           !isNaN(parseFloat(formData.cost_syp)) &&
           parseFloat(formData.cost_syp) >= 0
             ? parseFloat(formData.cost_syp)
-            : null,
+            : 0, // Changed from null to 0
         stock_quantity:
           formData.stock_quantity &&
           formData.stock_quantity !== "" &&
           !isNaN(parseInt(formData.stock_quantity)) &&
           parseInt(formData.stock_quantity) >= 0
             ? parseInt(formData.stock_quantity)
-            : null,
+            : 0, // Changed from null to 0
         minimum_stock:
           formData.minimum_stock &&
           formData.minimum_stock !== "" &&
           !isNaN(parseInt(formData.minimum_stock)) &&
           parseInt(formData.minimum_stock) >= 0
             ? parseInt(formData.minimum_stock)
-            : null,
+            : 0, // Changed from null to 0
         weight_grams:
           formData.weight_grams &&
           !isNaN(parseFloat(formData.weight_grams)) &&
           parseFloat(formData.weight_grams) > 0
             ? parseFloat(formData.weight_grams)
-            : null,
+            : 0, // Changed from null to 0
         shelf_life_days:
           formData.shelf_life_days &&
           !isNaN(parseInt(formData.shelf_life_days)) &&
           parseInt(formData.shelf_life_days) > 0
             ? parseInt(formData.shelf_life_days)
-            : null,
+            : 0, // Changed from null to 0
         is_featured: formData.is_featured,
         image_url:
           formData.image_url && formData.image_url.trim() !== ""
