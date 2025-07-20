@@ -284,6 +284,7 @@ export const createOrder = async (req, res) => {
         const order = await Order.create({
             order_number: orderNumber,
             store_id,
+            store_name: store.name, // Add store name
             total_amount_eur: totalAmountEur,
             total_amount_syp: totalAmountSyp,
             total_cost_eur: totalCostEur,
