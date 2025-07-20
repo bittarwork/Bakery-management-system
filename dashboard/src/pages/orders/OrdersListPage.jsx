@@ -33,6 +33,9 @@ import EnhancedButton from "../../components/ui/EnhancedButton";
 import EnhancedInput from "../../components/ui/EnhancedInput";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import { DeleteConfirmationModal } from "../../components/ui/Modal";
+import EnhancedOrderActions, {
+  CompactEnhancedActions,
+} from "../../components/orders/EnhancedOrderActions";
 import orderService from "../../services/orderService";
 import storeService from "../../services/storeService";
 import userService from "../../services/userService";
@@ -472,6 +475,16 @@ const OrdersListPage = () => {
               </EnhancedButton>
             </div>
           </div>
+
+          {/* Enhanced Features Widget */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="mb-8"
+          >
+            <EnhancedOrderActions />
+          </motion.div>
 
           {/* الإحصائيات */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -925,6 +938,7 @@ const OrdersListPage = () => {
                                   variant="primary"
                                   size="sm"
                                   icon={<Eye className="w-3 h-3" />}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
                                 >
                                   عرض
                                 </EnhancedButton>
@@ -935,6 +949,7 @@ const OrdersListPage = () => {
                                   variant="warning"
                                   size="sm"
                                   icon={<Edit className="w-3 h-3" />}
+                                  className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
                                 >
                                   تعديل
                                 </EnhancedButton>
@@ -943,9 +958,15 @@ const OrdersListPage = () => {
                                   variant="danger"
                                   size="sm"
                                   icon={<Trash2 className="w-3 h-3" />}
+                                  className="bg-red-600 hover:bg-red-700 text-white border-red-600"
                                 >
                                   حذف
                                 </EnhancedButton>
+                                {/* Enhanced Actions */}
+                                <CompactEnhancedActions
+                                  order={order}
+                                  className="mr-2"
+                                />
                               </div>
                             </td>
                           </motion.tr>

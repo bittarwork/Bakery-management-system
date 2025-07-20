@@ -23,7 +23,7 @@ import {
 
 // Services
 import distributorService from "../../services/distributorService";
-import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
+import LoadingSpinner from "../../components/ui/LoadingSpinner";
 
 const DistributorManagementPage = () => {
   const [activeTab, setActiveTab] = useState("distributors");

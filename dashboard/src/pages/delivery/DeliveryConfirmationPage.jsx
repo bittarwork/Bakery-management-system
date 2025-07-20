@@ -21,7 +21,7 @@ import {
 
 // Services
 import deliverySchedulingService from "../../services/deliverySchedulingService";
-import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
+import LoadingSpinner from "../../components/ui/LoadingSpinner";
 
 const DeliveryConfirmationPage = () => {
   const { token } = useParams();

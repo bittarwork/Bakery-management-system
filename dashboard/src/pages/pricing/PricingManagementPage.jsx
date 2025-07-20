@@ -21,7 +21,7 @@ import {
 
 // Services
 import pricingService from "../../services/pricingService";
-import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
+import LoadingSpinner from "../../components/ui/LoadingSpinner";
 
 const PricingManagementPage = () => {
   const [activeTab, setActiveTab] = useState("rules");

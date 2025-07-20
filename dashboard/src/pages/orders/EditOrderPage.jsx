@@ -548,7 +548,7 @@ const EditOrderPage = () => {
                         {products.map((product) => (
                           <option key={product.id} value={product.id}>
                             {product.name} - €
-                            {(product.price_eur || 0).toFixed(2)}
+                            {parseFloat(product.price_eur || 0).toFixed(2)}
                           </option>
                         ))}
                       </select>
@@ -716,9 +716,10 @@ const EditOrderPage = () => {
                         </div>
                         <div className="text-sm text-gray-600">
                           الإجمالي: €
-                          {(
-                            currentItem.quantity * currentItem.unit_price -
-                            currentItem.discount_amount
+                          {parseFloat(
+                            parseFloat(currentItem.quantity || 0) *
+                              parseFloat(currentItem.unit_price || 0) -
+                              parseFloat(currentItem.discount_amount || 0)
                           ).toFixed(2)}
                           {currentItem.gift_quantity > 0 && (
                             <span className="text-green-600">
@@ -867,7 +868,7 @@ const EditOrderPage = () => {
                         المجموع النهائي:
                       </span>
                       <span className="text-xl font-bold text-green-600">
-                        €{totals.subtotal.toFixed(2)}
+                        €{parseFloat(totals.subtotal || 0).toFixed(2)}
                       </span>
                     </div>
                   </div>

@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import Button from "../../components/ui/Button";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
+import EnhancedOrderActions from "../../components/orders/EnhancedOrderActions";
 import orderService from "../../services/orderService";
 import { toast } from "react-hot-toast";
 
@@ -613,13 +614,14 @@ const OrderDetailsPage = () => {
                         </td>
                         <td className="py-4 px-6 text-center">
                           <span className="font-medium">
-                            €{(item.unit_price || 0).toFixed(2)}
+                            €{parseFloat(item.unit_price || 0).toFixed(2)}
                           </span>
                         </td>
                         <td className="py-4 px-6 text-center">
                           {(item.discount_amount || 0) > 0 ? (
                             <span className="text-red-600 font-medium">
-                              -€{(item.discount_amount || 0).toFixed(2)}
+                              -€
+                              {parseFloat(item.discount_amount || 0).toFixed(2)}
                             </span>
                           ) : (
                             <span className="text-gray-400">-</span>
@@ -640,10 +642,8 @@ const OrderDetailsPage = () => {
                         <td className="py-4 px-6 text-center">
                           <span className="font-bold text-green-600">
                             €
-                            {(
-                              item.final_price ||
-                              item.total_price ||
-                              0
+                            {parseFloat(
+                              item.final_price || item.total_price || 0
                             ).toFixed(2)}
                           </span>
                         </td>
@@ -673,7 +673,7 @@ const OrderDetailsPage = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">المبلغ الفرعي:</span>
                   <span className="font-medium">
-                    €{(order.total_amount_eur || 0).toFixed(2)}
+                    €{parseFloat(order.total_amount_eur || 0).toFixed(2)}
                   </span>
                 </div>
 
@@ -681,7 +681,7 @@ const OrderDetailsPage = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">خصم الطلب:</span>
                     <span className="font-medium text-red-600">
-                      -€{(order.discount_amount || 0).toFixed(2)}
+                      -€{parseFloat(order.discount_amount || 0).toFixed(2)}
                     </span>
                   </div>
                 )}
@@ -693,10 +693,8 @@ const OrderDetailsPage = () => {
                     </span>
                     <span className="text-xl font-bold text-green-600">
                       €
-                      {(
-                        order.final_amount_eur ||
-                        order.total_amount_eur ||
-                        0
+                      {parseFloat(
+                        order.final_amount_eur || order.total_amount_eur || 0
                       ).toFixed(2)}
                     </span>
                   </div>
@@ -709,163 +707,381 @@ const OrderDetailsPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7 }}
-              className="bg-white shadow rounded-lg overflow-hidden"
+              className="bg-gradient-to-r from-white via-blue-50 to-indigo-50 shadow-lg rounded-2xl overflow-hidden border-2 border-blue-100"
             >
-              <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="px-6 py-5 border-b-2 border-blue-200 bg-gradient-to-r from-blue-600 to-indigo-700">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                    <Zap className="w-5 h-5 mr-2 text-blue-600" />
-                    إجراءات سريعة
+                  <h2 className="text-xl font-bold text-white flex items-center">
+                    <motion.div
+                      animate={{ rotate: [0, 360] }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                      className="mr-3"
+                    >
+                      <Zap className="w-6 h-6 text-yellow-300" />
+                    </motion.div>
+                    الإجراءات السريعة
                   </h2>
-                  <div className="text-sm text-gray-500">
-                    {order.status === "draft"
-                      ? "مسودة"
-                      : order.status === "confirmed"
-                      ? "مؤكد"
-                      : order.status === "processing"
-                      ? "قيد المعالجة"
-                      : order.status === "ready"
-                      ? "جاهز"
-                      : order.status === "delivered"
-                      ? "تم التسليم"
-                      : "ملغي"}
+                  <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
+                    <span className="text-sm font-medium text-white flex items-center">
+                      <div
+                        className={`w-2 h-2 rounded-full mr-2 ${
+                          order.status === "draft"
+                            ? "bg-yellow-400"
+                            : order.status === "confirmed"
+                            ? "bg-blue-400"
+                            : order.status === "processing"
+                            ? "bg-orange-400"
+                            : order.status === "ready"
+                            ? "bg-green-400"
+                            : order.status === "delivered"
+                            ? "bg-emerald-400"
+                            : "bg-red-400"
+                        }`}
+                      ></div>
+                      {order.status === "draft"
+                        ? "مسودة"
+                        : order.status === "confirmed"
+                        ? "مؤكد"
+                        : order.status === "processing"
+                        ? "قيد المعالجة"
+                        : order.status === "ready"
+                        ? "جاهز"
+                        : order.status === "delivered"
+                        ? "تم التسليم"
+                        : "ملغي"}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <div className="p-6">
+              <div className="p-6 bg-gradient-to-b from-transparent to-blue-50/50">
                 {/* Primary Actions */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                  <Button
-                    variant="primary"
-                    className="w-full justify-center text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-                    onClick={() => {
-                      setSelectedStatus(order.status);
-                      setShowStatusModal(true);
-                    }}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  <motion.div
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    <Edit className="w-4 h-4 mr-2" />
-                    تحديث حالة الطلب
-                  </Button>
+                    <Button
+                      variant="primary"
+                      className="w-full justify-center text-white bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 hover:from-blue-700 hover:via-blue-800 hover:to-indigo-800 shadow-lg hover:shadow-xl transition-all duration-300 border-0 py-3"
+                      onClick={() => {
+                        setSelectedStatus(order.status);
+                        setShowStatusModal(true);
+                      }}
+                    >
+                      <motion.div
+                        animate={{ rotate: [0, 15, -15, 0] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className="mr-2"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </motion.div>
+                      تحديث حالة الطلب
+                    </Button>
+                  </motion.div>
 
-                  <Button
-                    variant="primary"
-                    className="w-full justify-center text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
-                    onClick={() => {
-                      setSelectedPaymentStatus(order.payment_status);
-                      setShowPaymentModal(true);
-                    }}
+                  <motion.div
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    تحديث الدفع
-                  </Button>
+                    <Button
+                      variant="primary"
+                      className="w-full justify-center text-white bg-gradient-to-r from-emerald-600 via-green-700 to-teal-700 hover:from-emerald-700 hover:via-green-800 hover:to-teal-800 shadow-lg hover:shadow-xl transition-all duration-300 border-0 py-3"
+                      onClick={() => {
+                        setSelectedPaymentStatus(order.payment_status);
+                        setShowPaymentModal(true);
+                      }}
+                    >
+                      <motion.div
+                        animate={{ scale: [1, 1.1, 1] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                        className="mr-2"
+                      >
+                        <CreditCard className="w-5 h-5" />
+                      </motion.div>
+                      تحديث الدفع
+                    </Button>
+                  </motion.div>
                 </div>
 
                 {/* Secondary Actions */}
-                <div className="space-y-2">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start hover:bg-gray-50"
-                    onClick={() => navigate(`/orders/${id}/edit`)}
-                  >
-                    <Edit className="w-4 h-4 mr-2 text-blue-600" />
-                    تعديل تفاصيل الطلب
-                  </Button>
+                <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-4 mb-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                    إجراءات إضافية
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <motion.div
+                      whileHover={{ scale: 1.02, x: 5 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start bg-white hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300 text-blue-700 hover:text-blue-800 transition-all duration-200"
+                        onClick={() => navigate(`/orders/${id}/edit`)}
+                      >
+                        <div className="flex items-center">
+                          <div className="p-1 bg-blue-100 rounded-lg mr-3">
+                            <Edit className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-right">
+                              تعديل الطلب
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              تحديث المحتويات
+                            </div>
+                          </div>
+                        </div>
+                      </Button>
+                    </motion.div>
 
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start hover:bg-gray-50"
-                    onClick={handlePrint}
-                  >
-                    <Printer className="w-4 h-4 mr-2 text-purple-600" />
-                    طباعة فاتورة الطلب
-                  </Button>
+                    <motion.div
+                      whileHover={{ scale: 1.02, x: 5 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start bg-white hover:bg-purple-50 border-2 border-purple-200 hover:border-purple-300 text-purple-700 hover:text-purple-800 transition-all duration-200"
+                        onClick={handlePrint}
+                      >
+                        <div className="flex items-center">
+                          <div className="p-1 bg-purple-100 rounded-lg mr-3">
+                            <Printer className="w-4 h-4 text-purple-600" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-right">
+                              طباعة الفاتورة
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              PDF أو ورقي
+                            </div>
+                          </div>
+                        </div>
+                      </Button>
+                    </motion.div>
 
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start hover:bg-gray-50"
-                    onClick={() => {
-                      navigator.clipboard.writeText(
-                        `طلب رقم ${order.order_number || order.id} - €${(
-                          order.final_amount_eur ||
-                          order.total_amount_eur ||
-                          0
-                        ).toFixed(2)}`
-                      );
-                      toast.success("تم نسخ تفاصيل الطلب");
-                    }}
-                  >
-                    <Copy className="w-4 h-4 mr-2 text-indigo-600" />
-                    نسخ تفاصيل الطلب
-                  </Button>
+                    <motion.div
+                      whileHover={{ scale: 1.02, x: 5 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start bg-white hover:bg-indigo-50 border-2 border-indigo-200 hover:border-indigo-300 text-indigo-700 hover:text-indigo-800 transition-all duration-200"
+                        onClick={() => {
+                          navigator.clipboard.writeText(
+                            `طلب رقم ${
+                              order.order_number || order.id
+                            } - €${parseFloat(
+                              order.final_amount_eur ||
+                                order.total_amount_eur ||
+                                0
+                            ).toFixed(2)}`
+                          );
+                          toast.success("تم نسخ تفاصيل الطلب");
+                        }}
+                      >
+                        <div className="flex items-center">
+                          <div className="p-1 bg-indigo-100 rounded-lg mr-3">
+                            <Copy className="w-4 h-4 text-indigo-600" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-right">
+                              نسخ التفاصيل
+                            </div>
+                            <div className="text-xs text-gray-500">للحافظة</div>
+                          </div>
+                        </div>
+                      </Button>
+                    </motion.div>
 
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start hover:bg-gray-50"
-                    onClick={() => navigate("/orders")}
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-2 text-gray-600" />
-                    العودة لقائمة الطلبات
-                  </Button>
+                    <motion.div
+                      whileHover={{ scale: 1.02, x: 5 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start bg-white hover:bg-gray-50 border-2 border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-800 transition-all duration-200"
+                        onClick={() => navigate("/orders")}
+                      >
+                        <div className="flex items-center">
+                          <div className="p-1 bg-gray-100 rounded-lg mr-3">
+                            <ArrowLeft className="w-4 h-4 text-gray-600" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-right">
+                              العودة للقائمة
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              جميع الطلبات
+                            </div>
+                          </div>
+                        </div>
+                      </Button>
+                    </motion.div>
+                  </div>
+                </div>
+
+                {/* Enhanced Features Integration */}
+                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 mb-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full mr-2"></div>
+                    الميزات المتقدمة
+                  </h3>
+                  <EnhancedOrderActions
+                    order={order}
+                    className="bg-white/50 backdrop-blur-sm border border-indigo-200 rounded-lg"
+                  />
                 </div>
 
                 {/* Quick Status Actions */}
                 {order.status === "draft" && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <p className="text-xs text-gray-500 mb-2">
-                      إجراءات سريعة للحالة:
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <button
+                  <div className="bg-gradient-to-r from-yellow-50 to-blue-50 rounded-xl p-4 border-l-4 border-yellow-400">
+                    <div className="flex items-center mb-3">
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2 animate-pulse"></div>
+                      <p className="text-sm font-medium text-gray-700">
+                        إجراءات سريعة - مسودة
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <motion.button
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => handleQuickStatusUpdate("confirmed")}
-                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+                        className="flex items-center px-4 py-2 text-sm font-medium bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 shadow-md hover:shadow-lg transition-all duration-200"
                       >
-                        ✓ تأكيد الطلب
-                      </button>
-                      <button
+                        <motion.div
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                          className="mr-2"
+                        >
+                          ✓
+                        </motion.div>
+                        تأكيد الطلب
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => handleQuickStatusUpdate("cancelled")}
-                        className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200 transition-colors"
+                        className="flex items-center px-4 py-2 text-sm font-medium bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 shadow-md hover:shadow-lg transition-all duration-200"
                       >
-                        ✕ إلغاء الطلب
-                      </button>
+                        <motion.div
+                          animate={{ rotate: [0, 180, 360] }}
+                          transition={{ duration: 3, repeat: Infinity }}
+                          className="mr-2"
+                        >
+                          ✕
+                        </motion.div>
+                        إلغاء الطلب
+                      </motion.button>
                     </div>
                   </div>
                 )}
 
                 {order.status === "confirmed" && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <p className="text-xs text-gray-500 mb-2">
-                      إجراءات سريعة للحالة:
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <button
+                  <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-4 border-l-4 border-blue-400">
+                    <div className="flex items-center mb-3">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></div>
+                      <p className="text-sm font-medium text-gray-700">
+                        إجراءات سريعة - مؤكد
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <motion.button
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => handleQuickStatusUpdate("processing")}
-                        className="px-3 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 transition-colors"
+                        className="flex items-center px-4 py-2 text-sm font-medium bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:from-yellow-600 hover:to-orange-600 shadow-md hover:shadow-lg transition-all duration-200"
                       >
-                        🔄 بدء المعالجة
-                      </button>
-                      <button
+                        <motion.div
+                          animate={{ rotate: [0, 360] }}
+                          transition={{
+                            duration: 2,
+                            repeat: Infinity,
+                            ease: "linear",
+                          }}
+                          className="mr-2"
+                        >
+                          🔄
+                        </motion.div>
+                        بدء المعالجة
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => handleQuickStatusUpdate("ready")}
-                        className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors"
+                        className="flex items-center px-4 py-2 text-sm font-medium bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 shadow-md hover:shadow-lg transition-all duration-200"
                       >
-                        ✅ جاهز للتسليم
-                      </button>
+                        <motion.div
+                          animate={{ scale: [1, 1.1, 1] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                          className="mr-2"
+                        >
+                          ✅
+                        </motion.div>
+                        جاهز للتسليم
+                      </motion.button>
                     </div>
                   </div>
                 )}
 
                 {order.status === "ready" && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <p className="text-xs text-gray-500 mb-2">
-                      إجراءات سريعة للحالة:
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <button
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border-l-4 border-green-400">
+                    <div className="flex items-center mb-3">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                      <p className="text-sm font-medium text-gray-700">
+                        إجراءات سريعة - جاهز
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <motion.button
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => handleQuickStatusUpdate("delivered")}
-                        className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors"
+                        className="flex items-center px-4 py-2 text-sm font-medium bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-lg hover:from-emerald-600 hover:to-green-700 shadow-md hover:shadow-lg transition-all duration-200"
                       >
-                        🚚 تم التسليم
-                      </button>
+                        <motion.div
+                          animate={{ x: [0, 10, 0] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                          className="mr-2"
+                        >
+                          🚚
+                        </motion.div>
+                        تم التسليم
+                      </motion.button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Processing and other statuses */}
+                {order.status === "processing" && (
+                  <div className="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-4 border-l-4 border-orange-400">
+                    <div className="flex items-center mb-3">
+                      <div className="w-2 h-2 bg-orange-500 rounded-full mr-2 animate-pulse"></div>
+                      <p className="text-sm font-medium text-gray-700">
+                        إجراءات سريعة - قيد المعالجة
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <motion.button
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleQuickStatusUpdate("ready")}
+                        className="flex items-center px-4 py-2 text-sm font-medium bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 shadow-md hover:shadow-lg transition-all duration-200"
+                      >
+                        <motion.div
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                          className="mr-2"
+                        >
+                          ✅
+                        </motion.div>
+                        جاهز للتسليم
+                      </motion.button>
                     </div>
                   </div>
                 )}
