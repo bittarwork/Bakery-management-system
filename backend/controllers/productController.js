@@ -186,7 +186,7 @@ export const createProduct = async (req, res) => {
             }
         }
 
-        // Prepare product data with proper validation
+        // Prepare product data with proper validation and safe defaults
         const productData = {
             name,
             description: description || null,
@@ -196,8 +196,8 @@ export const createProduct = async (req, res) => {
             price_syp: price_syp && parseFloat(price_syp) > 0 ? parseFloat(price_syp) : null,
             cost_eur: cost_eur && parseFloat(cost_eur) >= 0 ? parseFloat(cost_eur) : null,
             cost_syp: cost_syp && parseFloat(cost_syp) >= 0 ? parseFloat(cost_syp) : null,
-            stock_quantity: stock_quantity && parseInt(stock_quantity) >= 0 ? parseInt(stock_quantity) : null,
-            minimum_stock: minimum_stock && parseInt(minimum_stock) >= 0 ? parseInt(minimum_stock) : null,
+            stock_quantity: stock_quantity && parseInt(stock_quantity) >= 0 ? parseInt(stock_quantity) : 0,
+            minimum_stock: minimum_stock && parseInt(minimum_stock) >= 0 ? parseInt(minimum_stock) : 0,
             barcode: barcode || null,
             is_featured: is_featured || false,
             status: status || 'active',
@@ -205,28 +205,65 @@ export const createProduct = async (req, res) => {
             weight_grams: weight_grams && parseInt(weight_grams) > 0 ? parseInt(weight_grams) : null,
             shelf_life_days: shelf_life_days && parseInt(shelf_life_days) > 0 ? parseInt(shelf_life_days) : null,
             storage_conditions: storage_conditions || null,
-            supplier_info: supplier_info || null,
-            nutritional_info: nutritional_info || null,
-            allergen_info: allergen_info || null,
-            created_by: req.userId,
-            created_by_name: created_by_name || null
+            supplier_info: supplier_info ? (typeof supplier_info === 'string' ? { description: supplier_info } : supplier_info) : null,
+            nutritional_info: nutritional_info ? (typeof nutritional_info === 'string' ? { description: nutritional_info } : nutritional_info) : null,
+            allergen_info: allergen_info ? (typeof allergen_info === 'string' ? { description: allergen_info } : allergen_info) : null,
+            created_by: req.userId || null, // Safe fallback if userId is not available
+            created_by_name: created_by_name || 'System'
         };
 
         console.log('[PRODUCTS] Final product data before creation:', JSON.stringify(productData, null, 2));
 
-        const product = await Product.create(productData);
+        try {
+            const product = await Product.create(productData);
+            console.log('[PRODUCTS] Product created successfully:', product.id);
 
-        res.status(201).json({
-            success: true,
-            data: product,
-            message: 'Product created successfully'
-        });
+            res.status(201).json({
+                success: true,
+                data: product,
+                message: 'Product created successfully'
+            });
+        } catch (dbError) {
+            console.error('[PRODUCTS] Database error during product creation:', dbError);
+            console.error('[PRODUCTS] Error details:', {
+                message: dbError.message,
+                name: dbError.name,
+                sql: dbError.sql,
+                parameters: dbError.parameters
+            });
+
+            // Handle specific database errors
+            if (dbError.name === 'SequelizeValidationError') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Validation error',
+                    errors: dbError.errors.map(err => ({
+                        field: err.path,
+                        message: err.message,
+                        value: err.value
+                    }))
+                });
+            }
+
+            if (dbError.name === 'SequelizeUniqueConstraintError') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Duplicate entry error',
+                    field: dbError.errors[0]?.path,
+                    value: dbError.errors[0]?.value
+                });
+            }
+
+            throw dbError; // Re-throw to be caught by outer catch
+        }
     } catch (error) {
-        console.error('[PRODUCTS] Failed to create product:', error.message);
+        console.error('[PRODUCTS] Failed to create product:', error);
+        console.error('[PRODUCTS] Full error stack:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Failed to create product',
-            error: error.message
+            error: error.message,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 };
@@ -330,9 +367,9 @@ export const updateProduct = async (req, res) => {
         if (weight_grams !== undefined) updateData.weight_grams = weight_grams && parseInt(weight_grams) > 0 ? parseInt(weight_grams) : null;
         if (shelf_life_days !== undefined) updateData.shelf_life_days = shelf_life_days && parseInt(shelf_life_days) > 0 ? parseInt(shelf_life_days) : null;
         if (storage_conditions !== undefined) updateData.storage_conditions = storage_conditions || null;
-        if (supplier_info !== undefined) updateData.supplier_info = supplier_info || null;
-        if (nutritional_info !== undefined) updateData.nutritional_info = nutritional_info || null;
-        if (allergen_info !== undefined) updateData.allergen_info = allergen_info || null;
+        if (supplier_info !== undefined) updateData.supplier_info = supplier_info ? (typeof supplier_info === 'string' ? { description: supplier_info } : supplier_info) : null;
+        if (nutritional_info !== undefined) updateData.nutritional_info = nutritional_info ? (typeof nutritional_info === 'string' ? { description: nutritional_info } : nutritional_info) : null;
+        if (allergen_info !== undefined) updateData.allergen_info = allergen_info ? (typeof allergen_info === 'string' ? { description: allergen_info } : allergen_info) : null;
 
         await product.update(updateData);
 
@@ -1105,9 +1142,12 @@ export const uploadProductImage = async (req, res) => {
 
         console.log('[UPLOAD] File received:', req.file.filename, 'Size:', req.file.size);
 
-        // Generate image URL
-        const baseUrl = req.protocol + '://' + req.get('host');
+        // Generate image URL with proper protocol (HTTPS in production)
+        const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
+        const baseUrl = protocol + '://' + req.get('host');
         const imageUrl = `${baseUrl}/uploads/${req.file.filename}`;
+
+        console.log('[UPLOAD] Generated image URL:', imageUrl);
 
         // Delete old image if exists
         if (product.image_url) {
@@ -1165,8 +1205,9 @@ export const uploadProductImages = async (req, res) => {
             });
         }
 
-        // Generate image URLs
-        const baseUrl = req.protocol + '://' + req.get('host');
+        // Generate image URLs with proper protocol
+        const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
+        const baseUrl = protocol + '://' + req.get('host');
         const uploadedImages = req.files.map(file => ({
             filename: file.filename,
             url: `${baseUrl}/uploads/${file.filename}`,
@@ -1217,7 +1258,8 @@ export const deleteProductImage = async (req, res) => {
         }
 
         // Extract filename from URL
-        const baseUrl = req.protocol + '://' + req.get('host');
+        const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
+        const baseUrl = protocol + '://' + req.get('host');
         const imagePath = product.image_url.replace(`${baseUrl}/uploads/`, '');
         const fullPath = path.join(__dirname, '../storage/uploads', imagePath);
 

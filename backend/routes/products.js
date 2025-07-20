@@ -162,12 +162,29 @@ router.delete('/:id/image', deleteProductImage);
 // @route   GET /api/products/test/upload
 // @access  Private
 router.get('/test/upload', (req, res) => {
+    const fs = require('fs');
+    const uploadsDir = path.join(__dirname, '../storage/uploads');
+
+    let uploadedFiles = [];
+    try {
+        if (fs.existsSync(uploadsDir)) {
+            uploadedFiles = fs.readdirSync(uploadsDir);
+        }
+    } catch (err) {
+        console.error('Error reading uploads directory:', err);
+    }
+
     res.json({
         success: true,
         message: 'Image upload endpoint is working',
         timestamp: new Date().toISOString(),
-        uploadsDir: path.join(__dirname, '../storage/uploads'),
-        multerAvailable: typeof uploadSingle === 'function'
+        uploadsDir,
+        uploadsDirExists: fs.existsSync(uploadsDir),
+        uploadedFilesCount: uploadedFiles.length,
+        recentFiles: uploadedFiles.slice(-5), // Show last 5 files
+        multerAvailable: typeof uploadSingle === 'function',
+        nodeEnv: process.env.NODE_ENV,
+        baseUrl: `${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://${req.get('host')}`
     });
 });
 

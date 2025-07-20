@@ -137,8 +137,33 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
-// Serve static files (uploaded images)
-app.use('/uploads', express.static(path.join(__dirname, 'storage/uploads')));
+// Handle favicon requests to avoid 404 errors
+app.get('/favicon.ico', (req, res) => {
+    res.status(204).end(); // No Content
+});
+
+// Serve static files (uploaded images) with CORS headers
+app.use('/uploads', (req, res, next) => {
+    // Add comprehensive CORS headers for static files
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Range');
+    res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.header('Cross-Origin-Embedder-Policy', 'unsafe-none');
+    res.header('Referrer-Policy', 'no-referrer-when-downgrade');
+
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+
+    next();
+}, express.static(path.join(__dirname, 'storage/uploads'), {
+    // Express static options for better performance
+    maxAge: '1d', // Cache for 1 day
+    etag: true,
+    lastModified: true
+}));
 
 // Request logging middleware
 if (process.env.NODE_ENV !== 'test') {
