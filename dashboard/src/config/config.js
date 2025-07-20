@@ -28,7 +28,7 @@ const config = {
         lockoutDuration: 300000 // 5 minutes
     },
 
-    // Currency Configuration
+    // Currency Configuration - EUR Only
     currency: {
         primary: {
             code: 'EUR',
@@ -37,14 +37,8 @@ const config = {
             nameAr: 'يورو',
             position: 'after'
         },
-        secondary: {
-            code: 'SYP',
-            symbol: 'ل.س',
-            name: 'Syrian Pound',
-            nameAr: 'ليرة سورية',
-            position: 'after'
-        },
-        exchangeRate: 15000 // 1 EUR = 15000 SYP
+        // System now works with EUR only
+        exchangeRate: null // No longer needed
     },
 
     // Features Configuration

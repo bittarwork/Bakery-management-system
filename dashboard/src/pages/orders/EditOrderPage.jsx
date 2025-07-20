@@ -94,8 +94,7 @@ const EditOrderPage = () => {
             ? order.delivery_date.split("T")[0]
             : "",
           notes: order.notes || "",
-          currency: order.currency || "EUR",
-          exchange_rate: order.exchange_rate || 15000,
+          currency: "EUR", // Fixed to EUR only
           status: order.status || "draft",
           payment_status: order.payment_status || "pending",
           items:
@@ -161,10 +160,7 @@ const EditOrderPage = () => {
       if (field === "product_id" && value) {
         const selectedProduct = products.find((p) => p.id === parseInt(value));
         if (selectedProduct) {
-          updated.unit_price =
-            formData.currency === "EUR"
-              ? selectedProduct.price_eur || 0
-              : selectedProduct.price_syp || 0;
+          updated.unit_price = selectedProduct.price_eur || 0;
         }
       }
 
@@ -420,22 +416,6 @@ const EditOrderPage = () => {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        العملة
-                      </label>
-                      <select
-                        value={formData.currency}
-                        onChange={(e) =>
-                          handleFormChange("currency", e.target.value)
-                        }
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="EUR">يورو (EUR)</option>
-                        <option value="SYP">ليرة سورية (SYP)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
                         تاريخ الطلب
                       </label>
                       <input
@@ -500,26 +480,6 @@ const EditOrderPage = () => {
                         <option value="overdue">متأخر</option>
                       </select>
                     </div>
-
-                    {formData.currency === "EUR" && (
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          سعر الصرف (1 EUR = ? SYP)
-                        </label>
-                        <input
-                          type="number"
-                          value={formData.exchange_rate}
-                          onChange={(e) =>
-                            handleFormChange(
-                              "exchange_rate",
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          min="1"
-                        />
-                      </div>
-                    )}
 
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -587,11 +547,8 @@ const EditOrderPage = () => {
                         <option value="">-- اختر المنتج --</option>
                         {products.map((product) => (
                           <option key={product.id} value={product.id}>
-                            {product.name} -{" "}
-                            {formData.currency === "EUR" ? "€" : "ل.س"}
-                            {(formData.currency === "EUR"
-                              ? product.price_eur
-                              : product.price_syp) || 0}
+                            {product.name} - €
+                            {(product.price_eur || 0).toFixed(2)}
                           </option>
                         ))}
                       </select>
@@ -619,7 +576,7 @@ const EditOrderPage = () => {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          سعر الوحدة ({formData.currency})
+                          سعر الوحدة (€)
                         </label>
                         <input
                           type="number"
@@ -647,7 +604,7 @@ const EditOrderPage = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-sm text-gray-600 mb-1">
-                          مبلغ الخصم ({formData.currency})
+                          مبلغ الخصم (€)
                         </label>
                         <input
                           type="number"
@@ -758,7 +715,7 @@ const EditOrderPage = () => {
                           × {currentItem.quantity}
                         </div>
                         <div className="text-sm text-gray-600">
-                          الإجمالي: {formData.currency === "EUR" ? "€" : "ل.س"}
+                          الإجمالي: €
                           {(
                             currentItem.quantity * currentItem.unit_price -
                             currentItem.discount_amount
@@ -853,12 +810,10 @@ const EditOrderPage = () => {
                               </div>
                             </td>
                             <td className="py-4 px-6 text-center">
-                              {formData.currency === "EUR" ? "€" : "ل.س"}
-                              {(parseFloat(item.unit_price) || 0).toFixed(2)}
+                              €{(parseFloat(item.unit_price) || 0).toFixed(2)}
                             </td>
                             <td className="py-4 px-6 text-center font-bold text-green-600">
-                              {formData.currency === "EUR" ? "€" : "ل.س"}
-                              {(parseFloat(item.total_price) || 0).toFixed(2)}
+                              €{(parseFloat(item.total_price) || 0).toFixed(2)}
                             </td>
                             <td className="py-4 px-6 text-center">
                               <Button
@@ -912,25 +867,10 @@ const EditOrderPage = () => {
                         المجموع النهائي:
                       </span>
                       <span className="text-xl font-bold text-green-600">
-                        {formData.currency === "EUR" ? "€" : "ل.س"}
-                        {totals.subtotal.toFixed(2)}
+                        €{totals.subtotal.toFixed(2)}
                       </span>
                     </div>
                   </div>
-
-                  {formData.currency === "EUR" && totals.subtotal > 0 && (
-                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                      <div className="text-sm text-gray-600 text-center">
-                        <p>المعادل بالليرة السورية:</p>
-                        <p className="text-lg font-bold text-purple-600 mt-1">
-                          {new Intl.NumberFormat("ar-SY").format(
-                            totals.subtotal * formData.exchange_rate
-                          )}{" "}
-                          ل.س
-                        </p>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </motion.div>
 
@@ -983,7 +923,7 @@ const EditOrderPage = () => {
 
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">العملة:</span>
-                    <span className="font-medium">{formData.currency}</span>
+                    <span className="font-medium">يورو (EUR)</span>
                   </div>
                 </div>
               </motion.div>

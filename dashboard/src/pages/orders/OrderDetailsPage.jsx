@@ -33,6 +33,8 @@ import {
   Building,
   Globe,
   Calculator,
+  Zap,
+  Copy,
   TrendingUp,
   AlertTriangle,
 } from "lucide-react";
@@ -158,6 +160,42 @@ const OrderDetailsPage = () => {
   // Handle print
   const handlePrint = () => {
     window.print();
+  };
+
+  // Handle quick status update
+  const handleQuickStatusUpdate = async (newStatus) => {
+    try {
+      const response = await orderService.updateOrderStatus(id, {
+        status: newStatus,
+      });
+
+      if (response.success) {
+        setOrder((prev) => ({
+          ...prev,
+          status: newStatus,
+        }));
+        toast.success(
+          `تم تحديث حالة الطلب إلى: ${
+            newStatus === "draft"
+              ? "مسودة"
+              : newStatus === "confirmed"
+              ? "مؤكد"
+              : newStatus === "processing"
+              ? "قيد المعالجة"
+              : newStatus === "ready"
+              ? "جاهز"
+              : newStatus === "delivered"
+              ? "تم التسليم"
+              : "ملغي"
+          }`
+        );
+      } else {
+        toast.error(response.message || "خطأ في تحديث حالة الطلب");
+      }
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      toast.error("خطأ في تحديث حالة الطلب");
+    }
   };
 
   // Currency formatter
@@ -431,30 +469,6 @@ const OrderDetailsPage = () => {
               </div>
             </div>
           </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white p-6 rounded-lg shadow"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-2">
-                  المبلغ الإجمالي (ليرة)
-                </p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {new Intl.NumberFormat("ar-SY").format(
-                    order.final_amount_syp || order.total_amount_syp || 0
-                  )}{" "}
-                  ل.س
-                </p>
-              </div>
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <DollarSign className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </motion.div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -518,24 +532,6 @@ const OrderDetailsPage = () => {
                       <div className="flex items-center space-x-2 text-sm text-gray-900">
                         <Store className="w-4 h-4 text-gray-400" />
                         <span>{order.store_name || "غير محدد"}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        العملة
-                      </label>
-                      <div className="flex items-center space-x-2 text-sm text-gray-900">
-                        <Globe className="w-4 h-4 text-gray-400" />
-                        <span>{order.currency || "EUR"}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        سعر الصرف
-                      </label>
-                      <div className="flex items-center space-x-2 text-sm text-gray-900">
-                        <Calculator className="w-4 h-4 text-gray-400" />
-                        <span>1 EUR = {order.exchange_rate || 0} SYP</span>
                       </div>
                     </div>
                   </div>
@@ -617,15 +613,13 @@ const OrderDetailsPage = () => {
                         </td>
                         <td className="py-4 px-6 text-center">
                           <span className="font-medium">
-                            {order.currency === "EUR" ? "€" : "ل.س"}
-                            {(item.unit_price || 0).toFixed(2)}
+                            €{(item.unit_price || 0).toFixed(2)}
                           </span>
                         </td>
                         <td className="py-4 px-6 text-center">
                           {(item.discount_amount || 0) > 0 ? (
                             <span className="text-red-600 font-medium">
-                              -{order.currency === "EUR" ? "€" : "ل.س"}
-                              {(item.discount_amount || 0).toFixed(2)}
+                              -€{(item.discount_amount || 0).toFixed(2)}
                             </span>
                           ) : (
                             <span className="text-gray-400">-</span>
@@ -645,7 +639,7 @@ const OrderDetailsPage = () => {
                         </td>
                         <td className="py-4 px-6 text-center">
                           <span className="font-bold text-green-600">
-                            {order.currency === "EUR" ? "€" : "ل.س"}
+                            €
                             {(
                               item.final_price ||
                               item.total_price ||
@@ -679,12 +673,7 @@ const OrderDetailsPage = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">المبلغ الفرعي:</span>
                   <span className="font-medium">
-                    {order.currency === "EUR" ? "€" : "ل.س"}
-                    {(
-                      order.total_amount_eur ||
-                      order.total_amount_syp ||
-                      0
-                    ).toFixed(2)}
+                    €{(order.total_amount_eur || 0).toFixed(2)}
                   </span>
                 </div>
 
@@ -692,8 +681,7 @@ const OrderDetailsPage = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">خصم الطلب:</span>
                     <span className="font-medium text-red-600">
-                      -{order.currency === "EUR" ? "€" : "ل.س"}
-                      {(order.discount_amount || 0).toFixed(2)}
+                      -€{(order.discount_amount || 0).toFixed(2)}
                     </span>
                   </div>
                 )}
@@ -704,12 +692,10 @@ const OrderDetailsPage = () => {
                       المجموع النهائي:
                     </span>
                     <span className="text-xl font-bold text-green-600">
-                      {order.currency === "EUR" ? "€" : "ل.س"}
+                      €
                       {(
                         order.final_amount_eur ||
-                        order.final_amount_syp ||
                         order.total_amount_eur ||
-                        order.total_amount_syp ||
                         0
                       ).toFixed(2)}
                     </span>
@@ -718,57 +704,171 @@ const OrderDetailsPage = () => {
               </div>
             </motion.div>
 
-            {/* Quick Actions */}
+            {/* Enhanced Quick Actions */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7 }}
-              className="bg-white shadow rounded-lg"
+              className="bg-white shadow rounded-lg overflow-hidden"
             >
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  إجراءات سريعة
-                </h2>
+              <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                    <Zap className="w-5 h-5 mr-2 text-blue-600" />
+                    إجراءات سريعة
+                  </h2>
+                  <div className="text-sm text-gray-500">
+                    {order.status === "draft"
+                      ? "مسودة"
+                      : order.status === "confirmed"
+                      ? "مؤكد"
+                      : order.status === "processing"
+                      ? "قيد المعالجة"
+                      : order.status === "ready"
+                      ? "جاهز"
+                      : order.status === "delivered"
+                      ? "تم التسليم"
+                      : "ملغي"}
+                  </div>
+                </div>
               </div>
-              <div className="p-6 space-y-3">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    setSelectedStatus(order.status);
-                    setShowStatusModal(true);
-                  }}
-                >
-                  <Edit className="w-4 h-4 mr-2" />
-                  تحديث حالة الطلب
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    setSelectedPaymentStatus(order.payment_status);
-                    setShowPaymentModal(true);
-                  }}
-                >
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  تحديث حالة الدفع
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => navigate(`/orders/${id}/edit`)}
-                >
-                  <Edit className="w-4 h-4 mr-2" />
-                  تعديل الطلب
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={handlePrint}
-                >
-                  <Printer className="w-4 h-4 mr-2" />
-                  طباعة الطلب
-                </Button>
+
+              <div className="p-6">
+                {/* Primary Actions */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                  <Button
+                    variant="primary"
+                    className="w-full justify-center text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                    onClick={() => {
+                      setSelectedStatus(order.status);
+                      setShowStatusModal(true);
+                    }}
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    تحديث حالة الطلب
+                  </Button>
+
+                  <Button
+                    variant="primary"
+                    className="w-full justify-center text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                    onClick={() => {
+                      setSelectedPaymentStatus(order.payment_status);
+                      setShowPaymentModal(true);
+                    }}
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    تحديث الدفع
+                  </Button>
+                </div>
+
+                {/* Secondary Actions */}
+                <div className="space-y-2">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start hover:bg-gray-50"
+                    onClick={() => navigate(`/orders/${id}/edit`)}
+                  >
+                    <Edit className="w-4 h-4 mr-2 text-blue-600" />
+                    تعديل تفاصيل الطلب
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start hover:bg-gray-50"
+                    onClick={handlePrint}
+                  >
+                    <Printer className="w-4 h-4 mr-2 text-purple-600" />
+                    طباعة فاتورة الطلب
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start hover:bg-gray-50"
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        `طلب رقم ${order.order_number || order.id} - €${(
+                          order.final_amount_eur ||
+                          order.total_amount_eur ||
+                          0
+                        ).toFixed(2)}`
+                      );
+                      toast.success("تم نسخ تفاصيل الطلب");
+                    }}
+                  >
+                    <Copy className="w-4 h-4 mr-2 text-indigo-600" />
+                    نسخ تفاصيل الطلب
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start hover:bg-gray-50"
+                    onClick={() => navigate("/orders")}
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2 text-gray-600" />
+                    العودة لقائمة الطلبات
+                  </Button>
+                </div>
+
+                {/* Quick Status Actions */}
+                {order.status === "draft" && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <p className="text-xs text-gray-500 mb-2">
+                      إجراءات سريعة للحالة:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleQuickStatusUpdate("confirmed")}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+                      >
+                        ✓ تأكيد الطلب
+                      </button>
+                      <button
+                        onClick={() => handleQuickStatusUpdate("cancelled")}
+                        className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200 transition-colors"
+                      >
+                        ✕ إلغاء الطلب
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {order.status === "confirmed" && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <p className="text-xs text-gray-500 mb-2">
+                      إجراءات سريعة للحالة:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleQuickStatusUpdate("processing")}
+                        className="px-3 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 transition-colors"
+                      >
+                        🔄 بدء المعالجة
+                      </button>
+                      <button
+                        onClick={() => handleQuickStatusUpdate("ready")}
+                        className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors"
+                      >
+                        ✅ جاهز للتسليم
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {order.status === "ready" && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <p className="text-xs text-gray-500 mb-2">
+                      إجراءات سريعة للحالة:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleQuickStatusUpdate("delivered")}
+                        className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors"
+                      >
+                        🚚 تم التسليم
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           </div>

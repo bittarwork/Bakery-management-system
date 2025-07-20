@@ -379,20 +379,7 @@ const OrdersListPage = () => {
     const amountEur = parseFloat(
       order.final_amount_eur || order.total_amount_eur || 0
     );
-    const amountSyp = parseFloat(
-      order.final_amount_syp || order.total_amount_syp || 0
-    );
-    const currency = order.currency || "EUR";
-
-    if (currency === "MIXED" && amountEur > 0 && amountSyp > 0) {
-      return `€${amountEur.toFixed(2)} + ${amountSyp.toLocaleString()} ل.س`;
-    }
-
-    if (currency === "EUR" || amountEur > 0) {
-      return `€${amountEur.toLocaleString()}`;
-    } else {
-      return `${amountSyp.toLocaleString()} ل.س`;
-    }
+    return `€${amountEur.toFixed(2)}`;
   };
 
   const getStatusColor = (status) => {
