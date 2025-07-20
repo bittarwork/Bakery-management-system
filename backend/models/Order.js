@@ -59,6 +59,35 @@ const Order = sequelize.define('Order', {
         allowNull: false,
         defaultValue: 0.00
     },
+    total_cost_eur: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.00
+    },
+    total_cost_syp: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: false,
+        defaultValue: 0.00
+    },
+    commission_eur: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.00
+    },
+    commission_syp: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: false,
+        defaultValue: 0.00
+    },
+    priority: {
+        type: DataTypes.ENUM('low', 'medium', 'high', 'urgent'),
+        allowNull: false,
+        defaultValue: 'medium'
+    },
+    scheduled_delivery_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: true
+    },
     currency: {
         type: DataTypes.ENUM('EUR', 'SYP', 'MIXED'),
         allowNull: false,
@@ -238,6 +267,30 @@ Order.findByStatus = async function (status, options = {}) {
         order: [['order_date', 'DESC']],
         limit: options.limit || 100
     });
+};
+
+Order.generateOrderNumber = async function () {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+
+    // Get the count of orders for today
+    const todayStart = new Date(year, today.getMonth(), today.getDate());
+    const todayEnd = new Date(year, today.getMonth(), today.getDate() + 1);
+
+    const todayOrdersCount = await this.count({
+        where: {
+            created_at: {
+                [sequelize.Sequelize.Op.gte]: todayStart,
+                [sequelize.Sequelize.Op.lt]: todayEnd
+            }
+        }
+    });
+
+    // Format: ORD-YYYYMMDD-XXXX (e.g., ORD-20241201-0001)
+    const sequenceNumber = String(todayOrdersCount + 1).padStart(4, '0');
+    return `ORD-${year}${month}${day}-${sequenceNumber}`;
 };
 
 Order.getStatistics = async function (dateFrom = null, dateTo = null) {
