@@ -275,11 +275,43 @@ export const createOrder = async (req, res) => {
                 unit_price_syp: product.price_syp,
                 total_price_eur: itemTotalEur,
                 total_price_syp: itemTotalSyp,
+                discount_amount_eur: 0.00, // No discounts for now
+                discount_amount_syp: 0.00, // No discounts for now
                 final_price_eur: itemTotalEur, // Same as total since no discounts
                 final_price_syp: itemTotalSyp, // Same as total since no discounts
-                final_price: itemTotalEur, // Add the missing final_price field
+                // Legacy columns for backward compatibility
+                unit_price: product.price_eur, // Legacy unit_price field
+                total_price: itemTotalEur, // Legacy total_price field
+                discount_amount: 0.00, // Legacy discount_amount field
+                final_price: itemTotalEur, // Legacy final_price field
+                // Product details
                 product_name: product.name,
-                product_unit: product.unit
+                product_unit: product.unit || 'piece',
+                product_barcode: product.barcode || null,
+                product_sku: product.sku || null,
+                product_description: product.description || null,
+                product_category: product.category || null,
+                supplier_id: product.supplier_id || null,
+                supplier_name: product.supplier_name || null,
+                unit: product.unit || 'piece',
+                // Delivery fields with defaults
+                delivered_quantity: 0,
+                returned_quantity: 0,
+                damaged_quantity: 0,
+                delivery_date: null,
+                delivery_status: 'pending',
+                delivery_notes: null,
+                delivery_confirmed_by: null,
+                delivery_confirmed_at: null,
+                tracking_number: null,
+                delivery_method: 'delivery',
+                estimated_delivery_date: null,
+                actual_delivery_date: null,
+                // Gift fields
+                gift_quantity: 0,
+                gift_reason: null,
+                // Notes
+                notes: null
             });
         }
 
