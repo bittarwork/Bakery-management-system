@@ -4,19 +4,11 @@
  */
 export class CreateOrderRequest {
     constructor(data) {
-        console.log('[DTO] Creating CreateOrderRequest with data:', JSON.stringify(data, null, 2));
         this.store_id = data.store_id;
         this.items = data.items || [];
         this.notes = data.notes || '';
         this.priority = data.priority || 'normal';
         this.scheduled_delivery_date = data.scheduled_delivery_date || null;
-        console.log('[DTO] Processed data:', {
-            store_id: this.store_id,
-            items_count: this.items.length,
-            notes: this.notes,
-            priority: this.priority,
-            scheduled_delivery_date: this.scheduled_delivery_date
-        });
     }
 
     /**

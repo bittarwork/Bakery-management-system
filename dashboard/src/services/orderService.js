@@ -117,8 +117,6 @@ class OrderService {
      */
     async createOrder(orderData) {
         try {
-            console.log('[OrderService] Creating order with data:', JSON.stringify(orderData, null, 2));
-
             // Enhanced order data validation and formatting
             const formattedData = {
                 ...orderData,
@@ -134,14 +132,10 @@ class OrderService {
                 payment_status: orderData.payment_status || 'pending',
             };
 
-            console.log('[OrderService] Formatted data:', JSON.stringify(formattedData, null, 2));
             const response = await apiService.post(this.baseEndpoint, formattedData);
             return response;
         } catch (error) {
             console.error('Error creating order:', error);
-            if (error.response?.data) {
-                console.error('Error response data:', JSON.stringify(error.response.data, null, 2));
-            }
             return {
                 success: false,
                 message: error.response?.data?.message || error.message || 'خطأ في إنشاء الطلب',
