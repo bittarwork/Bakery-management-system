@@ -70,6 +70,151 @@ import { DeleteConfirmationModal } from "../../components/ui/Modal";
 import { productService } from "../../services/productService";
 import { toast } from "react-hot-toast";
 
+// Quick Actions Component for Product Table
+const ProductQuickActions = ({
+  product,
+  onView,
+  onEdit,
+  onToggleStatus,
+  onToggleFeatured,
+  onDelete,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <div className="flex items-center gap-2">
+        {/* Primary Actions */}
+        <EnhancedButton
+          onClick={onView}
+          variant="primary"
+          size="sm"
+          icon={<Eye className="w-3 h-3" />}
+        >
+          عرض
+        </EnhancedButton>
+        <EnhancedButton
+          onClick={onEdit}
+          variant="warning"
+          size="sm"
+          icon={<Edit className="w-3 h-3" />}
+        >
+          تعديل
+        </EnhancedButton>
+
+        {/* More Actions Dropdown */}
+        <div className="relative">
+          <EnhancedButton
+            onClick={() => setIsOpen(!isOpen)}
+            variant="secondary"
+            size="sm"
+            icon={<MoreVertical className="w-3 h-3" />}
+          >
+            المزيد
+          </EnhancedButton>
+
+          {isOpen && (
+            <>
+              {/* Overlay to close dropdown */}
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setIsOpen(false)}
+              />
+
+              {/* Dropdown Menu */}
+              <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-20">
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      onToggleStatus();
+                      setIsOpen(false);
+                    }}
+                    className="w-full px-4 py-2 text-right text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+                  >
+                    {product.status === "active" ? (
+                      <>
+                        <XCircle className="w-4 h-4 text-red-500" />
+                        إلغاء التفعيل
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        تفعيل
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      onToggleFeatured();
+                      setIsOpen(false);
+                    }}
+                    className="w-full px-4 py-2 text-right text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+                  >
+                    {product.is_featured ? (
+                      <>
+                        <StarOff className="w-4 h-4 text-yellow-500" />
+                        إزالة التمييز
+                      </>
+                    ) : (
+                      <>
+                        <Star className="w-4 h-4 text-yellow-500" />
+                        جعل مميز
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        window.location.origin + `/products/${product.id}`
+                      );
+                      toast.success("تم نسخ رابط المنتج");
+                      setIsOpen(false);
+                    }}
+                    className="w-full px-4 py-2 text-right text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+                  >
+                    <Copy className="w-4 h-4 text-blue-500" />
+                    نسخ الرابط
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      // Navigate to duplicate with product data
+                      window.open(
+                        `/products/create?duplicate=${product.id}`,
+                        "_blank"
+                      );
+                      setIsOpen(false);
+                    }}
+                    className="w-full px-4 py-2 text-right text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+                  >
+                    <Archive className="w-4 h-4 text-purple-500" />
+                    نسخ المنتج
+                  </button>
+
+                  <hr className="my-1" />
+
+                  <button
+                    onClick={() => {
+                      onDelete();
+                      setIsOpen(false);
+                    }}
+                    className="w-full px-4 py-2 text-right text-sm text-red-600 hover:bg-red-50 flex items-center gap-3"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    حذف المنتج
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ProductsListPage = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
@@ -142,7 +287,23 @@ const ProductsListPage = () => {
     loadProducts();
     loadStatistics();
     // loadCategories(); // Commented out until backend endpoint is implemented
-  }, [pagination.currentPage, filters]);
+  }, [pagination.currentPage]);
+
+  // Separate effect for filters with debounce for search
+  useEffect(() => {
+    const timeoutId = setTimeout(
+      () => {
+        if (pagination.currentPage === 1) {
+          loadProducts();
+        } else {
+          setPagination((prev) => ({ ...prev, currentPage: 1 }));
+        }
+      },
+      filters.search ? 500 : 0
+    ); // 500ms delay for search, immediate for other filters
+
+    return () => clearTimeout(timeoutId);
+  }, [filters]);
 
   const loadProducts = async () => {
     try {
@@ -1200,60 +1361,24 @@ const ProductsListPage = () => {
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <div className="flex items-center gap-2">
-                                  <EnhancedButton
-                                    onClick={() =>
-                                      navigate(`/products/${product.id}`)
-                                    }
-                                    variant="primary"
-                                    size="sm"
-                                    icon={<Eye className="w-3 h-3" />}
-                                  >
-                                    عرض
-                                  </EnhancedButton>
-                                  <EnhancedButton
-                                    onClick={() =>
-                                      navigate(`/products/${product.id}/edit`)
-                                    }
-                                    variant="warning"
-                                    size="sm"
-                                    icon={<Edit className="w-3 h-3" />}
-                                  >
-                                    تعديل
-                                  </EnhancedButton>
-                                  <EnhancedButton
-                                    onClick={() =>
-                                      handleToggleStatus(product.id)
-                                    }
-                                    variant={
-                                      product.status === "active"
-                                        ? "danger"
-                                        : "success"
-                                    }
-                                    size="sm"
-                                    icon={
-                                      product.status === "active" ? (
-                                        <XCircle className="w-3 h-3" />
-                                      ) : (
-                                        <CheckCircle className="w-3 h-3" />
-                                      )
-                                    }
-                                  >
-                                    {product.status === "active"
-                                      ? "إلغاء تفعيل"
-                                      : "تفعيل"}
-                                  </EnhancedButton>
-                                  <EnhancedButton
-                                    onClick={() =>
-                                      handleDelete(product.id, product.name)
-                                    }
-                                    variant="danger"
-                                    size="sm"
-                                    icon={<Trash2 className="w-3 h-3" />}
-                                  >
-                                    حذف
-                                  </EnhancedButton>
-                                </div>
+                                <ProductQuickActions
+                                  product={product}
+                                  onView={() =>
+                                    navigate(`/products/${product.id}`)
+                                  }
+                                  onEdit={() =>
+                                    navigate(`/products/${product.id}/edit`)
+                                  }
+                                  onToggleStatus={() =>
+                                    handleToggleStatus(product.id)
+                                  }
+                                  onToggleFeatured={() =>
+                                    handleToggleFeatured(product.id)
+                                  }
+                                  onDelete={() =>
+                                    handleDelete(product.id, product.name)
+                                  }
+                                />
                               </td>
                             </motion.tr>
                           );

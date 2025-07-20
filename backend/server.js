@@ -137,6 +137,9 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Serve static files (uploaded images)
+app.use('/uploads', express.static(path.join(__dirname, 'storage/uploads')));
+
 // Request logging middleware
 if (process.env.NODE_ENV !== 'test') {
     app.use(requestLogger);

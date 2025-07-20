@@ -532,7 +532,7 @@ const CreateProductPage = () => {
             </div>
           </CardHeader>
           <CardBody className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Price (EUR) *
@@ -545,14 +545,22 @@ const CreateProductPage = () => {
                   onChange={(e) => handleChange("price_eur", e.target.value)}
                   placeholder="0.00"
                   error={errors.price_eur}
-                  icon={<span className="text-gray-500">€</span>}
+                  icon={<span className="text-green-600 font-medium">€</span>}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Primary pricing in EUR (Euro) - Required
+                </p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Price (SYP)
-                </label>
+              <div className="pt-4 border-t border-gray-200">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium text-gray-600">
+                    Alternative Price (SYP)
+                  </label>
+                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                    Optional
+                  </span>
+                </div>
                 <Input
                   type="number"
                   step="0.01"
@@ -561,8 +569,11 @@ const CreateProductPage = () => {
                   onChange={(e) => handleChange("price_syp", e.target.value)}
                   placeholder="0.00"
                   error={errors.price_syp}
-                  icon={<span className="text-gray-500">₺</span>}
+                  icon={<span className="text-gray-400">ل.س</span>}
                 />
+                <p className="text-xs text-gray-400 mt-1">
+                  Alternative pricing in Syrian Pound (optional)
+                </p>
               </div>
             </div>
 

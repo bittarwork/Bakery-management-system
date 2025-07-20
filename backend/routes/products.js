@@ -19,13 +19,17 @@ import {
     getProductInventory,
     getProductRecommendations,
     getProductPriceHistory,
-    getProductVariants
+    getProductVariants,
+    uploadProductImage,
+    uploadProductImages,
+    deleteProductImage
 } from '../controllers/productController.js';
 import {
     validateCreateProduct,
     validateUpdateProduct
 } from '../validators/productValidators.js';
 import { protect } from '../middleware/auth.js';
+import { uploadSingle, uploadMultiple, handleUploadError } from '../middleware/upload.js';
 
 const router = express.Router();
 
@@ -131,5 +135,20 @@ router.patch('/:id/toggle-featured', toggleProductFeatured);
 // @route   DELETE /api/products/:id
 // @access  Private
 router.delete('/:id', deleteProduct);
+
+// @desc    رفع صورة للمنتج
+// @route   POST /api/products/:id/image
+// @access  Private
+router.post('/:id/image', uploadSingle, handleUploadError, uploadProductImage);
+
+// @desc    رفع صور متعددة للمنتج
+// @route   POST /api/products/:id/images
+// @access  Private
+router.post('/:id/images', uploadMultiple, handleUploadError, uploadProductImages);
+
+// @desc    حذف صورة المنتج
+// @route   DELETE /api/products/:id/image
+// @access  Private
+router.delete('/:id/image', deleteProductImage);
 
 export default router; 

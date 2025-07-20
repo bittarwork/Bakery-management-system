@@ -446,10 +446,19 @@ const ProductDetailsPage = () => {
 
   // Format currency
   const formatCurrency = (amount, currency = "EUR") => {
+    // Handle invalid amounts
+    const numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount) || amount === null || amount === undefined) {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: currency,
+      }).format(0);
+    }
+
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: currency,
-    }).format(amount);
+    }).format(numericAmount);
   };
 
   // Format date
@@ -704,30 +713,35 @@ const ProductDetailsPage = () => {
                           السعر والتكلفة
                         </h3>
                         <div className="space-y-4">
-                          <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                          {/* Primary Price in EUR */}
+                          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
                             <span className="text-sm font-medium text-gray-700">
-                              السعر (يورو)
+                              السعر الأساسي
                             </span>
                             <div className="flex items-center gap-2">
-                              <Euro className="w-4 h-4 text-green-600" />
-                              <span className="text-lg font-bold text-green-600">
+                              <Euro className="w-5 h-5 text-green-600" />
+                              <span className="text-2xl font-bold text-green-700">
                                 {formatCurrency(product.price_eur, "EUR")}
                               </span>
                             </div>
                           </div>
+
+                          {/* Alternative Price in SYP - if available */}
                           {product.price_syp > 0 && (
-                            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                              <span className="text-sm font-medium text-gray-700">
-                                السعر (ليرة سورية)
+                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                              <span className="text-xs font-medium text-gray-500">
+                                سعر بديل (ليرة سورية)
                               </span>
-                              <div className="flex items-center gap-2">
-                                <Coins className="w-4 h-4 text-blue-600" />
-                                <span className="text-lg font-bold text-blue-600">
+                              <div className="flex items-center gap-1">
+                                <Coins className="w-3 h-3 text-gray-500" />
+                                <span className="text-sm font-medium text-gray-600">
                                   {product.price_syp.toLocaleString()} ل.س
                                 </span>
                               </div>
                             </div>
                           )}
+
+                          {/* Cost in EUR - if available */}
                           {product.cost_eur > 0 && (
                             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                               <span className="text-sm font-medium text-gray-700">

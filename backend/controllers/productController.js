@@ -2,6 +2,12 @@ import Product from '../models/Product.js';
 import { validationResult } from 'express-validator';
 import sequelize from '../config/database.js';
 import { Op } from 'sequelize';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // @desc    الحصول على جميع المنتجات مع التصفية والبحث
 // @route   GET /api/products
@@ -740,11 +746,17 @@ export const getProductSalesHistory = async (req, res) => {
         // بيانات وهمية لتاريخ المبيعات
         const salesHistory = [];
         for (let i = 0; i < 10; i++) {
+            const quantity = Math.floor(Math.random() * 20) + 1;
+            const unitPrice = parseFloat(product.price_eur) || 10;
+            const totalAmount = (quantity * unitPrice).toFixed(2);
+
             salesHistory.push({
                 date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                quantity: Math.floor(Math.random() * 20) + 1,
-                revenue: (Math.random() * 100 + 50).toFixed(2),
-                customer: `Customer ${i + 1}`
+                quantity: quantity,
+                total_amount: parseFloat(totalAmount),
+                unit_price: unitPrice,
+                store_name: `Store ${i + 1}`,
+                currency: 'EUR'
             });
         }
 
@@ -1055,6 +1067,169 @@ export const exportProducts = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'فشل في تصدير المنتجات',
+            error: error.message
+        });
+    }
+};
+
+// @desc    Upload product image
+// @route   POST /api/products/:id/image
+// @access  Private
+export const uploadProductImage = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Check if product exists
+        const product = await Product.findByPk(id);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Product not found'
+            });
+        }
+
+        // Check if file was uploaded
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'No image file provided'
+            });
+        }
+
+        // Generate image URL
+        const baseUrl = req.protocol + '://' + req.get('host');
+        const imageUrl = `${baseUrl}/uploads/${req.file.filename}`;
+
+        // Delete old image if exists
+        if (product.image_url) {
+            const oldImagePath = product.image_url.replace(`${baseUrl}/uploads/`, '');
+            const fullPath = path.join(__dirname, '../storage/uploads', oldImagePath);
+
+            fs.unlink(fullPath, (err) => {
+                if (err) console.log('Error deleting old image:', err);
+            });
+        }
+
+        // Update product with new image URL
+        await product.update({ image_url: imageUrl });
+
+        res.json({
+            success: true,
+            data: {
+                image_url: imageUrl,
+                filename: req.file.filename
+            },
+            message: 'تم رفع الصورة بنجاح'
+        });
+
+    } catch (error) {
+        console.error('[PRODUCTS] Image upload failed:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في رفع الصورة',
+            error: error.message
+        });
+    }
+};
+
+// @desc    Upload multiple product images
+// @route   POST /api/products/:id/images
+// @access  Private
+export const uploadProductImages = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Check if product exists
+        const product = await Product.findByPk(id);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Product not found'
+            });
+        }
+
+        // Check if files were uploaded
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No image files provided'
+            });
+        }
+
+        // Generate image URLs
+        const baseUrl = req.protocol + '://' + req.get('host');
+        const uploadedImages = req.files.map(file => ({
+            filename: file.filename,
+            url: `${baseUrl}/uploads/${file.filename}`,
+            size: file.size,
+            mimetype: file.mimetype
+        }));
+
+        res.json({
+            success: true,
+            data: {
+                images: uploadedImages,
+                count: uploadedImages.length
+            },
+            message: 'تم رفع الصور بنجاح'
+        });
+
+    } catch (error) {
+        console.error('[PRODUCTS] Images upload failed:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في رفع الصور',
+            error: error.message
+        });
+    }
+};
+
+// @desc    Delete product image
+// @route   DELETE /api/products/:id/image
+// @access  Private
+export const deleteProductImage = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Check if product exists
+        const product = await Product.findByPk(id);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Product not found'
+            });
+        }
+
+        if (!product.image_url) {
+            return res.status(400).json({
+                success: false,
+                message: 'No image to delete'
+            });
+        }
+
+        // Extract filename from URL
+        const baseUrl = req.protocol + '://' + req.get('host');
+        const imagePath = product.image_url.replace(`${baseUrl}/uploads/`, '');
+        const fullPath = path.join(__dirname, '../storage/uploads', imagePath);
+
+        // Delete physical file
+        fs.unlink(fullPath, (err) => {
+            if (err) console.log('Error deleting image file:', err);
+        });
+
+        // Update product to remove image URL
+        await product.update({ image_url: null });
+
+        res.json({
+            success: true,
+            message: 'تم حذف الصورة بنجاح'
+        });
+
+    } catch (error) {
+        console.error('[PRODUCTS] Image deletion failed:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في حذف الصورة',
             error: error.message
         });
     }
