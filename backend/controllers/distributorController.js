@@ -1,479 +1,655 @@
-import { validationResult } from 'express-validator';
-import { Op } from 'sequelize';
-import { Distributor, User, DistributionTrip, Order, getSequelizeConnection } from '../models/index.js';
+/**
+ * Distributor Assignment Controller
+ * Handles distributor management and order assignments
+ * Phase 6 - Complete Order Management
+ */
 
-// @desc    الحصول على جميع الموزعين
-// @route   GET /api/distributors
-// @access  Private
-export const getDistributors = async (req, res) => {
-    try {
-        const {
-            page = 1,
-            limit = 10,
-            search,
-            status,
-            is_active,
-            sort_by = 'created_at',
-            sort_order = 'DESC'
-        } = req.query;
+const db = require('../config/database');
+const logger = require('../config/logger');
 
-        const offset = (page - 1) * limit;
-        const whereClause = {};
+class DistributorController {
+    /**
+     * Get all available distributors
+     * GET /api/distributors
+     */
+    static async getDistributors(req, res) {
+        try {
+            const {
+                page = 1,
+                limit = 10,
+                status = 'active',
+                search
+            } = req.query;
 
-        // Search filter
-        if (search) {
-            whereClause[Op.or] = [
-                { '$user.full_name$': { [Op.like]: `%${search}%` } },
-                { '$user.username$': { [Op.like]: `%${search}%` } },
-                { '$user.phone$': { [Op.like]: `%${search}%` } },
-                { '$user.email$': { [Op.like]: `%${search}%` } }
-            ];
-        }
+            const offset = (page - 1) * limit;
+            let whereClause = "WHERE role IN ('distributor', 'admin')";
+            const params = [];
 
-        // Status filter
-        if (status) {
-            whereClause.status = status;
-        }
-
-        // Active filter
-        if (is_active !== undefined) {
-            whereClause.is_active = is_active === 'true';
-        }
-
-        const { count, rows: distributors } = await Distributor.findAndCountAll({
-            where: whereClause,
-            include: [
-                {
-                    model: User,
-                    as: 'user',
-                    attributes: ['id', 'full_name', 'username', 'phone', 'email']
-                }
-            ],
-            order: [[sort_by, sort_order]],
-            limit: parseInt(limit),
-            offset: parseInt(offset)
-        });
-
-        res.json({
-            success: true,
-            data: distributors,
-            pagination: {
-                current_page: parseInt(page),
-                total_pages: Math.ceil(count / limit),
-                total_items: count,
-                items_per_page: parseInt(limit)
+            if (status) {
+                whereClause += ' AND status = ?';
+                params.push(status);
             }
-        });
-    } catch (error) {
-        console.error('[DISTRIBUTORS] Failed to fetch distributors:', error.message);
-        res.status(500).json({
-            success: false,
-            message: 'خطأ في جلب الموزعين',
-            error: error.message
-        });
-    }
-};
 
-// @desc    الحصول على موزع واحد
-// @route   GET /api/distributors/:id
-// @access  Private
-export const getDistributor = async (req, res) => {
-    try {
-        const { id } = req.params;
+            if (search) {
+                whereClause += ' AND (name LIKE ? OR email LIKE ? OR phone LIKE ?)';
+                params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+            }
 
-        const distributor = await Distributor.findByPk(id, {
-            include: [
-                {
-                    model: User,
-                    as: 'user',
-                    attributes: { exclude: ['password'] }
+            // Get total count
+            const countQuery = `SELECT COUNT(*) as total FROM users ${whereClause}`;
+            const countResult = await db.get(countQuery, params);
+            const totalItems = countResult.total;
+
+            // Get distributors with their current assignments
+            const distributorsQuery = `
+                SELECT 
+                    u.*,
+                    COUNT(da.id) as active_assignments,
+                    COUNT(CASE WHEN da.status = 'completed' THEN 1 END) as completed_deliveries,
+                    AVG(CASE 
+                        WHEN da.actual_delivery IS NOT NULL AND da.estimated_delivery IS NOT NULL
+                        THEN JULIANDAY(da.actual_delivery) - JULIANDAY(da.estimated_delivery)
+                    END) as avg_delivery_delay_days
+                FROM users u
+                LEFT JOIN distributor_assignments da ON u.id = da.distributor_id 
+                    AND da.created_at >= date('now', '-30 days')
+                ${whereClause}
+                GROUP BY u.id
+                ORDER BY u.name
+                LIMIT ? OFFSET ?
+            `;
+
+            const distributors = await db.all(distributorsQuery, [...params, limit, offset]);
+
+            // Format the results
+            const formattedDistributors = distributors.map(distributor => ({
+                ...distributor,
+                performance_metrics: {
+                    active_assignments: distributor.active_assignments || 0,
+                    completed_deliveries: distributor.completed_deliveries || 0,
+                    avg_delivery_delay_days: distributor.avg_delivery_delay_days || 0,
+                    efficiency_score: this.calculateEfficiencyScore(distributor)
                 }
-            ]
-        });
+            }));
 
-        if (!distributor) {
-            return res.status(404).json({
+            res.json({
+                success: true,
+                data: {
+                    distributors: formattedDistributors,
+                    pagination: {
+                        currentPage: parseInt(page),
+                        totalPages: Math.ceil(totalItems / limit),
+                        totalItems,
+                        itemsPerPage: parseInt(limit)
+                    }
+                }
+            });
+
+        } catch (error) {
+            logger.error('Error fetching distributors:', error);
+            res.status(500).json({
                 success: false,
-                message: 'الموزع غير موجود'
+                message: 'خطأ في جلب الموزعين',
+                error: error.message
             });
         }
-
-        res.json({
-            success: true,
-            data: distributor
-        });
-    } catch (error) {
-        console.error('[DISTRIBUTORS] Failed to fetch distributor:', error.message);
-        res.status(500).json({
-            success: false,
-            message: 'خطأ في جلب الموزع',
-            error: error.message
-        });
     }
-};
 
-// @desc    إنشاء موزع جديد
-// @route   POST /api/distributors
-// @access  Private (Admin/Manager only)
-export const createDistributor = async (req, res) => {
-    try {
-        // Check permissions
-        if (req.user.role !== 'admin' && req.user.role !== 'manager') {
-            return res.status(403).json({
-                success: false,
-                message: 'غير مصرح لك بإنشاء موزعين جدد'
-            });
-        }
+    /**
+     * Assign distributor to order(s)
+     * POST /api/distributors/assign
+     */
+    static async assignDistributor(req, res) {
+        const db_transaction = await db.beginTransaction();
 
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({
-                success: false,
-                message: 'بيانات غير صحيحة',
-                errors: errors.array()
-            });
-        }
+        try {
+            const {
+                order_ids, // Array of order IDs or single order ID
+                distributor_id,
+                estimated_delivery,
+                delivery_priority = 'normal',
+                notes,
+                vehicle_info,
+                route_info
+            } = req.body;
 
-        const {
-            user_id,
-            vehicle_info,
-            salary_eur = 0,
-            salary_syp = 0,
-            commission_rate = 0,
-            working_hours,
-            area_coverage,
-            max_orders_per_day = 50,
-            performance_rating = 0,
-            notes,
-            is_active = true,
-            status = 'available'
-        } = req.body;
+            // Validation
+            if (!order_ids || !distributor_id) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'معرف الطلب والموزع مطلوبان'
+                });
+            }
 
-        // Verify user exists and is a distributor
-        const user = await User.findByPk(user_id);
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'المستخدم غير موجود'
-            });
-        }
+            // Ensure order_ids is an array
+            const orderIds = Array.isArray(order_ids) ? order_ids : [order_ids];
 
-        if (user.role !== 'distributor') {
-            return res.status(400).json({
-                success: false,
-                message: 'المستخدم يجب أن يكون موزعاً'
-            });
-        }
+            // Validate distributor exists and has correct role
+            const distributor = await db.get(
+                "SELECT * FROM users WHERE id = ? AND role IN ('distributor', 'admin')",
+                [distributor_id]
+            );
 
-        // Check if distributor already exists
-        const existingDistributor = await Distributor.findOne({
-            where: { user_id }
-        });
+            if (!distributor) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'الموزع غير موجود أو غير مخول للتوزيع'
+                });
+            }
 
-        if (existingDistributor) {
-            return res.status(409).json({
-                success: false,
-                message: 'الموزع موجود مسبقاً'
-            });
-        }
+            const results = {
+                total_assignments: orderIds.length,
+                successful_assignments: 0,
+                failed_assignments: 0,
+                errors: []
+            };
 
-        const distributor = await Distributor.create({
-            user_id,
-            vehicle_info,
-            salary_eur,
-            salary_syp,
-            commission_rate,
-            working_hours,
-            area_coverage,
-            max_orders_per_day,
-            performance_rating,
-            notes,
-            is_active,
-            status,
-            created_by: req.user.id
-        });
+            for (const order_id of orderIds) {
+                try {
+                    // Check if order exists and can be assigned
+                    const order = await db.get(
+                        "SELECT * FROM orders WHERE id = ? AND status IN ('confirmed', 'processing')",
+                        [order_id]
+                    );
 
-        res.status(201).json({
-            success: true,
-            data: distributor,
-            message: 'تم إنشاء الموزع بنجاح'
-        });
-    } catch (error) {
-        console.error('[DISTRIBUTORS] Failed to create distributor:', error.message);
-        res.status(500).json({
-            success: false,
-            message: 'خطأ في إنشاء الموزع',
-            error: error.message
-        });
-    }
-};
+                    if (!order) {
+                        results.errors.push(`الطلب ${order_id} غير موجود أو لا يمكن تعيين موزع له`);
+                        results.failed_assignments++;
+                        continue;
+                    }
 
-// @desc    تحديث موزع
-// @route   PUT /api/distributors/:id
-// @access  Private (Admin/Manager only)
-export const updateDistributor = async (req, res) => {
-    try {
-        // Check permissions
-        if (req.user.role !== 'admin' && req.user.role !== 'manager') {
-            return res.status(403).json({
-                success: false,
-                message: 'غير مصرح لك بتحديث الموزعين'
-            });
-        }
+                    // Check if order is already assigned
+                    const existingAssignment = await db.get(
+                        'SELECT * FROM distributor_assignments WHERE order_id = ? AND status IN ("assigned", "in_progress")',
+                        [order_id]
+                    );
 
-        const { id } = req.params;
-        const {
-            vehicle_info,
-            salary_eur,
-            salary_syp,
-            commission_rate,
-            working_hours,
-            area_coverage,
-            max_orders_per_day,
-            performance_rating,
-            notes,
-            is_active,
-            status
-        } = req.body;
+                    if (existingAssignment) {
+                        // Update existing assignment
+                        await db.run(`
+                            UPDATE distributor_assignments 
+                            SET distributor_id = ?, 
+                                estimated_delivery = ?,
+                                delivery_priority = ?,
+                                notes = ?,
+                                vehicle_info = ?,
+                                route_info = ?,
+                                assigned_by = ?,
+                                updated_at = CURRENT_TIMESTAMP
+                            WHERE id = ?
+                        `, [
+                            distributor_id,
+                            estimated_delivery,
+                            delivery_priority,
+                            notes,
+                            vehicle_info ? JSON.stringify(vehicle_info) : null,
+                            route_info ? JSON.stringify(route_info) : null,
+                            req.user?.id,
+                            existingAssignment.id
+                        ]);
+                    } else {
+                        // Create new assignment
+                        await db.run(`
+                            INSERT INTO distributor_assignments 
+                            (order_id, distributor_id, estimated_delivery, delivery_priority, 
+                             notes, vehicle_info, route_info, assigned_by)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        `, [
+                            order_id,
+                            distributor_id,
+                            estimated_delivery,
+                            delivery_priority,
+                            notes,
+                            vehicle_info ? JSON.stringify(vehicle_info) : null,
+                            route_info ? JSON.stringify(route_info) : null,
+                            req.user?.id
+                        ]);
+                    }
 
-        const distributor = await Distributor.findByPk(id);
+                    // Update order status if needed
+                    await db.run(
+                        "UPDATE orders SET status = 'processing', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'confirmed'",
+                        [order_id]
+                    );
 
-        if (!distributor) {
-            return res.status(404).json({
-                success: false,
-                message: 'الموزع غير موجود'
-            });
-        }
+                    results.successful_assignments++;
 
-        const updateData = {};
-        if (vehicle_info !== undefined) updateData.vehicle_info = vehicle_info;
-        if (salary_eur !== undefined) updateData.salary_eur = salary_eur;
-        if (salary_syp !== undefined) updateData.salary_syp = salary_syp;
-        if (commission_rate !== undefined) updateData.commission_rate = commission_rate;
-        if (working_hours !== undefined) updateData.working_hours = working_hours;
-        if (area_coverage !== undefined) updateData.area_coverage = area_coverage;
-        if (max_orders_per_day !== undefined) updateData.max_orders_per_day = max_orders_per_day;
-        if (performance_rating !== undefined) updateData.performance_rating = performance_rating;
-        if (notes !== undefined) updateData.notes = notes;
-        if (is_active !== undefined) updateData.is_active = is_active;
-        if (status !== undefined) updateData.status = status;
-
-        await distributor.update(updateData);
-
-        res.json({
-            success: true,
-            data: distributor,
-            message: 'تم تحديث الموزع بنجاح'
-        });
-    } catch (error) {
-        console.error('[DISTRIBUTORS] Failed to update distributor:', error.message);
-        res.status(500).json({
-            success: false,
-            message: 'خطأ في تحديث الموزع',
-            error: error.message
-        });
-    }
-};
-
-// @desc    حذف موزع
-// @route   DELETE /api/distributors/:id
-// @access  Private (Admin only)
-export const deleteDistributor = async (req, res) => {
-    try {
-        // Check permissions
-        if (req.user.role !== 'admin') {
-            return res.status(403).json({
-                success: false,
-                message: 'غير مصرح لك بحذف الموزعين'
-            });
-        }
-
-        const { id } = req.params;
-
-        const distributor = await Distributor.findByPk(id);
-
-        if (!distributor) {
-            return res.status(404).json({
-                success: false,
-                message: 'الموزع غير موجود'
-            });
-        }
-
-        // Check for active trips
-        const activeTrips = await DistributionTrip.count({
-            where: {
-                distributor_id: id,
-                status: {
-                    [Op.in]: ['pending', 'in_progress']
+                } catch (assignmentError) {
+                    logger.error(`Error assigning distributor to order ${order_id}:`, assignmentError);
+                    results.errors.push(`خطأ في تعيين الموزع للطلب ${order_id}: ${assignmentError.message}`);
+                    results.failed_assignments++;
                 }
             }
-        });
 
-        if (activeTrips > 0) {
-            return res.status(400).json({
+            await db_transaction.commit();
+
+            res.json({
+                success: true,
+                message: `تم تعيين الموزع لـ ${results.successful_assignments} من ${results.total_assignments} طلب بنجاح`,
+                data: results
+            });
+
+        } catch (error) {
+            await db_transaction.rollback();
+            logger.error('Error assigning distributor:', error);
+            res.status(500).json({
                 success: false,
-                message: 'لا يمكن حذف الموزع لوجود رحلات نشطة'
+                message: 'خطأ في تعيين الموزع',
+                error: error.message
             });
         }
-
-        await distributor.destroy();
-
-        res.json({
-            success: true,
-            message: 'تم حذف الموزع بنجاح'
-        });
-    } catch (error) {
-        console.error('[DISTRIBUTORS] Failed to delete distributor:', error.message);
-        res.status(500).json({
-            success: false,
-            message: 'خطأ في حذف الموزع',
-            error: error.message
-        });
     }
-};
 
-// @desc    تحديث حالة الموزع
-// @route   PATCH /api/distributors/:id/status
-// @access  Private (Admin/Manager only)
-export const updateDistributorStatus = async (req, res) => {
-    try {
-        // Check permissions
-        if (req.user.role !== 'admin' && req.user.role !== 'manager') {
-            return res.status(403).json({
-                success: false,
-                message: 'غير مصرح لك بتحديث حالة الموزعين'
-            });
-        }
+    /**
+     * Get distributor assignments
+     * GET /api/distributors/assignments
+     */
+    static async getDistributorAssignments(req, res) {
+        try {
+            const {
+                distributor_id,
+                order_id,
+                status,
+                date_from,
+                date_to,
+                page = 1,
+                limit = 10
+            } = req.query;
 
-        const { id } = req.params;
-        const { status } = req.body;
+            const offset = (page - 1) * limit;
+            let whereClause = 'WHERE 1=1';
+            const params = [];
 
-        const distributor = await Distributor.findByPk(id);
+            if (distributor_id) {
+                whereClause += ' AND da.distributor_id = ?';
+                params.push(distributor_id);
+            }
 
-        if (!distributor) {
-            return res.status(404).json({
-                success: false,
-                message: 'الموزع غير موجود'
-            });
-        }
+            if (order_id) {
+                whereClause += ' AND da.order_id = ?';
+                params.push(order_id);
+            }
 
-        // Validate status
-        const allowedStatuses = ['available', 'busy', 'off_duty', 'suspended'];
-        if (!allowedStatuses.includes(status)) {
-            return res.status(400).json({
-                success: false,
-                message: 'حالة الموزع غير صحيحة'
-            });
-        }
+            if (status) {
+                whereClause += ' AND da.status = ?';
+                params.push(status);
+            }
 
-        await distributor.update({ status });
+            if (date_from) {
+                whereClause += ' AND da.assigned_at >= ?';
+                params.push(date_from);
+            }
 
-        res.json({
-            success: true,
-            data: { distributor_id: id, status },
-            message: 'تم تحديث حالة الموزع بنجاح'
-        });
-    } catch (error) {
-        console.error('[DISTRIBUTORS] Failed to update distributor status:', error.message);
-        res.status(500).json({
-            success: false,
-            message: 'خطأ في تحديث حالة الموزع',
-            error: error.message
-        });
-    }
-};
+            if (date_to) {
+                whereClause += ' AND da.assigned_at <= ?';
+                params.push(date_to + ' 23:59:59');
+            }
 
-// @desc    الحصول على إحصائيات الموزعين
-// @route   GET /api/distributors/statistics
-// @access  Private
-export const getDistributorsStatistics = async (req, res) => {
-    try {
-        const stats = await Distributor.getDistributorStatistics();
+            // Get total count
+            const countQuery = `SELECT COUNT(*) as total FROM distributor_assignments da ${whereClause}`;
+            const countResult = await db.get(countQuery, params);
+            const totalItems = countResult.total;
 
-        res.json({
-            success: true,
-            data: stats,
-            message: 'تم جلب إحصائيات الموزعين بنجاح'
-        });
-    } catch (error) {
-        console.error('[DISTRIBUTORS] Failed to fetch distributor statistics:', error.message);
-        res.status(500).json({
-            success: false,
-            message: 'خطأ في جلب إحصائيات الموزعين',
-            error: error.message
-        });
-    }
-};
+            // Get assignments with related data
+            const assignmentsQuery = `
+                SELECT 
+                    da.*,
+                    o.order_number,
+                    o.total_amount_eur,
+                    o.status as order_status,
+                    o.delivery_date as order_delivery_date,
+                    d.name as distributor_name,
+                    d.phone as distributor_phone,
+                    d.email as distributor_email,
+                    s.name as store_name,
+                    s.address as store_address,
+                    ab.name as assigned_by_name,
+                    CASE 
+                        WHEN da.actual_delivery IS NOT NULL AND da.estimated_delivery IS NOT NULL
+                        THEN ROUND(JULIANDAY(da.actual_delivery) - JULIANDAY(da.estimated_delivery), 1)
+                        ELSE NULL
+                    END as delivery_delay_days
+                FROM distributor_assignments da
+                LEFT JOIN orders o ON da.order_id = o.id
+                LEFT JOIN users d ON da.distributor_id = d.id
+                LEFT JOIN stores s ON o.store_id = s.id
+                LEFT JOIN users ab ON da.assigned_by = ab.id
+                ${whereClause}
+                ORDER BY da.assigned_at DESC
+                LIMIT ? OFFSET ?
+            `;
 
-// @desc    الحصول على الموزعين المتاحين
-// @route   GET /api/distributors/available
-// @access  Private
-export const getAvailableDistributors = async (req, res) => {
-    try {
-        const distributors = await Distributor.findAll({
-            where: {
-                is_active: true,
-                status: 'available'
-            },
-            include: [
-                {
-                    model: User,
-                    as: 'user',
-                    attributes: ['id', 'full_name', 'username', 'phone']
+            const assignments = await db.all(assignmentsQuery, [...params, limit, offset]);
+
+            // Parse JSON fields and format data
+            const formattedAssignments = assignments.map(assignment => ({
+                ...assignment,
+                vehicle_info: assignment.vehicle_info ? JSON.parse(assignment.vehicle_info) : null,
+                route_info: assignment.route_info ? JSON.parse(assignment.route_info) : null,
+                performance: {
+                    is_delayed: assignment.delivery_delay_days > 0,
+                    delay_days: assignment.delivery_delay_days || 0,
+                    status_label: this.getAssignmentStatusLabel(assignment.status)
                 }
-            ],
-            order: [['performance_rating', 'DESC']]
-        });
+            }));
 
-        res.json({
-            success: true,
-            data: distributors,
-            message: 'تم جلب الموزعين المتاحين بنجاح'
-        });
-    } catch (error) {
-        console.error('[DISTRIBUTORS] Failed to fetch available distributors:', error.message);
-        res.status(500).json({
-            success: false,
-            message: 'خطأ في جلب الموزعين المتاحين',
-            error: error.message
-        });
-    }
-};
+            res.json({
+                success: true,
+                data: {
+                    assignments: formattedAssignments,
+                    pagination: {
+                        currentPage: parseInt(page),
+                        totalPages: Math.ceil(totalItems / limit),
+                        totalItems,
+                        itemsPerPage: parseInt(limit)
+                    }
+                }
+            });
 
-// @desc    الحصول على أداء الموزع
-// @route   GET /api/distributors/:id/performance
-// @access  Private
-export const getDistributorPerformance = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { period = 'month' } = req.query;
-
-        const distributor = await Distributor.findByPk(id);
-
-        if (!distributor) {
-            return res.status(404).json({
+        } catch (error) {
+            logger.error('Error fetching distributor assignments:', error);
+            res.status(500).json({
                 success: false,
-                message: 'الموزع غير موجود'
+                message: 'خطأ في جلب تعيينات الموزعين',
+                error: error.message
             });
         }
-
-        const performance = await distributor.getPerformanceMetrics(period);
-
-        res.json({
-            success: true,
-            data: {
-                distributor_id: id,
-                period,
-                performance
-            },
-            message: 'تم جلب أداء الموزع بنجاح'
-        });
-    } catch (error) {
-        console.error('[DISTRIBUTORS] Failed to fetch distributor performance:', error.message);
-        res.status(500).json({
-            success: false,
-            message: 'خطأ في جلب أداء الموزع',
-            error: error.message
-        });
     }
-}; 
+
+    /**
+     * Update assignment status
+     * PUT /api/distributors/assignments/:id/status
+     */
+    static async updateAssignmentStatus(req, res) {
+        try {
+            const { id } = req.params;
+            const { status, actual_delivery, notes } = req.body;
+
+            const validStatuses = ['assigned', 'in_progress', 'completed', 'cancelled'];
+            if (!validStatuses.includes(status)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'حالة التعيين غير صالحة'
+                });
+            }
+
+            // Get current assignment
+            const assignment = await db.get(
+                'SELECT * FROM distributor_assignments WHERE id = ?',
+                [id]
+            );
+
+            if (!assignment) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'التعيين غير موجود'
+                });
+            }
+
+            // Update assignment
+            const updateFields = ['status = ?', 'updated_at = CURRENT_TIMESTAMP'];
+            const updateParams = [status];
+
+            if (actual_delivery) {
+                updateFields.push('actual_delivery = ?');
+                updateParams.push(actual_delivery);
+            }
+
+            if (notes) {
+                updateFields.push('notes = ?');
+                updateParams.push(notes);
+            }
+
+            updateParams.push(id);
+
+            await db.run(
+                `UPDATE distributor_assignments SET ${updateFields.join(', ')} WHERE id = ?`,
+                updateParams
+            );
+
+            // Update order status based on assignment status
+            if (status === 'completed') {
+                await db.run(
+                    "UPDATE orders SET status = 'delivered', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    [assignment.order_id]
+                );
+            } else if (status === 'in_progress') {
+                await db.run(
+                    "UPDATE orders SET status = 'processing', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    [assignment.order_id]
+                );
+            }
+
+            // Get updated assignment
+            const updatedAssignment = await db.get(
+                `SELECT da.*, o.order_number, d.name as distributor_name
+                 FROM distributor_assignments da
+                 LEFT JOIN orders o ON da.order_id = o.id
+                 LEFT JOIN users d ON da.distributor_id = d.id
+                 WHERE da.id = ?`,
+                [id]
+            );
+
+            res.json({
+                success: true,
+                message: 'تم تحديث حالة التعيين بنجاح',
+                data: updatedAssignment
+            });
+
+        } catch (error) {
+            logger.error('Error updating assignment status:', error);
+            res.status(500).json({
+                success: false,
+                message: 'خطأ في تحديث حالة التعيين',
+                error: error.message
+            });
+        }
+    }
+
+    /**
+     * Get distributor performance analytics
+     * GET /api/distributors/:id/analytics
+     */
+    static async getDistributorAnalytics(req, res) {
+        try {
+            const { id } = req.params;
+            const { date_from, date_to } = req.query;
+
+            // Set default date range (last 30 days)
+            const dateFrom = date_from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            const dateTo = date_to || new Date().toISOString().split('T')[0];
+
+            // Get distributor info
+            const distributor = await db.get(
+                "SELECT * FROM users WHERE id = ? AND role IN ('distributor', 'admin')",
+                [id]
+            );
+
+            if (!distributor) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'الموزع غير موجود'
+                });
+            }
+
+            // Get performance metrics
+            const metricsQuery = `
+                SELECT 
+                    COUNT(*) as total_assignments,
+                    COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_assignments,
+                    COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_assignments,
+                    COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress_assignments,
+                    AVG(CASE 
+                        WHEN actual_delivery IS NOT NULL AND estimated_delivery IS NOT NULL
+                        THEN JULIANDAY(actual_delivery) - JULIANDAY(estimated_delivery)
+                    END) as avg_delivery_delay_days,
+                    COUNT(CASE 
+                        WHEN actual_delivery IS NOT NULL AND estimated_delivery IS NOT NULL
+                        AND JULIANDAY(actual_delivery) <= JULIANDAY(estimated_delivery)
+                        THEN 1 
+                    END) as on_time_deliveries
+                FROM distributor_assignments
+                WHERE distributor_id = ? AND assigned_at BETWEEN ? AND ?
+            `;
+
+            const metrics = await db.get(metricsQuery, [id, dateFrom, dateTo + ' 23:59:59']);
+
+            // Get daily performance
+            const dailyPerformanceQuery = `
+                SELECT 
+                    DATE(assigned_at) as date,
+                    COUNT(*) as assignments_count,
+                    COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_count
+                FROM distributor_assignments
+                WHERE distributor_id = ? AND assigned_at BETWEEN ? AND ?
+                GROUP BY DATE(assigned_at)
+                ORDER BY date DESC
+            `;
+
+            const dailyPerformance = await db.all(dailyPerformanceQuery, [id, dateFrom, dateTo + ' 23:59:59']);
+
+            // Get recent assignments
+            const recentAssignmentsQuery = `
+                SELECT 
+                    da.*, o.order_number, o.total_amount_eur, s.name as store_name
+                FROM distributor_assignments da
+                LEFT JOIN orders o ON da.order_id = o.id
+                LEFT JOIN stores s ON o.store_id = s.id
+                WHERE da.distributor_id = ? AND da.assigned_at BETWEEN ? AND ?
+                ORDER BY da.assigned_at DESC
+                LIMIT 10
+            `;
+
+            const recentAssignments = await db.all(recentAssignmentsQuery, [id, dateFrom, dateTo + ' 23:59:59']);
+
+            // Calculate performance score
+            const completionRate = metrics.total_assignments > 0 ?
+                (metrics.completed_assignments / metrics.total_assignments) * 100 : 0;
+
+            const onTimeRate = metrics.completed_assignments > 0 ?
+                (metrics.on_time_deliveries / metrics.completed_assignments) * 100 : 0;
+
+            const performanceScore = Math.round((completionRate * 0.6) + (onTimeRate * 0.4));
+
+            res.json({
+                success: true,
+                data: {
+                    distributor: {
+                        id: distributor.id,
+                        name: distributor.name,
+                        email: distributor.email,
+                        phone: distributor.phone
+                    },
+                    period: {
+                        from: dateFrom,
+                        to: dateTo
+                    },
+                    metrics: {
+                        ...metrics,
+                        completion_rate: completionRate,
+                        on_time_rate: onTimeRate,
+                        performance_score: performanceScore,
+                        avg_delivery_delay_days: metrics.avg_delivery_delay_days || 0
+                    },
+                    daily_performance: dailyPerformance,
+                    recent_assignments: recentAssignments.map(assignment => ({
+                        ...assignment,
+                        vehicle_info: assignment.vehicle_info ? JSON.parse(assignment.vehicle_info) : null,
+                        route_info: assignment.route_info ? JSON.parse(assignment.route_info) : null
+                    }))
+                }
+            });
+
+        } catch (error) {
+            logger.error('Error fetching distributor analytics:', error);
+            res.status(500).json({
+                success: false,
+                message: 'خطأ في جلب تحليلات الموزع',
+                error: error.message
+            });
+        }
+    }
+
+    /**
+     * Cancel distributor assignment
+     * DELETE /api/distributors/assignments/:id
+     */
+    static async cancelAssignment(req, res) {
+        try {
+            const { id } = req.params;
+            const { reason } = req.body;
+
+            const assignment = await db.get(
+                'SELECT * FROM distributor_assignments WHERE id = ?',
+                [id]
+            );
+
+            if (!assignment) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'التعيين غير موجود'
+                });
+            }
+
+            if (assignment.status === 'completed') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'لا يمكن إلغاء تعيين مكتمل'
+                });
+            }
+
+            // Update assignment status to cancelled
+            await db.run(
+                'UPDATE distributor_assignments SET status = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                ['cancelled', reason || 'تم إلغاء التعيين', id]
+            );
+
+            // Reset order status if needed
+            await db.run(
+                "UPDATE orders SET status = 'confirmed', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'processing'",
+                [assignment.order_id]
+            );
+
+            res.json({
+                success: true,
+                message: 'تم إلغاء التعيين بنجاح'
+            });
+
+        } catch (error) {
+            logger.error('Error cancelling assignment:', error);
+            res.status(500).json({
+                success: false,
+                message: 'خطأ في إلغاء التعيين',
+                error: error.message
+            });
+        }
+    }
+
+    /**
+     * Helper method to calculate efficiency score
+     */
+    static calculateEfficiencyScore(distributor) {
+        const completionRate = distributor.active_assignments > 0 ?
+            (distributor.completed_deliveries / distributor.active_assignments) * 100 : 100;
+
+        const timelinessScore = distributor.avg_delivery_delay_days <= 0 ? 100 :
+            Math.max(0, 100 - (distributor.avg_delivery_delay_days * 10));
+
+        return Math.round((completionRate * 0.6) + (timelinessScore * 0.4));
+    }
+
+    /**
+     * Helper method to get assignment status label
+     */
+    static getAssignmentStatusLabel(status) {
+        const labels = {
+            'assigned': 'معين',
+            'in_progress': 'قيد التنفيذ',
+            'completed': 'مكتمل',
+            'cancelled': 'ملغي'
+        };
+        return labels[status] || status;
+    }
+}
+
+module.exports = DistributorController; 
