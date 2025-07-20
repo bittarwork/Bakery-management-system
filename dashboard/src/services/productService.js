@@ -260,7 +260,13 @@ class ProductService {
             const formData = new FormData();
             formData.append('image', file);
 
-            const response = await apiService.uploadFile(`${this.baseEndpoint}/${productId}/image`, formData);
+            const config = {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            };
+
+            const response = await apiService.post(`${this.baseEndpoint}/${productId}/image`, formData, config);
             return response;
         } catch (error) {
             throw new Error(`Failed to upload product image: ${error.message}`);
@@ -280,7 +286,13 @@ class ProductService {
                 formData.append('images', files[i]);
             }
 
-            const response = await apiService.uploadFile(`${this.baseEndpoint}/${productId}/images`, formData);
+            const config = {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            };
+
+            const response = await apiService.post(`${this.baseEndpoint}/${productId}/images`, formData, config);
             return response;
         } catch (error) {
             throw new Error(`Failed to upload product images: ${error.message}`);

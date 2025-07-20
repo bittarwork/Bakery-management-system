@@ -1077,11 +1077,17 @@ export const exportProducts = async (req, res) => {
 // @access  Private
 export const uploadProductImage = async (req, res) => {
     try {
+        console.log('[UPLOAD] Starting image upload for product:', req.params.id);
+        console.log('[UPLOAD] Request files:', req.files);
+        console.log('[UPLOAD] Request file:', req.file);
+        console.log('[UPLOAD] Request body:', req.body);
+
         const { id } = req.params;
 
         // Check if product exists
         const product = await Product.findByPk(id);
         if (!product) {
+            console.log('[UPLOAD] Product not found:', id);
             return res.status(404).json({
                 success: false,
                 message: 'Product not found'
@@ -1090,11 +1096,14 @@ export const uploadProductImage = async (req, res) => {
 
         // Check if file was uploaded
         if (!req.file) {
+            console.log('[UPLOAD] No file received in request');
             return res.status(400).json({
                 success: false,
                 message: 'No image file provided'
             });
         }
+
+        console.log('[UPLOAD] File received:', req.file.filename, 'Size:', req.file.size);
 
         // Generate image URL
         const baseUrl = req.protocol + '://' + req.get('host');

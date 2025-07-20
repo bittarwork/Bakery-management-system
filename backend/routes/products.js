@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import {
     getProducts,
     getProduct,
@@ -139,16 +140,35 @@ router.delete('/:id', deleteProduct);
 // @desc    رفع صورة للمنتج
 // @route   POST /api/products/:id/image
 // @access  Private
-router.post('/:id/image', uploadSingle, handleUploadError, uploadProductImage);
+router.post('/:id/image', (req, res, next) => {
+    console.log('[ROUTE] Image upload route hit for product:', req.params.id);
+    next();
+}, uploadSingle, handleUploadError, uploadProductImage);
 
 // @desc    رفع صور متعددة للمنتج
 // @route   POST /api/products/:id/images
 // @access  Private
-router.post('/:id/images', uploadMultiple, handleUploadError, uploadProductImages);
+router.post('/:id/images', (req, res, next) => {
+    console.log('[ROUTE] Multiple images upload route hit for product:', req.params.id);
+    next();
+}, uploadMultiple, handleUploadError, uploadProductImages);
 
 // @desc    حذف صورة المنتج
 // @route   DELETE /api/products/:id/image
 // @access  Private
 router.delete('/:id/image', deleteProductImage);
+
+// @desc    Test image upload endpoint
+// @route   GET /api/products/test/upload
+// @access  Private
+router.get('/test/upload', (req, res) => {
+    res.json({
+        success: true,
+        message: 'Image upload endpoint is working',
+        timestamp: new Date().toISOString(),
+        uploadsDir: path.join(__dirname, '../storage/uploads'),
+        multerAvailable: typeof uploadSingle === 'function'
+    });
+});
 
 export default router; 

@@ -8,8 +8,14 @@ const __dirname = path.dirname(__filename);
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, '../storage/uploads');
+console.log('Uploads directory path:', uploadsDir);
+
 if (!fs.existsSync(uploadsDir)) {
+    console.log('Creating uploads directory...');
     fs.mkdirSync(uploadsDir, { recursive: true });
+    console.log('Uploads directory created successfully');
+} else {
+    console.log('Uploads directory already exists');
 }
 
 // Configure multer storage
@@ -44,15 +50,56 @@ const upload = multer({
     fileFilter: fileFilter
 });
 
-// Upload single image
-export const uploadSingle = upload.single('image');
+// Upload single image with logging
+export const uploadSingle = (req, res, next) => {
+    console.log('[UPLOAD MIDDLEWARE] Processing single image upload...');
+    console.log('[UPLOAD MIDDLEWARE] Content-Type:', req.get('Content-Type'));
 
-// Upload multiple images
-export const uploadMultiple = upload.array('images', 5);
+    const uploadHandler = upload.single('image');
+    uploadHandler(req, res, (err) => {
+        if (err) {
+            console.log('[UPLOAD MIDDLEWARE] Upload error:', err.message);
+            return next(err);
+        }
+
+        console.log('[UPLOAD MIDDLEWARE] Upload successful');
+        console.log('[UPLOAD MIDDLEWARE] File received:', req.file ? 'YES' : 'NO');
+        if (req.file) {
+            console.log('[UPLOAD MIDDLEWARE] File details:', {
+                fieldname: req.file.fieldname,
+                originalname: req.file.originalname,
+                filename: req.file.filename,
+                size: req.file.size
+            });
+        }
+        next();
+    });
+};
+
+// Upload multiple images with logging
+export const uploadMultiple = (req, res, next) => {
+    console.log('[UPLOAD MIDDLEWARE] Processing multiple images upload...');
+
+    const uploadHandler = upload.array('images', 5);
+    uploadHandler(req, res, (err) => {
+        if (err) {
+            console.log('[UPLOAD MIDDLEWARE] Upload error:', err.message);
+            return next(err);
+        }
+
+        console.log('[UPLOAD MIDDLEWARE] Upload successful');
+        console.log('[UPLOAD MIDDLEWARE] Files received:', req.files ? req.files.length : 0);
+        next();
+    });
+};
 
 // Error handler for multer errors
 export const handleUploadError = (error, req, res, next) => {
+    console.log('[UPLOAD ERROR HANDLER] Error occurred:', error);
+
     if (error instanceof multer.MulterError) {
+        console.log('[UPLOAD ERROR HANDLER] Multer error code:', error.code);
+
         if (error.code === 'LIMIT_FILE_SIZE') {
             return res.status(400).json({
                 success: false,
@@ -63,6 +110,12 @@ export const handleUploadError = (error, req, res, next) => {
             return res.status(400).json({
                 success: false,
                 message: 'Too many files. Maximum is 5 images'
+            });
+        }
+        if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+            return res.status(400).json({
+                success: false,
+                message: 'Unexpected file field. Expected field name: image'
             });
         }
         return res.status(400).json({
@@ -78,6 +131,7 @@ export const handleUploadError = (error, req, res, next) => {
         });
     }
 
+    console.log('[UPLOAD ERROR HANDLER] Passing error to next handler');
     next(error);
 };
 
