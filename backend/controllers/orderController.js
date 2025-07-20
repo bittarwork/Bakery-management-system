@@ -275,6 +275,8 @@ export const createOrder = async (req, res) => {
                 unit_price_syp: product.price_syp,
                 total_price_eur: itemTotalEur,
                 total_price_syp: itemTotalSyp,
+                final_price_eur: itemTotalEur, // Same as total since no discounts
+                final_price_syp: itemTotalSyp, // Same as total since no discounts
                 product_name: product.name,
                 product_unit: product.unit
             });
