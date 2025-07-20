@@ -16,6 +16,9 @@ import {
   Menu,
   X,
   User,
+  Euro,
+  UserCheck,
+  CalendarClock,
 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import Logo from "../ui/Logo";
@@ -36,6 +39,10 @@ const DashboardLayout = ({ children }) => {
     { name: "المنتجات", path: "/products", icon: ShoppingBag },
     { name: "التقارير", path: "/reports", icon: FileText },
     { name: "المستخدمون", path: "/users", icon: Users },
+    // Enhanced Order Management Features (Phase 6)
+    { name: "إدارة التسعير", path: "/pricing", icon: Euro },
+    { name: "إدارة الموزعين", path: "/distributors", icon: UserCheck },
+    { name: "جدولة التسليم", path: "/delivery", icon: CalendarClock },
     { name: "الإعدادات", path: "/settings", icon: Settings },
   ];
 

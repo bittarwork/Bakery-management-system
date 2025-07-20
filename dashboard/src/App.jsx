@@ -61,6 +61,16 @@ import EditUserPage from "./pages/users/EditUserPage";
 import SettingsPage from "./pages/settings/SettingsPage";
 import ProfilePage from "./pages/settings/ProfilePage";
 
+// Pages - Enhanced Pricing (Phase 6)
+import PricingManagementPage from "./pages/pricing/PricingManagementPage";
+
+// Pages - Distributor Management (Phase 6)
+import DistributorManagementPage from "./pages/distributors/DistributorManagementPage";
+
+// Pages - Delivery Scheduling (Phase 6)
+import DeliverySchedulingPage from "./pages/delivery/DeliverySchedulingPage";
+import DeliveryConfirmationPage from "./pages/delivery/DeliveryConfirmationPage";
+
 // Pages - Error
 import NotFoundPage from "./pages/error/NotFoundPage";
 
@@ -835,6 +845,88 @@ function App() {
                     </motion.div>
                   </DashboardLayout>
                 </ProtectedRoute>
+              }
+            />
+
+            {/* Enhanced Order Management Routes (Phase 6) */}
+            <Route
+              path="/pricing"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <PricingManagementPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/distributors"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <DistributorManagementPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/delivery"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <DeliverySchedulingPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Customer Delivery Confirmation - Public Route */}
+            <Route
+              path="/delivery/confirm/:token"
+              element={
+                <motion.div
+                  variants={pageVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  transition={pageTransition}
+                >
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <DeliveryConfirmationPage />
+                  </Suspense>
+                </motion.div>
               }
             />
 
