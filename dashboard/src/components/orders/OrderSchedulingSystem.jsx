@@ -58,7 +58,7 @@ const OrderSchedulingSystem = ({
     delivery_date: "",
     preferred_time: "",
     estimated_duration: 30, // in minutes
-    priority: "medium",
+    priority: "normal",
     distributor_id: "",
     delivery_notes: "",
     auto_reschedule: true,
@@ -267,7 +267,7 @@ const OrderSchedulingSystem = ({
       high: "bg-orange-100 text-orange-800",
       urgent: "bg-red-100 text-red-800",
     };
-    return colors[priority] || colors.medium;
+    return colors[priority] || colors.normal;
   };
 
   // Format time
@@ -631,7 +631,7 @@ const OrderSchedulingSystem = ({
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="low">Low Priority</option>
-                    <option value="medium">Medium Priority</option>
+                    <option value="normal">Normal Priority</option>
                     <option value="high">High Priority</option>
                     <option value="urgent">Urgent</option>
                   </select>

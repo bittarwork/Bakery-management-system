@@ -127,7 +127,7 @@ class OrderService {
                 // Enhanced currency handling
                 currency: orderData.currency || 'EUR',
                 // Default values
-                priority: orderData.priority || 'medium',
+                priority: orderData.priority || 'normal',
                 status: orderData.status || 'draft',
                 payment_status: orderData.payment_status || 'pending',
             };
@@ -462,8 +462,7 @@ class OrderService {
     getPriorityLabel(priority) {
         const labels = {
             low: 'منخفض',
-            normal: 'عادي',
-            medium: 'متوسط',
+            normal: 'متوسط',
             high: 'عالي',
             urgent: 'عاجل',
         };
@@ -546,8 +545,7 @@ class OrderService {
     getPriorityOptions() {
         return [
             { value: 'low', label: 'منخفض', color: 'green' },
-            { value: 'normal', label: 'عادي', color: 'blue' },
-            { value: 'medium', label: 'متوسط', color: 'yellow' },
+            { value: 'normal', label: 'متوسط', color: 'blue' },
             { value: 'high', label: 'عالي', color: 'orange' },
             { value: 'urgent', label: 'عاجل', color: 'red' },
         ];

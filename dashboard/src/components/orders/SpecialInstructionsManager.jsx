@@ -66,7 +66,7 @@ const SpecialInstructionsManager = ({
     content: "",
     category: "",
     tags: [],
-    priority: "medium",
+    priority: "normal",
     is_public: false,
   });
 
@@ -145,7 +145,7 @@ const SpecialInstructionsManager = ({
         "Deliver to office reception. Ask for [Contact Name] and mention the company name.",
       category: "delivery",
       tags: ["office", "reception", "business"],
-      priority: "medium",
+      priority: "normal",
       uses: 32,
       lastUsed: "2024-03-14",
     },
@@ -471,7 +471,7 @@ const SpecialInstructionsManager = ({
       high: "bg-orange-100 text-orange-800",
       urgent: "bg-red-100 text-red-800",
     };
-    return colors[priority] || colors.medium;
+    return colors[priority] || colors.normal;
   };
 
   // Template Modal

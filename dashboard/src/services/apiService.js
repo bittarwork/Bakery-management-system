@@ -4,7 +4,9 @@ import { toast } from 'react-hot-toast';
 
 // API Configuration
 const API_CONFIG = {
-    baseURL: 'https://bakery-management-system-production.up.railway.app/api/',
+    baseURL: process.env.NODE_ENV === 'development'
+        ? 'http://localhost:5001/api/'
+        : 'https://bakery-management-system-production.up.railway.app/api/',
     timeout: 30000,
     retryAttempts: 3,
     retryDelay: 1000

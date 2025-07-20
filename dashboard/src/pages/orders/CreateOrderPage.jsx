@@ -285,11 +285,6 @@ const CreateOrderPage = () => {
         items: formData.items.map((item) => ({
           product_id: parseInt(item.product_id),
           quantity: parseInt(item.quantity),
-          unit_price: parseFloat(item.unit_price || 0),
-          discount_amount: parseFloat(item.discount_amount || 0),
-          gift_quantity: parseInt(item.gift_quantity || 0),
-          gift_reason: item.gift_reason || null,
-          notes: item.notes || null,
         })),
       };
 

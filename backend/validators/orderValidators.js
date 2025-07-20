@@ -77,10 +77,8 @@ export const validateCreateOrder = [
         .isInt({ min: 1 })
         .withMessage('الكمية يجب أن تكون رقماً صحيحاً موجباً'),
 
-    body('items.*.unit_price')
-        .if(body('items').exists())
-        .isFloat({ min: 0 })
-        .withMessage('سعر الوحدة يجب أن يكون رقماً موجباً'),
+    // unit_price is calculated by the controller from product data
+    // No validation needed here
 
     handleValidationErrors
 ];

@@ -186,7 +186,7 @@ const OrdersListPage = () => {
     console.log("Priority breakdown:", {
       low: safeData.filter((o) => o.priority === "low").length,
       normal: safeData.filter((o) => o.priority === "normal").length,
-      medium: safeData.filter((o) => o.priority === "medium").length,
+      normal: safeData.filter((o) => o.priority === "normal").length,
       high: safeData.filter((o) => o.priority === "high").length,
       urgent: safeData.filter((o) => o.priority === "urgent").length,
     });
@@ -918,7 +918,7 @@ const OrdersListPage = () => {
                               >
                                 {order.priority === "low" && "منخفض"}
                                 {order.priority === "normal" && "عادي"}
-                                {order.priority === "medium" && "متوسط"}
+                                {order.priority === "normal" && "متوسط"}
                                 {order.priority === "high" && "عالي"}
                                 {order.priority === "urgent" && "عاجل"}
                               </span>

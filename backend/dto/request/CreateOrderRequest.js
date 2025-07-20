@@ -7,7 +7,7 @@ export class CreateOrderRequest {
         this.store_id = data.store_id;
         this.items = data.items || [];
         this.notes = data.notes || '';
-        this.priority = data.priority || 'medium';
+        this.priority = data.priority || 'normal';
         this.scheduled_delivery_date = data.scheduled_delivery_date || null;
     }
 
@@ -67,11 +67,11 @@ export class CreateOrderRequest {
         }
 
         // Validate priority
-        const validPriorities = ['low', 'medium', 'high', 'urgent'];
+        const validPriorities = ['low', 'normal', 'high', 'urgent'];
         if (this.priority && !validPriorities.includes(this.priority)) {
             errors.push({
                 field: 'priority',
-                message: 'Priority must be one of: low, medium, high, urgent'
+                message: 'Priority must be one of: low, normal, high, urgent'
             });
         }
 
