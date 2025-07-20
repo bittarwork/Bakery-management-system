@@ -5,7 +5,7 @@
 
 import express from 'express';
 import DistributorController from '../controllers/distributorController.js';
-import { auth, authorize } from '../middleware/auth.js';
+import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -16,12 +16,12 @@ const router = express.Router();
 // @desc    Get all distributors
 // @route   GET /api/distributors
 // @access  Private
-router.get('/', auth, DistributorController.getDistributors);
+router.get('/', protect, DistributorController.getDistributors);
 
 // @desc    Get distributor performance analytics
 // @route   GET /api/distributors/:id/analytics
 // @access  Private
-router.get('/:id/analytics', auth, DistributorController.getDistributorAnalytics);
+router.get('/:id/analytics', protect, DistributorController.getDistributorAnalytics);
 
 // ==============================================
 // DISTRIBUTOR ASSIGNMENT ROUTES
@@ -30,22 +30,22 @@ router.get('/:id/analytics', auth, DistributorController.getDistributorAnalytics
 // @desc    Assign distributor to order(s)
 // @route   POST /api/distributors/assign
 // @access  Private (Admin/Manager only)
-router.post('/assign', auth, authorize(['admin', 'manager']), DistributorController.assignDistributor);
+router.post('/assign', protect, authorize(['admin', 'manager']), DistributorController.assignDistributor);
 
 // @desc    Get distributor assignments
 // @route   GET /api/distributors/assignments
 // @access  Private
-router.get('/assignments', auth, DistributorController.getDistributorAssignments);
+router.get('/assignments', protect, DistributorController.getDistributorAssignments);
 
 // @desc    Update assignment status
 // @route   PUT /api/distributors/assignments/:id/status
 // @access  Private
-router.put('/assignments/:id/status', auth, DistributorController.updateAssignmentStatus);
+router.put('/assignments/:id/status', protect, DistributorController.updateAssignmentStatus);
 
 // @desc    Cancel distributor assignment
 // @route   DELETE /api/distributors/assignments/:id
 // @access  Private (Admin/Manager only)
-router.delete('/assignments/:id', auth, authorize(['admin', 'manager']), DistributorController.cancelAssignment);
+router.delete('/assignments/:id', protect, authorize(['admin', 'manager']), DistributorController.cancelAssignment);
 
 // ==============================================
 // ADDITIONAL DISTRIBUTOR ROUTES
@@ -54,7 +54,7 @@ router.delete('/assignments/:id', auth, authorize(['admin', 'manager']), Distrib
 // @desc    Get available distributors for assignment
 // @route   GET /api/distributors/available
 // @access  Private
-router.get('/available', auth, async (req, res) => {
+router.get('/available', protect, async (req, res) => {
     try {
         const { default: db } = await import('../config/database.js');
         const { date, exclude_order_id } = req.query;
@@ -135,7 +135,7 @@ router.get('/available', auth, async (req, res) => {
 // @desc    Get distributor assignment history
 // @route   GET /api/distributors/:id/history
 // @access  Private
-router.get('/:id/history', auth, async (req, res) => {
+router.get('/:id/history', protect, async (req, res) => {
     try {
         const { id } = req.params;
         const { page = 1, limit = 10, status, date_from, date_to } = req.query;
@@ -224,7 +224,7 @@ router.get('/:id/history', auth, async (req, res) => {
 // @desc    Bulk assign distributors to multiple orders
 // @route   POST /api/distributors/assign-bulk
 // @access  Private (Admin/Manager only)
-router.post('/assign-bulk', auth, authorize(['admin', 'manager']), async (req, res) => {
+router.post('/assign-bulk', protect, authorize(['admin', 'manager']), async (req, res) => {
     try {
         const { assignments } = req.body; // Array of {order_id, distributor_id, estimated_delivery, notes}
 
@@ -290,7 +290,7 @@ router.post('/assign-bulk', auth, authorize(['admin', 'manager']), async (req, r
 // @desc    Get distributor workload calendar
 // @route   GET /api/distributors/:id/calendar
 // @access  Private
-router.get('/:id/calendar', auth, async (req, res) => {
+router.get('/:id/calendar', protect, async (req, res) => {
     try {
         const { id } = req.params;
         const { month, year } = req.query;

@@ -5,7 +5,7 @@
 
 import express from 'express';
 import DeliverySchedulingController from '../controllers/deliverySchedulingController.js';
-import { auth, authorize } from '../middleware/auth.js';
+import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -16,27 +16,27 @@ const router = express.Router();
 // @desc    Get delivery schedules (list or calendar view)
 // @route   GET /api/delivery/schedules
 // @access  Private
-router.get('/schedules', auth, DeliverySchedulingController.getDeliverySchedules);
+router.get('/schedules', protect, DeliverySchedulingController.getDeliverySchedules);
 
 // @desc    Create delivery schedule
 // @route   POST /api/delivery/schedules
 // @access  Private
-router.post('/schedules', auth, DeliverySchedulingController.createDeliverySchedule);
+router.post('/schedules', protect, DeliverySchedulingController.createDeliverySchedule);
 
 // @desc    Update delivery schedule
 // @route   PUT /api/delivery/schedules/:id
 // @access  Private
-router.put('/schedules/:id', auth, DeliverySchedulingController.updateDeliverySchedule);
+router.put('/schedules/:id', protect, DeliverySchedulingController.updateDeliverySchedule);
 
 // @desc    Reschedule delivery
 // @route   POST /api/delivery/schedules/:id/reschedule
 // @access  Private
-router.post('/schedules/:id/reschedule', auth, DeliverySchedulingController.rescheduleDelivery);
+router.post('/schedules/:id/reschedule', protect, DeliverySchedulingController.rescheduleDelivery);
 
 // @desc    Cancel delivery schedule
 // @route   DELETE /api/delivery/schedules/:id
 // @access  Private (Admin/Manager only)
-router.delete('/schedules/:id', auth, authorize(['admin', 'manager']), DeliverySchedulingController.cancelDeliverySchedule);
+router.delete('/schedules/:id', protect, authorize(['admin', 'manager']), DeliverySchedulingController.cancelDeliverySchedule);
 
 // ==============================================
 // DELIVERY CAPACITY AND AVAILABILITY ROUTES
@@ -45,12 +45,12 @@ router.delete('/schedules/:id', auth, authorize(['admin', 'manager']), DeliveryS
 // @desc    Get delivery capacity and availability
 // @route   GET /api/delivery/capacity
 // @access  Private
-router.get('/capacity', auth, DeliverySchedulingController.getDeliveryCapacity);
+router.get('/capacity', protect, DeliverySchedulingController.getDeliveryCapacity);
 
 // @desc    Check time slot availability
 // @route   POST /api/delivery/check-availability
 // @access  Private
-router.post('/check-availability', auth, async (req, res) => {
+router.post('/check-availability', protect, async (req, res) => {
     try {
         const { date, start_time, end_time, exclude_schedule_id } = req.body;
 
@@ -164,12 +164,12 @@ router.get('/schedules/confirm/:token', async (req, res) => {
 // @desc    Get delivery schedule statistics
 // @route   GET /api/delivery/schedules/statistics
 // @access  Private
-router.get('/schedules/statistics', auth, DeliverySchedulingController.getDeliveryStatistics);
+router.get('/schedules/statistics', protect, DeliverySchedulingController.getDeliveryStatistics);
 
 // @desc    Get delivery performance metrics
 // @route   GET /api/delivery/performance
 // @access  Private
-router.get('/performance', auth, async (req, res) => {
+router.get('/performance', protect, async (req, res) => {
     try {
         const { default: db } = await import('../config/database.js');
         const { date_from, date_to, time_slot, delivery_type } = req.query;
@@ -275,7 +275,7 @@ router.get('/performance', auth, async (req, res) => {
 // @desc    Bulk create delivery schedules
 // @route   POST /api/delivery/schedules/bulk-create
 // @access  Private (Admin/Manager only)
-router.post('/schedules/bulk-create', auth, authorize(['admin', 'manager']), async (req, res) => {
+router.post('/schedules/bulk-create', protect, authorize(['admin', 'manager']), async (req, res) => {
     try {
         const { schedules_data } = req.body; // Array of schedule objects
 
@@ -333,7 +333,7 @@ router.post('/schedules/bulk-create', auth, authorize(['admin', 'manager']), asy
 // @desc    Bulk reschedule deliveries
 // @route   POST /api/delivery/schedules/bulk-reschedule
 // @access  Private (Admin/Manager only)
-router.post('/schedules/bulk-reschedule', auth, authorize(['admin', 'manager']), async (req, res) => {
+router.post('/schedules/bulk-reschedule', protect, authorize(['admin', 'manager']), async (req, res) => {
     try {
         const { schedule_updates } = req.body; // Array of {schedule_id, new_date, new_time_start, reason}
 
@@ -401,7 +401,7 @@ router.post('/schedules/bulk-reschedule', auth, authorize(['admin', 'manager']),
 // @desc    Get optimized delivery routes for a date
 // @route   GET /api/delivery/routes/optimize
 // @access  Private
-router.get('/routes/optimize', auth, async (req, res) => {
+router.get('/routes/optimize', protect, async (req, res) => {
     try {
         const { date, distributor_id } = req.query;
 

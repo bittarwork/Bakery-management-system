@@ -5,7 +5,7 @@
 
 import express from 'express';
 import EnhancedPricingController from '../controllers/enhancedPricingController.js';
-import { auth, authorize } from '../middleware/auth.js';
+import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -16,17 +16,17 @@ const router = express.Router();
 // @desc    Get all pricing rules
 // @route   GET /api/pricing/rules
 // @access  Private
-router.get('/rules', auth, EnhancedPricingController.getPricingRules);
+router.get('/rules', protect, EnhancedPricingController.getPricingRules);
 
 // @desc    Create new pricing rule  
 // @route   POST /api/pricing/rules
 // @access  Private (Admin/Manager only)
-router.post('/rules', auth, authorize(['admin', 'manager']), EnhancedPricingController.createPricingRule);
+router.post('/rules', protect, authorize(['admin', 'manager']), EnhancedPricingController.createPricingRule);
 
 // @desc    Update pricing rule
 // @route   PUT /api/pricing/rules/:id
 // @access  Private (Admin/Manager only)
-router.put('/rules/:id', auth, authorize(['admin', 'manager']), async (req, res) => {
+router.put('/rules/:id', protect, authorize(['admin', 'manager']), async (req, res) => {
     // Implementation for updating pricing rule
     res.json({ success: true, message: 'Update pricing rule endpoint - to be implemented' });
 });
@@ -34,7 +34,7 @@ router.put('/rules/:id', auth, authorize(['admin', 'manager']), async (req, res)
 // @desc    Delete pricing rule
 // @route   DELETE /api/pricing/rules/:id
 // @access  Private (Admin only)
-router.delete('/rules/:id', auth, authorize(['admin']), async (req, res) => {
+router.delete('/rules/:id', protect, authorize(['admin']), async (req, res) => {
     // Implementation for deleting pricing rule
     res.json({ success: true, message: 'Delete pricing rule endpoint - to be implemented' });
 });
@@ -46,12 +46,12 @@ router.delete('/rules/:id', auth, authorize(['admin']), async (req, res) => {
 // @desc    Calculate dynamic price for product
 // @route   POST /api/pricing/calculate
 // @access  Private
-router.post('/calculate', auth, EnhancedPricingController.calculateDynamicPrice);
+router.post('/calculate', protect, EnhancedPricingController.calculateDynamicPrice);
 
 // @desc    Bulk calculate prices for multiple products
 // @route   POST /api/pricing/calculate-bulk
 // @access  Private
-router.post('/calculate-bulk', auth, async (req, res) => {
+router.post('/calculate-bulk', protect, async (req, res) => {
     try {
         const { products_data } = req.body; // Array of {product_id, quantity, store_id, customer_type}
 
@@ -114,12 +114,12 @@ router.post('/calculate-bulk', auth, async (req, res) => {
 // @desc    Bulk update product prices
 // @route   POST /api/pricing/bulk-update
 // @access  Private (Admin/Manager only)
-router.post('/bulk-update', auth, authorize(['admin', 'manager']), EnhancedPricingController.bulkUpdatePrices);
+router.post('/bulk-update', protect, authorize(['admin', 'manager']), EnhancedPricingController.bulkUpdatePrices);
 
 // @desc    Get bulk operation history
 // @route   GET /api/pricing/bulk-operations
 // @access  Private
-router.get('/bulk-operations', auth, async (req, res) => {
+router.get('/bulk-operations', protect, async (req, res) => {
     try {
         const { default: db } = await import('../config/database.js');
 
@@ -206,12 +206,12 @@ router.get('/bulk-operations', auth, async (req, res) => {
 // @desc    Get price history
 // @route   GET /api/pricing/history
 // @access  Private
-router.get('/history', auth, EnhancedPricingController.getPriceHistory);
+router.get('/history', protect, EnhancedPricingController.getPriceHistory);
 
 // @desc    Get price statistics
 // @route   GET /api/pricing/statistics
 // @access  Private
-router.get('/statistics', auth, async (req, res) => {
+router.get('/statistics', protect, async (req, res) => {
     try {
         const { default: db } = await import('../config/database.js');
         const { date_from, date_to } = req.query;
@@ -302,7 +302,7 @@ router.get('/statistics', auth, async (req, res) => {
 // @desc    Get product pricing overview
 // @route   GET /api/pricing/products-overview
 // @access  Private
-router.get('/products-overview', auth, async (req, res) => {
+router.get('/products-overview', protect, async (req, res) => {
     try {
         const { default: db } = await import('../config/database.js');
         const { category, price_range, search } = req.query;
