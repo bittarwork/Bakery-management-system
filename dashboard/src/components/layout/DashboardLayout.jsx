@@ -30,6 +30,7 @@ const DashboardLayout = ({ children }) => {
     { name: "Analytics", path: "/analytics", icon: BarChart3 },
     { name: "Distribution", path: "/distribution", icon: Truck },
     { name: "Orders", path: "/orders", icon: Package },
+    { name: "Enhanced Orders", path: "/orders/create-enhanced", icon: Package },
     { name: "Order Reports", path: "/orders/reports", icon: FileText },
     { name: "Payments", path: "/payments", icon: CreditCard },
     { name: "Stores", path: "/stores", icon: Store },

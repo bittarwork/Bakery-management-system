@@ -4,28 +4,30 @@ import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Package,
+  Search,
+  Filter,
+  Eye,
+  Edit,
+  Trash2,
+  Download,
+  RefreshCw,
   Clock,
   CheckCircle,
   XCircle,
   AlertTriangle,
-  Search,
-  Filter,
   Euro,
   Truck,
-  ChevronLeft,
-  ChevronRight,
-  BarChart3,
-  Zap,
-  Loader2,
-  Download,
+  User,
+  Phone,
   Calendar,
-  Eye,
-  Edit,
-  Trash2,
-  ChevronDown,
-  ChevronUp,
+  MapPin,
+  Zap,
+  FileText,
+  BarChart3,
+  TrendingUp,
+  Store,
+  Loader2,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
 import EnhancedInput from "../../components/ui/EnhancedInput";
@@ -38,59 +40,27 @@ import { toast } from "react-hot-toast";
 
 const OrdersListPage = () => {
   const navigate = useNavigate();
+
+  // الحالة الأساسية
   const [orders, setOrders] = useState([]);
   const [stores, setStores] = useState([]);
   const [distributors, setDistributors] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedOrders, setSelectedOrders] = useState([]);
-  const [deleteModal, setDeleteModal] = useState({
-    isOpen: false,
-    orderId: null,
-    isLoading: false,
-  });
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  // Enhanced filters state
+  // فلاتر البحث
   const [filters, setFilters] = useState({
+    search: "",
     status: "",
     payment_status: "",
     store_id: "",
     distributor_id: "",
     priority: "",
-    date_from: "",
-    date_to: "",
-    delivery_date_from: "",
-    delivery_date_to: "",
-    amount_min: "",
-    amount_max: "",
-    currency: "",
-    search: "",
-    page: 1,
-    limit: 10,
-    sortBy: "created_at",
-    sortOrder: "DESC",
   });
 
-  // Statistics state
-  const [statistics, setStatistics] = useState({
-    total_orders: 0,
-    total_amount_eur: 0,
-    total_amount_syp: 0,
-    orders_by_status: {},
-    orders_by_payment_status: {},
-    orders_by_priority: {},
-    orders_by_currency: {},
-    average_order_value: 0,
-    pending_orders: 0,
-    completed_orders: 0,
-    urgent_orders: 0,
-    overdue_orders: 0,
-    monthly_growth: 0,
-    revenue_growth: 0,
-  });
-
-  // Pagination state
+  // التصفح
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -98,954 +68,964 @@ const OrdersListPage = () => {
     itemsPerPage: 10,
   });
 
-  // View mode state
-  const [viewMode, setViewMode] = useState("table"); // "table" or "cards"
+  // الإحصائيات
+  const [statistics, setStatistics] = useState({
+    totalOrders: 0,
+    totalRevenue: 0,
+    pendingOrders: 0,
+    urgentOrders: 0,
+  });
 
-  // Fetch orders with current filters
-  const fetchOrders = async (resetPage = false) => {
+  // Modal الحذف
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    orderId: null,
+    isLoading: false,
+  });
+
+  // تحميل البيانات
+  useEffect(() => {
+    loadOrders();
+    loadStores();
+    loadDistributors();
+  }, [pagination.currentPage, filters]);
+
+  // تحميل الطلبات
+  const loadOrders = async () => {
     try {
       setIsLoading(true);
+      setError("");
 
-      const queryParams = {
+      const params = {
+        page: pagination.currentPage,
+        limit: pagination.itemsPerPage,
         ...filters,
-        page: resetPage ? 1 : filters.page,
       };
 
-      const response = await orderService.getOrders(queryParams);
+      const response = await orderService.getOrders(params);
 
       if (response.success) {
-        console.log("Orders API Response:", response);
-        setOrders(response.data.orders || []);
-        setStatistics(response.data.statistics || {});
-        setPagination({
-          currentPage: response.data.pagination?.current_page || 1,
-          totalPages: response.data.pagination?.total_pages || 1,
-          totalItems: response.data.pagination?.total_items || 0,
-          itemsPerPage: response.data.pagination?.items_per_page || 10,
-        });
+        const ordersData = response.data?.orders || response.data || [];
+        // Ensure ordersData is always an array
+        const safeOrdersData = Array.isArray(ordersData) ? ordersData : [];
+        setOrders(safeOrdersData);
+
+        // تحديث الإحصائيات
+        const stats = calculateStatistics(safeOrdersData);
+        setStatistics(stats);
+
+        // تحديث التصفح
+        if (response.data?.pagination) {
+          setPagination((prev) => ({
+            ...prev,
+            totalPages: response.data.pagination.totalPages || 1,
+            totalItems: response.data.pagination.total || ordersData.length,
+          }));
+        }
       } else {
-        console.error("Failed to fetch orders:", response.message);
-        toast.error("Failed to fetch orders");
+        setError(response.message || "خطأ في تحميل الطلبات");
+        setOrders([]);
       }
     } catch (error) {
-      console.error("Error fetching orders:", error);
-      toast.error("Error fetching orders");
+      console.error("Error loading orders:", error);
+      setError("خطأ في تحميل بيانات الطلبات");
+      setOrders([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fetch stores for filter dropdown
-  const fetchStores = async () => {
+  // حساب الإحصائيات
+  const calculateStatistics = (ordersData) => {
+    // Ensure ordersData is an array
+    const safeData = Array.isArray(ordersData) ? ordersData : [];
+
+    // Debug: log data to understand structure
+    console.log("Orders data for statistics:", safeData);
+
+    const stats = {
+      totalOrders: safeData.length,
+      totalRevenue: safeData.reduce((sum, order) => {
+        const amount = parseFloat(
+          order.final_amount_eur || order.total_amount_eur || 0
+        );
+        return sum + amount;
+      }, 0),
+      // Fix: Use correct status values based on backend constants
+      pendingOrders: safeData.filter(
+        (order) => order.status === "draft" || order.status === "confirmed"
+      ).length,
+      urgentOrders: safeData.filter((order) => order.priority === "urgent")
+        .length,
+    };
+
+    // Debug: log calculated statistics
+    console.log("Calculated statistics:", stats);
+
+    // More detailed breakdown for debugging
+    console.log("Status breakdown:", {
+      draft: safeData.filter((o) => o.status === "draft").length,
+      confirmed: safeData.filter((o) => o.status === "confirmed").length,
+      in_progress: safeData.filter((o) => o.status === "in_progress").length,
+      delivered: safeData.filter((o) => o.status === "delivered").length,
+      cancelled: safeData.filter((o) => o.status === "cancelled").length,
+    });
+
+    console.log("Priority breakdown:", {
+      low: safeData.filter((o) => o.priority === "low").length,
+      normal: safeData.filter((o) => o.priority === "normal").length,
+      medium: safeData.filter((o) => o.priority === "medium").length,
+      high: safeData.filter((o) => o.priority === "high").length,
+      urgent: safeData.filter((o) => o.priority === "urgent").length,
+    });
+
+    return stats;
+  };
+
+  // تحميل المتاجر
+  const loadStores = async () => {
     try {
       const response = await storeService.getStores();
       if (response.success) {
-        setStores(response.data || []);
+        // Handle different possible response structures
+        const storesData = response.data?.stores || response.data || [];
+        setStores(Array.isArray(storesData) ? storesData : []);
+      } else {
+        console.error("Failed to load stores:", response.message);
+        setStores([]);
       }
     } catch (error) {
-      console.error("Error fetching stores:", error);
+      console.error("Error loading stores:", error);
+      setStores([]);
     }
   };
 
-  // Fetch distributors for filter dropdown
-  const fetchDistributors = async () => {
+  // تحميل الموزعين
+  const loadDistributors = async () => {
     try {
       const response = await userService.getDistributors();
       if (response.success) {
-        setDistributors(response.data || []);
+        // Handle different possible response structures
+        const distributorsData =
+          response.data?.distributors || response.data || [];
+        setDistributors(
+          Array.isArray(distributorsData) ? distributorsData : []
+        );
+      } else {
+        console.error("Failed to load distributors:", response.message);
+        setDistributors([]);
       }
     } catch (error) {
-      console.error("Error fetching distributors:", error);
+      console.error("Error loading distributors:", error);
+      setDistributors([]);
     }
   };
 
-  // Load initial data
-  useEffect(() => {
-    fetchOrders();
-    fetchStores();
-    fetchDistributors();
-  }, []);
-
-  // Handle filter changes
+  // معالجة تغيير الفلاتر
   const handleFilterChange = (key, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value,
-      page: 1, // Reset to first page when filters change
-    }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
-  // Clear all filters
-  const clearFilters = () => {
-    setFilters({
-      status: "",
-      payment_status: "",
-      store_id: "",
-      distributor_id: "",
-      priority: "",
-      date_from: "",
-      date_to: "",
-      delivery_date_from: "",
-      delivery_date_to: "",
-      amount_min: "",
-      amount_max: "",
-      currency: "",
-      search: "",
-      page: 1,
-      limit: 10,
-      sortBy: "created_at",
-      sortOrder: "DESC",
-    });
+  // معالجة البحث
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
-  // Apply quick filters
-  const applyQuickFilter = (filterType, value) => {
-    handleFilterChange(filterType, value);
-  };
-
-  // Handle status update
-  const handleStatusUpdate = async (orderId, newStatus) => {
-    try {
-      const response = await orderService.updateOrderStatus(orderId, newStatus);
-      if (response.success) {
-        toast.success("Order status updated successfully");
-        fetchOrders(); // Refresh the list
-      } else {
-        toast.error(response.message || "Failed to update order status");
-      }
-    } catch (error) {
-      console.error("Error updating order status:", error);
-      toast.error("Error updating order status");
-    }
-  };
-
-  // Handle payment status update
-  const handlePaymentStatusUpdate = async (orderId, newPaymentStatus) => {
-    try {
-      const response = await orderService.updatePaymentStatus(
-        orderId,
-        newPaymentStatus
-      );
-      if (response.success) {
-        toast.success("Payment status updated successfully");
-        fetchOrders(); // Refresh the list
-      } else {
-        toast.error(response.message || "Failed to update payment status");
-      }
-    } catch (error) {
-      console.error("Error updating payment status:", error);
-      toast.error("Error updating payment status");
-    }
-  };
-
-  // Handle order deletion
-  const handleDeleteOrder = async (orderId) => {
-    try {
-      setDeleteModal((prev) => ({ ...prev, isLoading: true }));
-      const response = await orderService.deleteOrder(orderId);
-      if (response.success) {
-        toast.success("Order deleted successfully");
-        setDeleteModal({ isOpen: false, orderId: null, isLoading: false });
-        fetchOrders(); // Refresh the list
-      } else {
-        toast.error(response.message || "Failed to delete order");
-      }
-    } catch (error) {
-      console.error("Error deleting order:", error);
-      toast.error("Error deleting order");
-    } finally {
-      setDeleteModal((prev) => ({ ...prev, isLoading: false }));
-    }
-  };
-
-  // Handle bulk status update
-  const handleBulkStatusUpdate = async (newStatus) => {
-    if (selectedOrders.length === 0) {
-      toast.error("Please select orders to update");
-      return;
-    }
-
-    try {
-      const promises = selectedOrders.map((orderId) =>
-        orderService.updateOrderStatus(orderId, newStatus)
-      );
-      await Promise.all(promises);
-      toast.success(`Updated ${selectedOrders.length} orders to ${newStatus}`);
-      setSelectedOrders([]);
-      fetchOrders();
-    } catch (error) {
-      console.error("Error updating bulk orders:", error);
-      toast.error("Error updating orders");
-    }
-  };
-
-  // Handle bulk distributor assignment
-  const handleBulkAssignDistributor = async (distributorId) => {
-    if (selectedOrders.length === 0) {
-      toast.error("Please select orders to assign");
-      return;
-    }
-
-    try {
-      const promises = selectedOrders.map((orderId) =>
-        orderService.assignDistributor(orderId, distributorId)
-      );
-      await Promise.all(promises);
-      toast.success(`Assigned ${selectedOrders.length} orders to distributor`);
-      setSelectedOrders([]);
-      fetchOrders();
-    } catch (error) {
-      console.error("Error assigning distributor:", error);
-      toast.error("Error assigning distributor");
-    }
-  };
-
-  // Handle bulk priority update
-  const handleBulkPriorityUpdate = async (priority) => {
-    if (selectedOrders.length === 0) {
-      toast.error("Please select orders to update");
-      return;
-    }
-
-    try {
-      const promises = selectedOrders.map((orderId) =>
-        orderService.updateOrderPriority(orderId, priority)
-      );
-      await Promise.all(promises);
-      toast.success(`Updated priority for ${selectedOrders.length} orders`);
-      setSelectedOrders([]);
-      fetchOrders();
-    } catch (error) {
-      console.error("Error updating priority:", error);
-      toast.error("Error updating priority");
-    }
-  };
-
-  // Handle export
-  const handleExport = async () => {
+  // تصدير البيانات
+  const handleExport = async (format = "json") => {
     try {
       setIsExporting(true);
-      const response = await orderService.exportOrders(filters);
-      if (response.success) {
-        // Create download link
-        const blob = new Blob([response.data], { type: "text/csv" });
+      setError("");
+
+      // Ensure orders is an array before mapping
+      if (!Array.isArray(orders) || orders.length === 0) {
+        setError("لا توجد طلبات للتصدير");
+        return;
+      }
+
+      const data = orders.map((order) => ({
+        id: order.id,
+        order_number: order.order_number,
+        customer_name: getCustomerName(order),
+        store_name: order.store?.name || "غير محدد",
+        total_amount: getOrderAmount(order),
+        status: order.status,
+        payment_status: order.payment_status,
+        priority: order.priority,
+        order_date: order.order_date,
+      }));
+
+      if (format === "csv") {
+        const headers = Object.keys(data[0]).join(",");
+        const rows = data.map((row) => Object.values(row).join(","));
+        const csv = [headers, ...rows].join("\n");
+
+        const blob = new Blob([csv], { type: "text/csv" });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `orders_export_${
-          new Date().toISOString().split("T")[0]
-        }.csv`;
-        document.body.appendChild(a);
+        a.download = `orders_${new Date().toISOString().split("T")[0]}.csv`;
         a.click();
         window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        toast.success("Orders exported successfully");
       } else {
-        toast.error("Failed to export orders");
+        const dataStr = JSON.stringify(data, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `orders_${new Date().toISOString().split("T")[0]}.json`;
+        a.click();
+        window.URL.revokeObjectURL(url);
       }
+
+      setSuccess(`تم تصدير الطلبات بنجاح بصيغة ${format.toUpperCase()}`);
     } catch (error) {
-      console.error("Error exporting orders:", error);
-      toast.error("Error exporting orders");
+      setError("خطأ في تصدير الطلبات");
     } finally {
       setIsExporting(false);
     }
   };
 
-  // Handle page change
-  const handlePageChange = (newPage) => {
-    handleFilterChange("page", newPage);
+  // فتح modal الحذف
+  const openDeleteModal = (orderId) => {
+    setDeleteModal({
+      isOpen: true,
+      orderId,
+      isLoading: false,
+    });
   };
 
-  // Status badge component
-  const StatusBadge = ({ status, type = "order" }) => {
-    const statusConfig = {
-      pending: { color: "bg-yellow-100 text-yellow-800", icon: Clock },
-      processing: { color: "bg-blue-100 text-blue-800", icon: Zap },
-      ready: { color: "bg-green-100 text-green-800", icon: CheckCircle },
-      delivered: { color: "bg-green-100 text-green-800", icon: CheckCircle },
-      cancelled: { color: "bg-red-100 text-red-800", icon: XCircle },
-      returned: { color: "bg-orange-100 text-orange-800", icon: AlertTriangle },
-    };
-
-    const config = statusConfig[status] || {
-      color: "bg-gray-100 text-gray-800",
-      icon: Zap,
-    };
-    const IconComponent = config.icon;
-
-    return (
-      <span
-        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}
-      >
-        <IconComponent className="w-3 h-3 mr-1" />
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </span>
-    );
+  // إغلاق modal الحذف
+  const closeDeleteModal = () => {
+    setDeleteModal({
+      isOpen: false,
+      orderId: null,
+      isLoading: false,
+    });
   };
 
-  // Priority badge component
-  const PriorityBadge = ({ priority }) => {
-    const priorityConfig = {
-      low: { color: "bg-green-100 text-green-800", icon: ChevronDown },
-      medium: { color: "bg-yellow-100 text-yellow-800", icon: ChevronDown },
-      high: { color: "bg-orange-100 text-orange-800", icon: ChevronUp },
-      urgent: { color: "bg-red-100 text-red-800", icon: Zap },
-    };
+  // تأكيد الحذف
+  const confirmDelete = async () => {
+    try {
+      setDeleteModal((prev) => ({ ...prev, isLoading: true }));
+      setError("");
 
-    const config = priorityConfig[priority] || {
-      color: "bg-gray-100 text-gray-800",
-      icon: Zap,
-    };
-    const IconComponent = config.icon;
+      const response = await orderService.deleteOrder(deleteModal.orderId);
 
-    return (
-      <span
-        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}
-      >
-        <IconComponent className="w-3 h-3 mr-1" />
-        {priority.charAt(0).toUpperCase() + priority.slice(1)}
-      </span>
-    );
-  };
-
-  // Statistics cards component
-  const StatisticsCards = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-        <CardBody className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm opacity-90">Total Orders</p>
-              <p className="text-2xl font-bold">
-                {statistics.total_orders || 0}
-              </p>
-            </div>
-            <Package className="w-8 h-8 opacity-80" />
-          </div>
-        </CardBody>
-      </Card>
-
-      <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
-        <CardBody className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm opacity-90">Total Revenue (EUR)</p>
-              <p className="text-2xl font-bold">
-                €{statistics.total_amount_eur?.toLocaleString() || 0}
-              </p>
-            </div>
-            <Euro className="w-8 h-8 opacity-80" />
-          </div>
-        </CardBody>
-      </Card>
-
-      <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
-        <CardBody className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm opacity-90">Pending Orders</p>
-              <p className="text-2xl font-bold">
-                {statistics.pending_orders || 0}
-              </p>
-            </div>
-            <Clock className="w-8 h-8 opacity-80" />
-          </div>
-        </CardBody>
-      </Card>
-
-      <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
-        <CardBody className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm opacity-90">Urgent Orders</p>
-              <p className="text-2xl font-bold">
-                {statistics.urgent_orders || 0}
-              </p>
-            </div>
-            <Zap className="w-8 h-8 opacity-80" />
-          </div>
-        </CardBody>
-      </Card>
-    </div>
-  );
-
-  // Filters panel component
-  const FiltersPanel = () => (
-    <AnimatePresence>
-      {showFilters && (
-        <motion.div
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: "auto", opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className="bg-white border border-gray-200 rounded-lg p-4 mb-6"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Status Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                value={filters.status}
-                onChange={(e) => handleFilterChange("status", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="processing">Processing</option>
-                <option value="ready">Ready</option>
-                <option value="delivered">Delivered</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="returned">Returned</option>
-              </select>
-            </div>
-
-            {/* Payment Status Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Payment Status
-              </label>
-              <select
-                value={filters.payment_status}
-                onChange={(e) =>
-                  handleFilterChange("payment_status", e.target.value)
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Payment Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="paid">Paid</option>
-                <option value="partial">Partial</option>
-                <option value="failed">Failed</option>
-                <option value="refunded">Refunded</option>
-              </select>
-            </div>
-
-            {/* Store Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Store
-              </label>
-              <select
-                value={filters.store_id}
-                onChange={(e) => handleFilterChange("store_id", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Stores</option>
-                {stores.map((store) => (
-                  <option key={store.id} value={store.id}>
-                    {store.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Distributor Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Distributor
-              </label>
-              <select
-                value={filters.distributor_id}
-                onChange={(e) =>
-                  handleFilterChange("distributor_id", e.target.value)
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Distributors</option>
-                {distributors.map((distributor) => (
-                  <option key={distributor.id} value={distributor.id}>
-                    {distributor.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Priority Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Priority
-              </label>
-              <select
-                value={filters.priority}
-                onChange={(e) => handleFilterChange("priority", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Priorities</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-            </div>
-
-            {/* Currency Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Currency
-              </label>
-              <select
-                value={filters.currency}
-                onChange={(e) => handleFilterChange("currency", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Currencies</option>
-                <option value="EUR">EUR</option>
-                <option value="SYP">SYP</option>
-              </select>
-            </div>
-
-            {/* Date From Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date From
-              </label>
-              <input
-                type="date"
-                value={filters.date_from}
-                onChange={(e) =>
-                  handleFilterChange("date_from", e.target.value)
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Date To Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date To
-              </label>
-              <input
-                type="date"
-                value={filters.date_to}
-                onChange={(e) => handleFilterChange("date_to", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Amount Min Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Min Amount
-              </label>
-              <input
-                type="number"
-                placeholder="0.00"
-                value={filters.amount_min}
-                onChange={(e) =>
-                  handleFilterChange("amount_min", e.target.value)
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Amount Max Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Max Amount
-              </label>
-              <input
-                type="number"
-                placeholder="0.00"
-                value={filters.amount_max}
-                onChange={(e) =>
-                  handleFilterChange("amount_max", e.target.value)
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-2 mt-4">
-            <EnhancedButton onClick={clearFilters} variant="outline" size="sm">
-              Clear Filters
-            </EnhancedButton>
-            <EnhancedButton
-              onClick={() => setShowFilters(false)}
-              variant="outline"
-              size="sm"
-            >
-              Hide Filters
-            </EnhancedButton>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-
-  // Format currency helper
-  const formatCurrency = (amount, currency = "EUR") => {
-    if (!amount) return "€0.00";
-
-    const formatter = new Intl.NumberFormat(
-      currency === "EUR" ? "de-DE" : "ar-SY",
-      {
-        style: "currency",
-        currency: currency,
-        minimumFractionDigits: 2,
+      if (response.success) {
+        setSuccess("تم حذف الطلب بنجاح");
+        closeDeleteModal();
+        loadOrders();
+      } else {
+        setError(response.message || "خطأ في حذف الطلب");
       }
-    );
-
-    return formatter.format(amount);
+    } catch (error) {
+      setError("خطأ في حذف الطلب");
+    } finally {
+      setDeleteModal((prev) => ({ ...prev, isLoading: false }));
+    }
   };
 
-  // Main render
+  // تغيير حالة الطلب
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      setError("");
+      const response = await orderService.updateOrder(orderId, {
+        status: newStatus,
+      });
+
+      if (response.success) {
+        setSuccess("تم تحديث حالة الطلب بنجاح");
+        loadOrders();
+      } else {
+        setError(response.message || "خطأ في تحديث حالة الطلب");
+      }
+    } catch (error) {
+      setError("خطأ في تحديث حالة الطلب");
+    }
+  };
+
+  // وظائف المساعدة
+  const getCustomerName = (order) => {
+    return (
+      order.customer_name ||
+      order.customer?.name ||
+      order.store?.contact_person ||
+      "غير محدد"
+    );
+  };
+
+  const getCustomerPhone = (order) => {
+    return (
+      order.customer_phone ||
+      order.customer?.phone ||
+      order.store?.phone ||
+      "غير محدد"
+    );
+  };
+
+  const getOrderAmount = (order) => {
+    const amountEur = parseFloat(
+      order.final_amount_eur || order.total_amount_eur || 0
+    );
+    const amountSyp = parseFloat(
+      order.final_amount_syp || order.total_amount_syp || 0
+    );
+    const currency = order.currency || "EUR";
+
+    if (currency === "MIXED" && amountEur > 0 && amountSyp > 0) {
+      return `€${amountEur.toFixed(2)} + ${amountSyp.toLocaleString()} ل.س`;
+    }
+
+    if (currency === "EUR" || amountEur > 0) {
+      return `€${amountEur.toLocaleString()}`;
+    } else {
+      return `${amountSyp.toLocaleString()} ل.س`;
+    }
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      draft: "bg-gray-100 text-gray-800 border-gray-200",
+      pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      confirmed: "bg-blue-100 text-blue-800 border-blue-200",
+      processing: "bg-purple-100 text-purple-800 border-purple-200",
+      ready: "bg-indigo-100 text-indigo-800 border-indigo-200",
+      delivered: "bg-green-100 text-green-800 border-green-200",
+      cancelled: "bg-red-100 text-red-800 border-red-200",
+    };
+    return colors[status] || "bg-gray-100 text-gray-800 border-gray-200";
+  };
+
+  const getPaymentStatusColor = (status) => {
+    const colors = {
+      pending: "bg-gray-100 text-gray-800 border-gray-200",
+      paid: "bg-green-100 text-green-800 border-green-200",
+      partial: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      failed: "bg-red-100 text-red-800 border-red-200",
+      overdue: "bg-orange-100 text-orange-800 border-orange-200",
+    };
+    return colors[status] || "bg-gray-100 text-gray-800 border-gray-200";
+  };
+
+  const getPriorityColor = (priority) => {
+    const colors = {
+      low: "bg-green-100 text-green-800 border-green-200",
+      normal: "bg-blue-100 text-blue-800 border-blue-200",
+      medium: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      high: "bg-orange-100 text-orange-800 border-orange-200",
+      urgent: "bg-red-100 text-red-800 border-red-200",
+    };
+    return colors[priority] || "bg-blue-100 text-blue-800 border-blue-200";
+  };
+
+  const formatDate = (date) => {
+    if (!date) return "غير محدد";
+    try {
+      return new Date(date).toLocaleDateString("ar-EG");
+    } catch (error) {
+      return "تاريخ غير صحيح";
+    }
+  };
+
+  // إزالة الرسائل
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(""), 5000);
+      return () => clearTimeout(timer);
+    }
+    if (error) {
+      const timer = setTimeout(() => setError(""), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [success, error]);
+
+  // Loading state
+  if (isLoading && orders.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <LoadingSpinner size="xl" text="جاري تحميل الطلبات..." />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Orders Management
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Manage and track all bakery orders
-            </p>
-          </div>
-          <div className="flex space-x-2 mt-4 sm:mt-0">
-            <EnhancedButton
-              onClick={() => navigate("/orders/create")}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              New Order
-            </EnhancedButton>
-          </div>
-        </div>
-
-        {/* Statistics Cards */}
-        <StatisticsCards />
-
-        {/* Search and Filters */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-          <div className="flex flex-col lg:flex-row gap-4">
-            {/* Search */}
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Search orders by ID, customer name, or phone..."
-                  value={filters.search}
-                  onChange={(e) => handleFilterChange("search", e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="flex space-x-2">
-              <EnhancedButton
-                onClick={() => setShowFilters(!showFilters)}
-                variant="outline"
-                size="sm"
-              >
-                <Filter className="w-4 h-4 mr-2" />
-                {showFilters ? "Hide Filters" : "Show Filters"}
-              </EnhancedButton>
-              <EnhancedButton
-                onClick={() => fetchOrders(true)}
-                variant="outline"
-                size="sm"
-              >
-                <Loader2 className="w-4 h-4 mr-2" />
-                Refresh
-              </EnhancedButton>
-              <EnhancedButton
-                onClick={handleExport}
-                disabled={isExporting}
-                variant="outline"
-                size="sm"
-              >
-                {isExporting ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4 mr-2" />
-                )}
-                Export
-              </EnhancedButton>
-            </div>
-          </div>
-        </div>
-
-        {/* Filters Panel */}
-        <FiltersPanel />
-
-        {/* Bulk Actions */}
-        {selectedOrders.length > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-              <div className="flex items-center">
-                <span className="text-sm font-medium text-blue-900">
-                  {selectedOrders.length} order(s) selected
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <select
-                  onChange={(e) => handleBulkStatusUpdate(e.target.value)}
-                  className="px-3 py-1 border border-gray-300 rounded text-sm"
-                >
-                  <option value="">Update Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="processing">Processing</option>
-                  <option value="ready">Ready</option>
-                  <option value="delivered">Delivered</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-                <select
-                  onChange={(e) => handleBulkAssignDistributor(e.target.value)}
-                  className="px-3 py-1 border border-gray-300 rounded text-sm"
-                >
-                  <option value="">Assign Distributor</option>
-                  {distributors.map((distributor) => (
-                    <option key={distributor.id} value={distributor.id}>
-                      {distributor.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  onChange={(e) => handleBulkPriorityUpdate(e.target.value)}
-                  className="px-3 py-1 border border-gray-300 rounded text-sm"
-                >
-                  <option value="">Update Priority</option>
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </select>
-                <EnhancedButton
-                  onClick={() => setSelectedOrders([])}
-                  variant="outline"
-                  size="sm"
-                >
-                  Clear Selection
-                </EnhancedButton>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Orders Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          {isLoading ? (
-            <div className="flex justify-center items-center py-12">
-              <LoadingSpinner size="lg" />
-            </div>
-          ) : orders.length === 0 ? (
-            <div className="text-center py-12">
-              <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No orders found
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Try adjusting your filters or create a new order.
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                إدارة الطلبات
+              </h1>
+              <p className="text-gray-600 text-lg">
+                إدارة طلبات المخبز ومتابعة حالة التوصيل
               </p>
+            </div>
+            <div className="flex items-center gap-3">
               <EnhancedButton
                 onClick={() => navigate("/orders/create")}
-                className="bg-blue-600 hover:bg-blue-700"
+                variant="primary"
+                size="lg"
+                icon={<Plus className="w-5 h-5" />}
               >
-                <Plus className="w-4 h-4 mr-2" />
-                Create Order
+                إضافة طلب جديد
               </EnhancedButton>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <input
-                        type="checkbox"
-                        checked={selectedOrders.length === orders.length}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedOrders(orders.map((order) => order.id));
-                          } else {
-                            setSelectedOrders([]);
-                          }
-                        }}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Order ID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Customer
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Store
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Payment
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Priority
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {orders.map((order) => (
-                    <tr key={order.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <input
-                          type="checkbox"
-                          checked={selectedOrders.includes(order.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedOrders([...selectedOrders, order.id]);
-                            } else {
-                              setSelectedOrders(
-                                selectedOrders.filter((id) => id !== order.id)
-                              );
-                            }
-                          }}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        #{order.id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {order.customer_name || "N/A"}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {order.customer_phone || "N/A"}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {order.store?.name || "N/A"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatCurrency(order.total_amount, order.currency)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <StatusBadge status={order.status} />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <StatusBadge
-                          status={order.payment_status}
-                          type="payment"
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <PriorityBadge priority={order.priority} />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex items-center space-x-2">
-                          <Calendar className="w-4 h-4 text-gray-400" />
-                          <span>
-                            {order && order.order_date
-                              ? new Date(order.order_date).toLocaleDateString()
-                              : "N/A"}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => navigate(`/orders/${order.id}`)}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="View Order"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => navigate(`/orders/${order.id}/edit`)}
-                            className="text-green-600 hover:text-green-900"
-                            title="Edit Order"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              setDeleteModal({
-                                isOpen: true,
-                                orderId: order.id,
-                                isLoading: false,
-                              })
-                            }
-                            className="text-red-600 hover:text-red-900"
-                            title="Delete Order"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+          </div>
 
-        {/* Pagination */}
+          {/* الإحصائيات */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+                <CardBody className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-blue-100 text-sm font-medium">
+                        إجمالي الطلبات
+                      </p>
+                      <p className="text-3xl font-bold mt-1">
+                        {statistics.totalOrders}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-white/20 rounded-xl">
+                      <Package className="w-8 h-8" />
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white border-0 shadow-lg">
+                <CardBody className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-green-100 text-sm font-medium">
+                        إجمالي الإيرادات
+                      </p>
+                      <p className="text-3xl font-bold mt-1">
+                        €{statistics.totalRevenue.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-white/20 rounded-xl">
+                      <Euro className="w-8 h-8" />
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Card className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 shadow-lg">
+                <CardBody className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-yellow-100 text-sm font-medium">
+                        طلبات معلقة
+                      </p>
+                      <p className="text-3xl font-bold mt-1">
+                        {statistics.pendingOrders}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-white/20 rounded-xl">
+                      <Clock className="w-8 h-8" />
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <Card className="bg-gradient-to-r from-red-500 to-pink-500 text-white border-0 shadow-lg">
+                <CardBody className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-red-100 text-sm font-medium">
+                        طلبات عاجلة
+                      </p>
+                      <p className="text-3xl font-bold mt-1">
+                        {statistics.urgentOrders}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-white/20 rounded-xl">
+                      <Zap className="w-8 h-8" />
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            </motion.div>
+          </div>
+        </motion.div>
+
+        {/* رسائل النجاح والخطأ */}
+        <AnimatePresence>
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl shadow-sm"
+            >
+              <div className="flex items-center">
+                <CheckCircle className="w-5 h-5 text-green-600 ml-2" />
+                <span className="text-green-800 font-medium">{success}</span>
+              </div>
+            </motion.div>
+          )}
+
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl shadow-sm"
+            >
+              <div className="flex items-center">
+                <XCircle className="w-5 h-5 text-red-600 ml-2" />
+                <span className="text-red-800 font-medium">{error}</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* أدوات البحث والفلترة */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <Card className="mb-6 border-0 shadow-lg">
+            <CardBody className="p-6">
+              <form onSubmit={handleSearch} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                  {/* البحث */}
+                  <EnhancedInput
+                    type="text"
+                    placeholder="البحث في الطلبات..."
+                    value={filters.search}
+                    onChange={(e) =>
+                      handleFilterChange("search", e.target.value)
+                    }
+                    icon={<Search className="w-4 h-4" />}
+                    size="md"
+                  />
+
+                  {/* فلتر الحالة */}
+                  <select
+                    value={filters.status}
+                    onChange={(e) =>
+                      handleFilterChange("status", e.target.value)
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                  >
+                    <option value="">جميع الحالات</option>
+                    <option value="draft">مسودة</option>
+                    <option value="pending">معلق</option>
+                    <option value="confirmed">مؤكد</option>
+                    <option value="processing">قيد التحضير</option>
+                    <option value="ready">جاهز</option>
+                    <option value="delivered">مُسلم</option>
+                    <option value="cancelled">ملغي</option>
+                  </select>
+
+                  {/* فلتر حالة الدفع */}
+                  <select
+                    value={filters.payment_status}
+                    onChange={(e) =>
+                      handleFilterChange("payment_status", e.target.value)
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                  >
+                    <option value="">حالة الدفع</option>
+                    <option value="pending">معلق</option>
+                    <option value="paid">مدفوع</option>
+                    <option value="partial">جزئي</option>
+                    <option value="failed">فاشل</option>
+                    <option value="overdue">متأخر</option>
+                  </select>
+
+                  {/* فلتر المتجر */}
+                  <select
+                    value={filters.store_id}
+                    onChange={(e) =>
+                      handleFilterChange("store_id", e.target.value)
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                  >
+                    <option value="">جميع المتاجر</option>
+                    {Array.isArray(stores) &&
+                      stores.map((store) => (
+                        <option key={store.id} value={store.id}>
+                          {store.name}
+                        </option>
+                      ))}
+                  </select>
+
+                  {/* فلتر الأولوية */}
+                  <select
+                    value={filters.priority}
+                    onChange={(e) =>
+                      handleFilterChange("priority", e.target.value)
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                  >
+                    <option value="">الأولوية</option>
+                    <option value="low">منخفض</option>
+                    <option value="normal">عادي</option>
+                    <option value="medium">متوسط</option>
+                    <option value="high">عالي</option>
+                    <option value="urgent">عاجل</option>
+                  </select>
+
+                  {/* أزرار الإجراءات */}
+                  <div className="flex gap-2">
+                    <EnhancedButton
+                      type="button"
+                      variant="secondary"
+                      icon={<RefreshCw className="w-4 h-4" />}
+                      onClick={() => {
+                        setFilters({
+                          search: "",
+                          status: "",
+                          payment_status: "",
+                          store_id: "",
+                          distributor_id: "",
+                          priority: "",
+                        });
+                        setPagination((prev) => ({ ...prev, currentPage: 1 }));
+                      }}
+                    >
+                      إعادة تعيين
+                    </EnhancedButton>
+                  </div>
+                </div>
+              </form>
+            </CardBody>
+          </Card>
+        </motion.div>
+
+        {/* قائمة الطلبات */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+        >
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  قائمة الطلبات
+                </h2>
+                <div className="flex gap-2">
+                  <EnhancedButton
+                    onClick={() => handleExport("json")}
+                    disabled={isExporting}
+                    variant="success"
+                    size="sm"
+                    icon={
+                      isExporting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <FileText className="w-4 h-4" />
+                      )
+                    }
+                  >
+                    تصدير JSON
+                  </EnhancedButton>
+                  <EnhancedButton
+                    onClick={() => handleExport("csv")}
+                    disabled={isExporting}
+                    variant="warning"
+                    size="sm"
+                    icon={
+                      isExporting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4" />
+                      )
+                    }
+                  >
+                    تصدير CSV
+                  </EnhancedButton>
+                  <EnhancedButton
+                    onClick={loadOrders}
+                    variant="secondary"
+                    size="sm"
+                    icon={<RefreshCw className="w-4 h-4" />}
+                  >
+                    تحديث
+                  </EnhancedButton>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardBody className="p-0">
+              {isLoading ? (
+                <div className="p-8 text-center">
+                  <LoadingSpinner size="lg" text="جاري تحميل البيانات..." />
+                </div>
+              ) : orders.length === 0 ? (
+                <div className="p-8 text-center">
+                  <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-medium text-gray-900 mb-2">
+                    لا توجد طلبات
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    لم يتم العثور على طلبات تطابق معايير البحث
+                  </p>
+                  <EnhancedButton
+                    onClick={() => navigate("/orders/create")}
+                    variant="primary"
+                    icon={<Plus className="w-4 h-4" />}
+                  >
+                    إضافة طلب جديد
+                  </EnhancedButton>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          رقم الطلب
+                        </th>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          العميل
+                        </th>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          المتجر
+                        </th>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          المبلغ
+                        </th>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          الحالة
+                        </th>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          الدفع
+                        </th>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          الأولوية
+                        </th>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          التاريخ
+                        </th>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          الإجراءات
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {Array.isArray(orders) &&
+                        orders.map((order, index) => (
+                          <motion.tr
+                            key={order.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="hover:bg-gray-50 transition-colors"
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-semibold text-gray-900">
+                                #{order.order_number || order.id}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900 flex items-center gap-1">
+                                  <User className="w-3 h-3 text-gray-400" />
+                                  {getCustomerName(order)}
+                                </div>
+                                <div className="text-sm text-gray-500 flex items-center gap-1">
+                                  <Phone className="w-3 h-3 text-gray-400" />
+                                  {getCustomerPhone(order)}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900 flex items-center gap-1">
+                                <Store className="w-3 h-3 text-gray-400" />
+                                {order.store?.name || "غير محدد"}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-semibold text-gray-900">
+                                {getOrderAmount(order)}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span
+                                className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full border ${getStatusColor(
+                                  order.status
+                                )}`}
+                              >
+                                {order.status === "draft" && "مسودة"}
+                                {order.status === "pending" && "معلق"}
+                                {order.status === "confirmed" && "مؤكد"}
+                                {order.status === "processing" && "قيد التحضير"}
+                                {order.status === "ready" && "جاهز"}
+                                {order.status === "delivered" && "مُسلم"}
+                                {order.status === "cancelled" && "ملغي"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span
+                                className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full border ${getPaymentStatusColor(
+                                  order.payment_status
+                                )}`}
+                              >
+                                {order.payment_status === "pending" && "معلق"}
+                                {order.payment_status === "paid" && "مدفوع"}
+                                {order.payment_status === "partial" && "جزئي"}
+                                {order.payment_status === "failed" && "فاشل"}
+                                {order.payment_status === "overdue" && "متأخر"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span
+                                className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full border ${getPriorityColor(
+                                  order.priority
+                                )}`}
+                              >
+                                {order.priority === "low" && "منخفض"}
+                                {order.priority === "normal" && "عادي"}
+                                {order.priority === "medium" && "متوسط"}
+                                {order.priority === "high" && "عالي"}
+                                {order.priority === "urgent" && "عاجل"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3 text-gray-400" />
+                                {formatDate(order.order_date)}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex items-center gap-2">
+                                <EnhancedButton
+                                  onClick={() =>
+                                    navigate(`/orders/${order.id}`)
+                                  }
+                                  variant="primary"
+                                  size="sm"
+                                  icon={<Eye className="w-3 h-3" />}
+                                >
+                                  عرض
+                                </EnhancedButton>
+                                <EnhancedButton
+                                  onClick={() =>
+                                    navigate(`/orders/${order.id}/edit`)
+                                  }
+                                  variant="warning"
+                                  size="sm"
+                                  icon={<Edit className="w-3 h-3" />}
+                                >
+                                  تعديل
+                                </EnhancedButton>
+                                <EnhancedButton
+                                  onClick={() => openDeleteModal(order.id)}
+                                  variant="danger"
+                                  size="sm"
+                                  icon={<Trash2 className="w-3 h-3" />}
+                                >
+                                  حذف
+                                </EnhancedButton>
+                              </div>
+                            </td>
+                          </motion.tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        </motion.div>
+
+        {/* التصفح */}
         {pagination.totalPages > 1 && (
-          <div className="flex justify-between items-center mt-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="mt-6 flex items-center justify-between bg-white p-4 rounded-xl shadow-lg"
+          >
             <div className="text-sm text-gray-700">
-              Showing{" "}
-              {(pagination.currentPage - 1) * pagination.itemsPerPage + 1} to{" "}
+              عرض {(pagination.currentPage - 1) * pagination.itemsPerPage + 1}{" "}
+              إلى{" "}
               {Math.min(
                 pagination.currentPage * pagination.itemsPerPage,
                 pagination.totalItems
               )}{" "}
-              of {pagination.totalItems} results
+              من {pagination.totalItems} طلب
             </div>
-            <div className="flex space-x-2">
+            <div className="flex gap-2">
               <EnhancedButton
-                onClick={() => handlePageChange(pagination.currentPage - 1)}
+                onClick={() =>
+                  setPagination((prev) => ({
+                    ...prev,
+                    currentPage: prev.currentPage - 1,
+                  }))
+                }
                 disabled={pagination.currentPage === 1}
-                variant="outline"
+                variant="secondary"
                 size="sm"
               >
-                <ChevronLeft className="w-4 h-4 mr-1" />
-                Previous
+                السابق
               </EnhancedButton>
-              <span className="px-3 py-2 text-sm text-gray-700">
-                Page {pagination.currentPage} of {pagination.totalPages}
+              <span className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg">
+                صفحة {pagination.currentPage} من {pagination.totalPages}
               </span>
               <EnhancedButton
-                onClick={() => handlePageChange(pagination.currentPage + 1)}
+                onClick={() =>
+                  setPagination((prev) => ({
+                    ...prev,
+                    currentPage: prev.currentPage + 1,
+                  }))
+                }
                 disabled={pagination.currentPage === pagination.totalPages}
-                variant="outline"
+                variant="secondary"
                 size="sm"
               >
-                Next
-                <ChevronRight className="w-4 h-4 ml-1" />
+                التالي
               </EnhancedButton>
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Modal تأكيد الحذف */}
       <DeleteConfirmationModal
         isOpen={deleteModal.isOpen}
-        onClose={() =>
-          setDeleteModal({ isOpen: false, orderId: null, isLoading: false })
-        }
-        onConfirm={() => handleDeleteOrder(deleteModal.orderId)}
+        onClose={closeDeleteModal}
+        onConfirm={confirmDelete}
+        title="تأكيد حذف الطلب"
+        message="هل أنت متأكد من حذف هذا الطلب؟ هذا الإجراء لا يمكن التراجع عنه."
         isLoading={deleteModal.isLoading}
-        title="Delete Order"
-        message="Are you sure you want to delete this order? This action cannot be undone."
       />
     </div>
   );

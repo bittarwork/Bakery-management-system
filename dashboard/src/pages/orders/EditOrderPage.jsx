@@ -1,134 +1,137 @@
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Save,
   Trash2,
   Plus,
-  Minus,
+  Package,
+  Store,
+  Calendar,
+  Euro,
+  DollarSign,
+  FileText,
   AlertCircle,
   CheckCircle,
   Loader2,
-  CreditCard,
-  User,
-  Calendar,
-  MapPin,
-  Phone,
-  Mail,
-  Euro,
-  Package,
-  FileText,
-  Edit,
-  Eye,
-  RefreshCw,
-  Store,
+  Building,
   Globe,
   Calculator,
-  Truck,
-  Building,
   Clock,
-  Check,
-  X,
-  Clock as ClockIcon,
-  Receipt,
-  Tag,
-  Star,
-  Heart,
-  Award,
-  Shield,
-  Info,
-  AlertTriangle,
-  Settings,
-  MoreVertical,
-  Share,
-  Copy,
-  ExternalLink,
-  Activity,
-  History,
-  Target,
-  Zap,
-  Bell,
-  MessageSquare,
-  RotateCcw,
-  Archive,
-  Bookmark,
-  Flag,
-  Star as StarIcon,
-  Heart as HeartIcon,
 } from "lucide-react";
-import { Card, CardHeader, CardBody } from "../../components/ui/Card";
-import EnhancedButton from "../../components/ui/EnhancedButton";
-import EnhancedInput from "../../components/ui/EnhancedInput";
-import LoadingSpinner from "../../components/ui/LoadingSpinner";
-import { DeleteConfirmationModal } from "../../components/ui/Modal";
+import Button from "../../components/ui/Button";
 import orderService from "../../services/orderService";
 import productService from "../../services/productService";
-import userService from "../../services/userService";
+import storeService from "../../services/storeService";
+import { toast } from "react-hot-toast";
 
 const EditOrderPage = () => {
   const navigate = useNavigate();
-  const { orderId } = useParams();
+  const { id: orderId } = useParams();
 
+  // Loading states
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
-  // Order data
-  const [order, setOrder] = useState({
-    order_number: "",
-    customer_name: "",
-    customer_email: "",
-    customer_phone: "",
-    delivery_address: "",
-    total_amount: 0,
-    currency: "EUR",
-    payment_status: "pending",
-    order_status: "pending",
+  // Data
+  const [stores, setStores] = useState([]);
+  const [products, setProducts] = useState([]);
+
+  // Form data
+  const [formData, setFormData] = useState({
+    store_id: "",
+    order_date: "",
+    delivery_date: "",
     notes: "",
+    currency: "EUR",
+    exchange_rate: 15000,
+    status: "draft",
+    payment_status: "pending",
     items: [],
   });
 
-  // Available products and customers
-  const [products, setProducts] = useState([]);
-  const [customers, setCustomers] = useState([]);
-  const [selectedProduct, setSelectedProduct] = useState("");
-  const [selectedQuantity, setSelectedQuantity] = useState(1);
-
-  // Delete modal
-  const [deleteModal, setDeleteModal] = useState({
-    isOpen: false,
-    isLoading: false,
+  // Current item being added
+  const [currentItem, setCurrentItem] = useState({
+    product_id: "",
+    quantity: 1,
+    unit_price: 0,
+    discount_amount: 0,
+    gift_quantity: 0,
+    gift_reason: "",
+    notes: "",
   });
 
-  // Load order data
+  // Load initial data
   useEffect(() => {
     if (orderId) {
-      loadOrder();
-      loadProducts();
-      loadCustomers();
+      loadInitialData();
     }
   }, [orderId]);
 
-  const loadOrder = async () => {
+  const loadInitialData = async () => {
     try {
       setIsLoading(true);
-      setError("");
+      await Promise.all([loadOrder(), loadStores(), loadProducts()]);
+    } catch (error) {
+      console.error("Error loading initial data:", error);
+      toast.error("خطأ في تحميل البيانات");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  const loadOrder = async () => {
+    try {
       const response = await orderService.getOrder(orderId);
-
       if (response.success) {
-        setOrder(response.data);
+        const order = response.data;
+        setFormData({
+          store_id: order.store_id || "",
+          order_date: order.order_date ? order.order_date.split("T")[0] : "",
+          delivery_date: order.delivery_date
+            ? order.delivery_date.split("T")[0]
+            : "",
+          notes: order.notes || "",
+          currency: order.currency || "EUR",
+          exchange_rate: order.exchange_rate || 15000,
+          status: order.status || "draft",
+          payment_status: order.payment_status || "pending",
+          items:
+            order.items?.map((item, index) => ({
+              id: item.id || `temp-${index}`,
+              product_id: item.product_id,
+              product_name: item.product_name || "منتج غير محدد",
+              quantity: item.quantity || 1,
+              unit_price: item.unit_price || 0,
+              discount_amount: item.discount_amount || 0,
+              gift_quantity: item.gift_quantity || 0,
+              gift_reason: item.gift_reason || "",
+              notes: item.notes || "",
+              total_price:
+                item.quantity * item.unit_price - (item.discount_amount || 0),
+            })) || [],
+        });
       } else {
-        setError(response.message || "خطأ في تحميل بيانات الطلب");
+        toast.error(response.message || "الطلب غير موجود");
+        navigate("/orders");
       }
     } catch (error) {
       console.error("Error loading order:", error);
-      setError("خطأ في تحميل بيانات الطلب");
-    } finally {
-      setIsLoading(false);
+      toast.error("خطأ في تحميل بيانات الطلب");
+      navigate("/orders");
+    }
+  };
+
+  const loadStores = async () => {
+    try {
+      const response = await storeService.getStores();
+      if (response.success) {
+        const storesData = response.data?.stores || response.data || [];
+        setStores(Array.isArray(storesData) ? storesData : []);
+      }
+    } catch (error) {
+      console.error("Error loading stores:", error);
     }
   };
 
@@ -136,598 +139,715 @@ const EditOrderPage = () => {
     try {
       const response = await productService.getProducts({ limit: 100 });
       if (response.success) {
-        setProducts(response.data.products || []);
+        const productsData = response.data?.products || response.data || [];
+        setProducts(Array.isArray(productsData) ? productsData : []);
       }
     } catch (error) {
       console.error("Error loading products:", error);
     }
   };
 
-  const loadCustomers = async () => {
-    try {
-      const response = await userService.getUsers({
-        limit: 100,
-        role: "customer",
-      });
-      if (response.success) {
-        setCustomers(response.data.users || []);
-      }
-    } catch (error) {
-      console.error("Error loading customers:", error);
-    }
+  // Handle form changes
+  const handleFormChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Handle form changes
-  const handleInputChange = (field, value) => {
-    setOrder((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+  const handleCurrentItemChange = (field, value) => {
+    setCurrentItem((prev) => {
+      const updated = { ...prev, [field]: value };
+
+      // Auto-fill unit price when product is selected
+      if (field === "product_id" && value) {
+        const selectedProduct = products.find((p) => p.id === parseInt(value));
+        if (selectedProduct) {
+          updated.unit_price =
+            formData.currency === "EUR"
+              ? selectedProduct.price_eur || 0
+              : selectedProduct.price_syp || 0;
+        }
+      }
+
+      return updated;
+    });
   };
 
   // Add item to order
-  const handleAddItem = () => {
-    if (!selectedProduct || selectedQuantity <= 0) {
-      setError("يرجى اختيار منتج وكمية صحيحة");
+  const addItemToOrder = () => {
+    if (!currentItem.product_id || currentItem.quantity <= 0) {
+      toast.error("يرجى اختيار منتج وكمية صحيحة");
       return;
     }
 
-    const product = products.find((p) => p.id === parseInt(selectedProduct));
-    if (!product) {
-      setError("المنتج غير موجود");
-      return;
-    }
-
-    const existingItemIndex = order.items.findIndex(
-      (item) => item.product_id === product.id
+    const selectedProduct = products.find(
+      (p) => p.id === parseInt(currentItem.product_id)
     );
-
-    if (existingItemIndex >= 0) {
-      // Update existing item quantity
-      const updatedItems = [...order.items];
-      updatedItems[existingItemIndex].quantity += selectedQuantity;
-      updatedItems[existingItemIndex].total_price =
-        updatedItems[existingItemIndex].quantity * product.price;
-
-      setOrder((prev) => ({
-        ...prev,
-        items: updatedItems,
-        total_amount: updatedItems.reduce(
-          (sum, item) => sum + item.total_price,
-          0
-        ),
-      }));
-    } else {
-      // Add new item
-      const newItem = {
-        product_id: product.id,
-        product_name: product.name,
-        quantity: selectedQuantity,
-        unit_price: product.price,
-        total_price: product.price * selectedQuantity,
-      };
-
-      setOrder((prev) => ({
-        ...prev,
-        items: [...prev.items, newItem],
-        total_amount: prev.total_amount + newItem.total_price,
-      }));
+    if (!selectedProduct) {
+      toast.error("المنتج غير موجود");
+      return;
     }
 
-    setSelectedProduct("");
-    setSelectedQuantity(1);
-    setError("");
+    const newItem = {
+      ...currentItem,
+      id: `temp-${Date.now()}`, // temporary ID for new items
+      product_name: selectedProduct.name,
+      total_price:
+        currentItem.quantity * currentItem.unit_price -
+        currentItem.discount_amount,
+    };
+
+    setFormData((prev) => ({
+      ...prev,
+      items: [...prev.items, newItem],
+    }));
+
+    // Reset current item
+    setCurrentItem({
+      product_id: "",
+      quantity: 1,
+      unit_price: 0,
+      discount_amount: 0,
+      gift_quantity: 0,
+      gift_reason: "",
+      notes: "",
+    });
+
+    toast.success("تم إضافة المنتج إلى الطلب");
   };
 
   // Remove item from order
-  const handleRemoveItem = (index) => {
-    const itemToRemove = order.items[index];
-    const updatedItems = order.items.filter((_, i) => i !== index);
-
-    setOrder((prev) => ({
+  const removeItemFromOrder = (index) => {
+    setFormData((prev) => ({
       ...prev,
-      items: updatedItems,
-      total_amount: prev.total_amount - itemToRemove.total_price,
+      items: prev.items.filter((_, i) => i !== index),
     }));
+    toast.success("تم حذف المنتج من الطلب");
   };
 
-  // Update item quantity
-  const handleUpdateItemQuantity = (index, newQuantity) => {
+  // Update existing item
+  const updateItemQuantity = (index, newQuantity) => {
     if (newQuantity <= 0) {
-      handleRemoveItem(index);
+      removeItemFromOrder(index);
       return;
     }
 
-    const updatedItems = [...order.items];
-    const item = updatedItems[index];
-    item.quantity = newQuantity;
-    item.total_price = item.unit_price * newQuantity;
-
-    setOrder((prev) => ({
+    setFormData((prev) => ({
       ...prev,
-      items: updatedItems,
-      total_amount: updatedItems.reduce(
-        (sum, item) => sum + item.total_price,
-        0
+      items: prev.items.map((item, i) =>
+        i === index
+          ? {
+              ...item,
+              quantity: newQuantity,
+              total_price:
+                newQuantity * item.unit_price - (item.discount_amount || 0),
+            }
+          : item
       ),
     }));
   };
 
-  // Save order
-  const handleSave = async () => {
+  // Calculate totals
+  const calculateTotals = () => {
+    const subtotal = formData.items.reduce(
+      (sum, item) => sum + (item.total_price || 0),
+      0
+    );
+    const totalGifts = formData.items.reduce(
+      (sum, item) => sum + (item.gift_quantity || 0),
+      0
+    );
+
+    return {
+      subtotal,
+      totalGifts,
+      totalItems: formData.items.length,
+    };
+  };
+
+  // Submit order
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!formData.store_id) {
+      toast.error("يرجى اختيار المتجر");
+      return;
+    }
+
+    if (formData.items.length === 0) {
+      toast.error("يرجى إضافة منتج واحد على الأقل");
+      return;
+    }
+
     try {
       setIsSaving(true);
-      setError("");
 
-      // Validate required fields
-      if (!order.customer_name || !order.customer_email) {
-        setError("يرجى ملء جميع الحقول المطلوبة");
-        return;
-      }
+      // Prepare order data
+      const orderData = {
+        store_id: parseInt(formData.store_id),
+        order_date: formData.order_date,
+        delivery_date: formData.delivery_date || null,
+        notes: formData.notes,
+        currency: formData.currency,
+        exchange_rate: formData.exchange_rate,
+        status: formData.status,
+        payment_status: formData.payment_status,
+        items: formData.items.map((item) => ({
+          id:
+            typeof item.id === "string" && item.id.startsWith("temp-")
+              ? undefined
+              : item.id,
+          product_id: parseInt(item.product_id),
+          quantity: parseInt(item.quantity),
+          unit_price: parseFloat(item.unit_price),
+          discount_amount: parseFloat(item.discount_amount || 0),
+          gift_quantity: parseInt(item.gift_quantity || 0),
+          gift_reason: item.gift_reason || null,
+          notes: item.notes || null,
+        })),
+      };
 
-      if (order.items.length === 0) {
-        setError("يرجى إضافة منتج واحد على الأقل");
-        return;
-      }
-
-      const response = await orderService.updateOrder(orderId, order);
+      const response = await orderService.updateOrder(orderId, orderData);
 
       if (response.success) {
-        setSuccess("تم حفظ الطلب بنجاح");
-        setTimeout(() => {
-          navigate("/orders");
-        }, 2000);
+        toast.success("تم تحديث الطلب بنجاح");
+        navigate(`/orders/${orderId}`);
       } else {
-        setError(response.message || "خطأ في حفظ الطلب");
+        toast.error(response.message || "خطأ في تحديث الطلب");
       }
     } catch (error) {
-      console.error("Error saving order:", error);
-      setError("خطأ في حفظ الطلب");
+      console.error("Error updating order:", error);
+      toast.error("خطأ في تحديث الطلب");
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Delete order
-  const handleDelete = async () => {
-    try {
-      setIsDeleting(true);
-      setError("");
-
-      const response = await orderService.deleteOrder(orderId);
-
-      if (response.success) {
-        setSuccess("تم حذف الطلب بنجاح");
-        setTimeout(() => {
-          navigate("/orders");
-        }, 2000);
-      } else {
-        setError(response.message || "خطأ في حذف الطلب");
-      }
-    } catch (error) {
-      console.error("Error deleting order:", error);
-      setError("خطأ في حذف الطلب");
-    } finally {
-      setIsDeleting(false);
-      setDeleteModal({ isOpen: false, isLoading: false });
-    }
-  };
-
-  // Format amount
-  const formatAmount = (amount, currency = "EUR") => {
-    const formatter = new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-    });
-    return formatter.format(amount);
-  };
-
-  // Get status color
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+  const totals = calculateTotals();
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <LoadingSpinner size="xl" text="جاري تحميل بيانات الطلب..." />
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">جاري تحميل بيانات الطلب...</p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-4">
-              <EnhancedButton
-                onClick={() => navigate("/orders")}
-                variant="secondary"
-                size="lg"
-                icon={<ArrowLeft className="w-5 h-5" />}
-              >
-                رجوع للطلبات
-              </EnhancedButton>
-              <div>
-                <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                  تحرير الطلب
-                </h1>
-                <p className="text-gray-600 text-lg">
-                  تحرير تفاصيل الطلب #{order.order_number}
-                </p>
+        <div className="bg-white shadow rounded-lg mb-8">
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => navigate(`/orders/${orderId}`)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <ArrowLeft className="w-6 h-6" />
+                </button>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    تعديل الطلب
+                  </h1>
+                  <p className="text-gray-600 mt-1">تعديل تفاصيل الطلب</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <EnhancedButton
-                onClick={() =>
-                  setDeleteModal({ isOpen: true, isLoading: false })
-                }
-                variant="danger"
-                size="lg"
-                icon={<Trash2 className="w-5 h-5" />}
-                disabled={isDeleting}
-              >
-                حذف الطلب
-              </EnhancedButton>
-              <EnhancedButton
-                onClick={handleSave}
-                disabled={isSaving}
-                variant="primary"
-                size="lg"
-                icon={
-                  isSaving ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+              <div className="flex items-center space-x-3">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/orders/${orderId}`)}
+                  disabled={isSaving}
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={isSaving || formData.items.length === 0}
+                >
+                  {isSaving ? (
+                    <div className="flex items-center">
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      جاري الحفظ...
+                    </div>
                   ) : (
-                    <Save className="w-5 h-5" />
-                  )
-                }
-              >
-                حفظ التغييرات
-              </EnhancedButton>
+                    <div className="flex items-center">
+                      <Save className="w-4 h-4 mr-2" />
+                      حفظ التغييرات
+                    </div>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
-        </motion.div>
+        </div>
 
-        {/* رسائل النجاح والخطأ */}
-        <AnimatePresence>
-          {success && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl shadow-sm"
-            >
-              <div className="flex items-center">
-                <CheckCircle className="w-5 h-5 text-green-600 ml-2" />
-                <span className="text-green-800 font-medium">{success}</span>
-              </div>
-            </motion.div>
-          )}
-
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl shadow-sm"
-            >
-              <div className="flex items-center">
-                <AlertCircle className="w-5 h-5 text-red-600 ml-2" />
-                <span className="text-red-800 font-medium">{error}</span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Order Information */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Customer Information */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                <div className="flex items-center">
-                  <User className="w-5 h-5 mr-2 text-blue-600" />
-                  <h3 className="text-lg font-semibold">معلومات العميل</h3>
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Order Form */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Basic Information */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white shadow rounded-lg"
+              >
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    معلومات أساسية
+                  </h2>
                 </div>
-              </CardHeader>
-              <CardBody className="p-6 space-y-4">
-                <EnhancedInput
-                  label="اسم العميل"
-                  value={order.customer_name}
-                  onChange={(e) =>
-                    handleInputChange("customer_name", e.target.value)
-                  }
-                  icon={<User className="w-4 h-4" />}
-                  required
-                />
-                <EnhancedInput
-                  label="البريد الإلكتروني"
-                  type="email"
-                  value={order.customer_email}
-                  onChange={(e) =>
-                    handleInputChange("customer_email", e.target.value)
-                  }
-                  icon={<Mail className="w-4 h-4" />}
-                  required
-                />
-                <EnhancedInput
-                  label="رقم الهاتف"
-                  value={order.customer_phone}
-                  onChange={(e) =>
-                    handleInputChange("customer_phone", e.target.value)
-                  }
-                  icon={<Phone className="w-4 h-4" />}
-                />
-                <EnhancedInput
-                  label="عنوان التوصيل"
-                  value={order.delivery_address}
-                  onChange={(e) =>
-                    handleInputChange("delivery_address", e.target.value)
-                  }
-                  icon={<MapPin className="w-4 h-4" />}
-                />
-              </CardBody>
-            </Card>
-          </motion.div>
+                <div className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        المتجر <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={formData.store_id}
+                        onChange={(e) =>
+                          handleFormChange("store_id", e.target.value)
+                        }
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      >
+                        <option value="">اختر المتجر</option>
+                        {stores.map((store) => (
+                          <option key={store.id} value={store.id}>
+                            {store.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-          {/* Order Details */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                <div className="flex items-center">
-                  <FileText className="w-5 h-5 mr-2 text-green-600" />
-                  <h3 className="text-lg font-semibold">تفاصيل الطلب</h3>
-                </div>
-              </CardHeader>
-              <CardBody className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      حالة الطلب
-                    </label>
-                    <select
-                      value={order.order_status}
-                      onChange={(e) =>
-                        handleInputChange("order_status", e.target.value)
-                      }
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
-                    >
-                      <option value="pending">معلق</option>
-                      <option value="processing">قيد المعالجة</option>
-                      <option value="completed">مكتمل</option>
-                      <option value="cancelled">ملغي</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      حالة الدفع
-                    </label>
-                    <select
-                      value={order.payment_status}
-                      onChange={(e) =>
-                        handleInputChange("payment_status", e.target.value)
-                      }
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
-                    >
-                      <option value="pending">معلق</option>
-                      <option value="paid">مدفوع</option>
-                      <option value="failed">فاشل</option>
-                      <option value="refunded">مسترد</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      العملة
-                    </label>
-                    <select
-                      value={order.currency}
-                      onChange={(e) =>
-                        handleInputChange("currency", e.target.value)
-                      }
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
-                    >
-                      <option value="EUR">يورو</option>
-                      <option value="SYP">ليرة سورية</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      إجمالي المبلغ
-                    </label>
-                    <div className="flex items-center px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg">
-                      <Euro className="w-4 h-4 text-gray-500 mr-2" />
-                      <span className="font-medium text-gray-900">
-                        {formatAmount(order.total_amount, order.currency)}
-                      </span>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        العملة
+                      </label>
+                      <select
+                        value={formData.currency}
+                        onChange={(e) =>
+                          handleFormChange("currency", e.target.value)
+                        }
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="EUR">يورو (EUR)</option>
+                        <option value="SYP">ليرة سورية (SYP)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        تاريخ الطلب
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.order_date}
+                        onChange={(e) =>
+                          handleFormChange("order_date", e.target.value)
+                        }
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        تاريخ التسليم
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.delivery_date}
+                        onChange={(e) =>
+                          handleFormChange("delivery_date", e.target.value)
+                        }
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        حالة الطلب
+                      </label>
+                      <select
+                        value={formData.status}
+                        onChange={(e) =>
+                          handleFormChange("status", e.target.value)
+                        }
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="draft">مسودة</option>
+                        <option value="confirmed">مؤكد</option>
+                        <option value="in_progress">قيد التحضير</option>
+                        <option value="delivered">مُسلم</option>
+                        <option value="cancelled">ملغي</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        حالة الدفع
+                      </label>
+                      <select
+                        value={formData.payment_status}
+                        onChange={(e) =>
+                          handleFormChange("payment_status", e.target.value)
+                        }
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="pending">معلق</option>
+                        <option value="paid">مدفوع</option>
+                        <option value="partial">جزئي</option>
+                        <option value="failed">فاشل</option>
+                        <option value="overdue">متأخر</option>
+                      </select>
+                    </div>
+
+                    {formData.currency === "EUR" && (
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          سعر الصرف (1 EUR = ? SYP)
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.exchange_rate}
+                          onChange={(e) =>
+                            handleFormChange(
+                              "exchange_rate",
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          min="1"
+                        />
+                      </div>
+                    )}
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        ملاحظات
+                      </label>
+                      <textarea
+                        value={formData.notes}
+                        onChange={(e) =>
+                          handleFormChange("notes", e.target.value)
+                        }
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows="3"
+                        placeholder="أدخل أي ملاحظات إضافية..."
+                      />
                     </div>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ملاحظات
-                  </label>
-                  <textarea
-                    value={order.notes}
-                    onChange={(e) => handleInputChange("notes", e.target.value)}
-                    rows={3}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="أضف ملاحظات للطلب..."
-                  />
-                </div>
-              </CardBody>
-            </Card>
-          </motion.div>
-        </div>
+              </motion.div>
 
-        {/* Order Items */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card className="border-0 shadow-lg">
-            <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Package className="w-5 h-5 mr-2 text-purple-600" />
-                  <h3 className="text-lg font-semibold">منتجات الطلب</h3>
+              {/* Add Items */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-white shadow rounded-lg"
+              >
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    إضافة منتجات جديدة
+                  </h2>
                 </div>
-                <span className="text-sm text-gray-500">
-                  {order.items.length} منتج
-                </span>
-              </div>
-            </CardHeader>
-            <CardBody className="p-6">
-              {/* Add Item Form */}
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-3">إضافة منتج</h4>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <select
-                    value={selectedProduct}
-                    onChange={(e) => setSelectedProduct(e.target.value)}
-                    className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
-                  >
-                    <option value="">اختر المنتج</option>
-                    {products.map((product) => (
-                      <option key={product.id} value={product.id}>
-                        {product.name} -{" "}
-                        {formatAmount(product.price, order.currency)}
-                      </option>
-                    ))}
-                  </select>
-                  <EnhancedInput
-                    type="number"
-                    min="1"
-                    value={selectedQuantity}
-                    onChange={(e) =>
-                      setSelectedQuantity(parseInt(e.target.value) || 1)
+                <div className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        المنتج
+                      </label>
+                      <select
+                        value={currentItem.product_id}
+                        onChange={(e) =>
+                          handleCurrentItemChange("product_id", e.target.value)
+                        }
+                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      >
+                        <option value="">اختر المنتج</option>
+                        {products.map((product) => (
+                          <option key={product.id} value={product.id}>
+                            {product.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        الكمية
+                      </label>
+                      <input
+                        type="number"
+                        value={currentItem.quantity}
+                        onChange={(e) =>
+                          handleCurrentItemChange(
+                            "quantity",
+                            parseInt(e.target.value) || 1
+                          )
+                        }
+                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        min="1"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        سعر الوحدة ({formData.currency})
+                      </label>
+                      <input
+                        type="number"
+                        value={currentItem.unit_price}
+                        onChange={(e) =>
+                          handleCurrentItemChange(
+                            "unit_price",
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={addItemToOrder}
+                    disabled={
+                      !currentItem.product_id || currentItem.quantity <= 0
                     }
-                    placeholder="الكمية"
-                  />
-                  <EnhancedButton
-                    onClick={handleAddItem}
-                    variant="primary"
-                    className="w-full"
-                    icon={<Plus className="w-4 h-4" />}
+                    className="w-full md:w-auto"
                   >
-                    إضافة
-                  </EnhancedButton>
+                    <Plus className="w-4 h-4 mr-2" />
+                    إضافة إلى الطلب
+                  </Button>
                 </div>
-              </div>
+              </motion.div>
 
-              {/* Items List */}
-              {order.items.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p>لا توجد منتجات في الطلب</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {order.items.map((item, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
-                    >
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">
-                          {item.product_name}
-                        </h4>
-                        <p className="text-sm text-gray-500">
-                          السعر: {formatAmount(item.unit_price, order.currency)}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2">
-                          <EnhancedButton
-                            onClick={() =>
-                              handleUpdateItemQuantity(index, item.quantity - 1)
-                            }
-                            variant="secondary"
-                            size="sm"
-                            icon={<Minus className="w-3 h-3" />}
-                          />
-                          <span className="w-12 text-center font-medium">
-                            {item.quantity}
-                          </span>
-                          <EnhancedButton
-                            onClick={() =>
-                              handleUpdateItemQuantity(index, item.quantity + 1)
-                            }
-                            variant="secondary"
-                            size="sm"
-                            icon={<Plus className="w-3 h-3" />}
-                          />
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium text-gray-900">
-                            {formatAmount(item.total_price, order.currency)}
-                          </p>
-                        </div>
-                        <EnhancedButton
-                          onClick={() => handleRemoveItem(index)}
-                          variant="danger"
-                          size="sm"
-                          icon={<Trash2 className="w-4 h-4" />}
-                        />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+              {/* Order Items List */}
+              {formData.items.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="bg-white shadow rounded-lg"
+                >
+                  <div className="px-6 py-4 border-b border-gray-200">
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      منتجات الطلب ({formData.items.length})
+                    </h2>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-right py-3 px-6 text-xs font-medium text-gray-500 uppercase">
+                            المنتج
+                          </th>
+                          <th className="text-center py-3 px-6 text-xs font-medium text-gray-500 uppercase">
+                            الكمية
+                          </th>
+                          <th className="text-center py-3 px-6 text-xs font-medium text-gray-500 uppercase">
+                            السعر
+                          </th>
+                          <th className="text-center py-3 px-6 text-xs font-medium text-gray-500 uppercase">
+                            المجموع
+                          </th>
+                          <th className="text-center py-3 px-6 text-xs font-medium text-gray-500 uppercase">
+                            إجراءات
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {formData.items.map((item, index) => (
+                          <tr
+                            key={item.id || index}
+                            className="hover:bg-gray-50"
+                          >
+                            <td className="py-4 px-6">
+                              <div className="flex items-center">
+                                <Package className="w-5 h-5 text-gray-400 mr-2" />
+                                <span className="font-medium">
+                                  {item.product_name}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6 text-center">
+                              <div className="flex items-center justify-center space-x-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    updateItemQuantity(index, item.quantity - 1)
+                                  }
+                                  className="w-8 h-8 p-0"
+                                >
+                                  -
+                                </Button>
+                                <span className="w-12 text-center">
+                                  {item.quantity}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    updateItemQuantity(index, item.quantity + 1)
+                                  }
+                                  className="w-8 h-8 p-0"
+                                >
+                                  +
+                                </Button>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6 text-center">
+                              {formData.currency === "EUR" ? "€" : "ل.س"}
+                              {item.unit_price.toFixed(2)}
+                            </td>
+                            <td className="py-4 px-6 text-center font-bold text-green-600">
+                              {formData.currency === "EUR" ? "€" : "ل.س"}
+                              {item.total_price.toFixed(2)}
+                            </td>
+                            <td className="py-4 px-6 text-center">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeItemFromOrder(index)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </motion.div>
               )}
+            </div>
 
-              {/* Total */}
-              {order.items.length > 0 && (
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-medium text-gray-900">
-                      الإجمالي:
-                    </span>
-                    <span className="text-2xl font-bold text-gray-900">
-                      {formatAmount(order.total_amount, order.currency)}
+            {/* Order Summary */}
+            <div className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="bg-white shadow rounded-lg"
+              >
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    ملخص الطلب
+                  </h2>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">عدد المنتجات:</span>
+                    <span className="font-medium">{totals.totalItems}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">إجمالي الهدايا:</span>
+                    <span className="font-medium text-green-600">
+                      {totals.totalGifts}
                     </span>
                   </div>
-                </div>
-              )}
-            </CardBody>
-          </Card>
-        </motion.div>
 
-        {/* Delete Confirmation Modal */}
-        <DeleteConfirmationModal
-          isOpen={deleteModal.isOpen}
-          onClose={() => setDeleteModal({ isOpen: false, isLoading: false })}
-          onConfirm={handleDelete}
-          isLoading={deleteModal.isLoading}
-          title="حذف الطلب"
-          message={`هل أنت متأكد من حذف الطلب رقم #${order.order_number}؟ لا يمكن التراجع عن هذا الإجراء.`}
-        />
+                  <div className="border-t pt-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-semibold">
+                        المجموع النهائي:
+                      </span>
+                      <span className="text-xl font-bold text-green-600">
+                        {formData.currency === "EUR" ? "€" : "ل.س"}
+                        {totals.subtotal.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {formData.currency === "EUR" && totals.subtotal > 0 && (
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                      <div className="text-sm text-gray-600 text-center">
+                        <p>المعادل بالليرة السورية:</p>
+                        <p className="text-lg font-bold text-purple-600 mt-1">
+                          {new Intl.NumberFormat("ar-SY").format(
+                            totals.subtotal * formData.exchange_rate
+                          )}{" "}
+                          ل.س
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+
+              {/* Order Status */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="bg-white shadow rounded-lg"
+              >
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    حالة الطلب
+                  </h2>
+                </div>
+                <div className="p-6 space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">حالة الطلب:</span>
+                    <span className="font-medium">
+                      {formData.status === "draft"
+                        ? "مسودة"
+                        : formData.status === "confirmed"
+                        ? "مؤكد"
+                        : formData.status === "in_progress"
+                        ? "قيد التحضير"
+                        : formData.status === "delivered"
+                        ? "مُسلم"
+                        : formData.status === "cancelled"
+                        ? "ملغي"
+                        : formData.status}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">حالة الدفع:</span>
+                    <span className="font-medium">
+                      {formData.payment_status === "pending"
+                        ? "معلق"
+                        : formData.payment_status === "paid"
+                        ? "مدفوع"
+                        : formData.payment_status === "partial"
+                        ? "جزئي"
+                        : formData.payment_status === "failed"
+                        ? "فاشل"
+                        : formData.payment_status === "overdue"
+                        ? "متأخر"
+                        : formData.payment_status}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">العملة:</span>
+                    <span className="font-medium">{formData.currency}</span>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </form>
       </div>
     </div>
   );
