@@ -25,7 +25,6 @@ import DistributionReportsPage from "./pages/distribution/DistributionReportsPag
 import OrdersListPage from "./pages/orders/OrdersListPage";
 import OrderDetailsPage from "./pages/orders/OrderDetailsPage";
 import CreateOrderPage from "./pages/orders/CreateOrderPage";
-import EnhancedCreateOrderPage from "./pages/orders/EnhancedCreateOrderPage";
 import EditOrderPage from "./pages/orders/EditOrderPage";
 import OrderReportsPage from "./pages/orders/OrderReportsPage";
 
@@ -343,27 +342,6 @@ function App() {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <CreateOrderPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/orders/create-enhanced"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <EnhancedCreateOrderPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>

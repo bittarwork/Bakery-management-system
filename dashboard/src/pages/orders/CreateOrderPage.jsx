@@ -24,6 +24,7 @@ import {
   Clock,
 } from "lucide-react";
 import Button from "../../components/ui/Button";
+import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import orderService from "../../services/orderService";
 import productService from "../../services/productService";
 import storeService from "../../services/storeService";
@@ -253,9 +254,7 @@ const CreateOrderPage = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
+      <LoadingSpinner fullScreen text="جاري تحميل البيانات..." size="lg" />
     );
   }
 

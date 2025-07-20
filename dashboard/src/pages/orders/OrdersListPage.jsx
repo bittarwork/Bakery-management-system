@@ -96,11 +96,20 @@ const OrdersListPage = () => {
       setIsLoading(true);
       setError("");
 
+      // Filter out empty values to avoid sending empty strings to API
+      const cleanFilters = Object.fromEntries(
+        Object.entries(filters).filter(
+          ([_, value]) => value && value.trim() !== ""
+        )
+      );
+
       const params = {
         page: pagination.currentPage,
         limit: pagination.itemsPerPage,
-        ...filters,
+        ...cleanFilters,
       };
+
+      console.log("API call params:", params); // Debug log
 
       const response = await orderService.getOrders(params);
 
@@ -444,11 +453,7 @@ const OrdersListPage = () => {
 
   // Loading state
   if (isLoading && orders.length === 0) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <LoadingSpinner size="xl" text="جاري تحميل الطلبات..." />
-      </div>
-    );
+    return <LoadingSpinner fullScreen text="جاري تحميل الطلبات..." size="lg" />;
   }
 
   return (

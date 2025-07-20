@@ -21,6 +21,7 @@ import {
   Clock,
 } from "lucide-react";
 import Button from "../../components/ui/Button";
+import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import orderService from "../../services/orderService";
 import productService from "../../services/productService";
 import storeService from "../../services/storeService";
@@ -325,16 +326,7 @@ const EditOrderPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">جاري تحميل بيانات الطلب...</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <LoadingSpinner fullScreen text="جاري تحميل بيانات الطلب..." size="lg" />
     );
   }
 
@@ -547,7 +539,7 @@ const EditOrderPage = () => {
                 </div>
               </motion.div>
 
-              {/* Add Items */}
+              {/* Add Items - Enhanced */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -555,81 +547,231 @@ const EditOrderPage = () => {
                 className="bg-white shadow rounded-lg"
               >
                 <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    إضافة منتجات جديدة
-                  </h2>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      إضافة منتجات جديدة
+                    </h2>
+                    <div className="text-sm text-gray-500">
+                      منتجات متاحة: {products.length}
+                    </div>
+                  </div>
                 </div>
                 <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <div className="flex items-start">
+                      <Package className="w-5 h-5 text-blue-600 mt-0.5 mr-2" />
+                      <div>
+                        <h3 className="text-sm font-medium text-blue-900 mb-1">
+                          إضافة منتجات إلى الطلب
+                        </h3>
+                        <p className="text-xs text-blue-700">
+                          يمكنك إضافة منتجات جديدة أو تعديل الكميات الموجودة.
+                          سيتم حساب الأسعار تلقائياً.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        المنتج
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        اختر المنتج <span className="text-red-500">*</span>
                       </label>
                       <select
                         value={currentItem.product_id}
                         onChange={(e) =>
                           handleCurrentItemChange("product_id", e.target.value)
                         }
-                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
-                        <option value="">اختر المنتج</option>
+                        <option value="">-- اختر المنتج --</option>
                         {products.map((product) => (
                           <option key={product.id} value={product.id}>
-                            {product.name}
+                            {product.name} -{" "}
+                            {formData.currency === "EUR" ? "€" : "ل.س"}
+                            {(formData.currency === "EUR"
+                              ? product.price_eur
+                              : product.price_syp) || 0}
                           </option>
                         ))}
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        الكمية
-                      </label>
-                      <input
-                        type="number"
-                        value={currentItem.quantity}
-                        onChange={(e) =>
-                          handleCurrentItemChange(
-                            "quantity",
-                            parseInt(e.target.value) || 1
-                          )
-                        }
-                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                        min="1"
-                      />
-                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          الكمية <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={currentItem.quantity}
+                          onChange={(e) =>
+                            handleCurrentItemChange(
+                              "quantity",
+                              parseInt(e.target.value) || 1
+                            )
+                          }
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          min="1"
+                          placeholder="أدخل الكمية"
+                        />
+                      </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        سعر الوحدة ({formData.currency})
-                      </label>
-                      <input
-                        type="number"
-                        value={currentItem.unit_price}
-                        onChange={(e) =>
-                          handleCurrentItemChange(
-                            "unit_price",
-                            parseFloat(e.target.value) || 0
-                          )
-                        }
-                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                        min="0"
-                        step="0.01"
-                      />
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          سعر الوحدة ({formData.currency})
+                        </label>
+                        <input
+                          type="number"
+                          value={currentItem.unit_price}
+                          onChange={(e) =>
+                            handleCurrentItemChange(
+                              "unit_price",
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          min="0"
+                          step="0.01"
+                          placeholder="السعر (يتم ملؤه تلقائياً)"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <Button
-                    type="button"
-                    onClick={addItemToOrder}
-                    disabled={
-                      !currentItem.product_id || currentItem.quantity <= 0
-                    }
-                    className="w-full md:w-auto"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    إضافة إلى الطلب
-                  </Button>
+                  {/* Advanced Options */}
+                  <div className="border-t pt-4 mb-6">
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">
+                      خيارات إضافية (اختيارية)
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">
+                          مبلغ الخصم ({formData.currency})
+                        </label>
+                        <input
+                          type="number"
+                          value={currentItem.discount_amount}
+                          onChange={(e) =>
+                            handleCurrentItemChange(
+                              "discount_amount",
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
+                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">
+                          كمية الهدية
+                        </label>
+                        <input
+                          type="number"
+                          value={currentItem.gift_quantity}
+                          onChange={(e) =>
+                            handleCurrentItemChange(
+                              "gift_quantity",
+                              parseInt(e.target.value) || 0
+                            )
+                          }
+                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                          min="0"
+                          placeholder="0"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">
+                          سبب الهدية
+                        </label>
+                        <input
+                          type="text"
+                          value={currentItem.gift_reason}
+                          onChange={(e) =>
+                            handleCurrentItemChange(
+                              "gift_reason",
+                              e.target.value
+                            )
+                          }
+                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                          placeholder="مثال: عرض ترويجي"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button
+                      type="button"
+                      onClick={addItemToOrder}
+                      disabled={
+                        !currentItem.product_id || currentItem.quantity <= 0
+                      }
+                      className="flex-1 sm:flex-none"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      إضافة إلى الطلب
+                    </Button>
+
+                    {(currentItem.product_id ||
+                      currentItem.quantity > 1 ||
+                      currentItem.unit_price > 0) && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          setCurrentItem({
+                            product_id: "",
+                            quantity: 1,
+                            unit_price: 0,
+                            discount_amount: 0,
+                            gift_quantity: 0,
+                            gift_reason: "",
+                            notes: "",
+                          })
+                        }
+                        className="flex-1 sm:flex-none"
+                      >
+                        إعادة تعيين
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Preview */}
+                  {currentItem.product_id &&
+                    currentItem.quantity > 0 &&
+                    currentItem.unit_price > 0 && (
+                      <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                        <div className="text-sm text-gray-600 mb-1">
+                          معاينة المنتج:
+                        </div>
+                        <div className="font-medium">
+                          {
+                            products.find(
+                              (p) => p.id === parseInt(currentItem.product_id)
+                            )?.name
+                          }{" "}
+                          × {currentItem.quantity}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          الإجمالي: {formData.currency === "EUR" ? "€" : "ل.س"}
+                          {(
+                            currentItem.quantity * currentItem.unit_price -
+                            currentItem.discount_amount
+                          ).toFixed(2)}
+                          {currentItem.gift_quantity > 0 && (
+                            <span className="text-green-600">
+                              {" "}
+                              + {currentItem.gift_quantity} هدية
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                 </div>
               </motion.div>
 
@@ -712,11 +854,11 @@ const EditOrderPage = () => {
                             </td>
                             <td className="py-4 px-6 text-center">
                               {formData.currency === "EUR" ? "€" : "ل.س"}
-                              {item.unit_price.toFixed(2)}
+                              {(parseFloat(item.unit_price) || 0).toFixed(2)}
                             </td>
                             <td className="py-4 px-6 text-center font-bold text-green-600">
                               {formData.currency === "EUR" ? "€" : "ل.س"}
-                              {item.total_price.toFixed(2)}
+                              {(parseFloat(item.total_price) || 0).toFixed(2)}
                             </td>
                             <td className="py-4 px-6 text-center">
                               <Button
