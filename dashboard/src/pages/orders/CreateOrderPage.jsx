@@ -51,6 +51,7 @@ const CreateOrderPage = () => {
     delivery_date: "",
     notes: "",
     currency: "EUR",
+    priority: "normal",
     items: [],
   });
 
@@ -204,7 +205,9 @@ const CreateOrderPage = () => {
     const newItem = {
       ...currentItem,
       id: Date.now(),
+      product_id: parseInt(currentItem.product_id),
       product_name: currentItem.product_name,
+      quantity: parseInt(currentItem.quantity),
       total_price: parseFloat(
         parseFloat(currentItem.quantity || 0) *
           parseFloat(currentItem.unit_price || 0) -
@@ -278,10 +281,12 @@ const CreateOrderPage = () => {
 
       const orderData = {
         store_id: parseInt(formData.store_id),
-        order_date: formData.order_date,
-        delivery_date: formData.delivery_date || null,
+        scheduled_delivery_date:
+          formData.delivery_date && formData.delivery_date.trim() !== ""
+            ? formData.delivery_date
+            : null,
         notes: formData.notes,
-        currency: formData.currency,
+        priority: formData.priority,
         items: formData.items.map((item) => ({
           product_id: parseInt(item.product_id),
           quantity: parseInt(item.quantity),

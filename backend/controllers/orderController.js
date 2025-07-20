@@ -203,12 +203,16 @@ export const createOrder = async (req, res) => {
     const transaction = await sequelize.transaction();
 
     try {
+        // Debug: Log the received data
+        console.log('[ORDERS] Received order creation data:', JSON.stringify(req.body, null, 2));
+
         // Create DTO and validate
         const createOrderRequest = new CreateOrderRequest(req.body);
         const validation = createOrderRequest.validate();
 
         if (!validation.isValid) {
             await transaction.rollback();
+            console.log('[ORDERS] Validation failed:', JSON.stringify(validation.errors, null, 2));
             return res.status(400).json({
                 success: false,
                 message: 'بيانات غير صحيحة',

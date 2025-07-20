@@ -4,11 +4,19 @@
  */
 export class CreateOrderRequest {
     constructor(data) {
+        console.log('[DTO] Creating CreateOrderRequest with data:', JSON.stringify(data, null, 2));
         this.store_id = data.store_id;
         this.items = data.items || [];
         this.notes = data.notes || '';
         this.priority = data.priority || 'normal';
         this.scheduled_delivery_date = data.scheduled_delivery_date || null;
+        console.log('[DTO] Processed data:', {
+            store_id: this.store_id,
+            items_count: this.items.length,
+            notes: this.notes,
+            priority: this.priority,
+            scheduled_delivery_date: this.scheduled_delivery_date
+        });
     }
 
     /**
@@ -83,11 +91,21 @@ export class CreateOrderRequest {
                     field: 'scheduled_delivery_date',
                     message: 'Scheduled delivery date must be a valid date'
                 });
-            } else if (deliveryDate < new Date()) {
-                errors.push({
-                    field: 'scheduled_delivery_date',
-                    message: 'Scheduled delivery date cannot be in the past'
-                });
+            } else {
+                // Set delivery date to start of day for comparison
+                const deliveryDateStart = new Date(deliveryDate);
+                deliveryDateStart.setHours(0, 0, 0, 0);
+
+                // Set today to start of day for comparison
+                const todayStart = new Date();
+                todayStart.setHours(0, 0, 0, 0);
+
+                if (deliveryDateStart < todayStart) {
+                    errors.push({
+                        field: 'scheduled_delivery_date',
+                        message: 'Scheduled delivery date cannot be in the past'
+                    });
+                }
             }
         }
 
