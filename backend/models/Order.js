@@ -80,9 +80,9 @@ const Order = sequelize.define('Order', {
         defaultValue: 0.00
     },
     priority: {
-        type: DataTypes.ENUM('low', 'medium', 'high', 'urgent'),
+        type: DataTypes.ENUM('low', 'normal', 'high', 'urgent'),
         allowNull: false,
-        defaultValue: 'medium'
+        defaultValue: 'normal'
     },
     scheduled_delivery_date: {
         type: DataTypes.DATEONLY,

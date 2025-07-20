@@ -292,7 +292,7 @@ export const createOrder = async (req, res) => {
             commission_syp: (totalAmountSyp - totalCostSyp) * 0.1,
             status: ORDER_STATUS.DRAFT,
             payment_status: PAYMENT_STATUS.PENDING,
-            priority,
+            priority: priority === 'medium' ? 'normal' : priority, // Map 'medium' to 'normal' for existing enum
             scheduled_delivery_date: scheduled_delivery_date || null,
             notes,
             created_by: req.user.id,
