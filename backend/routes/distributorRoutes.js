@@ -3,10 +3,11 @@
  * Routes for distributor management and order assignments
  */
 
-const express = require('express');
+import express from 'express';
+import DistributorController from '../controllers/distributorController.js';
+import { auth, authorize } from '../middleware/auth.js';
+
 const router = express.Router();
-const DistributorController = require('../controllers/distributorController');
-const { auth, authorize } = require('../middleware/auth');
 
 // ==============================================
 // DISTRIBUTOR MANAGEMENT ROUTES
@@ -55,7 +56,7 @@ router.delete('/assignments/:id', auth, authorize(['admin', 'manager']), Distrib
 // @access  Private
 router.get('/available', auth, async (req, res) => {
     try {
-        const db = require('../config/database');
+        const { default: db } = await import('../config/database.js');
         const { date, exclude_order_id } = req.query;
 
         let whereClause = "WHERE role IN ('distributor', 'admin') AND status = 'active'";
@@ -139,7 +140,7 @@ router.get('/:id/history', auth, async (req, res) => {
         const { id } = req.params;
         const { page = 1, limit = 10, status, date_from, date_to } = req.query;
 
-        const db = require('../config/database');
+        const { default: db } = await import('../config/database.js');
         const offset = (page - 1) * limit;
 
         let whereClause = 'WHERE da.distributor_id = ?';
@@ -294,7 +295,7 @@ router.get('/:id/calendar', auth, async (req, res) => {
         const { id } = req.params;
         const { month, year } = req.query;
 
-        const db = require('../config/database');
+        const { default: db } = await import('../config/database.js');
 
         // Set default month/year if not provided
         const currentDate = new Date();
@@ -362,4 +363,4 @@ router.get('/:id/calendar', auth, async (req, res) => {
     }
 });
 
-module.exports = router; 
+export default router; 

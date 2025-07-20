@@ -3,10 +3,11 @@
  * Routes for advanced delivery scheduling with calendar integration
  */
 
-const express = require('express');
+import express from 'express';
+import DeliverySchedulingController from '../controllers/deliverySchedulingController.js';
+import { auth, authorize } from '../middleware/auth.js';
+
 const router = express.Router();
-const DeliverySchedulingController = require('../controllers/deliverySchedulingController');
-const { auth, authorize } = require('../middleware/auth');
 
 // ==============================================
 // DELIVERY SCHEDULE MANAGEMENT ROUTES
@@ -101,7 +102,7 @@ router.post('/schedules/confirm/:token', DeliverySchedulingController.confirmDel
 router.get('/schedules/confirm/:token', async (req, res) => {
     try {
         const { token } = req.params;
-        const db = require('../config/database');
+        const { default: db } = await import('../config/database.js');
 
         const schedule = await db.get(`
             SELECT 
@@ -170,7 +171,7 @@ router.get('/schedules/statistics', auth, DeliverySchedulingController.getDelive
 // @access  Private
 router.get('/performance', auth, async (req, res) => {
     try {
-        const db = require('../config/database');
+        const { default: db } = await import('../config/database.js');
         const { date_from, date_to, time_slot, delivery_type } = req.query;
 
         // Set default date range (last 30 days)
@@ -411,7 +412,7 @@ router.get('/routes/optimize', auth, async (req, res) => {
             });
         }
 
-        const db = require('../config/database');
+        const { default: db } = await import('../config/database.js');
 
         let whereClause = 'WHERE ds.scheduled_date = ? AND ds.status IN ("scheduled", "confirmed")';
         const params = [date];
@@ -483,4 +484,4 @@ router.get('/routes/optimize', auth, async (req, res) => {
     }
 });
 
-module.exports = router; 
+export default router; 

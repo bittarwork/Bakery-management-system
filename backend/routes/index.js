@@ -19,6 +19,11 @@ import taxRoutes from './taxRoutes.js';
 import priceHistoryRoutes from './priceHistoryRoutes.js';
 import refundRoutes from './refundRoutes.js';
 
+// Import Phase 6 enhanced order management routes
+import enhancedPricingRoutes from './enhancedPricingRoutes.js';
+import distributorRoutes from './distributorRoutes.js';
+import deliverySchedulingRoutes from './deliverySchedulingRoutes.js';
+
 const router = express.Router();
 
 // API Documentation endpoint
@@ -51,7 +56,11 @@ router.get('/', (req, res) => {
             notifications: '/api/notifications',
             tax: '/api/tax',
             priceHistory: '/api/price-history',
-            refunds: '/api/refunds'
+            refunds: '/api/refunds',
+            // Phase 6 Enhanced Order Management
+            enhancedPricing: '/api/pricing',
+            distributors: '/api/distributors',
+            deliveryScheduling: '/api/delivery'
         },
         documentation: {
             api_docs: '/api/docs',
@@ -79,6 +88,11 @@ router.use('/notifications', notificationRoutes);
 router.use('/tax', taxRoutes);
 router.use('/price-history', priceHistoryRoutes);
 router.use('/refunds', refundRoutes);
+
+// Mount Phase 6 enhanced order management routes
+router.use('/pricing', enhancedPricingRoutes);
+router.use('/distributors', distributorRoutes);
+router.use('/delivery', deliverySchedulingRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {

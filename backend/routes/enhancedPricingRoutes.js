@@ -3,10 +3,11 @@
  * Routes for dynamic pricing, price history, and bulk price updates
  */
 
-const express = require('express');
+import express from 'express';
+import EnhancedPricingController from '../controllers/enhancedPricingController.js';
+import { auth, authorize } from '../middleware/auth.js';
+
 const router = express.Router();
-const EnhancedPricingController = require('../controllers/enhancedPricingController');
-const { auth, authorize } = require('../middleware/auth');
 
 // ==============================================
 // PRICING RULES ROUTES
@@ -120,7 +121,7 @@ router.post('/bulk-update', auth, authorize(['admin', 'manager']), EnhancedPrici
 // @access  Private
 router.get('/bulk-operations', auth, async (req, res) => {
     try {
-        const db = require('../config/database');
+        const { default: db } = await import('../config/database.js');
 
         const {
             page = 1,
@@ -212,7 +213,7 @@ router.get('/history', auth, EnhancedPricingController.getPriceHistory);
 // @access  Private
 router.get('/statistics', auth, async (req, res) => {
     try {
-        const db = require('../config/database');
+        const { default: db } = await import('../config/database.js');
         const { date_from, date_to } = req.query;
 
         // Set default date range (last 30 days)
@@ -303,7 +304,7 @@ router.get('/statistics', auth, async (req, res) => {
 // @access  Private
 router.get('/products-overview', auth, async (req, res) => {
     try {
-        const db = require('../config/database');
+        const { default: db } = await import('../config/database.js');
         const { category, price_range, search } = req.query;
 
         let whereClause = 'WHERE 1=1';
@@ -376,4 +377,4 @@ router.get('/products-overview', auth, async (req, res) => {
     }
 });
 
-module.exports = router; 
+export default router; 

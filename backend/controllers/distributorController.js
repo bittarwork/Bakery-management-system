@@ -4,8 +4,8 @@
  * Phase 6 - Complete Order Management
  */
 
-const db = require('../config/database');
-const logger = require('../config/logger');
+import db from '../config/database.js';
+import logger from '../config/logger.js';
 
 class DistributorController {
     /**
@@ -652,4 +652,4 @@ class DistributorController {
     }
 }
 
-module.exports = DistributorController; 
+export default DistributorController; 
