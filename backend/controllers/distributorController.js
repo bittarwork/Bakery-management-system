@@ -68,7 +68,7 @@ class DistributorController {
                     active_assignments: distributor.active_assignments || 0,
                     completed_deliveries: distributor.completed_deliveries || 0,
                     avg_delivery_delay_days: distributor.avg_delivery_delay_days || 0,
-                    efficiency_score: this.calculateEfficiencyScore(distributor)
+                    efficiency_score: DistributorController.calculateEfficiencyScore(distributor)
                 }
             }));
 
@@ -329,7 +329,7 @@ class DistributorController {
                 performance: {
                     is_delayed: assignment.delivery_delay_days > 0,
                     delay_days: assignment.delivery_delay_days || 0,
-                    status_label: this.getAssignmentStatusLabel(assignment.status)
+                    status_label: DistributorController.getAssignmentStatusLabel(assignment.status)
                 }
             }));
 

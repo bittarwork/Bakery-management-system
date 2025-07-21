@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast';
 
 // API Configuration - Railway production only
 const API_CONFIG = {
-    baseURL: 'https://bakery-management-system-production.up.railway.app/api/',
+    baseURL: 'https://bakery-management-system-production.up.railway.app/api',
     timeout: 45000, // Increased timeout for Railway
     retryAttempts: 5, // More retry attempts
     retryDelay: 1500, // Longer delay between retries

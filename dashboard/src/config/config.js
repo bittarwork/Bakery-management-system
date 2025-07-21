@@ -1,6 +1,6 @@
 // API Configuration
 const config = {
-    // Development vs Production API URLs
+    // Development vs Production API URLs  
     API_BASE_URL: import.meta.env.VITE_API_URL || 'https://bakery-management-system-production.up.railway.app/api',
 
     // Local development fallback
