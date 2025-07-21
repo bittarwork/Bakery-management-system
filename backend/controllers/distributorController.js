@@ -118,10 +118,12 @@ class DistributorController {
 
         } catch (error) {
             logger.error('Error fetching distributors:', error);
+            console.error('❌ SQL/DB Error in getDistributors:', error.stack || error);
             res.status(500).json({
                 success: false,
                 message: 'خطأ في جلب الموزعين',
-                error: error.message
+                error: error.message,
+                stack: error.stack
             });
         }
     }
