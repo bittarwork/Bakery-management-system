@@ -10,6 +10,9 @@ import Notification from './Notification.js';
 import Distributor from './Distributor.js';
 import DistributionTrip from './DistributionTrip.js';
 import StoreVisit from './StoreVisit.js';
+import DeliverySchedule from './DeliverySchedule.js';
+import DeliveryCapacity from './DeliveryCapacity.js';
+import DeliveryTracking from './DeliveryTracking.js';
 
 // Database connection factory
 let sequelize = null;
@@ -120,6 +123,33 @@ const defineAssociations = () => {
     Payment.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
     Payment.belongsTo(StoreVisit, { foreignKey: 'visit_id', as: 'visit' });
 
+    // ===============================
+    // Delivery Scheduling Associations
+    // ===============================
+
+    // DeliverySchedule associations
+    DeliverySchedule.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
+    DeliverySchedule.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
+    DeliverySchedule.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+    DeliverySchedule.belongsTo(User, { foreignKey: 'updated_by', as: 'updater' });
+    DeliverySchedule.belongsTo(DeliverySchedule, { foreignKey: 'rescheduled_from', as: 'rescheduled_from_schedule' });
+    DeliverySchedule.hasMany(DeliverySchedule, { foreignKey: 'rescheduled_from', as: 'rescheduled_to_schedules' });
+    DeliverySchedule.hasOne(DeliveryTracking, { foreignKey: 'delivery_schedule_id', as: 'tracking' });
+
+    // Order has delivery schedules
+    Order.hasMany(DeliverySchedule, { foreignKey: 'order_id', as: 'delivery_schedules' });
+
+    // User delivery scheduling associations
+    User.hasMany(DeliverySchedule, { foreignKey: 'distributor_id', as: 'assigned_schedules' });
+    User.hasMany(DeliverySchedule, { foreignKey: 'created_by', as: 'created_schedules' });
+
+    // DeliveryTracking associations
+    DeliveryTracking.belongsTo(DeliverySchedule, { foreignKey: 'delivery_schedule_id', as: 'schedule' });
+    DeliveryTracking.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
+
+    // User tracking associations
+    User.hasMany(DeliveryTracking, { foreignKey: 'distributor_id', as: 'delivery_trackings' });
+
     if (process.env.NODE_ENV !== 'test') {
         console.log('✅ Model associations defined');
     }
@@ -160,7 +190,10 @@ const initializeModels = async () => {
             Notification,
             Distributor,
             DistributionTrip,
-            StoreVisit
+            StoreVisit,
+            DeliverySchedule,
+            DeliveryCapacity,
+            DeliveryTracking
         };
     } catch (error) {
         console.error('❌ Error initializing models:', error);
@@ -197,5 +230,8 @@ export default {
     Distributor,
     DistributionTrip,
     StoreVisit,
+    DeliverySchedule,
+    DeliveryCapacity,
+    DeliveryTracking,
     initializeModels
 }; 

@@ -166,6 +166,25 @@ router.get('/schedules/confirm/:token', async (req, res) => {
 // @access  Private
 router.get('/schedules/statistics', protect, DeliverySchedulingController.getDeliveryStatistics);
 
+// @desc    Get delivery schedule analytics
+// @route   GET /api/delivery/schedules/analytics
+// @access  Private
+router.get('/schedules/analytics', protect, DeliverySchedulingController.getDeliveryAnalytics);
+
+// ==============================================
+// LIVE TRACKING ROUTES
+// ==============================================
+
+// @desc    Get live delivery tracking
+// @route   GET /api/delivery/tracking/live
+// @access  Private
+router.get('/tracking/live', protect, DeliverySchedulingController.getLiveDeliveryTracking);
+
+// @desc    Update delivery tracking status
+// @route   PUT /api/delivery/tracking/:id/status
+// @access  Private
+router.put('/tracking/:id/status', protect, DeliverySchedulingController.updateDeliveryTrackingStatus);
+
 // @desc    Get delivery performance metrics
 // @route   GET /api/delivery/performance
 // @access  Private
