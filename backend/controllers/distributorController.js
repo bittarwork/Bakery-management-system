@@ -4,8 +4,38 @@
  * Phase 6 - Complete Order Management
  */
 
-import db from '../config/database.js';
+import sequelize, { QueryTypes } from '../config/database.js';
 import logger from '../config/logger.js';
+
+// Database helper functions to convert SQLite calls to Sequelize
+const db = {
+    async get(query, params = []) {
+        const result = await sequelize.query(query, {
+            replacements: params,
+            type: QueryTypes.SELECT
+        });
+        return result[0] || null;
+    },
+
+    async all(query, params = []) {
+        return await sequelize.query(query, {
+            replacements: params,
+            type: QueryTypes.SELECT
+        });
+    },
+
+    async run(query, params = []) {
+        const result = await sequelize.query(query, {
+            replacements: params,
+            type: QueryTypes.RAW
+        });
+        return { insertId: result[0]?.insertId || result[0] };
+    },
+
+    async beginTransaction() {
+        return await sequelize.transaction();
+    }
+};
 
 class DistributorController {
     /**
