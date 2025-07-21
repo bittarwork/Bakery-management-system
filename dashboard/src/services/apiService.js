@@ -5,9 +5,10 @@ import { toast } from 'react-hot-toast';
 // API Configuration - Railway production only
 const API_CONFIG = {
     baseURL: 'https://bakery-management-system-production.up.railway.app/api/',
-    timeout: 30000,
-    retryAttempts: 3,
-    retryDelay: 1000
+    timeout: 45000, // Increased timeout for Railway
+    retryAttempts: 5, // More retry attempts
+    retryDelay: 1500, // Longer delay between retries
+    maxRetryDelay: 10000 // Maximum delay cap
 };
 
 // Create axios instance
@@ -164,32 +165,72 @@ apiClient.interceptors.response.use(
     }
 );
 
-// Retry logic for Railway server only
+// Enhanced retry logic for Railway server reliability
 const retryRequest = async (requestFn, maxRetries = API_CONFIG.retryAttempts) => {
     for (let i = 0; i < maxRetries; i++) {
         try {
-            return await requestFn();
+            const result = await requestFn();
+
+            // If we succeed after retries, log it
+            if (i > 0) {
+                console.log(`✅ Request succeeded on attempt ${i + 1}/${maxRetries}`);
+            }
+
+            return result;
         } catch (error) {
+            const isRetryableError =
+                error.code === 'ERR_NETWORK' ||
+                error.code === 'ECONNREFUSED' ||
+                error.code === 'ETIMEDOUT' ||
+                error.response?.status === 502 ||
+                error.response?.status === 503 ||
+                error.response?.status === 504 ||
+                error.response?.status === 429; // Rate limiting
+
             console.log(`🔄 Request attempt ${i + 1}/${maxRetries} failed:`, error.response?.status || error.code);
 
-            if (i === maxRetries - 1) {
-                // Create user-friendly error message for final failure
+            if (i === maxRetries - 1 || !isRetryableError) {
+                // Create user-friendly error messages
                 if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
-                    throw new Error('لا يمكن الاتصال بالخادم. تحقق من اتصال الإنترنت.');
+                    throw new Error('لا يمكن الاتصال بالخادم. تحقق من اتصال الإنترنت أو أن الخادم متاح.');
                 }
                 if (error.response?.status === 502) {
-                    throw new Error('الخادم غير متاح مؤقتاً. يرجى المحاولة لاحقاً.');
+                    throw new Error('خطأ في البوابة. الخادم قد يكون قيد إعادة التشغيل.');
+                }
+                if (error.response?.status === 503) {
+                    throw new Error('الخدمة غير متاحة مؤقتاً. يرجى المحاولة لاحقاً.');
+                }
+                if (error.response?.status === 504) {
+                    throw new Error('انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.');
                 }
                 if (error.response?.status >= 500) {
                     throw new Error('خطأ في الخادم. يرجى المحاولة لاحقاً.');
                 }
-                // Re-throw the original error for other cases
+
+                // For non-retryable errors, re-throw original error
                 throw error;
             }
 
-            // Wait before retry with exponential backoff
-            await new Promise(resolve => setTimeout(resolve, API_CONFIG.retryDelay * Math.pow(2, i)));
+            // Calculate backoff delay (exponential with jitter)
+            const baseDelay = API_CONFIG.retryDelay * Math.pow(2, i);
+            const jitter = Math.random() * 1000; // Add randomness to prevent thundering herd
+            const delay = Math.min(baseDelay + jitter, API_CONFIG.maxRetryDelay);
+
+            console.log(`⏳ Waiting ${Math.round(delay)}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
         }
+    }
+};
+
+// Connection health checker
+const checkServerHealth = async () => {
+    try {
+        const response = await apiClient.get('/health', { timeout: 10000 });
+        console.log('🟢 Server health check passed:', response.data.status);
+        return true;
+    } catch (error) {
+        console.log('🔴 Server health check failed:', error.message);
+        return false;
     }
 };
 
@@ -197,10 +238,31 @@ const retryRequest = async (requestFn, maxRetries = API_CONFIG.retryAttempts) =>
 class ApiService {
     constructor() {
         this.client = apiClient;
+        this.serverHealthy = true;
+        this.lastHealthCheck = 0;
+        this.healthCheckInterval = 60000; // Check every minute
+    }
+
+    // Check server health before making requests
+    async ensureServerHealth() {
+        const now = Date.now();
+        if (now - this.lastHealthCheck > this.healthCheckInterval) {
+            this.serverHealthy = await checkServerHealth();
+            this.lastHealthCheck = now;
+        }
+
+        if (!this.serverHealthy) {
+            throw new Error('الخادم غير متاح حالياً. يرجى المحاولة لاحقاً.');
+        }
     }
 
     // Generic HTTP methods
     async get(url, config = {}) {
+        // Skip health check for health endpoint to avoid recursion
+        if (!url.includes('/health')) {
+            await this.ensureServerHealth();
+        }
+
         return retryRequest(async () => {
             const response = await this.client.get(url, config);
             return this.handleResponse(response);

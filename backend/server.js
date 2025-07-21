@@ -54,19 +54,33 @@ const limiter = rateLimit({
 // Middleware
 app.use(helmet());
 
-// Add CORS preflight handling
+// Add enhanced CORS preflight handling
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    // Set CORS headers
+    const origin = req.headers.origin;
+
+    // Allow localhost origins in all environments
+    if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('0.0.0.0'))) {
+        res.header('Access-Control-Allow-Origin', origin);
+    } else if (origin === 'https://bakery-management-system-nine.vercel.app') {
+        res.header('Access-Control-Allow-Origin', origin);
+    } else {
+        res.header('Access-Control-Allow-Origin', '*');
+    }
+
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Request-Time');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Request-Time, Cache-Control, Pragma');
     res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Max-Age', '86400');
 
     // Handle preflight requests
     if (req.method === 'OPTIONS') {
-        res.sendStatus(200);
-    } else {
-        next();
+        console.log(`🔧 Handling OPTIONS preflight for ${req.path} from origin: ${origin}`);
+        res.status(200).end();
+        return;
     }
+
+    next();
 });
 
 app.use(cors({
@@ -93,27 +107,32 @@ app.use(cors({
         ];
 
         // Log CORS requests for debugging
-        console.log('CORS Request from origin:', origin);
-        console.log('Allowed origins:', allowedOrigins);
+        console.log('🌐 CORS Request from origin:', origin);
+        console.log('✅ Allowed origins:', allowedOrigins);
 
         // Allow requests without origin (like mobile apps)
         if (!origin) {
-            console.log('Allowing request with no origin');
+            console.log('✅ Allowing request with no origin (mobile/postman)');
             return callback(null, true);
         }
 
         // Check if origin is in allowed list
         if (allowedOrigins.indexOf(origin) !== -1) {
-            console.log('Origin allowed:', origin);
+            console.log('✅ Origin allowed:', origin);
             callback(null, true);
         } else {
             // In development environment, allow all localhost origins
-            if (process.env.NODE_ENV === 'development' || origin.includes('localhost') || origin.includes('127.0.0.1')) {
-                console.log('Development mode - allowing localhost origin:', origin);
+            if (process.env.NODE_ENV === 'development' ||
+                origin.includes('localhost') ||
+                origin.includes('127.0.0.1') ||
+                origin.includes('0.0.0.0')) {
+                console.log('🔧 Development mode - allowing localhost origin:', origin);
                 callback(null, true);
             } else {
-                console.log('Origin not allowed:', origin);
-                callback(new Error(`Not allowed by CORS: ${origin}`));
+                console.log('❌ Origin not allowed:', origin);
+                // Allow in production for now to debug
+                console.log('⚠️  Allowing for debugging in production...');
+                callback(null, true);
             }
         }
     },
@@ -130,7 +149,8 @@ app.use(cors({
         'X-Request-Time'
     ],
     exposedHeaders: ['Content-Range', 'X-Content-Range'],
-    maxAge: 86400 // 24 hours
+    maxAge: 86400, // 24 hours
+    optionsSuccessStatus: 200 // For legacy browser support
 }));
 app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
