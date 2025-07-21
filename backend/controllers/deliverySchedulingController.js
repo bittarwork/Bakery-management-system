@@ -4,7 +4,8 @@
  * Phase 6 - Complete Order Management
  */
 
-import sequelize, { QueryTypes } from '../config/database.js';
+import sequelize from '../config/database.js';
+import { QueryTypes } from 'sequelize';
 import logger from '../config/logger.js';
 import crypto from 'crypto';
 
