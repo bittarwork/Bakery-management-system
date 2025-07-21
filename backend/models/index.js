@@ -10,9 +10,7 @@ import Notification from './Notification.js';
 import Distributor from './Distributor.js';
 import DistributionTrip from './DistributionTrip.js';
 import StoreVisit from './StoreVisit.js';
-import DeliverySchedule from './DeliverySchedule.js';
-import DeliveryCapacity from './DeliveryCapacity.js';
-import DeliveryTracking from './DeliveryTracking.js';
+import TempDeliverySchedule from './TempDeliverySchedule.js';
 
 // Database connection factory
 let sequelize = null;
@@ -230,8 +228,6 @@ export default {
     Distributor,
     DistributionTrip,
     StoreVisit,
-    DeliverySchedule,
-    DeliveryCapacity,
-    DeliveryTracking,
+    TempDeliverySchedule,
     initializeModels
 }; 

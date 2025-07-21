@@ -22,7 +22,7 @@ import refundRoutes from './refundRoutes.js';
 // Import Phase 6 enhanced order management routes
 import enhancedPricingRoutes from './enhancedPricingRoutes.js';
 import distributorRoutes from './distributorRoutes.js';
-import deliverySchedulingRoutes from './deliverySchedulingRoutes.js';
+import tempDeliveryRoutes from './tempDeliveryRoutes.js';
 
 const router = express.Router();
 
@@ -92,7 +92,7 @@ router.use('/refunds', refundRoutes);
 // Mount Phase 6 enhanced order management routes
 router.use('/pricing', enhancedPricingRoutes);
 router.use('/distributors', distributorRoutes);
-router.use('/delivery', deliverySchedulingRoutes);
+router.use('/delivery', tempDeliveryRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {

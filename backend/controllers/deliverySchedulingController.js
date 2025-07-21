@@ -9,9 +9,7 @@ import logger from '../config/logger.js';
 import crypto from 'crypto';
 
 // Import models
-import DeliverySchedule from '../models/DeliverySchedule.js';
-import DeliveryCapacity from '../models/DeliveryCapacity.js';
-import DeliveryTracking from '../models/DeliveryTracking.js';
+import TempDeliverySchedule from '../models/TempDeliverySchedule.js';
 import Order from '../models/Order.js';
 import Store from '../models/Store.js';
 import User from '../models/User.js';
@@ -101,27 +99,8 @@ class DeliverySchedulingController {
 
             if (view === 'calendar') {
                 // Calendar view - get schedules and format for calendar
-                const schedules = await DeliverySchedule.findAll({
+                const schedules = await TempDeliverySchedule.findAll({
                     where: whereClause,
-                    include: [
-                        {
-                            model: Order,
-                            as: 'order',
-                            attributes: ['order_number', 'total_amount_eur'],
-                            include: [
-                                {
-                                    model: Store,
-                                    as: 'store',
-                                    attributes: ['name', 'address']
-                                }
-                            ]
-                        },
-                        {
-                            model: User,
-                            as: 'distributor',
-                            attributes: ['full_name', 'phone']
-                        }
-                    ],
                     order: [['scheduled_date', 'ASC'], ['scheduled_time_start', 'ASC']]
                 });
 
@@ -166,14 +145,14 @@ class DeliverySchedulingController {
                     dayData.deliveries.push({
                         id: schedule.id,
                         order_id: schedule.order_id,
-                        order_number: schedule.order?.order_number,
+                        order_number: schedule.order_number,
                         time_start: schedule.scheduled_time_start,
                         time_end: schedule.scheduled_time_end,
                         status: schedule.status,
                         delivery_type: schedule.delivery_type,
                         contact_person: schedule.contact_person,
-                        delivery_fee: schedule.delivery_fee_eur,
-                        store_name: schedule.order?.store?.name
+                        delivery_fee: 0, // No delivery fee in temp model
+                        store_name: schedule.store_name
                     });
                 });
 
@@ -189,39 +168,10 @@ class DeliverySchedulingController {
 
             } else {
                 // List view - detailed schedules
-                const totalItems = await DeliverySchedule.count({ where: whereClause });
+                const totalItems = await TempDeliverySchedule.count({ where: whereClause });
 
-                const schedules = await DeliverySchedule.findAll({
+                const schedules = await TempDeliverySchedule.findAll({
                     where: whereClause,
-                    include: [
-                        {
-                            model: Order,
-                            as: 'order',
-                            attributes: ['order_number', 'total_amount_eur', 'status'],
-                            include: [
-                                {
-                                    model: Store,
-                                    as: 'store',
-                                    attributes: ['name', 'address', 'phone']
-                                }
-                            ]
-                        },
-                        {
-                            model: User,
-                            as: 'distributor',
-                            attributes: ['full_name', 'phone']
-                        },
-                        {
-                            model: User,
-                            as: 'creator',
-                            attributes: ['full_name']
-                        },
-                        {
-                            model: DeliverySchedule,
-                            as: 'rescheduled_from_schedule',
-                            attributes: ['id', 'scheduled_date', 'status']
-                        }
-                    ],
                     limit: parseInt(limit),
                     offset: offset,
                     order: [['scheduled_date', 'DESC'], ['scheduled_time_start', 'ASC']]
@@ -232,14 +182,17 @@ class DeliverySchedulingController {
                     data: {
                         schedules: schedules.map(schedule => ({
                             ...schedule.toJSON(),
-                            store_name: schedule.order?.store?.name,
-                            store_address: schedule.order?.store?.address,
-                            store_phone: schedule.order?.store?.phone,
-                            order_status: schedule.order?.status,
-                            distributor_name: schedule.distributor?.full_name,
-                            distributor_phone: schedule.distributor?.phone,
-                            created_by_name: schedule.creator?.full_name,
-                            rescheduled_from_id: schedule.rescheduled_from_schedule?.id
+                            // Data is already available in the temp model
+                            order: {
+                                order_number: schedule.order_number,
+                                total_amount_eur: 0, // Not available in temp model
+                                status: 'pending' // Default status
+                            },
+                            store: {
+                                name: schedule.store_name,
+                                address: null, // Not available
+                                phone: null // Not available
+                            }
                         })),
                         pagination: {
                             currentPage: parseInt(page),

@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import DeliverySchedulingController from '../controllers/deliverySchedulingController.js';
+import TempDeliveryController from '../controllers/tempDeliveryController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -16,7 +16,7 @@ const router = express.Router();
 // @desc    Get delivery schedules (list or calendar view)
 // @route   GET /api/delivery/schedules
 // @access  Private
-router.get('/schedules', protect, DeliverySchedulingController.getDeliverySchedules);
+router.get('/schedules', protect, TempDeliveryController.getDeliverySchedules);
 
 // @desc    Create delivery schedule
 // @route   POST /api/delivery/schedules
