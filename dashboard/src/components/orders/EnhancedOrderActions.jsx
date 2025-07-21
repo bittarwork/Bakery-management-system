@@ -13,6 +13,10 @@ import {
   TrendingUp,
   ArrowRight,
   BarChart3,
+  ExternalLink,
+  Settings,
+  Zap,
+  Package,
 } from "lucide-react";
 
 const EnhancedOrderActions = ({
@@ -28,39 +32,27 @@ const EnhancedOrderActions = ({
     {
       id: "pricing",
       label: "التسعير الديناميكي",
-      description: "إدارة الأسعار والقواعد",
+      description: "إدارة الأسعار والعروض الخاصة",
       icon: Euro,
-      color: "blue",
-      bgColor: "bg-blue-100",
-      textColor: "text-blue-800",
-      hoverBg: "hover:bg-blue-200",
-      borderColor: "border-blue-300",
+      color: "emerald",
       path: "/pricing",
       show: showPricing,
     },
     {
       id: "distributor",
-      label: "تعيين موزع",
-      description: "إدارة الموزعين والتعيينات",
+      label: "إدارة الموزعين",
+      description: "تعيين وإدارة الموزعين",
       icon: UserCheck,
-      color: "green",
-      bgColor: "bg-green-100",
-      textColor: "text-green-800",
-      hoverBg: "hover:bg-green-200",
-      borderColor: "border-green-300",
+      color: "blue",
       path: "/distributors",
       show: showDistributor,
     },
     {
       id: "scheduling",
       label: "جدولة التسليم",
-      description: "جدولة وإدارة التسليم",
+      description: "تنظيم مواعيد التسليم",
       icon: CalendarClock,
       color: "purple",
-      bgColor: "bg-purple-100",
-      textColor: "text-purple-800",
-      hoverBg: "hover:bg-purple-200",
-      borderColor: "border-purple-300",
       path: "/delivery",
       show: showScheduling,
     },
@@ -72,77 +64,212 @@ const EnhancedOrderActions = ({
     return null;
   }
 
+  const getColorClasses = (color) => {
+    const colorMap = {
+      emerald: {
+        bg: "bg-emerald-50",
+        iconBg: "bg-emerald-100",
+        iconText: "text-emerald-600",
+        titleText: "text-emerald-800",
+        border: "border-emerald-200",
+        hoverBg: "hover:bg-emerald-100",
+        hoverBorder: "hover:border-emerald-300",
+      },
+      blue: {
+        bg: "bg-blue-50",
+        iconBg: "bg-blue-100",
+        iconText: "text-blue-600",
+        titleText: "text-blue-800",
+        border: "border-blue-200",
+        hoverBg: "hover:bg-blue-100",
+        hoverBorder: "hover:border-blue-300",
+      },
+      purple: {
+        bg: "bg-purple-50",
+        iconBg: "bg-purple-100",
+        iconText: "text-purple-600",
+        titleText: "text-purple-800",
+        border: "border-purple-200",
+        hoverBg: "hover:bg-purple-100",
+        hoverBorder: "hover:border-purple-300",
+      },
+    };
+    return colorMap[color] || colorMap.blue;
+  };
+
+  // Check if we're inside a parent container (no header needed)
+  const isNested =
+    className.includes("bg-transparent") || className.includes("border-0");
+
   return (
     <div
-      className={`bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-gray-200 ${className}`}
+      className={`${
+        isNested
+          ? ""
+          : "bg-white rounded-2xl border border-gray-200 overflow-hidden"
+      } ${className}`}
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center space-x-2 space-x-reverse">
-          <TrendingUp className="w-5 h-5 text-blue-600" />
-          <h3 className="text-sm font-semibold text-gray-900">
-            الميزات المتقدمة
-          </h3>
-        </div>
-        {order && (
-          <div className="text-xs text-gray-500">طلب #{order.order_number}</div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {visibleActions.map((action) => {
-          const Icon = action.icon;
-
-          return (
-            <motion.button
-              key={action.id}
-              whileHover={{ scale: 1.02, y: -1 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate(action.path)}
-              className={`p-3 bg-white rounded-lg border-2 ${action.borderColor} ${action.hoverBg} transition-all duration-200 group`}
-            >
-              <div className="flex items-center space-x-3 space-x-reverse">
-                <div
-                  className={`p-2 ${action.bgColor} rounded-lg group-hover:bg-opacity-80 transition-colors`}
-                >
-                  <Icon className={`w-4 h-4 ${action.textColor}`} />
-                </div>
-                <div className="flex-1 text-right">
-                  <div
-                    className={`text-sm font-medium ${action.textColor} group-hover:text-gray-900`}
-                  >
-                    {action.label}
-                  </div>
-                  <div className="text-xs text-gray-600 mt-0.5">
-                    {action.description}
-                  </div>
-                </div>
+      {/* Header - only show if not nested */}
+      {!isNested && (
+        <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3 space-x-reverse">
+              <div className="p-2 bg-blue-100 rounded-xl">
+                <Zap className="w-5 h-5 text-blue-600" />
               </div>
-            </motion.button>
-          );
-        })}
-      </div>
-
-      {/* Quick Stats if order is provided */}
-      {order && (
-        <div className="mt-4 pt-3 border-t border-gray-200">
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-xs text-gray-500">القيمة</div>
-              <div className="text-sm font-semibold text-gray-900">
-                €{parseFloat(order.total_amount_eur || 0).toFixed(2)}
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">
+                  الميزات المتقدمة
+                </h3>
+                <p className="text-sm text-gray-600">
+                  أدوات إضافية لإدارة الطلب
+                </p>
               </div>
             </div>
-            <div>
-              <div className="text-xs text-gray-500">الحالة</div>
-              <div className="text-sm font-semibold text-gray-900">
+            {order && (
+              <div className="text-right">
+                <div className="text-xs text-gray-500">رقم الطلب</div>
+                <div className="text-sm font-mono font-bold text-gray-800">
+                  #{order.order_number}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Actions Grid */}
+      <div className={isNested ? "" : "p-6"}>
+        <div className="space-y-4">
+          {visibleActions.map((action, index) => {
+            const Icon = action.icon;
+            const colors = getColorClasses(action.color);
+
+            return (
+              <motion.div
+                key={action.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                className="group cursor-pointer"
+                onClick={() => navigate(action.path)}
+              >
+                <div
+                  className={`p-5 ${colors.bg} ${colors.border} border-2 rounded-2xl ${colors.hoverBg} ${colors.hoverBorder} transition-all duration-300 shadow-sm hover:shadow-lg`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4 space-x-reverse">
+                      <div
+                        className={`p-3 ${colors.iconBg} rounded-2xl group-hover:scale-110 transition-transform duration-300`}
+                      >
+                        <Icon className={`w-6 h-6 ${colors.iconText}`} />
+                      </div>
+                      <div>
+                        <h4
+                          className={`text-lg font-bold ${colors.titleText} mb-1`}
+                        >
+                          {action.label}
+                        </h4>
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                          {action.description}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2 space-x-reverse">
+                      <div
+                        className={`p-2 ${colors.iconBg} rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
+                      >
+                        <ExternalLink
+                          className={`w-4 h-4 ${colors.iconText}`}
+                        />
+                      </div>
+                      <ArrowRight
+                        className={`w-5 h-5 ${colors.iconText} group-hover:translate-x-1 transition-transform duration-300`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Order Summary Footer - only show if not nested */}
+      {order && !isNested && (
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-bold text-gray-700 flex items-center">
+              <BarChart3 className="w-4 h-4 mr-2" />
+              ملخص الطلب
+            </h4>
+          </div>
+          <div className="grid grid-cols-3 gap-6 mt-3">
+            <div className="text-center">
+              <div className="text-xs font-medium text-gray-500 mb-1">
+                القيمة الإجمالية
+              </div>
+              <div className="text-lg font-bold text-emerald-600">
+                €
+                {parseFloat(
+                  order.final_amount_eur || order.total_amount_eur || 0
+                ).toFixed(2)}
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-xs font-medium text-gray-500 mb-1">
+                حالة الطلب
+              </div>
+              <div className="text-sm font-bold text-gray-800">
                 {getStatusLabel(order.status)}
               </div>
             </div>
-            <div>
-              <div className="text-xs text-gray-500">التاريخ</div>
-              <div className="text-sm font-semibold text-gray-900">
+            <div className="text-center">
+              <div className="text-xs font-medium text-gray-500 mb-1">
+                تاريخ الإنشاء
+              </div>
+              <div className="text-sm font-bold text-gray-800">
                 {order.created_at
-                  ? new Date(order.created_at).toLocaleDateString("ar-AE")
+                  ? new Date(order.created_at).toLocaleDateString("ar")
+                  : "غير محدد"}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Nested Summary - show simplified version when nested */}
+      {order && isNested && (
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+              <div className="text-xs font-medium text-emerald-600 mb-1">
+                القيمة
+              </div>
+              <div className="text-lg font-bold text-emerald-700">
+                €
+                {parseFloat(
+                  order.final_amount_eur || order.total_amount_eur || 0
+                ).toFixed(2)}
+              </div>
+            </div>
+            <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+              <div className="text-xs font-medium text-blue-600 mb-1">
+                الحالة
+              </div>
+              <div className="text-sm font-bold text-blue-700">
+                {getStatusLabel(order.status)}
+              </div>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200">
+              <div className="text-xs font-medium text-gray-600 mb-1">
+                التاريخ
+              </div>
+              <div className="text-sm font-bold text-gray-700">
+                {order.created_at
+                  ? new Date(order.created_at).toLocaleDateString("ar")
                   : "غير محدد"}
               </div>
             </div>
@@ -156,11 +283,10 @@ const EnhancedOrderActions = ({
 // Helper function to get status label
 const getStatusLabel = (status) => {
   const statusLabels = {
-    pending: "قيد الانتظار",
+    draft: "مسودة",
     confirmed: "مؤكد",
-    preparing: "قيد التحضير",
+    processing: "قيد المعالجة",
     ready: "جاهز",
-    out_for_delivery: "قيد التوصيل",
     delivered: "تم التسليم",
     cancelled: "ملغي",
   };
@@ -178,48 +304,49 @@ export const CompactEnhancedActions = ({ order, className = "" }) => {
       icon: Euro,
       tooltip: "التسعير الديناميكي",
       path: "/pricing",
-      bgColor: "bg-blue-100",
-      textColor: "text-blue-700",
-      hoverBg: "hover:bg-blue-200",
+      color: "emerald",
     },
     {
       id: "distributor",
       icon: UserCheck,
-      tooltip: "تعيين موزع",
+      tooltip: "إدارة الموزعين",
       path: "/distributors",
-      bgColor: "bg-green-100",
-      textColor: "text-green-700",
-      hoverBg: "hover:bg-green-200",
+      color: "blue",
     },
     {
       id: "scheduling",
       icon: CalendarClock,
       tooltip: "جدولة التسليم",
       path: "/delivery",
-      bgColor: "bg-purple-100",
-      textColor: "text-purple-700",
-      hoverBg: "hover:bg-purple-200",
+      color: "purple",
     },
   ];
 
+  const getColorClasses = (color) => {
+    const colorMap = {
+      emerald: "bg-emerald-100 text-emerald-700 hover:bg-emerald-200",
+      blue: "bg-blue-100 text-blue-700 hover:bg-blue-200",
+      purple: "bg-purple-100 text-purple-700 hover:bg-purple-200",
+    };
+    return colorMap[color] || colorMap.blue;
+  };
+
   return (
-    <div className={`flex items-center space-x-1 space-x-reverse ${className}`}>
+    <div className={`flex items-center space-x-2 space-x-reverse ${className}`}>
       {actions.map((action) => {
         const Icon = action.icon;
+        const colors = getColorClasses(action.color);
 
         return (
           <motion.button
             key={action.id}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(action.path);
-            }}
-            className={`p-1.5 ${action.bgColor} ${action.textColor} rounded-md ${action.hoverBg} transition-colors`}
+            onClick={() => navigate(action.path)}
+            className={`p-3 rounded-xl ${colors} transition-all duration-200 shadow-sm hover:shadow-md`}
             title={action.tooltip}
           >
-            <Icon className="w-3.5 h-3.5" />
+            <Icon className="w-5 h-5" />
           </motion.button>
         );
       })}
@@ -227,98 +354,149 @@ export const CompactEnhancedActions = ({ order, className = "" }) => {
   );
 };
 
-// Variant for dashboard quick access
+// Dashboard variant for home page
 export const DashboardEnhancedActions = ({ className = "" }) => {
   const navigate = useNavigate();
 
-  const quickActions = [
+  const dashboardActions = [
+    {
+      id: "orders",
+      label: "إدارة الطلبات",
+      description: "عرض وإدارة جميع الطلبات",
+      icon: Package,
+      color: "blue",
+      path: "/orders",
+    },
     {
       id: "pricing",
-      label: "إدارة التسعير",
-      subtitle: "قواعد التسعير الديناميكي",
+      label: "التسعير الديناميكي",
+      description: "إدارة الأسعار والعروض الخاصة",
       icon: Euro,
+      color: "emerald",
       path: "/pricing",
-      bgColor: "bg-blue-50",
-      iconBg: "bg-blue-100",
-      iconColor: "text-blue-600",
-      hoverBorder: "hover:border-blue-300",
-      stats: "15 قاعدة نشطة",
     },
     {
       id: "distributors",
       label: "إدارة الموزعين",
-      subtitle: "تعيينات ومتابعة الأداء",
+      description: "تعيين وإدارة الموزعين",
       icon: UserCheck,
+      color: "purple",
       path: "/distributors",
-      bgColor: "bg-green-50",
-      iconBg: "bg-green-100",
-      iconColor: "text-green-600",
-      hoverBorder: "hover:border-green-300",
-      stats: "8 موزع متاح",
     },
     {
       id: "delivery",
       label: "جدولة التسليم",
-      subtitle: "تقويم ومواعيد التسليم",
+      description: "تنظيم مواعيد التسليم",
       icon: CalendarClock,
+      color: "orange",
       path: "/delivery",
-      bgColor: "bg-purple-50",
-      iconBg: "bg-purple-100",
-      iconColor: "text-purple-600",
-      hoverBorder: "hover:border-purple-300",
-      stats: "24 موعد اليوم",
     },
   ];
 
-  return (
-    <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${className}`}>
-      {quickActions.map((action) => {
-        const Icon = action.icon;
+  const getColorClasses = (color) => {
+    const colorMap = {
+      blue: {
+        bg: "bg-blue-50",
+        iconBg: "bg-blue-100",
+        iconText: "text-blue-600",
+        titleText: "text-blue-800",
+        border: "border-blue-200",
+        hoverBg: "hover:bg-blue-100",
+        hoverBorder: "hover:border-blue-300",
+      },
+      emerald: {
+        bg: "bg-emerald-50",
+        iconBg: "bg-emerald-100",
+        iconText: "text-emerald-600",
+        titleText: "text-emerald-800",
+        border: "border-emerald-200",
+        hoverBg: "hover:bg-emerald-100",
+        hoverBorder: "hover:border-emerald-300",
+      },
+      purple: {
+        bg: "bg-purple-50",
+        iconBg: "bg-purple-100",
+        iconText: "text-purple-600",
+        titleText: "text-purple-800",
+        border: "border-purple-200",
+        hoverBg: "hover:bg-purple-100",
+        hoverBorder: "hover:border-purple-300",
+      },
+      orange: {
+        bg: "bg-orange-50",
+        iconBg: "bg-orange-100",
+        iconText: "text-orange-600",
+        titleText: "text-orange-800",
+        border: "border-orange-200",
+        hoverBg: "hover:bg-orange-100",
+        hoverBorder: "hover:border-orange-300",
+      },
+    };
+    return colorMap[color] || colorMap.blue;
+  };
 
-        return (
-          <motion.div
-            key={action.id}
-            whileHover={{ y: -2, boxShadow: "0 4px 25px 0 rgba(0, 0, 0, 0.1)" }}
-            whileTap={{ scale: 0.98 }}
-            className="cursor-pointer"
-            onClick={() => navigate(action.path)}
-          >
-            <div
-              className={`bg-white rounded-lg p-4 border border-gray-200 ${action.hoverBorder} transition-all duration-200 ${action.bgColor}`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 space-x-reverse mb-2">
-                    <div className={`p-2 ${action.iconBg} rounded-lg`}>
-                      <Icon className={`w-5 h-5 ${action.iconColor}`} />
+  return (
+    <div
+      className={`bg-white rounded-2xl border border-gray-200 overflow-hidden ${className}`}
+    >
+      {/* Header */}
+      <div className="px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600">
+        <h2 className="text-xl font-bold text-white flex items-center">
+          <Zap className="w-6 h-6 text-yellow-300 mr-3" />
+          الميزات المتقدمة
+        </h2>
+        <p className="text-indigo-100 text-sm mt-1">
+          أدوات متقدمة لإدارة النظام
+        </p>
+      </div>
+
+      {/* Actions Grid */}
+      <div className="p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {dashboardActions.map((action, index) => {
+            const Icon = action.icon;
+            const colors = getColorClasses(action.color);
+
+            return (
+              <motion.div
+                key={action.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                className="group cursor-pointer"
+                onClick={() => navigate(action.path)}
+              >
+                <div
+                  className={`p-4 ${colors.bg} ${colors.border} border-2 rounded-xl ${colors.hoverBg} ${colors.hoverBorder} transition-all duration-300 shadow-sm hover:shadow-lg`}
+                >
+                  <div className="flex items-center space-x-3 space-x-reverse">
+                    <div
+                      className={`p-2 ${colors.iconBg} rounded-xl group-hover:scale-110 transition-transform duration-300`}
+                    >
+                      <Icon className={`w-5 h-5 ${colors.iconText}`} />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 text-sm">
+                    <div className="flex-1">
+                      <h4
+                        className={`text-sm font-bold ${colors.titleText} mb-1`}
+                      >
                         {action.label}
-                      </h3>
-                      <p className="text-xs text-gray-600 mt-0.5">
-                        {action.subtitle}
+                      </h4>
+                      <p className="text-xs text-gray-600 leading-relaxed">
+                        {action.description}
                       </p>
                     </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">
-                      {action.stats}
-                    </span>
-                    <div className="flex items-center space-x-1 space-x-reverse">
-                      <BarChart3 className="w-3 h-3 text-gray-400" />
-                      <span className="text-xs text-gray-500">
-                        عرض التفاصيل
-                      </span>
-                    </div>
+                    <ArrowRight
+                      className={`w-4 h-4 ${colors.iconText} group-hover:translate-x-1 transition-transform duration-300`}
+                    />
                   </div>
                 </div>
-              </div>
-            </div>
-          </motion.div>
-        );
-      })}
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };

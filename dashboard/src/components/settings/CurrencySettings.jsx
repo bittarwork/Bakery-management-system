@@ -213,7 +213,6 @@ import {
   Sparkles,
   Sparkle,
   Wand,
-  Magic,
   Crystal,
   Gem,
   Flower,
@@ -934,7 +933,7 @@ const CurrencySettings = () => {
                   Significant Changes
                 </label>
                 <p className="text-xs text-gray-500">
-                  Notify on significant rate changes (>5%)
+                  Notify on significant rate changes (&gt;5%)
                 </p>
               </div>
               <button

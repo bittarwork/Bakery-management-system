@@ -150,7 +150,6 @@ import {
   Sparkles,
   Sparkle,
   Wand,
-  Magic,
   Crystal,
   Gem,
   Diamond,

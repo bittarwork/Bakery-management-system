@@ -421,6 +421,403 @@ class DistributorService {
                 return b.performance_score - a.performance_score;
             });
     }
+
+    /**
+     * Export report as PDF
+     */
+    async exportReport(reportId) {
+        return await apiService.get(`/distributors/reports/${reportId}/export`, {
+            responseType: 'blob'
+        });
+    }
+
+    /**
+     * Generate new report
+     */
+    async generateReport(reportData) {
+        return await apiService.post('/distributors/reports/generate', reportData);
+    }
+
+    /**
+     * Get distributor performance comparison
+     */
+    async getPerformanceComparison(params = {}) {
+        const {
+            date_from,
+            date_to,
+            distributor_ids
+        } = params;
+
+        const queryParams = new URLSearchParams();
+        if (date_from) queryParams.append('date_from', date_from);
+        if (date_to) queryParams.append('date_to', date_to);
+        if (distributor_ids) queryParams.append('distributor_ids', distributor_ids.join(','));
+
+        return await apiService.get(`/distributors/performance/comparison?${queryParams}`);
+    }
+
+    /**
+     * Get distribution route optimization
+     */
+    async getRouteOptimization(params = {}) {
+        const {
+            orders,
+            distributor_id,
+            vehicle_capacity
+        } = params;
+
+        return await apiService.post('/distributors/routes/optimize', {
+            orders,
+            distributor_id,
+            vehicle_capacity
+        });
+    }
+
+    /**
+     * Update distributor location
+     */
+    async updateLocation(distributorId, locationData) {
+        return await apiService.post(`/distributors/${distributorId}/location`, locationData);
+    }
+
+    /**
+     * Get distributor availability
+     */
+    async getAvailability(distributorId, params = {}) {
+        const {
+            date,
+            time_slot
+        } = params;
+
+        const queryParams = new URLSearchParams();
+        if (date) queryParams.append('date', date);
+        if (time_slot) queryParams.append('time_slot', time_slot);
+
+        return await apiService.get(`/distributors/${distributorId}/availability?${queryParams}`);
+    }
+
+    /**
+     * Set distributor availability
+     */
+    async setAvailability(distributorId, availabilityData) {
+        return await apiService.post(`/distributors/${distributorId}/availability`, availabilityData);
+    }
+
+    /**
+     * Get delivery predictions
+     */
+    async getDeliveryPredictions(params = {}) {
+        const {
+            order_id,
+            distributor_id,
+            route_data
+        } = params;
+
+        return await apiService.post('/distributors/delivery/predictions', {
+            order_id,
+            distributor_id,
+            route_data
+        });
+    }
+
+    /**
+     * Get real-time tracking data
+     */
+    async getRealTimeTracking(distributorId) {
+        return await apiService.get(`/distributors/${distributorId}/tracking/realtime`);
+    }
+
+    /**
+     * Send notification to distributor
+     */
+    async sendNotification(distributorId, notificationData) {
+        return await apiService.post(`/distributors/${distributorId}/notifications`, notificationData);
+    }
+
+    /**
+     * Get distributor workload analysis
+     */
+    async getWorkloadAnalysis(distributorId, params = {}) {
+        const {
+            date_from,
+            date_to,
+            include_details
+        } = params;
+
+        const queryParams = new URLSearchParams();
+        if (date_from) queryParams.append('date_from', date_from);
+        if (date_to) queryParams.append('date_to', date_to);
+        if (include_details) queryParams.append('include_details', include_details);
+
+        return await apiService.get(`/distributors/${distributorId}/workload/analysis?${queryParams}`);
+    }
+
+    /**
+     * Get distribution efficiency metrics
+     */
+    async getEfficiencyMetrics(params = {}) {
+        const {
+            date_from,
+            date_to,
+            distributor_id,
+            metric_type
+        } = params;
+
+        const queryParams = new URLSearchParams();
+        if (date_from) queryParams.append('date_from', date_from);
+        if (date_to) queryParams.append('date_to', date_to);
+        if (distributor_id) queryParams.append('distributor_id', distributor_id);
+        if (metric_type) queryParams.append('metric_type', metric_type);
+
+        return await apiService.get(`/distributors/efficiency/metrics?${queryParams}`);
+    }
+
+    /**
+     * Get customer satisfaction data
+     */
+    async getCustomerSatisfaction(params = {}) {
+        const {
+            distributor_id,
+            date_from,
+            date_to,
+            rating_min
+        } = params;
+
+        const queryParams = new URLSearchParams();
+        if (distributor_id) queryParams.append('distributor_id', distributor_id);
+        if (date_from) queryParams.append('date_from', date_from);
+        if (date_to) queryParams.append('date_to', date_to);
+        if (rating_min) queryParams.append('rating_min', rating_min);
+
+        return await apiService.get(`/distributors/satisfaction?${queryParams}`);
+    }
+
+    /**
+     * Get delivery time analytics
+     */
+    async getDeliveryTimeAnalytics(params = {}) {
+        const {
+            distributor_id,
+            date_from,
+            date_to,
+            time_unit
+        } = params;
+
+        const queryParams = new URLSearchParams();
+        if (distributor_id) queryParams.append('distributor_id', distributor_id);
+        if (date_from) queryParams.append('date_from', date_from);
+        if (date_to) queryParams.append('date_to', date_to);
+        if (time_unit) queryParams.append('time_unit', time_unit);
+
+        return await apiService.get(`/distributors/delivery-time/analytics?${queryParams}`);
+    }
+
+    /**
+     * Get cost analysis
+     */
+    async getCostAnalysis(params = {}) {
+        const {
+            distributor_id,
+            date_from,
+            date_to,
+            cost_type
+        } = params;
+
+        const queryParams = new URLSearchParams();
+        if (distributor_id) queryParams.append('distributor_id', distributor_id);
+        if (date_from) queryParams.append('date_from', date_from);
+        if (date_to) queryParams.append('date_to', date_to);
+        if (cost_type) queryParams.append('cost_type', cost_type);
+
+        return await apiService.get(`/distributors/cost/analysis?${queryParams}`);
+    }
+
+    /**
+     * Get route optimization suggestions
+     */
+    async getRouteSuggestions(params = {}) {
+        const {
+            orders,
+            current_location,
+            vehicle_type,
+            constraints
+        } = params;
+
+        return await apiService.post('/distributors/routes/suggestions', {
+            orders,
+            current_location,
+            vehicle_type,
+            constraints
+        });
+    }
+
+    /**
+     * Get weather impact analysis
+     */
+    async getWeatherImpact(params = {}) {
+        const {
+            location,
+            date,
+            delivery_type
+        } = params;
+
+        const queryParams = new URLSearchParams();
+        if (location) queryParams.append('location', location);
+        if (date) queryParams.append('date', date);
+        if (delivery_type) queryParams.append('delivery_type', delivery_type);
+
+        return await apiService.get(`/distributors/weather/impact?${queryParams}`);
+    }
+
+    /**
+     * Get traffic analysis
+     */
+    async getTrafficAnalysis(params = {}) {
+        const {
+            route,
+            time_slot,
+            day_of_week
+        } = params;
+
+        return await apiService.post('/distributors/traffic/analysis', {
+            route,
+            time_slot,
+            day_of_week
+        });
+    }
+
+    /**
+     * Get fuel consumption analysis
+     */
+    async getFuelConsumptionAnalysis(distributorId, params = {}) {
+        const {
+            date_from,
+            date_to,
+            vehicle_id
+        } = params;
+
+        const queryParams = new URLSearchParams();
+        if (date_from) queryParams.append('date_from', date_from);
+        if (date_to) queryParams.append('date_to', date_to);
+        if (vehicle_id) queryParams.append('vehicle_id', vehicle_id);
+
+        return await apiService.get(`/distributors/${distributorId}/fuel/consumption?${queryParams}`);
+    }
+
+    /**
+     * Get maintenance schedule
+     */
+    async getMaintenanceSchedule(distributorId, params = {}) {
+        const {
+            vehicle_id,
+            include_history
+        } = params;
+
+        const queryParams = new URLSearchParams();
+        if (vehicle_id) queryParams.append('vehicle_id', vehicle_id);
+        if (include_history) queryParams.append('include_history', include_history);
+
+        return await apiService.get(`/distributors/${distributorId}/maintenance/schedule?${queryParams}`);
+    }
+
+    /**
+     * Get insurance and compliance data
+     */
+    async getInsuranceCompliance(distributorId) {
+        return await apiService.get(`/distributors/${distributorId}/insurance/compliance`);
+    }
+
+    /**
+     * Get training and certification status
+     */
+    async getTrainingStatus(distributorId) {
+        return await apiService.get(`/distributors/${distributorId}/training/status`);
+    }
+
+    /**
+     * Get equipment and tools inventory
+     */
+    async getEquipmentInventory(distributorId) {
+        return await apiService.get(`/distributors/${distributorId}/equipment/inventory`);
+    }
+
+    /**
+     * Get communication history
+     */
+    async getCommunicationHistory(distributorId, params = {}) {
+        const {
+            date_from,
+            date_to,
+            communication_type
+        } = params;
+
+        const queryParams = new URLSearchParams();
+        if (date_from) queryParams.append('date_from', date_from);
+        if (date_to) queryParams.append('date_to', date_to);
+        if (communication_type) queryParams.append('communication_type', communication_type);
+
+        return await apiService.get(`/distributors/${distributorId}/communication/history?${queryParams}`);
+    }
+
+    /**
+     * Get emergency contacts
+     */
+    async getEmergencyContacts(distributorId) {
+        return await apiService.get(`/distributors/${distributorId}/emergency/contacts`);
+    }
+
+    /**
+     * Get backup distributor suggestions
+     */
+    async getBackupDistributors(params = {}) {
+        const {
+            area,
+            availability_time,
+            required_skills
+        } = params;
+
+        return await apiService.post('/distributors/backup/suggestions', {
+            area,
+            availability_time,
+            required_skills
+        });
+    }
+
+    /**
+     * Get quality assurance metrics
+     */
+    async getQualityAssuranceMetrics(distributorId, params = {}) {
+        const {
+            date_from,
+            date_to,
+            quality_type
+        } = params;
+
+        const queryParams = new URLSearchParams();
+        if (date_from) queryParams.append('date_from', date_from);
+        if (date_to) queryParams.append('date_to', date_to);
+        if (quality_type) queryParams.append('quality_type', quality_type);
+
+        return await apiService.get(`/distributors/${distributorId}/quality/assurance?${queryParams}`);
+    }
+
+    /**
+     * Get sustainability metrics
+     */
+    async getSustainabilityMetrics(distributorId, params = {}) {
+        const {
+            date_from,
+            date_to,
+            metric_type
+        } = params;
+
+        const queryParams = new URLSearchParams();
+        if (date_from) queryParams.append('date_from', date_from);
+        if (date_to) queryParams.append('date_to', date_to);
+        if (metric_type) queryParams.append('metric_type', metric_type);
+
+        return await apiService.get(`/distributors/${distributorId}/sustainability/metrics?${queryParams}`);
+    }
 }
 
 export default new DistributorService(); 

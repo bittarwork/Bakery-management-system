@@ -13,7 +13,7 @@ import {
   Shield,
   Bell,
   Globe,
-  Palette,
+  Paintbrush,
   Download,
   Upload,
   Trash2,

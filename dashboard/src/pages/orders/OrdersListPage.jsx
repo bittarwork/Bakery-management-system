@@ -186,7 +186,7 @@ const OrdersListPage = () => {
     console.log("Priority breakdown:", {
       low: safeData.filter((o) => o.priority === "low").length,
       normal: safeData.filter((o) => o.priority === "normal").length,
-      normal: safeData.filter((o) => o.priority === "normal").length,
+      medium: safeData.filter((o) => o.priority === "medium").length,
       high: safeData.filter((o) => o.priority === "high").length,
       urgent: safeData.filter((o) => o.priority === "urgent").length,
     });
