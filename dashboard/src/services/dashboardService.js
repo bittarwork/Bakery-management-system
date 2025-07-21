@@ -8,18 +8,94 @@ import apiService from './apiService';
 
 class DashboardService {
     /**
+ * Format currency value
+ */
+    formatCurrency(amount, currency = 'EUR') {
+        if (amount === null || amount === undefined) {
+            return '€0.00';
+        }
+
+        const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+
+        if (isNaN(numericAmount)) {
+            return '€0.00';
+        }
+
+        return new Intl.NumberFormat('ar-SA', {
+            style: 'currency',
+            currency: currency,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(numericAmount);
+    }
+
+    /**
+     * Get default date range (last 30 days)
+     */
+    getDefaultDateRange() {
+        const today = new Date();
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(today.getDate() - 30);
+
+        return {
+            dateFrom: thirtyDaysAgo.toISOString().split('T')[0],
+            dateTo: today.toISOString().split('T')[0]
+        };
+    }
+
+    /**
+     * Get date range for specific period
+     */
+    getDateRange(period = 'month') {
+        const today = new Date();
+        const startDate = new Date();
+
+        switch (period) {
+            case 'today':
+                startDate.setHours(0, 0, 0, 0);
+                break;
+            case 'week':
+                startDate.setDate(today.getDate() - 7);
+                break;
+            case 'month':
+                startDate.setMonth(today.getMonth() - 1);
+                break;
+            case 'quarter':
+                startDate.setMonth(today.getMonth() - 3);
+                break;
+            case 'year':
+                startDate.setFullYear(today.getFullYear() - 1);
+                break;
+            default:
+                startDate.setMonth(today.getMonth() - 1);
+        }
+
+        return {
+            dateFrom: startDate.toISOString().split('T')[0],
+            dateTo: today.toISOString().split('T')[0]
+        };
+    }
+
+    /**
      * Get comprehensive dashboard statistics
      */
     async getDashboardStats(params = {}) {
         const {
             period = 'today',
+            dateFrom,
+            dateTo,
+            currency = 'EUR',
             include_details = false
         } = params;
 
         const queryParams = new URLSearchParams({
             period,
+            currency,
             include_details: include_details.toString()
         });
+
+        if (dateFrom) queryParams.append('date_from', dateFrom);
+        if (dateTo) queryParams.append('date_to', dateTo);
 
         return await apiService.get(`/dashboard/stats?${queryParams}`);
     }

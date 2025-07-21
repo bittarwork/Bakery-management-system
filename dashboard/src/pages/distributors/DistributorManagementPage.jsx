@@ -96,6 +96,17 @@ const DistributorManagementPage = () => {
       }
     } catch (error) {
       console.error("Error loading distributors:", error);
+      setDistributors([]);
+      setPagination({
+        currentPage: 1,
+        totalPages: 0,
+        totalItems: 0,
+        itemsPerPage: 10,
+      });
+      toast.error(
+        "خطأ في تحميل الموزعين: " +
+          (error.response?.data?.message || error.message)
+      );
     }
   };
 
@@ -115,6 +126,48 @@ const DistributorManagementPage = () => {
       }
     } catch (error) {
       console.error("Error loading assignments:", error);
+      // استخدام بيانات تجريبية للتعيينات
+      setAssignments([
+        {
+          id: 1,
+          distributor_id: 1,
+          distributor_name: "أحمد محمد",
+          order_id: 101,
+          order_number: "ORD-2024-101",
+          store_name: "متجر الأمين",
+          store_address: "شارع الجامعة، بروكسل",
+          status: "assigned",
+          delivery_priority: "high",
+          estimated_delivery: "2024-01-20 14:00",
+          delivery_address: "Avenue Louise 123, Brussels",
+          contact_person: "خالد أحمد",
+          contact_phone: "+32 456 789 123",
+          route_info: {
+            distance_km: 15.5,
+            estimated_time: 45,
+          },
+        },
+        {
+          id: 2,
+          distributor_id: 2,
+          distributor_name: "محمد علي",
+          order_id: 102,
+          order_number: "ORD-2024-102",
+          store_name: "مخبز النور",
+          store_address: "شارع العرب، أنتويرب",
+          status: "in_progress",
+          delivery_priority: "normal",
+          estimated_delivery: "2024-01-20 16:30",
+          delivery_address: "Rue des Arabes 45, Antwerp",
+          contact_person: "سارة محمد",
+          contact_phone: "+32 465 123 789",
+          route_info: {
+            distance_km: 22.1,
+            estimated_time: 60,
+          },
+        },
+      ]);
+      toast.error("تم استخدام بيانات تجريبية - مشكلة في الاتصال بالخادم");
     }
   };
 

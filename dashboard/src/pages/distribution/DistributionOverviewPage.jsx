@@ -90,7 +90,89 @@ const DistributionOverviewPage = () => {
       }
     } catch (error) {
       console.error("Error loading overview data:", error);
-      toast.error("خطأ في تحميل البيانات");
+
+      // استخدام بيانات تجريبية شاملة
+      setOverviewData({
+        total_deliveries: 186,
+        completed_deliveries: 168,
+        completion_rate: 90.3,
+        total_revenue: 9825.45,
+        active_distributors: 3,
+        efficiency_score: 92,
+        customer_satisfaction: 4.6,
+        trends: {
+          deliveries: 5.2,
+          revenue: 8.1,
+          satisfaction: 2.1,
+        },
+      });
+
+      setRecentActivity([
+        {
+          id: 1,
+          distributor_name: "أحمد محمد",
+          order_number: "ORD-2024-101",
+          store_name: "متجر الأمين",
+          status: "completed",
+          completed_at: "2024-01-20T14:30:00Z",
+          delivery_priority: "high",
+        },
+        {
+          id: 2,
+          distributor_name: "محمد علي",
+          order_number: "ORD-2024-102",
+          store_name: "مخبز النور",
+          status: "in_progress",
+          estimated_delivery: "2024-01-20T16:30:00Z",
+          delivery_priority: "normal",
+        },
+      ]);
+
+      setTopPerformers([
+        {
+          id: 3,
+          name: "سامر حسن",
+          performance_score: 95,
+          total_deliveries: 98,
+          completed_today: 2,
+        },
+        {
+          id: 1,
+          name: "أحمد محمد",
+          performance_score: 92,
+          total_deliveries: 156,
+          completed_today: 3,
+        },
+        {
+          id: 2,
+          name: "محمد علي",
+          performance_score: 88,
+          total_deliveries: 143,
+          completed_today: 4,
+        },
+      ]);
+
+      setDistributionStats({
+        period_stats: {
+          total_deliveries: 186,
+          completion_rate: 90.3,
+          average_delivery_time: 45,
+          revenue: 9825.45,
+        },
+        trends: {
+          delivery_completion: 2.5,
+          revenue_growth: 8.2,
+          efficiency_improvement: 1.8,
+        },
+        geographic_distribution: {
+          brussels: 45,
+          antwerp: 38,
+          gent: 32,
+          others: 71,
+        },
+      });
+
+      toast.error("تم استخدام بيانات تجريبية - مشكلة في الاتصال بالخادم");
     } finally {
       setLoading(false);
     }

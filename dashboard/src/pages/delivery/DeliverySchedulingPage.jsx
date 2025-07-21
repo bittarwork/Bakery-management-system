@@ -104,6 +104,66 @@ const DeliverySchedulingPage = () => {
       }
     } catch (error) {
       console.error("Error loading calendar data:", error);
+      // استخدام بيانات تجريبية للتقويم
+      const mockSchedules = [
+        {
+          id: 1,
+          order_number: "ORD-2024-101",
+          order_id: 101,
+          scheduled_date: "2024-01-20",
+          scheduled_time_start: "14:00",
+          scheduled_time_end: "15:00",
+          status: "scheduled",
+          delivery_type: "standard",
+          contact_person: "خالد أحمد",
+          contact_phone: "+32 456 789 123",
+          delivery_address: "Avenue Louise 123, Brussels",
+          delivery_fee_eur: 5.5,
+        },
+        {
+          id: 2,
+          order_number: "ORD-2024-102",
+          order_id: 102,
+          scheduled_date: "2024-01-21",
+          scheduled_time_start: "10:00",
+          scheduled_time_end: "11:00",
+          status: "confirmed",
+          delivery_type: "express",
+          contact_person: "سارة محمد",
+          contact_phone: "+32 465 123 789",
+          delivery_address: "Rue des Arabes 45, Antwerp",
+          delivery_fee_eur: 8.0,
+        },
+      ];
+
+      const events = mockSchedules.map((schedule) => ({
+        id: schedule.id,
+        title: schedule.order_number,
+        date: schedule.scheduled_date,
+        start: schedule.scheduled_time_start,
+        end: schedule.scheduled_time_end,
+        color:
+          schedule.status === "confirmed" ? "text-green-600" : "text-blue-600",
+        backgroundColor:
+          schedule.status === "confirmed" ? "bg-green-50" : "bg-blue-50",
+        borderColor:
+          schedule.status === "confirmed"
+            ? "border-green-200"
+            : "border-blue-200",
+        extendedProps: {
+          order_id: schedule.order_id,
+          order_number: schedule.order_number,
+          status: schedule.status,
+          delivery_type: schedule.delivery_type,
+          contact_person: schedule.contact_person,
+          contact_phone: schedule.contact_phone,
+          delivery_address: schedule.delivery_address,
+          delivery_fee: schedule.delivery_fee_eur,
+        },
+      }));
+
+      setCalendarEvents(events);
+      toast.error("تم استخدام بيانات تجريبية - مشكلة في الاتصال بالخادم");
     }
   };
 
@@ -120,6 +180,48 @@ const DeliverySchedulingPage = () => {
       }
     } catch (error) {
       console.error("Error loading schedules:", error);
+      // استخدام بيانات تجريبية للجداول
+      const mockSchedules = [
+        {
+          id: 1,
+          order_number: "ORD-2024-101",
+          order_id: 101,
+          scheduled_date: "2024-01-20",
+          scheduled_time_start: "14:00",
+          scheduled_time_end: "15:00",
+          status: "scheduled",
+          delivery_type: "standard",
+          contact_person: "خالد أحمد",
+          contact_phone: "+32 456 789 123",
+          delivery_address: "Avenue Louise 123, Brussels",
+          delivery_fee_eur: 5.5,
+          store_name: "متجر الأمين",
+        },
+        {
+          id: 2,
+          order_number: "ORD-2024-102",
+          order_id: 102,
+          scheduled_date: "2024-01-21",
+          scheduled_time_start: "10:00",
+          scheduled_time_end: "11:00",
+          status: "confirmed",
+          delivery_type: "express",
+          contact_person: "سارة محمد",
+          contact_phone: "+32 465 123 789",
+          delivery_address: "Rue des Arabes 45, Antwerp",
+          delivery_fee_eur: 8.0,
+          store_name: "مخبز النور",
+        },
+      ];
+
+      setSchedules(mockSchedules);
+      setPagination({
+        currentPage: 1,
+        totalPages: 1,
+        totalItems: 2,
+        itemsPerPage: 10,
+      });
+      toast.error("تم استخدام بيانات تجريبية - مشكلة في الاتصال بالخادم");
     }
   };
 

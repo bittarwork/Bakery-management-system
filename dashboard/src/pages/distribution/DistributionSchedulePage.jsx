@@ -90,6 +90,11 @@ const DistributionSchedulePage = () => {
       }
     } catch (error) {
       console.error("Error loading today's schedules:", error);
+      setSchedules([]);
+      toast.error(
+        "خطأ في تحميل جداول اليوم: " +
+          (error.response?.data?.message || error.message)
+      );
     }
   };
 
@@ -103,7 +108,7 @@ const DistributionSchedulePage = () => {
       const response = await distributorService.getDistributorAssignments({
         date_from: tomorrow.toISOString().split("T")[0],
         date_to: nextWeek.toISOString().split("T")[0],
-        status: "assigned",
+        status: "scheduled",
       });
 
       if (response.success) {
@@ -111,6 +116,11 @@ const DistributionSchedulePage = () => {
       }
     } catch (error) {
       console.error("Error loading upcoming schedules:", error);
+      setSchedules([]);
+      toast.error(
+        "خطأ في تحميل الجداول القادمة: " +
+          (error.response?.data?.message || error.message)
+      );
     }
   };
 
@@ -118,8 +128,8 @@ const DistributionSchedulePage = () => {
     try {
       const response = await orderService.getOrders({
         status: "confirmed",
-        page: 1,
-        limit: 50,
+        distributor_id: null,
+        limit: 20,
       });
 
       if (response.success) {
@@ -127,6 +137,11 @@ const DistributionSchedulePage = () => {
       }
     } catch (error) {
       console.error("Error loading pending orders:", error);
+      setPendingOrders([]);
+      toast.error(
+        "خطأ في تحميل الطلبات المعلقة: " +
+          (error.response?.data?.message || error.message)
+      );
     }
   };
 
@@ -134,8 +149,7 @@ const DistributionSchedulePage = () => {
     try {
       const response = await distributorService.getDistributors({
         status: "active",
-        page: 1,
-        limit: 50,
+        limit: 10,
       });
 
       if (response.success) {
@@ -143,6 +157,11 @@ const DistributionSchedulePage = () => {
       }
     } catch (error) {
       console.error("Error loading distributors:", error);
+      setDistributors([]);
+      toast.error(
+        "خطأ في تحميل الموزعين: " +
+          (error.response?.data?.message || error.message)
+      );
     }
   };
 
