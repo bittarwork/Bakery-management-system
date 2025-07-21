@@ -1,7 +1,7 @@
 /**
- * Delivery Scheduling Service
- * Handles advanced delivery scheduling with calendar integration
- * Phase 6 - Complete Order Management
+ * Enhanced Delivery Scheduling Service  
+ * Handles advanced delivery scheduling with calendar integration, live tracking, and capacity management
+ * Updated to use the new comprehensive delivery scheduling API
  */
 
 import apiService from './apiService';
@@ -19,7 +19,9 @@ class DeliverySchedulingService {
             status,
             time_slot,
             delivery_type,
-            view = 'list'
+            view = 'list',
+            search,
+            distributor_id
         } = params;
 
         const queryParams = new URLSearchParams({
@@ -28,179 +30,189 @@ class DeliverySchedulingService {
             view
         });
 
-        if (date_from) {
-            queryParams.append('date_from', date_from);
-        }
-        if (date_to) {
-            queryParams.append('date_to', date_to);
-        }
-        if (status) {
-            queryParams.append('status', status);
-        }
-        if (time_slot) {
-            queryParams.append('time_slot', time_slot);
-        }
-        if (delivery_type) {
-            queryParams.append('delivery_type', delivery_type);
-        }
+        // Add optional parameters
+        if (date_from) queryParams.append('date_from', date_from);
+        if (date_to) queryParams.append('date_to', date_to);
+        if (status) queryParams.append('status', status);
+        if (time_slot) queryParams.append('time_slot', time_slot);
+        if (delivery_type) queryParams.append('delivery_type', delivery_type);
+        if (search) queryParams.append('search', search);
+        if (distributor_id) queryParams.append('distributor_id', distributor_id);
 
-        return await apiService.get(`/delivery/schedules?${queryParams}`);
+        return await apiService.request('GET', `/delivery/schedules?${queryParams}`);
     }
 
     /**
-     * Create delivery schedule
+     * Create new delivery schedule
      */
     async createDeliverySchedule(scheduleData) {
-        return await apiService.post('/delivery/schedules', scheduleData);
+        return await apiService.request('POST', '/delivery/schedules', scheduleData);
     }
 
     /**
-     * Update delivery schedule
+     * Update existing delivery schedule
      */
-    async updateDeliverySchedule(scheduleId, scheduleData) {
-        return await apiService.put(`/delivery/schedules/${scheduleId}`, scheduleData);
+    async updateDeliverySchedule(id, scheduleData) {
+        return await apiService.request('PUT', `/delivery/schedules/${id}`, scheduleData);
     }
 
     /**
      * Reschedule delivery
      */
-    async rescheduleDelivery(scheduleId, rescheduleData) {
-        return await apiService.post(`/delivery/schedules/${scheduleId}/reschedule`, rescheduleData);
+    async rescheduleDelivery(id, rescheduleData) {
+        return await apiService.request('POST', `/delivery/schedules/${id}/reschedule`, rescheduleData);
     }
 
     /**
      * Cancel delivery schedule
      */
-    async cancelDeliverySchedule(scheduleId, reason) {
-        return await apiService.delete(`/delivery/schedules/${scheduleId}`, {
-            data: { cancellation_reason: reason }
-        });
+    async cancelDeliverySchedule(id, reason) {
+        return await apiService.request('DELETE', `/delivery/schedules/${id}`, { reason });
     }
 
     /**
-     * Get delivery capacity and availability
+     * Get delivery capacity information
      */
     async getDeliveryCapacity(params = {}) {
         const {
-            date_from,
-            date_to,
+            start_date,
+            end_date,
             time_slot,
-            max_deliveries_per_slot = 10
+            include_suggestions = true
         } = params;
 
-        const queryParams = new URLSearchParams({
-            max_deliveries_per_slot: max_deliveries_per_slot.toString()
-        });
+        const queryParams = new URLSearchParams();
+        if (start_date) queryParams.append('start_date', start_date);
+        if (end_date) queryParams.append('end_date', end_date);
+        if (time_slot) queryParams.append('time_slot', time_slot);
+        if (include_suggestions) queryParams.append('include_suggestions', include_suggestions.toString());
 
-        if (date_from) {
-            queryParams.append('date_from', date_from);
-        }
-        if (date_to) {
-            queryParams.append('date_to', date_to);
-        }
-        if (time_slot) {
-            queryParams.append('time_slot', time_slot);
-        }
+        return await apiService.request('GET', `/delivery/capacity?${queryParams}`);
+    }
 
-        return await apiService.get(`/delivery/capacity?${queryParams}`);
+    /**
+     * Update delivery capacity
+     */
+    async updateDeliveryCapacity(capacityData) {
+        return await apiService.request('POST', '/delivery/capacity', capacityData);
     }
 
     /**
      * Check time slot availability
      */
-    async checkTimeSlotAvailability(availabilityData) {
-        return await apiService.post('/delivery/check-availability', availabilityData);
+    async checkTimeSlotAvailability(params = {}) {
+        const {
+            date,
+            time_start,
+            time_end,
+            exclude_id
+        } = params;
+
+        const queryParams = new URLSearchParams();
+        if (date) queryParams.append('date', date);
+        if (time_start) queryParams.append('time_start', time_start);
+        if (time_end) queryParams.append('time_end', time_end);
+        if (exclude_id) queryParams.append('exclude_id', exclude_id.toString());
+
+        return await apiService.request('GET', `/delivery/schedules/availability?${queryParams}`);
     }
 
     /**
-     * Confirm delivery schedule by customer
+     * Get live delivery tracking
      */
-    async confirmDeliverySchedule(token, customerNotes = '') {
-        return await apiService.post(`/delivery/schedules/confirm/${token}`, {
-            customer_notes: customerNotes
+    async getLiveDeliveryTracking(params = {}) {
+        const {
+            distributor_id,
+            date,
+            active_only = true
+        } = params;
+
+        const queryParams = new URLSearchParams();
+        if (distributor_id) queryParams.append('distributor_id', distributor_id);
+        if (date) queryParams.append('date', date);
+        if (active_only) queryParams.append('active_only', active_only.toString());
+
+        return await apiService.request('GET', `/delivery/tracking/live?${queryParams}`);
+    }
+
+    /**
+     * Update delivery tracking status
+     */
+    async updateDeliveryTrackingStatus(id, statusData) {
+        return await apiService.request('PUT', `/delivery/tracking/${id}/status`, statusData);
+    }
+
+    /**
+     * Update delivery tracking location
+     */
+    async updateDeliveryTrackingLocation(id, locationData) {
+        return await apiService.request('POST', `/delivery/tracking/${id}/location`, locationData);
+    }
+
+    /**
+     * Get delivery analytics
+     */
+    async getDeliveryAnalytics(params = {}) {
+        const {
+            start_date,
+            end_date,
+            distributor_id,
+            include_trends = true,
+            include_performance = true
+        } = params;
+
+        const queryParams = new URLSearchParams();
+        if (start_date) queryParams.append('start_date', start_date);
+        if (end_date) queryParams.append('end_date', end_date);
+        if (distributor_id) queryParams.append('distributor_id', distributor_id);
+        if (include_trends) queryParams.append('include_trends', include_trends.toString());
+        if (include_performance) queryParams.append('include_performance', include_performance.toString());
+
+        return await apiService.request('GET', `/delivery/schedules/analytics?${queryParams}`);
+    }
+
+    /**
+     * Export delivery schedules
+     */
+    async exportDeliverySchedules(params = {}) {
+        const {
+            format = 'excel',
+            date_from,
+            date_to,
+            status,
+            distributor_id
+        } = params;
+
+        const queryParams = new URLSearchParams({ format });
+        if (date_from) queryParams.append('date_from', date_from);
+        if (date_to) queryParams.append('date_to', date_to);
+        if (status) queryParams.append('status', status);
+        if (distributor_id) queryParams.append('distributor_id', distributor_id);
+
+        return await apiService.request('GET', `/delivery/schedules/export?${queryParams}`, null, {
+            responseType: 'blob'
         });
     }
 
     /**
-     * Get delivery schedule by confirmation token (for customer view)
+     * Confirm delivery with token
      */
-    async getDeliveryScheduleByToken(token) {
-        return await apiService.get(`/delivery/schedules/confirm/${token}`);
+    async confirmDelivery(token) {
+        return await apiService.request('POST', `/delivery/schedules/confirm/${token}`);
     }
 
     /**
-     * Get delivery schedule statistics
+     * Get delivery schedule by ID
      */
-    async getDeliveryStatistics(params = {}) {
-        const { date_from, date_to } = params;
-
-        const queryParams = new URLSearchParams();
-        if (date_from) {
-            queryParams.append('date_from', date_from);
-        }
-        if (date_to) {
-            queryParams.append('date_to', date_to);
-        }
-
-        return await apiService.get(`/delivery/schedules/statistics?${queryParams}`);
+    async getDeliveryScheduleById(id) {
+        return await apiService.request('GET', `/delivery/schedules/${id}`);
     }
 
     /**
-     * Get delivery performance metrics
+     * Bulk update delivery schedules
      */
-    async getDeliveryPerformance(params = {}) {
-        const { date_from, date_to, time_slot, delivery_type } = params;
-
-        const queryParams = new URLSearchParams();
-        if (date_from) {
-            queryParams.append('date_from', date_from);
-        }
-        if (date_to) {
-            queryParams.append('date_to', date_to);
-        }
-        if (time_slot) {
-            queryParams.append('time_slot', time_slot);
-        }
-        if (delivery_type) {
-            queryParams.append('delivery_type', delivery_type);
-        }
-
-        return await apiService.get(`/delivery/performance?${queryParams}`);
-    }
-
-    /**
-     * Bulk create delivery schedules
-     */
-    async bulkCreateSchedules(schedulesData) {
-        return await apiService.post('/delivery/schedules/bulk-create', {
-            schedules_data: schedulesData
-        });
-    }
-
-    /**
-     * Bulk reschedule deliveries
-     */
-    async bulkRescheduleDeliveries(scheduleUpdates) {
-        return await apiService.post('/delivery/schedules/bulk-reschedule', {
-            schedule_updates: scheduleUpdates
-        });
-    }
-
-    /**
-     * Get optimized delivery routes for a date
-     */
-    async getOptimizedDeliveryRoutes(params = {}) {
-        const { date, distributor_id } = params;
-
-        const queryParams = new URLSearchParams();
-        if (date) {
-            queryParams.append('date', date);
-        }
-        if (distributor_id) {
-            queryParams.append('distributor_id', distributor_id.toString());
-        }
-
-        return await apiService.get(`/delivery/routes/optimize?${queryParams}`);
+    async bulkUpdateSchedules(updates) {
+        return await apiService.request('POST', '/delivery/schedules/bulk-update', { updates });
     }
 
     /**
@@ -353,7 +365,149 @@ class DeliverySchedulingService {
     }
 
     /**
-     * Helper method to validate schedule data
+     * Helper function to format schedule data for calendar display
+     */
+    formatScheduleForCalendar(schedule) {
+        return {
+            id: schedule.id,
+            title: `${schedule.order?.order_number || schedule.order_id} - ${schedule.contact_person || 'غير محدد'}`,
+            date: schedule.scheduled_date,
+            start: schedule.scheduled_time_start,
+            end: schedule.scheduled_time_end,
+            status: schedule.status,
+            color: this.getStatusColor(schedule.status),
+            backgroundColor: this.getStatusBackgroundColor(schedule.status),
+            borderColor: this.getStatusBorderColor(schedule.status),
+            data: schedule
+        };
+    }
+
+    /**
+     * Helper function to get status color
+     */
+    getStatusColor(status) {
+        const colors = {
+            'scheduled': 'text-blue-600',
+            'confirmed': 'text-green-600',
+            'in_progress': 'text-yellow-600',
+            'delivered': 'text-emerald-600',
+            'missed': 'text-red-600',
+            'cancelled': 'text-gray-600',
+            'rescheduled': 'text-purple-600'
+        };
+        return colors[status] || 'text-gray-600';
+    }
+
+    /**
+     * Helper function to get status background color
+     */
+    getStatusBackgroundColor(status) {
+        const colors = {
+            'scheduled': 'bg-blue-50',
+            'confirmed': 'bg-green-50',
+            'in_progress': 'bg-yellow-50',
+            'delivered': 'bg-emerald-50',
+            'missed': 'bg-red-50',
+            'cancelled': 'bg-gray-50',
+            'rescheduled': 'bg-purple-50'
+        };
+        return colors[status] || 'bg-gray-50';
+    }
+
+    /**
+     * Helper function to get status border color
+     */
+    getStatusBorderColor(status) {
+        const colors = {
+            'scheduled': 'border-blue-200',
+            'confirmed': 'border-green-200',
+            'in_progress': 'border-yellow-200',
+            'delivered': 'border-emerald-200',
+            'missed': 'border-red-200',
+            'cancelled': 'border-gray-200',
+            'rescheduled': 'border-purple-200'
+        };
+        return colors[status] || 'border-gray-200';
+    }
+
+    /**
+     * Helper function to format status for display
+     */
+    formatStatusForDisplay(status) {
+        const statusLabels = {
+            'scheduled': 'مجدول',
+            'confirmed': 'مؤكد',
+            'in_progress': 'جاري التسليم',
+            'delivered': 'تم التسليم',
+            'missed': 'فات الموعد',
+            'cancelled': 'ملغي',
+            'rescheduled': 'معاد جدولته'
+        };
+        return statusLabels[status] || status;
+    }
+
+    /**
+     * Helper function to format time slot for display
+     */
+    formatTimeSlotForDisplay(timeSlot) {
+        const slotLabels = {
+            'morning': 'صباحي (9:00-12:00)',
+            'afternoon': 'بعد الظهر (12:00-17:00)',
+            'evening': 'مسائي (17:00-20:00)',
+            'custom': 'مخصص'
+        };
+        return slotLabels[timeSlot] || timeSlot;
+    }
+
+    /**
+     * Helper function to format delivery type for display
+     */
+    formatDeliveryTypeForDisplay(deliveryType) {
+        const typeLabels = {
+            'standard': 'عادي',
+            'express': 'سريع',
+            'scheduled': 'مجدول',
+            'pickup': 'استلام'
+        };
+        return typeLabels[deliveryType] || deliveryType;
+    }
+
+    /**
+     * Helper function to format priority for display
+     */
+    formatPriorityForDisplay(priority) {
+        const priorityLabels = {
+            'low': 'منخفض',
+            'normal': 'عادي',
+            'high': 'عالي',
+            'urgent': 'عاجل'
+        };
+        return priorityLabels[priority] || priority;
+    }
+
+    /**
+     * Helper function to calculate delivery metrics
+     */
+    calculateDeliveryMetrics(schedules) {
+        const total = schedules.length;
+        const completed = schedules.filter(s => s.status === 'delivered').length;
+        const pending = schedules.filter(s => ['scheduled', 'confirmed', 'in_progress'].includes(s.status)).length;
+        const missed = schedules.filter(s => s.status === 'missed').length;
+        const cancelled = schedules.filter(s => s.status === 'cancelled').length;
+
+        return {
+            total,
+            completed,
+            pending,
+            missed,
+            cancelled,
+            completionRate: total > 0 ? ((completed / total) * 100).toFixed(1) : 0,
+            missedRate: total > 0 ? ((missed / total) * 100).toFixed(1) : 0
+        };
+    }
+
+    /**
+     * Helper function to validate schedule data
      */
     validateScheduleData(scheduleData) {
         const errors = [];
@@ -364,31 +518,20 @@ class DeliverySchedulingService {
 
         if (!scheduleData.scheduled_date) {
             errors.push('تاريخ التسليم مطلوب');
-        } else {
-            const scheduleDate = new Date(scheduleData.scheduled_date);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            if (scheduleDate < today) {
-                errors.push('تاريخ التسليم لا يمكن أن يكون في الماضي');
-            }
         }
 
         if (!scheduleData.scheduled_time_start) {
             errors.push('وقت بداية التسليم مطلوب');
         }
 
-        if (scheduleData.scheduled_time_end && scheduleData.scheduled_time_start) {
-            if (scheduleData.scheduled_time_end <= scheduleData.scheduled_time_start) {
-                errors.push('وقت نهاية التسليم يجب أن يكون بعد وقت البداية');
-            }
+        if (scheduleData.scheduled_date && new Date(scheduleData.scheduled_date) < new Date().setHours(0, 0, 0, 0)) {
+            errors.push('تاريخ التسليم لا يمكن أن يكون في الماضي');
         }
 
-        if (scheduleData.delivery_fee_eur && scheduleData.delivery_fee_eur < 0) {
-            errors.push('رسوم التسليم لا يمكن أن تكون سالبة');
-        }
-
-        return errors;
+        return {
+            isValid: errors.length === 0,
+            errors
+        };
     }
 
     /**

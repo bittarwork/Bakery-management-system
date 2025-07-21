@@ -68,7 +68,7 @@ import PricingManagementPage from "./pages/pricing/PricingManagementPage";
 import DistributorManagementPage from "./pages/distributors/DistributorManagementPage";
 
 // Pages - Delivery Scheduling (Phase 6)
-import DeliverySchedulingPage from "./pages/delivery/DeliverySchedulingPage";
+import DeliverySchedulingPage from "./pages/delivery/EnhancedDeliverySchedulingPage";
 import DeliveryConfirmationPage from "./pages/delivery/DeliveryConfirmationPage";
 
 // Pages - Error
