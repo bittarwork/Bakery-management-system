@@ -18,7 +18,7 @@ const formatTime = () => {
 };
 
 // Logger configuration
-export const loggerConfig = {
+const loggerConfig = {
     // Log levels
     levels: {
         ERROR: 0,
