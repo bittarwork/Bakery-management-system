@@ -146,5 +146,5 @@ class Logger {
 const logger = new Logger();
 
 // Export both the logger instance and config
-export { loggerConfig };
-export default logger; 
+export default logger;
+export { loggerConfig }; 
