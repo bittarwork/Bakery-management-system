@@ -96,62 +96,11 @@ const DistributionTrackingPage = () => {
       }
     } catch (error) {
       console.error("Error loading active distributors:", error);
-      // استخدام بيانات تجريبية للموزعين النشطين
-      const mockActiveDistributors = [
-        {
-          distributor: {
-            id: 1,
-            name: "أحمد محمد",
-            email: "ahmed@bakery.com",
-            phone: "+32 456 123 789",
-          },
-          assignments: [
-            {
-              id: 1,
-              order_number: "ORD-2024-101",
-              store_name: "متجر الأمين",
-              status: "in_progress",
-              delivery_priority: "high",
-              estimated_delivery: "2024-01-20 14:00",
-            },
-          ],
-          currentLocation: {
-            lat: 50.8503,
-            lng: 4.3517,
-            address: "Brussels Center",
-            lastUpdate: new Date().toISOString(),
-          },
-          status: "active",
-        },
-        {
-          distributor: {
-            id: 2,
-            name: "محمد علي",
-            email: "mohamed@bakery.com",
-            phone: "+32 465 789 123",
-          },
-          assignments: [
-            {
-              id: 2,
-              order_number: "ORD-2024-102",
-              store_name: "مخبز النور",
-              status: "in_progress",
-              delivery_priority: "normal",
-              estimated_delivery: "2024-01-20 16:30",
-            },
-          ],
-          currentLocation: {
-            lat: 51.2194,
-            lng: 4.4025,
-            address: "Antwerp Center",
-            lastUpdate: new Date().toISOString(),
-          },
-          status: "active",
-        },
-      ];
-
-      setActiveDistributors(mockActiveDistributors);
-      toast.error("تم استخدام بيانات تجريبية - مشكلة في الاتصال بالخادم");
+      setActiveDistributors([]);
+      toast.error(
+        "خطأ في تحميل المتتبعين النشطين: " +
+          (error.response?.data?.message || error.message)
+      );
     } finally {
       setLoading(false);
     }

@@ -2,7 +2,7 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 import { toast } from 'react-hot-toast';
 
-// API Configuration
+// API Configuration - Railway production only
 const API_CONFIG = {
     baseURL: 'https://bakery-management-system-production.up.railway.app/api/',
     timeout: 30000,
@@ -164,16 +164,31 @@ apiClient.interceptors.response.use(
     }
 );
 
-// Retry logic
+// Retry logic for Railway server only
 const retryRequest = async (requestFn, maxRetries = API_CONFIG.retryAttempts) => {
     for (let i = 0; i < maxRetries; i++) {
         try {
             return await requestFn();
         } catch (error) {
-            if (i === maxRetries - 1) throw error;
+            console.log(`🔄 Request attempt ${i + 1}/${maxRetries} failed:`, error.response?.status || error.code);
 
-            // Wait before retry
-            await new Promise(resolve => setTimeout(resolve, API_CONFIG.retryDelay * (i + 1)));
+            if (i === maxRetries - 1) {
+                // Create user-friendly error message for final failure
+                if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
+                    throw new Error('لا يمكن الاتصال بالخادم. تحقق من اتصال الإنترنت.');
+                }
+                if (error.response?.status === 502) {
+                    throw new Error('الخادم غير متاح مؤقتاً. يرجى المحاولة لاحقاً.');
+                }
+                if (error.response?.status >= 500) {
+                    throw new Error('خطأ في الخادم. يرجى المحاولة لاحقاً.');
+                }
+                // Re-throw the original error for other cases
+                throw error;
+            }
+
+            // Wait before retry with exponential backoff
+            await new Promise(resolve => setTimeout(resolve, API_CONFIG.retryDelay * Math.pow(2, i)));
         }
     }
 };

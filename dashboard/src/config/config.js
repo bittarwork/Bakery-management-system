@@ -1,191 +1,73 @@
-// Application Configuration
+// API Configuration
 const config = {
-    // API Configuration
-    api: {
-        baseURL: 'https://bakery-management-system-production.up.railway.app/api/',
-        timeout: 30000,
-        retryAttempts: 3,
-        retryDelay: 1000
+    // Development vs Production API URLs
+    API_BASE_URL: import.meta.env.VITE_API_URL || 'https://bakery-management-system-production.up.railway.app/api',
+
+    // Local development fallback
+    LOCAL_API_URL: 'http://localhost:5001/api',
+
+    // Auto-detect local vs production
+    IS_DEVELOPMENT: import.meta.env.DEV || window.location.hostname === 'localhost',
+
+    // Disable local fallback - always use Railway server
+    USE_LOCAL_FALLBACK: false,
+
+    // API endpoints
+    ENDPOINTS: {
+        AUTH: '/auth',
+        USERS: '/users',
+        STORES: '/stores',
+        PRODUCTS: '/products',
+        ORDERS: '/orders',
+        PAYMENTS: '/payments',
+        REPORTS: '/reports',
+        DASHBOARD: '/dashboard',
+        DISTRIBUTORS: '/distributors',
+        DELIVERY: '/delivery',
+        DISTRIBUTION: '/distribution',
+        NOTIFICATIONS: '/notifications'
     },
 
-    // App Configuration
-    app: {
-        name: 'نظام إدارة المخبزة',
-        version: '2.0.0',
-        description: 'نظام إدارة المخبزة - لوحة التحكم',
-        author: 'Bakery Management System',
-        defaultLanguage: 'ar',
-        defaultDirection: 'rtl',
-        defaultTheme: 'light'
+    // Request settings
+    REQUEST_TIMEOUT: 30000, // 30 seconds
+    RETRY_ATTEMPTS: 3,
+    RETRY_DELAY: 1000, // 1 second
+
+    // UI Settings
+    PAGINATION_LIMIT: 10,
+    DATE_FORMAT: 'DD/MM/YYYY',
+    CURRENCY: 'EUR',
+
+    // Map settings
+    DEFAULT_MAP_CENTER: {
+        lat: 50.8503,
+        lng: 4.3517 // Brussels
     },
 
-    // Authentication
-    auth: {
-        tokenKey: 'auth_token',
-        refreshTokenKey: 'refresh_token',
-        tokenExpiry: 7, // days
-        maxLoginAttempts: 5,
-        lockoutDuration: 300000 // 5 minutes
-    },
+    // File upload limits
+    MAX_FILE_SIZE: 10485760, // 10MB
+    ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/png', 'image/gif'],
 
-    // Currency Configuration - EUR Only
-    currency: {
-        primary: {
-            code: 'EUR',
-            symbol: '€',
-            name: 'Euro',
-            nameAr: 'يورو',
-            position: 'after'
-        },
-        // System now works with EUR only
-        exchangeRate: null // No longer needed
-    },
+    // Language and localization
+    DEFAULT_LANGUAGE: 'ar',
+    RTL_SUPPORT: true,
 
-    // Features Configuration
-    features: {
-        mapsIntegration: true,
-        notifications: true,
-        darkMode: true,
-        realTimeUpdates: true,
-        advancedReports: true,
-        mobileApp: true,
-        multiCurrency: true,
-        exportData: true
-    },
-
-    // UI Configuration
-    ui: {
-        sidebarWidth: 256,
-        headerHeight: 64,
-        footerHeight: 48,
-        animationDuration: 300,
-        toastDuration: 4000,
-        pageTransitionDuration: 300
-    },
-
-    // Map Configuration
-    maps: {
-        provider: 'leaflet', // 'leaflet' or 'google'
-        googleMapsApiKey: process.env.VITE_GOOGLE_MAPS_API_KEY || '',
-        defaultCenter: {
-            lat: 33.5138,
-            lng: 36.2765
-        },
-        defaultZoom: 12,
-        maxZoom: 18,
-        minZoom: 6
-    },
-
-    // Pagination
-    pagination: {
-        defaultPageSize: 10,
-        pageSizeOptions: [10, 20, 50, 100],
-        maxPageSize: 100
-    },
-
-    // File Upload
-    upload: {
-        maxFileSize: 10 * 1024 * 1024, // 10MB
-        allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'],
-        maxFiles: 5
-    },
-
-    // Notification Configuration
-    notifications: {
-        position: 'top-right',
-        duration: 4000,
-        maxNotifications: 5,
-        showProgress: true,
-        closeButton: true,
-        pauseOnHover: true
-    },
-
-    // Development Configuration
-    development: {
-        debug: process.env.NODE_ENV === 'development',
-        apiLogging: process.env.NODE_ENV === 'development',
-        errorReporting: process.env.NODE_ENV === 'production',
-        performanceMonitoring: true
-    },
-
-    // Security Configuration
-    security: {
-        cookieSecure: process.env.NODE_ENV === 'production',
-        cookieSameSite: 'strict',
-        csrfProtection: true,
-        xssProtection: true,
-        contentSecurityPolicy: true
-    },
-
-    // Performance Configuration
-    performance: {
-        enableServiceWorker: process.env.NODE_ENV === 'production',
-        enableCodeSplitting: true,
-        enableLazyLoading: true,
-        cacheTimeout: 300000 // 5 minutes
-    },
-
-    // Error Handling
-    errorHandling: {
-        enableErrorBoundary: true,
-        logErrors: true,
-        showErrorDetails: process.env.NODE_ENV === 'development',
-        errorReportingService: null // Add your error reporting service
-    },
-
-    // Routes Configuration
-    routes: {
-        home: '/',
-        login: '/login',
-        dashboard: '/dashboard',
-        orders: '/orders',
-        distribution: '/distribution',
-        payments: '/payments',
-        reports: '/reports',
-        settings: '/settings',
-        profile: '/profile'
-    },
-
-    // Local Storage Keys
-    storage: {
-        theme: 'bakery_theme',
-        language: 'bakery_language',
-        settings: 'bakery_settings',
-        sidebar: 'bakery_sidebar',
-        filters: 'bakery_filters'
-    },
-
-    // Chart Configuration
-    charts: {
-        defaultColors: [
-            '#f97316', // orange
-            '#3b82f6', // blue
-            '#22c55e', // green
-            '#eab308', // yellow
-            '#ef4444', // red
-            '#8b5cf6', // purple
-            '#06b6d4', // cyan
-            '#f59e0b'  // amber
-        ],
-        animation: {
-            duration: 1000,
-            easing: 'easeInOutQuart'
-        }
-    }
+    // Debug settings
+    DEBUG_MODE: import.meta.env.DEV,
+    LOG_LEVEL: import.meta.env.VITE_LOG_LEVEL || 'info'
 };
 
-// Environment-specific overrides
-if (process.env.NODE_ENV === 'development') {
-    config.api.baseURL = 'http://localhost:5001/api/';
-    config.development.debug = true;
-    config.development.apiLogging = true;
-}
+// Get the appropriate API URL based on environment
+export const getApiUrl = () => {
+    // Always use Railway production server
+    return config.API_BASE_URL;
+};
 
-if (process.env.NODE_ENV === 'production') {
-    config.security.cookieSecure = true;
-    config.development.debug = false;
-    config.development.apiLogging = false;
-    config.development.errorReporting = true;
-}
+// Create API endpoint URLs
+export const createApiEndpoint = (endpoint) => {
+    const baseUrl = getApiUrl();
+    return `${baseUrl}${config.ENDPOINTS[endpoint] || endpoint}`;
+};
 
+// Export configuration
 export default config; 
