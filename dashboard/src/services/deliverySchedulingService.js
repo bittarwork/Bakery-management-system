@@ -4,7 +4,7 @@
  * Updated to use the new comprehensive delivery scheduling API
  */
 
-import apiService from './apiService';
+import apiService, { deleteRequest } from './apiService';
 
 class DeliverySchedulingService {
     /**
@@ -39,35 +39,35 @@ class DeliverySchedulingService {
         if (search) queryParams.append('search', search);
         if (distributor_id) queryParams.append('distributor_id', distributor_id);
 
-        return await apiService.request('GET', `/delivery/schedules?${queryParams}`);
+        return await apiService.get(`/delivery/schedules?${queryParams}`);
     }
 
     /**
      * Create new delivery schedule
      */
     async createDeliverySchedule(scheduleData) {
-        return await apiService.request('POST', '/delivery/schedules', scheduleData);
+        return await apiService.post('/delivery/schedules', scheduleData);
     }
 
     /**
      * Update existing delivery schedule
      */
     async updateDeliverySchedule(id, scheduleData) {
-        return await apiService.request('PUT', `/delivery/schedules/${id}`, scheduleData);
+        return await apiService.put(`/delivery/schedules/${id}`, scheduleData);
     }
 
     /**
      * Reschedule delivery
      */
     async rescheduleDelivery(id, rescheduleData) {
-        return await apiService.request('POST', `/delivery/schedules/${id}/reschedule`, rescheduleData);
+        return await apiService.post(`/delivery/schedules/${id}/reschedule`, rescheduleData);
     }
 
     /**
      * Cancel delivery schedule
      */
     async cancelDeliverySchedule(id, reason) {
-        return await apiService.request('DELETE', `/delivery/schedules/${id}`, { reason });
+        return await deleteRequest(`/delivery/schedules/${id}`, { reason });
     }
 
     /**
@@ -87,14 +87,14 @@ class DeliverySchedulingService {
         if (time_slot) queryParams.append('time_slot', time_slot);
         if (include_suggestions) queryParams.append('include_suggestions', include_suggestions.toString());
 
-        return await apiService.request('GET', `/delivery/capacity?${queryParams}`);
+        return await apiService.get(`/delivery/capacity?${queryParams}`);
     }
 
     /**
      * Update delivery capacity
      */
     async updateDeliveryCapacity(capacityData) {
-        return await apiService.request('POST', '/delivery/capacity', capacityData);
+        return await apiService.post('/delivery/capacity', capacityData);
     }
 
     /**
@@ -114,7 +114,7 @@ class DeliverySchedulingService {
         if (time_end) queryParams.append('time_end', time_end);
         if (exclude_id) queryParams.append('exclude_id', exclude_id.toString());
 
-        return await apiService.request('GET', `/delivery/schedules/availability?${queryParams}`);
+        return await apiService.get(`/delivery/schedules/availability?${queryParams}`);
     }
 
     /**
@@ -132,21 +132,21 @@ class DeliverySchedulingService {
         if (date) queryParams.append('date', date);
         if (active_only) queryParams.append('active_only', active_only.toString());
 
-        return await apiService.request('GET', `/delivery/tracking/live?${queryParams}`);
+        return await apiService.get(`/delivery/tracking/live?${queryParams}`);
     }
 
     /**
      * Update delivery tracking status
      */
     async updateDeliveryTrackingStatus(id, statusData) {
-        return await apiService.request('PUT', `/delivery/tracking/${id}/status`, statusData);
+        return await apiService.put(`/delivery/tracking/${id}/status`, statusData);
     }
 
     /**
      * Update delivery tracking location
      */
     async updateDeliveryTrackingLocation(id, locationData) {
-        return await apiService.request('POST', `/delivery/tracking/${id}/location`, locationData);
+        return await apiService.post(`/delivery/tracking/${id}/location`, locationData);
     }
 
     /**
@@ -168,7 +168,7 @@ class DeliverySchedulingService {
         if (include_trends) queryParams.append('include_trends', include_trends.toString());
         if (include_performance) queryParams.append('include_performance', include_performance.toString());
 
-        return await apiService.request('GET', `/delivery/schedules/analytics?${queryParams}`);
+        return await apiService.get(`/delivery/schedules/analytics?${queryParams}`);
     }
 
     /**
@@ -189,7 +189,7 @@ class DeliverySchedulingService {
         if (status) queryParams.append('status', status);
         if (distributor_id) queryParams.append('distributor_id', distributor_id);
 
-        return await apiService.request('GET', `/delivery/schedules/export?${queryParams}`, null, {
+        return await apiService.get(`/delivery/schedules/export?${queryParams}`, {
             responseType: 'blob'
         });
     }
@@ -198,21 +198,21 @@ class DeliverySchedulingService {
      * Confirm delivery with token
      */
     async confirmDelivery(token) {
-        return await apiService.request('POST', `/delivery/schedules/confirm/${token}`);
+        return await apiService.post(`/delivery/schedules/confirm/${token}`);
     }
 
     /**
      * Get delivery schedule by ID
      */
     async getDeliveryScheduleById(id) {
-        return await apiService.request('GET', `/delivery/schedules/${id}`);
+        return await apiService.get(`/delivery/schedules/${id}`);
     }
 
     /**
      * Bulk update delivery schedules
      */
     async bulkUpdateSchedules(updates) {
-        return await apiService.request('POST', '/delivery/schedules/bulk-update', { updates });
+        return await apiService.post('/delivery/schedules/bulk-update', { updates });
     }
 
     /**

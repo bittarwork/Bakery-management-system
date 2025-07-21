@@ -571,7 +571,7 @@ const EnhancedDeliverySchedulingPage = () => {
             placeholder="البحث في الجدولة..."
             value={filters.search}
             onChange={(e) => handleFilterChange("search", e.target.value)}
-            icon={Search}
+            icon={<Search className="w-4 h-4" />}
           />
 
           <select
@@ -633,7 +633,7 @@ const EnhancedDeliverySchedulingPage = () => {
               variant="outline"
               size="sm"
               onClick={clearFilters}
-              icon={RefreshCw}
+              icon={<RefreshCw className="w-4 h-4" />}
             >
               مسح الفلاتر
             </EnhancedButton>
@@ -672,7 +672,7 @@ const EnhancedDeliverySchedulingPage = () => {
             variant="outline"
             size="sm"
             onClick={handleExport}
-            icon={Download}
+            icon={<Download className="w-4 h-4" />}
             loading={isExporting}
           >
             تصدير
@@ -681,7 +681,7 @@ const EnhancedDeliverySchedulingPage = () => {
             variant="primary"
             size="sm"
             onClick={handleCreateSchedule}
-            icon={Plus}
+            icon={<Plus className="w-4 h-4" />}
           >
             جدولة جديدة
           </EnhancedButton>
@@ -1132,7 +1132,7 @@ const EnhancedDeliverySchedulingPage = () => {
           <EnhancedButton
             variant="outline"
             onClick={loadTabData}
-            icon={RefreshCw}
+            icon={<RefreshCw className="w-4 h-4" />}
             loading={isLoading}
           >
             تحديث
@@ -1197,7 +1197,7 @@ const EnhancedDeliverySchedulingPage = () => {
                     : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
                 }`}
               >
-                <tab.icon className="w-4 h-4 mr-2" />
+                {React.createElement(tab.icon, { className: "w-4 h-4 mr-2" })}
                 {tab.label}
               </button>
             ))}
