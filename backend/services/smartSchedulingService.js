@@ -126,84 +126,138 @@ class SmartSchedulingService {
     }
 
     /**
-     * Analyze order requirements
-     * @param {Object} orderData - Order data
-     * @returns {Object} Analysis requirements
+     * Analyze order requirements and store characteristics
+     * @param {Object} orderData - Order information
+     * @returns {Object} Analysis results
      */
-    async analyzeOrderRequirements(orderData) {
+    static async analyzeOrderRequirements(orderData) {
+        let connection;
         try {
-            const connection = await mysql.createConnection(dbConfig);
+            connection = await mysql.createConnection(dbConfig);
 
-            // Get store location and details
+            // Get store information with available columns only
             const [storeResults] = await connection.execute(`
                 SELECT 
                     s.*,
                     s.gps_coordinates,
                     s.assigned_distributor_id,
-                    s.delivery_zone,
                     s.preferred_delivery_time
                 FROM stores s 
                 WHERE s.id = ?
             `, [orderData.store_id]);
 
             if (storeResults.length === 0) {
-                throw new Error('Store not found');
+                throw new Error(`Store not found: ${orderData.store_id}`);
             }
 
             const store = storeResults[0];
 
-            // Parse GPS coordinates
-            let coordinates = null;
+            // Parse GPS coordinates safely
+            let storeCoordinates = null;
             if (store.gps_coordinates) {
                 try {
-                    coordinates = JSON.parse(store.gps_coordinates);
-                } catch (e) {
-                    coordinates = null;
+                    storeCoordinates = typeof store.gps_coordinates === 'string'
+                        ? JSON.parse(store.gps_coordinates)
+                        : store.gps_coordinates;
+                } catch (parseError) {
+                    logger.warn(`Failed to parse GPS coordinates for store ${store.id}:`, parseError);
                 }
             }
 
-            // Calculate order complexity and priority
-            let priority = 'normal';
-            let complexity = 'low';
+            // Get order items for complexity analysis
+            const [orderItems] = await connection.execute(`
+                SELECT 
+                    oi.*,
+                    p.name as product_name,
+                    p.category,
+                    p.weight_kg,
+                    p.requires_special_handling
+                FROM order_items oi
+                LEFT JOIN products p ON oi.product_id = p.id
+                WHERE oi.order_id = ?
+            `, [orderData.id]);
 
-            const orderValue = parseFloat(orderData.total_amount_eur) || 0;
+            // Calculate order complexity
+            const complexity = this.calculateOrderComplexity(orderItems, orderData);
 
-            if (orderValue > 500) {
-                priority = 'high';
-                complexity = 'high';
-            } else if (orderValue > 200) {
-                priority = 'normal';
-                complexity = 'medium';
-            }
-
-            // Check if urgent delivery is needed
-            const deliveryDate = new Date(orderData.delivery_date || orderData.order_date);
-            const today = new Date();
-            const daysDiff = Math.ceil((deliveryDate - today) / (1000 * 60 * 60 * 24));
-
-            if (daysDiff <= 1) {
-                priority = 'urgent';
-            }
+            // Determine delivery zone based on store location or address
+            const deliveryZone = this.determineDeliveryZone(store, storeCoordinates);
 
             await connection.end();
 
             return {
-                store: store,
-                coordinates: coordinates,
-                order_value: orderValue,
-                priority: priority,
-                complexity: complexity,
-                delivery_date: deliveryDate,
-                days_until_delivery: daysDiff,
-                preferred_delivery_time: store.preferred_delivery_time,
-                delivery_zone: store.delivery_zone || 'default',
-                assigned_distributor_id: store.assigned_distributor_id
+                success: true,
+                store: {
+                    ...store,
+                    coordinates: storeCoordinates,
+                    delivery_zone: deliveryZone // Add computed delivery zone
+                },
+                orderItems,
+                complexity,
+                requirements: {
+                    special_handling: orderItems.some(item => item.requires_special_handling),
+                    heavy_items: orderItems.some(item => item.weight_kg > 10),
+                    total_weight: orderItems.reduce((sum, item) => sum + (item.weight_kg * item.quantity), 0),
+                    item_count: orderItems.length,
+                    preferred_time: store.preferred_delivery_time,
+                    assigned_distributor: store.assigned_distributor_id
+                }
             };
 
         } catch (error) {
             logger.error('Error analyzing order requirements:', error);
+            if (connection) {
+                try {
+                    await connection.end();
+                } catch (closeError) {
+                    logger.error('Error closing connection:', closeError);
+                }
+            }
             throw error;
         }
+    }
+
+    /**
+     * Determine delivery zone based on store data
+     * @param {Object} store - Store information
+     * @param {Object} coordinates - GPS coordinates
+     * @returns {string} Delivery zone
+     */
+    static determineDeliveryZone(store, coordinates) {
+        // If store has a city specified, use it as zone
+        if (store.city) {
+            return store.city.toLowerCase();
+        }
+
+        // Try to extract zone from address
+        if (store.address) {
+            const address = store.address.toLowerCase();
+
+            // Common Damascus zones
+            if (address.includes('damascus') || address.includes('دمشق')) {
+                if (address.includes('old') || address.includes('قديمة')) return 'damascus_old';
+                if (address.includes('new') || address.includes('جديدة')) return 'damascus_new';
+                return 'damascus_center';
+            }
+
+            // Other major cities
+            if (address.includes('aleppo') || address.includes('حلب')) return 'aleppo';
+            if (address.includes('homs') || address.includes('حمص')) return 'homs';
+            if (address.includes('lattakia') || address.includes('اللاذقية')) return 'lattakia';
+        }
+
+        // Default zone based on coordinates if available
+        if (coordinates && coordinates.lat && coordinates.lng) {
+            // Simple zone determination based on lat/lng ranges
+            // This is a simplified approach - in reality you'd use more sophisticated geo-fencing
+            if (coordinates.lat > 33.5 && coordinates.lat < 33.6 &&
+                coordinates.lng > 36.2 && coordinates.lng < 36.4) {
+                return 'damascus_center';
+            }
+        }
+
+        // Default fallback
+        return 'general';
     }
 
     /**
@@ -318,6 +372,90 @@ class SmartSchedulingService {
 
         // Sort by confidence score (highest first)
         return scoredDistributors.sort((a, b) => b.confidence_score - a.confidence_score);
+    }
+
+    /**
+     * Calculate order complexity based on items and order data
+     * @param {Array} orderItems - Array of order items
+     * @param {Object} orderData - Order information
+     * @returns {Object} Complexity analysis
+     */
+    static calculateOrderComplexity(orderItems, orderData) {
+        let complexityScore = 0;
+        let complexityLevel = 'low';
+        let factors = [];
+
+        // Order value factor
+        const orderValue = parseFloat(orderData.total_amount_eur) || 0;
+        if (orderValue > 500) {
+            complexityScore += 30;
+            factors.push('High order value (>€500)');
+        } else if (orderValue > 200) {
+            complexityScore += 15;
+            factors.push('Medium order value (€200-500)');
+        }
+
+        // Item count factor
+        const itemCount = orderItems.length;
+        if (itemCount > 10) {
+            complexityScore += 20;
+            factors.push(`High item count (${itemCount} items)`);
+        } else if (itemCount > 5) {
+            complexityScore += 10;
+            factors.push(`Medium item count (${itemCount} items)`);
+        }
+
+        // Special handling requirements
+        const specialHandlingItems = orderItems.filter(item => item.requires_special_handling);
+        if (specialHandlingItems.length > 0) {
+            complexityScore += 25;
+            factors.push(`${specialHandlingItems.length} items require special handling`);
+        }
+
+        // Weight factor
+        const totalWeight = orderItems.reduce((sum, item) => sum + (item.weight_kg * item.quantity), 0);
+        if (totalWeight > 50) {
+            complexityScore += 20;
+            factors.push(`Heavy order (${totalWeight}kg)`);
+        } else if (totalWeight > 20) {
+            complexityScore += 10;
+            factors.push(`Medium weight (${totalWeight}kg)`);
+        }
+
+        // Delivery urgency
+        const deliveryDate = new Date(orderData.delivery_date || orderData.order_date);
+        const today = new Date();
+        const daysDiff = Math.ceil((deliveryDate - today) / (1000 * 60 * 60 * 24));
+
+        if (daysDiff <= 1) {
+            complexityScore += 30;
+            factors.push('Urgent delivery (same/next day)');
+        } else if (daysDiff <= 2) {
+            complexityScore += 15;
+            factors.push('Fast delivery (within 2 days)');
+        }
+
+        // Determine complexity level
+        if (complexityScore >= 60) {
+            complexityLevel = 'high';
+        } else if (complexityScore >= 30) {
+            complexityLevel = 'medium';
+        } else {
+            complexityLevel = 'low';
+        }
+
+        return {
+            score: complexityScore,
+            level: complexityLevel,
+            factors: factors,
+            metrics: {
+                order_value: orderValue,
+                item_count: itemCount,
+                total_weight: totalWeight,
+                special_handling_count: specialHandlingItems.length,
+                days_until_delivery: daysDiff
+            }
+        };
     }
 
     /**
@@ -557,6 +695,155 @@ class SmartSchedulingService {
      */
     toRadians(degrees) {
         return degrees * (Math.PI / 180);
+    }
+
+    /**
+     * Find available distributors for the order
+     * @param {Object} requirements - Order requirements
+     * @returns {Array} Available distributors with scores
+     */
+    static async findAvailableDistributors(requirements) {
+        let connection;
+        try {
+            connection = await mysql.createConnection(dbConfig);
+
+            // Get all active distributors with their details
+            const [distributors] = await connection.execute(`
+                SELECT 
+                    u.id,
+                    u.full_name,
+                    u.email,
+                    u.phone,
+                    COALESCE(u.performance_rating, 85) as performance_rating,
+                    COALESCE(u.current_workload, 0) as current_workload,
+                    u.max_daily_capacity,
+                    u.preferred_areas,
+                    u.specializations,
+                    u.status,
+                    u.last_active
+                FROM users u
+                WHERE u.role = 'distributor' 
+                    AND u.status = 'active'
+                    AND u.is_verified = 1
+                ORDER BY u.performance_rating DESC, u.current_workload ASC
+            `);
+
+            if (distributors.length === 0) {
+                return [];
+            }
+
+            // Score each distributor
+            const scoredDistributors = distributors.map(distributor => {
+                const score = this.calculateDistributorScore(distributor, requirements);
+                return {
+                    ...distributor,
+                    suitability_score: score.total,
+                    score_breakdown: score.breakdown,
+                    reasons: score.reasons
+                };
+            });
+
+            // Sort by suitability score
+            scoredDistributors.sort((a, b) => b.suitability_score - a.suitability_score);
+
+            await connection.end();
+            return scoredDistributors;
+
+        } catch (error) {
+            logger.error('Error finding available distributors:', error);
+            if (connection) {
+                try {
+                    await connection.end();
+                } catch (closeError) {
+                    logger.error('Error closing connection:', closeError);
+                }
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Calculate distributor suitability score
+     * @param {Object} distributor - Distributor information
+     * @param {Object} requirements - Order requirements
+     * @returns {Object} Score calculation results
+     */
+    static calculateDistributorScore(distributor, requirements) {
+        let totalScore = 0;
+        const breakdown = {};
+        const reasons = [];
+
+        // Performance rating (40% weight)
+        const performanceScore = (distributor.performance_rating / 100) * 40;
+        breakdown.performance = performanceScore;
+        totalScore += performanceScore;
+        reasons.push(`Performance rating: ${distributor.performance_rating}%`);
+
+        // Workload availability (30% weight)
+        const workloadCapacity = distributor.max_daily_capacity || 10;
+        const currentLoad = distributor.current_workload || 0;
+        const availabilityRatio = Math.max(0, (workloadCapacity - currentLoad) / workloadCapacity);
+        const workloadScore = availabilityRatio * 30;
+        breakdown.workload = workloadScore;
+        totalScore += workloadScore;
+        reasons.push(`Availability: ${Math.round(availabilityRatio * 100)}%`);
+
+        // Zone/Area match (20% weight)
+        let zoneScore = 10; // Default partial score
+        if (distributor.preferred_areas) {
+            try {
+                const preferredAreas = typeof distributor.preferred_areas === 'string'
+                    ? JSON.parse(distributor.preferred_areas)
+                    : distributor.preferred_areas;
+
+                if (Array.isArray(preferredAreas) &&
+                    preferredAreas.some(area =>
+                        area.toLowerCase().includes(requirements.store.delivery_zone?.toLowerCase()) ||
+                        requirements.store.delivery_zone?.toLowerCase().includes(area.toLowerCase())
+                    )) {
+                    zoneScore = 20;
+                    reasons.push('Zone match: Perfect');
+                } else {
+                    reasons.push('Zone match: Partial');
+                }
+            } catch (e) {
+                reasons.push('Zone match: Unknown');
+            }
+        } else {
+            reasons.push('Zone match: Not specified');
+        }
+        breakdown.zone = zoneScore;
+        totalScore += zoneScore;
+
+        // Special requirements (10% weight)
+        let specialScore = 5; // Default score
+        if (requirements.requirements.special_handling && distributor.specializations) {
+            try {
+                const specs = typeof distributor.specializations === 'string'
+                    ? JSON.parse(distributor.specializations)
+                    : distributor.specializations;
+
+                if (Array.isArray(specs) && specs.includes('special_handling')) {
+                    specialScore = 10;
+                    reasons.push('Special handling: Qualified');
+                } else {
+                    specialScore = 3;
+                    reasons.push('Special handling: Not qualified');
+                }
+            } catch (e) {
+                reasons.push('Special handling: Unknown');
+            }
+        } else {
+            reasons.push('Special handling: Not required');
+        }
+        breakdown.special = specialScore;
+        totalScore += specialScore;
+
+        return {
+            total: Math.round(totalScore),
+            breakdown,
+            reasons
+        };
     }
 }
 
