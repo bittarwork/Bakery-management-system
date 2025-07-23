@@ -16,6 +16,7 @@ class AutoSchedulingController {
      * Get pending scheduling drafts for admin review
      * @route GET /api/auto-scheduling/pending-reviews
      * @access Private (Admin/Manager)
+     * @updated 2025-01-23 - Fixed parameter validation
      */
     static async getPendingReviews(req, res) {
         let connection;
