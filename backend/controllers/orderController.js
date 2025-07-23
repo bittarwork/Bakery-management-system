@@ -337,7 +337,7 @@ export const createOrder = async (req, res) => {
             created_by_name: req.user.full_name || req.user.username
         }, { transaction });
 
-        // Create order items
+        // Add order items
         for (const item of validatedItems) {
             await OrderItem.create({
                 order_id: order.id,
@@ -345,6 +345,39 @@ export const createOrder = async (req, res) => {
             }, { transaction });
         }
 
+        // Auto-create scheduling draft if enabled
+        const autoSchedulingEnabled = process.env.AUTO_SCHEDULING_ENABLED === 'true' || true; // Default enabled
+        if (autoSchedulingEnabled && order.status === ORDER_STATUS.DRAFT) {
+            try {
+                logger.info(`Auto-creating scheduling draft for order ${order.order_number}`);
+                
+                // Create scheduling draft using smart service
+                const schedulingResult = await smartSchedulingService.createSchedulingDraft(
+                    {
+                        id: order.id,
+                        order_number: order.order_number,
+                        store_id: order.store_id,
+                        total_amount_eur: order.total_amount_eur,
+                        total_amount_syp: order.total_amount_syp,
+                        order_date: order.order_date,
+                        delivery_date: order.delivery_date || scheduled_delivery_date,
+                        priority: priority
+                    },
+                    req.user.id
+                );
+
+                if (schedulingResult.success) {
+                    logger.info(`Scheduling draft created with ID: ${schedulingResult.draft_id} for order ${order.order_number}`);
+                } else {
+                    logger.warn(`Failed to create scheduling draft for order ${order.order_number}:`, schedulingResult.message);
+                }
+            } catch (schedulingError) {
+                // Don't fail the order creation if scheduling draft fails
+                logger.error(`Error creating scheduling draft for order ${order.order_number}:`, schedulingError);
+            }
+        }
+
+        // Commit transaction
         await transaction.commit();
 
         // Fetch complete order with relations

@@ -11,12 +11,72 @@ const dbConfig = {
     port: 24785
 };
 
+/**
+ * Ensure scheduling_drafts table exists
+ * Creates the table if it doesn't exist
+ */
+async function ensureSchedulingDraftsTable(connection) {
+    try {
+        // Check if table exists
+        const [tables] = await connection.execute(`
+            SHOW TABLES LIKE 'scheduling_drafts'
+        `);
+
+        if (tables.length === 0) {
+            logger.info('Creating scheduling_drafts table...');
+            
+            const createTableQuery = `
+                CREATE TABLE scheduling_drafts (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    order_id INT NOT NULL,
+                    suggested_distributor_id INT NOT NULL,
+                    suggested_distributor_name VARCHAR(100) NOT NULL,
+                    confidence_score DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+                    suggested_delivery_date DATE NOT NULL,
+                    suggested_priority ENUM('low', 'normal', 'high', 'urgent') NOT NULL DEFAULT 'normal',
+                    reasoning JSON,
+                    alternative_suggestions JSON,
+                    route_optimization JSON,
+                    estimated_delivery_time TIME,
+                    estimated_duration INT COMMENT 'Duration in minutes',
+                    status ENUM('pending_review', 'approved', 'rejected', 'modified') NOT NULL DEFAULT 'pending_review',
+                    reviewed_by INT NULL,
+                    reviewed_at TIMESTAMP NULL,
+                    admin_notes TEXT,
+                    modifications JSON,
+                    approved_distributor_id INT NULL,
+                    approved_delivery_date DATE NULL,
+                    approved_priority ENUM('low', 'normal', 'high', 'urgent') NULL,
+                    created_by INT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    
+                    INDEX idx_order_id (order_id),
+                    INDEX idx_status (status),
+                    INDEX idx_suggested_distributor_id (suggested_distributor_id),
+                    INDEX idx_confidence_score (confidence_score),
+                    INDEX idx_created_at (created_at),
+                    INDEX idx_suggested_delivery_date (suggested_delivery_date),
+                    
+                    UNIQUE KEY unique_order_draft (order_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            `;
+
+            await connection.execute(createTableQuery);
+            logger.info('scheduling_drafts table created successfully');
+        }
+    } catch (error) {
+        logger.error('Error ensuring scheduling_drafts table:', error);
+        throw error;
+    }
+}
+
 class AutoSchedulingController {
     /**
      * Get pending scheduling drafts for admin review
      * @route GET /api/auto-scheduling/pending-reviews
      * @access Private (Admin/Manager)
-     * @updated 2025-01-23 - Fixed parameter validation
+     * @updated 2025-01-23 - Fixed parameter validation and added table creation
      */
     static async getPendingReviews(req, res) {
         let connection;
@@ -32,34 +92,14 @@ class AutoSchedulingController {
             if (!Number.isInteger(pageNum) || !Number.isInteger(limitNum) || !Number.isInteger(offset)) {
                 return res.status(400).json({
                     success: false,
-                    message: 'معاملات الصفحة غير صحيحة'
+                    message: 'Invalid pagination parameters'
                 });
             }
 
             connection = await mysql.createConnection(dbConfig);
 
-            // Check if scheduling_drafts table exists first
-            try {
-                await connection.execute('SELECT 1 FROM scheduling_drafts LIMIT 1');
-            } catch (tableError) {
-                if (tableError.code === 'ER_NO_SUCH_TABLE') {
-                    await connection.end();
-                    return res.json({
-                        success: true,
-                        data: {
-                            drafts: [],
-                            pagination: {
-                                currentPage: pageNum,
-                                totalPages: 0,
-                                totalItems: 0,
-                                itemsPerPage: limitNum
-                            }
-                        },
-                        message: 'جدول الجدولة التلقائية غير متوفر حالياً'
-                    });
-                }
-                throw tableError;
-            }
+            // Ensure table exists
+            await ensureSchedulingDraftsTable(connection);
 
             // Get pending scheduling drafts with related data - Fixed parameter binding
             const query = `
@@ -100,7 +140,7 @@ class AutoSchedulingController {
                             itemsPerPage: limitNum
                         }
                     },
-                    message: 'لا توجد مسودات جدولة معلقة'
+                    message: 'No pending scheduling drafts found'
                 });
             }
 
@@ -159,24 +199,6 @@ class AutoSchedulingController {
                 }
             }
 
-            // Check if it's a table not found error
-            if (error.code === 'ER_NO_SUCH_TABLE') {
-                return res.status(500).json({
-                    success: false,
-                    message: 'جدول scheduling_drafts غير موجود في قاعدة البيانات',
-                    error: 'Database table missing'
-                });
-            }
-
-            // Check if it's a parameter error
-            if (error.code === 'ER_WRONG_ARGUMENTS') {
-                return res.status(500).json({
-                    success: false,
-                    message: 'خطأ في معاملات الاستعلام',
-                    error: 'Invalid query parameters'
-                });
-            }
-
             res.status(500).json({
                 success: false,
                 message: 'خطأ في جلب المسودات المعلقة',
@@ -189,11 +211,26 @@ class AutoSchedulingController {
      * Get scheduling draft details by ID
      * @route GET /api/auto-scheduling/drafts/:id
      * @access Private (Admin/Manager)
+     * @updated 2025-01-23 - Enhanced error handling and fixed ID validation
      */
     static async getSchedulingDraft(req, res) {
+        let connection;
         try {
             const { id } = req.params;
-            const connection = await mysql.createConnection(dbConfig);
+
+            // Validate ID parameter
+            const draftId = parseInt(id);
+            if (!draftId || draftId <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid draft ID provided'
+                });
+            }
+
+            connection = await mysql.createConnection(dbConfig);
+
+            // Ensure table exists
+            await ensureSchedulingDraftsTable(connection);
 
             const query = `
                 SELECT 
@@ -215,14 +252,14 @@ class AutoSchedulingController {
                     suggested_dist.performance_rating,
                     reviewer.full_name as reviewer_name
                 FROM scheduling_drafts sd
-                JOIN orders o ON sd.order_id = o.id
-                JOIN stores s ON o.store_id = s.id
-                JOIN users suggested_dist ON sd.suggested_distributor_id = suggested_dist.id
+                LEFT JOIN orders o ON sd.order_id = o.id
+                LEFT JOIN stores s ON o.store_id = s.id
+                LEFT JOIN users suggested_dist ON sd.suggested_distributor_id = suggested_dist.id
                 LEFT JOIN users reviewer ON sd.reviewed_by = reviewer.id
                 WHERE sd.id = ?
             `;
 
-            const [results] = await connection.execute(query, [id]);
+            const [results] = await connection.execute(query, [draftId]);
 
             if (results.length === 0) {
                 await connection.end();
@@ -234,39 +271,44 @@ class AutoSchedulingController {
 
             const draft = results[0];
 
-            // Parse JSON fields
+            // Parse JSON fields safely
             const formattedDraft = {
                 ...draft,
-                reasoning: draft.reasoning ? JSON.parse(draft.reasoning) : null,
+                reasoning: draft.reasoning ? this.safeJSONParse(draft.reasoning) : null,
                 alternative_suggestions: draft.alternative_suggestions ?
-                    JSON.parse(draft.alternative_suggestions) : [],
+                    this.safeJSONParse(draft.alternative_suggestions) : [],
                 route_optimization: draft.route_optimization ?
-                    JSON.parse(draft.route_optimization) : null,
+                    this.safeJSONParse(draft.route_optimization) : null,
                 modifications: draft.modifications ?
-                    JSON.parse(draft.modifications) : null,
+                    this.safeJSONParse(draft.modifications) : null,
                 gps_coordinates: draft.gps_coordinates ?
-                    JSON.parse(draft.gps_coordinates) : null
+                    this.safeJSONParse(draft.gps_coordinates) : null
             };
 
-            // Get alternative distributors details
-            if (formattedDraft.alternative_suggestions.length > 0) {
-                const altIds = formattedDraft.alternative_suggestions.map(alt => alt.distributor_id);
-                const placeholders = altIds.map(() => '?').join(',');
+            // Get alternative distributors details if available
+            if (formattedDraft.alternative_suggestions && formattedDraft.alternative_suggestions.length > 0) {
+                const altIds = formattedDraft.alternative_suggestions
+                    .map(alt => alt.distributor_id)
+                    .filter(id => id && !isNaN(id));
 
-                const [altDistributors] = await connection.execute(`
-                    SELECT id, full_name, phone, email, performance_rating, current_workload
-                    FROM users 
-                    WHERE id IN (${placeholders})
-                `, altIds);
+                if (altIds.length > 0) {
+                    const placeholders = altIds.map(() => '?').join(',');
 
-                // Enhance alternatives with distributor details
-                formattedDraft.alternative_suggestions = formattedDraft.alternative_suggestions.map(alt => {
-                    const distributorDetails = altDistributors.find(d => d.id === alt.distributor_id);
-                    return {
-                        ...alt,
-                        distributor_details: distributorDetails
-                    };
-                });
+                    const [altDistributors] = await connection.execute(`
+                        SELECT id, full_name, phone, email, performance_rating, current_workload
+                        FROM users 
+                        WHERE id IN (${placeholders}) AND role = 'distributor'
+                    `, altIds);
+
+                    // Enhance alternatives with distributor details
+                    formattedDraft.alternative_suggestions = formattedDraft.alternative_suggestions.map(alt => {
+                        const distributorDetails = altDistributors.find(d => d.id === alt.distributor_id);
+                        return {
+                            ...alt,
+                            distributor_details: distributorDetails || null
+                        };
+                    });
+                }
             }
 
             await connection.end();
@@ -279,10 +321,19 @@ class AutoSchedulingController {
 
         } catch (error) {
             logger.error('Error getting scheduling draft:', error);
+            
+            if (connection) {
+                try {
+                    await connection.end();
+                } catch (closeError) {
+                    logger.error('Error closing database connection:', closeError);
+                }
+            }
+
             res.status(500).json({
                 success: false,
                 message: 'خطأ في جلب تفاصيل مسودة الجدولة',
-                error: error.message
+                error: process.env.NODE_ENV === 'development' ? error.message : 'Server error'
             });
         }
     }
@@ -677,6 +728,21 @@ class AutoSchedulingController {
         } catch (error) {
             logger.error('Error creating distribution trip from draft:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Safe JSON parsing helper
+     */
+    static safeJSONParse(jsonString) {
+        try {
+            if (typeof jsonString === 'string') {
+                return JSON.parse(jsonString);
+            }
+            return jsonString;
+        } catch (error) {
+            logger.warn('Failed to parse JSON:', error);
+            return null;
         }
     }
 }
