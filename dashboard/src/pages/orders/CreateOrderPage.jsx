@@ -27,6 +27,7 @@ import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import orderService from "../../services/orderService";
 import productService from "../../services/productService";
 import storeService from "../../services/storeService";
+import autoSchedulingService from "../../services/autoSchedulingService";
 import { toast } from "react-hot-toast";
 
 const CreateOrderPage = () => {
@@ -35,6 +36,10 @@ const CreateOrderPage = () => {
   // Loading states
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Auto-scheduling states
+  const [autoSchedulingResult, setAutoSchedulingResult] = useState(null);
+  const [showSchedulingResult, setShowSchedulingResult] = useState(false);
 
   // Step management
   const [currentStep, setCurrentStep] = useState(1);
@@ -293,11 +298,21 @@ const CreateOrderPage = () => {
         })),
       };
 
+      // Enable auto-scheduling by default
+      orderData.enable_auto_scheduling = true;
+
       const response = await orderService.createOrder(orderData);
 
       if (response.success) {
-        toast.success("تم إنشاء الطلب بنجاح");
-        navigate("/orders");
+        // Check if auto-scheduling was performed
+        if (response.data.auto_scheduling) {
+          setAutoSchedulingResult(response.data.auto_scheduling);
+          setShowSchedulingResult(true);
+          toast.success("تم إنشاء الطلب مع اقتراح جدولة ذكي");
+        } else {
+          toast.success("تم إنشاء الطلب بنجاح");
+          navigate("/orders");
+        }
       } else {
         toast.error(response.message || "خطأ في إنشاء الطلب");
       }

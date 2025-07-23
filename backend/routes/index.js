@@ -24,6 +24,7 @@ import enhancedPricingRoutes from './enhancedPricingRoutes.js';
 import distributorRoutes from './distributorRoutes.js';
 import tempDeliveryRoutes from './tempDeliveryRoutes.js';
 import distributionTripsRoutes from './distributionTrips.js';
+import autoSchedulingRoutes from './autoSchedulingRoutes.js';
 
 const router = express.Router();
 
@@ -95,6 +96,7 @@ router.use('/refunds', refundRoutes);
 router.use('/pricing', enhancedPricingRoutes);
 router.use('/distributors', distributorRoutes);
 router.use('/delivery', tempDeliveryRoutes);
+router.use('/auto-scheduling', autoSchedulingRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {

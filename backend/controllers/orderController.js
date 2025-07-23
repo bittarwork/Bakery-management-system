@@ -4,6 +4,8 @@ import { Order, OrderItem, Store, Product, User, getSequelizeConnection } from '
 import { ORDER_STATUS, PAYMENT_STATUS } from '../constants/index.js';
 import { CreateOrderRequest } from '../dto/request/CreateOrderRequest.js';
 import { OrderResponse, OrdersListResponse } from '../dto/response/OrderResponse.js';
+import smartSchedulingService from '../services/smartSchedulingService.js';
+import logger from '../config/logger.js';
 
 // Helper function to check if status update is allowed
 const isStatusUpdateAllowed = (currentStatus, newStatus) => {
@@ -360,10 +362,48 @@ export const createOrder = async (req, res) => {
 
         const orderResponse = new OrderResponse(completeOrder, true, true, true);
 
+        // 🧠 AUTO-SCHEDULING: Create scheduling draft for the new order
+        let schedulingResult = null;
+        let autoSchedulingMessage = '';
+
+        try {
+            // Enable auto-scheduling only for confirmed orders or based on system settings
+            const enableAutoScheduling = req.body.enable_auto_scheduling !== false; // Default to true
+
+            if (enableAutoScheduling) {
+                logger.info(`Creating auto-scheduling draft for order: ${orderNumber}`);
+
+                schedulingResult = await smartSchedulingService.createSchedulingDraft(
+                    completeOrder.toJSON(),
+                    req.user.id
+                );
+
+                if (schedulingResult.success) {
+                    autoSchedulingMessage = ` • ${schedulingResult.message}`;
+                    logger.info(`Auto-scheduling draft created successfully for order ${orderNumber}`);
+                } else {
+                    logger.warn(`Auto-scheduling failed for order ${orderNumber}: ${schedulingResult.message}`);
+                }
+            }
+        } catch (error) {
+            // Don't fail order creation if auto-scheduling fails
+            logger.error(`Auto-scheduling error for order ${orderNumber}:`, error);
+            autoSchedulingMessage = ' • تم إنشاء الطلب بنجاح، لكن الجدولة التلقائية تحتاج مراجعة يدوية';
+        }
+
         res.status(201).json({
             success: true,
-            data: orderResponse,
-            message: 'تم إنشاء الطلب بنجاح'
+            data: {
+                order: orderResponse,
+                auto_scheduling: schedulingResult ? {
+                    draft_id: schedulingResult.draft_id,
+                    suggested_distributor: schedulingResult.suggestion?.distributor?.full_name,
+                    confidence_score: schedulingResult.suggestion?.confidence_score,
+                    requires_review: schedulingResult.requires_review,
+                    suggested_delivery_date: schedulingResult.logistics?.suggested_delivery_date
+                } : null
+            },
+            message: `تم إنشاء الطلب بنجاح${autoSchedulingMessage}`
         });
 
     } catch (error) {

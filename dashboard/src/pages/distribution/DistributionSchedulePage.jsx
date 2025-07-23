@@ -298,6 +298,7 @@ const DistributionSchedulePage = () => {
         <nav className="-mb-px flex space-x-8 rtl:space-x-reverse">
           {[
             { id: "today", label: "جدول اليوم", icon: CalendarIcon },
+            { id: "trips", label: "رحلات التوزيع", icon: TruckIcon },
             { id: "upcoming", label: "الجدول القادم", icon: ClockIcon },
             {
               id: "pending",
@@ -392,6 +393,16 @@ const DistributionSchedulePage = () => {
             <TodaySchedulesTab
               schedules={schedules}
               onStatusUpdate={handleScheduleStatusUpdate}
+            />
+          )}
+          {activeTab === "trips" && (
+            <DistributionTripsTable
+              filters={{
+                date: selectedDate,
+                status: filters.status !== "all" ? filters.status : null,
+                distributor_id: filters.distributor_id || null,
+              }}
+              onTripSelect={setSelectedTrip}
             />
           )}
           {activeTab === "upcoming" && (
