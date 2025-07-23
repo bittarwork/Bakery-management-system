@@ -4,7 +4,7 @@ import { Order, OrderItem, Store, Product, User, getSequelizeConnection } from '
 import { ORDER_STATUS, PAYMENT_STATUS } from '../constants/index.js';
 import { CreateOrderRequest } from '../dto/request/CreateOrderRequest.js';
 import { OrderResponse, OrdersListResponse } from '../dto/response/OrderResponse.js';
-import smartSchedulingService from '../services/smartSchedulingService.js';
+import SimpleDistributionService from '../services/simpleDistributionService.js';
 import logger from '../config/logger.js';
 
 // Helper function to check if status update is allowed
@@ -345,35 +345,38 @@ export const createOrder = async (req, res) => {
             }, { transaction });
         }
 
-        // Auto-create scheduling draft if enabled
-        const autoSchedulingEnabled = process.env.AUTO_SCHEDULING_ENABLED === 'true' || true; // Default enabled
-        if (autoSchedulingEnabled && order.status === ORDER_STATUS.DRAFT) {
+        // Auto-assign distributor - Simple and direct
+        const autoDistributionEnabled = process.env.AUTO_DISTRIBUTION_ENABLED !== 'false'; // Default enabled
+        if (autoDistributionEnabled) {
             try {
-                logger.info(`Auto-creating scheduling draft for order ${order.order_number}`);
+                logger.info(`Auto-assigning distributor for order ${order.order_number}`);
                 
-                // Create scheduling draft using smart service
-                const schedulingResult = await smartSchedulingService.createSchedulingDraft(
+                // Assign distributor using simple service
+                const assignmentResult = await SimpleDistributionService.assignOrderToDistributor(
                     {
                         id: order.id,
                         order_number: order.order_number,
                         store_id: order.store_id,
                         total_amount_eur: order.total_amount_eur,
-                        total_amount_syp: order.total_amount_syp,
-                        order_date: order.order_date,
-                        delivery_date: order.delivery_date || scheduled_delivery_date,
                         priority: priority
                     },
                     req.user.id
                 );
 
-                if (schedulingResult.success) {
-                    logger.info(`Scheduling draft created with ID: ${schedulingResult.draft_id} for order ${order.order_number}`);
+                if (assignmentResult.success) {
+                    // Update order with assigned distributor
+                    await order.update({
+                        assigned_distributor_id: assignmentResult.assigned_distributor.id,
+                        status: ORDER_STATUS.CONFIRMED // Move to confirmed status
+                    });
+                    
+                    logger.info(`Order ${order.order_number} assigned to distributor: ${assignmentResult.assigned_distributor.full_name}`);
                 } else {
-                    logger.warn(`Failed to create scheduling draft for order ${order.order_number}:`, schedulingResult.message);
+                    logger.warn(`Failed to assign distributor for order ${order.order_number}: ${assignmentResult.message}`);
                 }
-            } catch (schedulingError) {
-                // Don't fail the order creation if scheduling draft fails
-                logger.error(`Error creating scheduling draft for order ${order.order_number}:`, schedulingError);
+            } catch (assignmentError) {
+                // Don't fail the order creation if assignment fails
+                logger.error(`Error assigning distributor for order ${order.order_number}:`, assignmentError);
             }
         }
 
@@ -395,48 +398,37 @@ export const createOrder = async (req, res) => {
 
         const orderResponse = new OrderResponse(completeOrder, true, true, true);
 
-        // 🧠 AUTO-SCHEDULING: Create scheduling draft for the new order
-        let schedulingResult = null;
-        let autoSchedulingMessage = '';
+        // Get assignment info for response
+        let assignmentInfo = null;
+        let assignmentMessage = '';
 
-        try {
-            // Enable auto-scheduling only for confirmed orders or based on system settings
-            const enableAutoScheduling = req.body.enable_auto_scheduling !== false; // Default to true
-
-            if (enableAutoScheduling) {
-                logger.info(`Creating auto-scheduling draft for order: ${orderNumber}`);
-
-                schedulingResult = await smartSchedulingService.createSchedulingDraft(
-                    completeOrder.toJSON(),
-                    req.user.id
-                );
-
-                if (schedulingResult.success) {
-                    autoSchedulingMessage = ` • ${schedulingResult.message}`;
-                    logger.info(`Auto-scheduling draft created successfully for order ${orderNumber}`);
-                } else {
-                    logger.warn(`Auto-scheduling failed for order ${orderNumber}: ${schedulingResult.message}`);
+        if (completeOrder.assigned_distributor_id) {
+            try {
+                const assignedDistributor = await User.findByPk(completeOrder.assigned_distributor_id, {
+                    attributes: ['id', 'full_name', 'phone']
+                });
+                
+                if (assignedDistributor) {
+                    assignmentInfo = {
+                        distributor_id: assignedDistributor.id,
+                        distributor_name: assignedDistributor.full_name,
+                        distributor_phone: assignedDistributor.phone,
+                        assignment_method: 'automatic'
+                    };
+                    assignmentMessage = ` • تم تعيين الموزع: ${assignedDistributor.full_name}`;
                 }
+            } catch (error) {
+                logger.error(`Error getting distributor info for order ${orderNumber}:`, error);
             }
-        } catch (error) {
-            // Don't fail order creation if auto-scheduling fails
-            logger.error(`Auto-scheduling error for order ${orderNumber}:`, error);
-            autoSchedulingMessage = ' • تم إنشاء الطلب بنجاح، لكن الجدولة التلقائية تحتاج مراجعة يدوية';
         }
 
         res.status(201).json({
             success: true,
             data: {
                 order: orderResponse,
-                auto_scheduling: schedulingResult ? {
-                    draft_id: schedulingResult.draft_id,
-                    suggested_distributor: schedulingResult.suggestion?.distributor?.full_name,
-                    confidence_score: schedulingResult.suggestion?.confidence_score,
-                    requires_review: schedulingResult.requires_review,
-                    suggested_delivery_date: schedulingResult.logistics?.suggested_delivery_date
-                } : null
+                assignment: assignmentInfo
             },
-            message: `تم إنشاء الطلب بنجاح${autoSchedulingMessage}`
+            message: `تم إنشاء الطلب بنجاح${assignmentMessage}`
         });
 
     } catch (error) {
