@@ -24,8 +24,12 @@ import {
 
 // Services
 import distributorService from "../../services/distributorService";
+import distributionService from "../../services/distributionService";
 import orderService from "../../services/orderService";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
+
+// Components
+import DistributionTripsTable from "../../components/distribution/DistributionTripsTable";
 
 const DistributionSchedulePage = () => {
   const [activeTab, setActiveTab] = useState("today");
@@ -44,6 +48,7 @@ const DistributionSchedulePage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [selectedDistributor, setSelectedDistributor] = useState(null);
+  const [selectedTrip, setSelectedTrip] = useState(null);
 
   // Load initial data
   useEffect(() => {
@@ -56,6 +61,9 @@ const DistributionSchedulePage = () => {
       switch (activeTab) {
         case "today":
           await loadTodaySchedules();
+          break;
+        case "trips":
+          await loadDistributionTrips();
           break;
         case "upcoming":
           await loadUpcomingSchedules();
@@ -95,6 +103,27 @@ const DistributionSchedulePage = () => {
         "خطأ في تحميل جداول اليوم: " +
           (error.response?.data?.message || error.message)
       );
+    }
+  };
+
+  const loadDistributionTrips = async () => {
+    try {
+      const response = await distributionService.getDistributionTrips({
+        date: selectedDate,
+        status: filters.status !== "all" ? filters.status : null,
+        distributor_id: filters.distributor_id || null,
+      });
+
+      if (response.success) {
+        setSchedules(response.data || []);
+      } else {
+        setSchedules([]);
+        toast.error(response.message || "خطأ في تحميل رحلات التوزيع");
+      }
+    } catch (error) {
+      console.error("Error loading distribution trips:", error);
+      setSchedules([]);
+      toast.error("خطأ في تحميل رحلات التوزيع");
     }
   };
 

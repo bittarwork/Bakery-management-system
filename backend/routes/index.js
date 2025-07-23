@@ -23,6 +23,7 @@ import refundRoutes from './refundRoutes.js';
 import enhancedPricingRoutes from './enhancedPricingRoutes.js';
 import distributorRoutes from './distributorRoutes.js';
 import tempDeliveryRoutes from './tempDeliveryRoutes.js';
+import distributionTripsRoutes from './distributionTrips.js';
 
 const router = express.Router();
 
@@ -81,6 +82,7 @@ router.use('/users', userRoutes);
 
 // Mount new comprehensive routes
 router.use('/distribution', comprehensiveDistributionRoutes);
+router.use('/distribution/trips', distributionTripsRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/notifications', notificationRoutes);
 
