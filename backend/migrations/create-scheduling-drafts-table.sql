@@ -59,12 +59,4 @@ INSERT INTO scheduling_drafts (
  'pending_review', 1),
 (2, 5, '2024-03-21', '10:30:00', 'high', 92.30,
  '{"factors": ["urgent_priority", "distributor_availability", "store_preference"], "primary_reason": "High priority order with preferred distributor", "distributor_analysis": {"availability": "excellent", "specialization": "urgent_deliveries", "customer_relationship": "strong"}}',
- 'pending_review', 1);
-
--- Create trigger to auto-update updated_at timestamp
-CREATE TRIGGER IF NOT EXISTS scheduling_drafts_updated_at
-    BEFORE UPDATE ON scheduling_drafts
-    FOR EACH ROW
-BEGIN
-    SET NEW.updated_at = CURRENT_TIMESTAMP;
-END; 
+ 'pending_review', 1); 
