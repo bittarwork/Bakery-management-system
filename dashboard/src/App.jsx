@@ -95,13 +95,31 @@ const pageTransition = {
 };
 
 // Protected Route Component
-const ProtectedRoute = ({ children, requiredRole = null }) => {
+const ProtectedRoute = ({
+  children,
+  requiredRole = null,
+  allowedRoles = null,
+}) => {
   const { isAuthenticated, user } = useAuthStore();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
+  // Admin has access to all pages
+  if (user?.role === "admin") {
+    return children;
+  }
+
+  // Check multiple allowed roles if provided
+  if (allowedRoles && Array.isArray(allowedRoles)) {
+    if (!allowedRoles.includes(user?.role)) {
+      return <Navigate to="/unauthorized" replace />;
+    }
+    return children;
+  }
+
+  // Check specific role requirement for non-admin users
   if (requiredRole && user?.role !== requiredRole) {
     return <Navigate to="/unauthorized" replace />;
   }
@@ -217,7 +235,7 @@ function App() {
             <Route
               path="/distribution"
               element={
-                <ProtectedRoute requiredRole="manager">
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}
@@ -238,7 +256,7 @@ function App() {
             <Route
               path="/distribution/schedule"
               element={
-                <ProtectedRoute requiredRole="manager">
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}
@@ -259,7 +277,7 @@ function App() {
             <Route
               path="/distribution/tracking"
               element={
-                <ProtectedRoute requiredRole="manager">
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}
@@ -280,7 +298,7 @@ function App() {
             <Route
               path="/distribution/reports"
               element={
-                <ProtectedRoute requiredRole="manager">
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}

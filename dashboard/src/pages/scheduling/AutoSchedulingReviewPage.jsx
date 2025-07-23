@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-hot-toast";
 import {
-  BrainIcon,
+  CpuChipIcon,
   CheckCircleIcon,
   XCircleIcon,
   PencilSquareIcon,
@@ -244,7 +244,7 @@ const AutoSchedulingReviewPage = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3 rtl:space-x-reverse">
           <div className="p-2 bg-purple-100 rounded-lg">
-            <BrainIcon className="w-8 h-8 text-purple-600" />
+            <CpuChipIcon className="w-8 h-8 text-purple-600" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
@@ -460,7 +460,7 @@ const AutoSchedulingReviewPage = () => {
             </div>
           ) : pendingDrafts.length === 0 ? (
             <div className="text-center py-12">
-              <BrainIcon className="mx-auto h-12 w-12 text-gray-400" />
+              <CpuChipIcon className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">
                 لا توجد مسودات معلقة
               </h3>

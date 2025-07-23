@@ -20,6 +20,7 @@ import {
   Award,
   TrendingUp,
   AlertCircle,
+  Brain,
 } from "lucide-react";
 import Button from "../../components/ui/Button";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
@@ -58,6 +59,7 @@ const CreateOrderPage = () => {
     currency: "EUR",
     priority: "normal",
     items: [],
+    enable_auto_scheduling: true, // تفعيل الجدولة التلقائية افتراضياً
   });
 
   // Current item being added
@@ -298,8 +300,8 @@ const CreateOrderPage = () => {
         })),
       };
 
-      // Enable auto-scheduling by default
-      orderData.enable_auto_scheduling = true;
+      // Use the auto-scheduling option from form
+      orderData.enable_auto_scheduling = formData.enable_auto_scheduling;
 
       const response = await orderService.createOrder(orderData);
 
@@ -911,6 +913,40 @@ const CreateOrderPage = () => {
                             تم إنشاء طلب يحتوي على {totals.totalItems} منتج
                             بقيمة إجمالية €
                             {parseFloat(totals.subtotal).toFixed(2)}
+                          </p>
+                        </div>
+
+                        {/* Auto-Scheduling Option */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <input
+                                type="checkbox"
+                                id="auto-scheduling"
+                                checked={formData.enable_auto_scheduling}
+                                onChange={(e) =>
+                                  setFormData({
+                                    ...formData,
+                                    enable_auto_scheduling: e.target.checked,
+                                  })
+                                }
+                                className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                              />
+                              <label
+                                htmlFor="auto-scheduling"
+                                className="mr-3 text-lg font-semibold text-gray-900 cursor-pointer"
+                              >
+                                تفعيل الجدولة التلقائية
+                              </label>
+                            </div>
+                            <div className="flex items-center text-blue-600">
+                              <Brain className="w-6 h-6 ml-2" />
+                              <span className="text-sm font-medium">ذكي</span>
+                            </div>
+                          </div>
+                          <p className="text-gray-600 mt-2 mr-8">
+                            سيتم استخدام الذكاء الاصطناعي لاقتراح أفضل موزع
+                            وتوقيت للتسليم
                           </p>
                         </div>
 

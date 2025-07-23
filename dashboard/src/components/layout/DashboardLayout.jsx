@@ -19,6 +19,7 @@ import {
   Euro,
   UserCheck,
   CalendarClock,
+  Brain,
 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import Logo from "../ui/Logo";
@@ -43,6 +44,11 @@ const DashboardLayout = ({ children }) => {
     { name: "إدارة التسعير", path: "/pricing", icon: Euro },
     { name: "إدارة الموزعين", path: "/distributors", icon: UserCheck },
     { name: "جدولة التسليم", path: "/delivery", icon: CalendarClock },
+    {
+      name: "مراجعة الجدولة التلقائية",
+      path: "/scheduling/auto-review",
+      icon: Brain,
+    },
     { name: "الإعدادات", path: "/settings", icon: Settings },
   ];
 
