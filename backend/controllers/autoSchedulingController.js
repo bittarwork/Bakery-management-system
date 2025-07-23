@@ -23,14 +23,45 @@ class AutoSchedulingController {
         try {
             const { page = 1, limit = 10, status = 'pending_review' } = req.query;
 
-            // Ensure parameters are valid integers
+            // Ensure parameters are valid integers with proper validation
             const pageNum = Math.max(1, parseInt(page) || 1);
             const limitNum = Math.max(1, Math.min(100, parseInt(limit) || 10));
-            const offset = (pageNum - 1) * limitNum;
+            const offset = Math.max(0, (pageNum - 1) * limitNum);
+
+            // Validate that all parameters are proper numbers
+            if (!Number.isInteger(pageNum) || !Number.isInteger(limitNum) || !Number.isInteger(offset)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'معاملات الصفحة غير صحيحة'
+                });
+            }
 
             connection = await mysql.createConnection(dbConfig);
 
-            // Get pending scheduling drafts with related data
+            // Check if scheduling_drafts table exists first
+            try {
+                await connection.execute('SELECT 1 FROM scheduling_drafts LIMIT 1');
+            } catch (tableError) {
+                if (tableError.code === 'ER_NO_SUCH_TABLE') {
+                    await connection.end();
+                    return res.json({
+                        success: true,
+                        data: {
+                            drafts: [],
+                            pagination: {
+                                currentPage: pageNum,
+                                totalPages: 0,
+                                totalItems: 0,
+                                itemsPerPage: limitNum
+                            }
+                        },
+                        message: 'جدول الجدولة التلقائية غير متوفر حالياً'
+                    });
+                }
+                throw tableError;
+            }
+
+            // Get pending scheduling drafts with related data - Fixed parameter binding
             const query = `
                 SELECT 
                     sd.*,
@@ -50,10 +81,10 @@ class AutoSchedulingController {
                 LEFT JOIN users u ON sd.suggested_distributor_id = u.id
                 WHERE sd.status = ?
                 ORDER BY sd.created_at ASC
-                LIMIT ? OFFSET ?
+                LIMIT ${limitNum} OFFSET ${offset}
             `;
 
-            const [drafts] = await connection.execute(query, [status, limitNum, offset]);
+            const [drafts] = await connection.execute(query, [status]);
 
             // Handle empty result
             if (!drafts || drafts.length === 0) {

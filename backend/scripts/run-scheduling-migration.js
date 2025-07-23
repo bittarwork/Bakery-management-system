@@ -1,6 +1,10 @@
-const mysql = require('mysql2/promise');
-const fs = require('fs');
-const path = require('path');
+import mysql from 'mysql2/promise';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Database configuration for Railway production
 const dbConfig = {
@@ -8,110 +12,100 @@ const dbConfig = {
     user: 'root',
     password: 'ZEsGFfzwlnsvgvcUiNsvGraAKFnuVZRA',
     database: 'railway',
-    port: 24785
+    port: 24785,
+    multipleStatements: true
 };
 
 async function runSchedulingMigration() {
-    console.log('🚀 Starting Auto-Scheduling Migration...\n');
-
     let connection;
 
     try {
-        // Connect to database
+        console.log('🔄 Connecting to Railway database...');
         connection = await mysql.createConnection(dbConfig);
+
         console.log('✅ Connected to database successfully');
 
-        // Read migration file
+        // Read the migration file
         const migrationPath = path.join(__dirname, '../migrations/create-scheduling-drafts-table.sql');
-
-        if (!fs.existsSync(migrationPath)) {
-            throw new Error(`Migration file not found: ${migrationPath}`);
-        }
-
         const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
-        console.log('✅ Migration file loaded successfully');
 
-        // Split SQL into individual statements
-        const statements = migrationSQL
+        console.log('📖 Reading migration file...');
+
+        // Split SQL commands (some databases have issues with multiple statements)
+        const sqlCommands = migrationSQL
             .split(';')
-            .map(stmt => stmt.trim())
-            .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+            .map(cmd => cmd.trim())
+            .filter(cmd => cmd.length > 0 && !cmd.startsWith('--'));
 
-        console.log(`\n📋 Found ${statements.length} SQL statements to execute\n`);
+        console.log(`🚀 Executing ${sqlCommands.length} SQL commands...`);
 
-        // Execute each statement
-        for (let i = 0; i < statements.length; i++) {
-            const statement = statements[i];
-
-            try {
-                if (statement.includes('CREATE TABLE')) {
-                    console.log(`📊 Creating table: scheduling_drafts...`);
-                } else if (statement.includes('CREATE INDEX')) {
-                    console.log(`🔗 Creating index...`);
-                } else if (statement.includes('INSERT INTO')) {
-                    console.log(`📝 Inserting sample data...`);
-                } else {
-                    console.log(`⚙️  Executing statement ${i + 1}/${statements.length}...`);
-                }
-
-                await connection.execute(statement);
-                console.log(`   ✅ Success!\n`);
-
-            } catch (error) {
-                if (error.code === 'ER_TABLE_EXISTS_ERROR') {
-                    console.log(`   ⚠️  Table already exists, skipping...\n`);
-                } else if (error.code === 'ER_DUP_KEYNAME') {
-                    console.log(`   ⚠️  Index already exists, skipping...\n`);
-                } else if (error.code === 'ER_DUP_ENTRY') {
-                    console.log(`   ⚠️  Sample data already exists, skipping...\n`);
-                } else {
-                    console.error(`   ❌ Error executing statement ${i + 1}:`, error.message);
-                    console.error(`   📄 Statement: ${statement.substring(0, 100)}...`);
-                    // Continue with other statements
+        // Execute each command separately
+        for (let i = 0; i < sqlCommands.length; i++) {
+            const command = sqlCommands[i];
+            if (command) {
+                try {
+                    console.log(`📝 Executing command ${i + 1}/${sqlCommands.length}...`);
+                    await connection.execute(command);
+                } catch (cmdError) {
+                    // Skip errors for things that already exist
+                    if (cmdError.message.includes('already exists') ||
+                        cmdError.message.includes('Duplicate key name')) {
+                        console.log(`⚠️ Skipping: ${cmdError.message}`);
+                        continue;
+                    }
+                    throw cmdError;
                 }
             }
         }
 
-        // Verify table creation
-        console.log('🔍 Verifying table structure...');
+        // Verify the table was created
+        console.log('🔍 Verifying table creation...');
+        const [tables] = await connection.execute("SHOW TABLES LIKE 'scheduling_drafts'");
 
-        const [tableInfo] = await connection.execute(`
-            DESCRIBE scheduling_drafts
-        `);
+        if (tables.length > 0) {
+            console.log('✅ scheduling_drafts table created successfully!');
 
-        console.log('\n📋 Table structure:');
-        console.table(tableInfo.map(field => ({
-            Field: field.Field,
-            Type: field.Type,
-            Null: field.Null,
-            Key: field.Key,
-            Default: field.Default
-        })));
+            // Show table structure
+            const [structure] = await connection.execute('DESCRIBE scheduling_drafts');
+            console.log('\n📋 Table structure:');
+            structure.forEach(column => {
+                console.log(`  - ${column.Field}: ${column.Type} ${column.Null === 'YES' ? '(nullable)' : '(not null)'}`);
+            });
 
-        // Check if sample data exists
-        const [sampleCount] = await connection.execute(`
-            SELECT COUNT(*) as count FROM scheduling_drafts
-        `);
+            // Check if sample data was inserted
+            const [count] = await connection.execute('SELECT COUNT(*) as count FROM scheduling_drafts');
+            console.log(`\n📊 Sample data: ${count[0].count} records inserted`);
 
-        console.log(`\n📊 Sample data records: ${sampleCount[0].count}`);
+        } else {
+            throw new Error('Table was not created successfully');
+        }
 
-        console.log('\n🎉 Auto-Scheduling Migration completed successfully!');
-        console.log('\n📝 Next steps:');
-        console.log('   1. Test creating a new order to trigger auto-scheduling');
-        console.log('   2. Check the admin dashboard for pending reviews');
-        console.log('   3. Test the approval/rejection workflow');
+        console.log('\n🎉 Migration completed successfully!');
 
     } catch (error) {
-        console.error('\n❌ Migration failed:', error.message);
-        console.error('Stack trace:', error.stack);
+        console.error('❌ Migration failed:', error.message);
+
+        if (error.code) {
+            console.error(`   Error Code: ${error.code}`);
+        }
+
+        if (error.sqlMessage) {
+            console.error(`   SQL Message: ${error.sqlMessage}`);
+        }
+
         process.exit(1);
+
     } finally {
         if (connection) {
             await connection.end();
-            console.log('\n✅ Database connection closed');
+            console.log('🔒 Database connection closed');
         }
     }
 }
 
-// Run migration
+// Run the migration
+console.log('🚀 Starting scheduling_drafts table migration...');
+console.log('📅 Date:', new Date().toISOString());
+console.log('🏗️ Target: Railway production database\n');
+
 runSchedulingMigration(); 
