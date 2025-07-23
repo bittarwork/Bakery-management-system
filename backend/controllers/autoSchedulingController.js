@@ -34,20 +34,20 @@ class AutoSchedulingController {
             const query = `
                 SELECT 
                     sd.*,
-                    o.order_number,
-                    o.total_amount_eur,
-                    o.total_amount_syp,
-                    o.order_date,
-                    s.name as store_name,
-                    s.address as store_address,
-                    s.phone as store_phone,
-                    u.full_name as suggested_distributor_full_name,
-                    u.phone as distributor_phone,
+                    IFNULL(o.order_number, '') as order_number,
+                    IFNULL(o.total_amount_eur, 0.00) as total_amount_eur,
+                    IFNULL(o.total_amount_syp, 0.00) as total_amount_syp,
+                    IFNULL(o.order_date, CURDATE()) as order_date,
+                    IFNULL(s.name, 'Unknown Store') as store_name,
+                    IFNULL(s.address, '') as store_address,
+                    IFNULL(s.phone, '') as store_phone,
+                    IFNULL(u.full_name, 'Unknown Distributor') as suggested_distributor_full_name,
+                    IFNULL(u.phone, '') as distributor_phone,
                     COUNT(*) OVER() as total_count
                 FROM scheduling_drafts sd
-                JOIN orders o ON sd.order_id = o.id
-                JOIN stores s ON o.store_id = s.id
-                JOIN users u ON sd.suggested_distributor_id = u.id
+                LEFT JOIN orders o ON sd.order_id = o.id
+                LEFT JOIN stores s ON o.store_id = s.id
+                LEFT JOIN users u ON sd.suggested_distributor_id = u.id
                 WHERE sd.status = ?
                 ORDER BY sd.created_at ASC
                 LIMIT ? OFFSET ?
@@ -55,19 +55,50 @@ class AutoSchedulingController {
 
             const [drafts] = await connection.execute(query, [status, limitNum, offset]);
 
-            // Parse JSON fields safely
-            const formattedDrafts = drafts.map(draft => ({
-                ...draft,
-                reasoning: draft.reasoning ? (typeof draft.reasoning === 'string' ? JSON.parse(draft.reasoning) : draft.reasoning) : null,
-                alternative_suggestions: draft.alternative_suggestions ?
-                    (typeof draft.alternative_suggestions === 'string' ? JSON.parse(draft.alternative_suggestions) : draft.alternative_suggestions) : [],
-                route_optimization: draft.route_optimization ?
-                    (typeof draft.route_optimization === 'string' ? JSON.parse(draft.route_optimization) : draft.route_optimization) : null,
-                modifications: draft.modifications ?
-                    (typeof draft.modifications === 'string' ? JSON.parse(draft.modifications) : draft.modifications) : null
-            }));
+            // Handle empty result
+            if (!drafts || drafts.length === 0) {
+                await connection.end();
+                return res.json({
+                    success: true,
+                    data: {
+                        drafts: [],
+                        pagination: {
+                            currentPage: pageNum,
+                            totalPages: 0,
+                            totalItems: 0,
+                            itemsPerPage: limitNum
+                        }
+                    },
+                    message: 'لا توجد مسودات جدولة معلقة'
+                });
+            }
 
-            const totalCount = drafts.length > 0 ? drafts[0].total_count : 0;
+            // Parse JSON fields safely
+            const formattedDrafts = drafts.map(draft => {
+                try {
+                    return {
+                        ...draft,
+                        reasoning: draft.reasoning ? (typeof draft.reasoning === 'string' ? JSON.parse(draft.reasoning) : draft.reasoning) : null,
+                        alternative_suggestions: draft.alternative_suggestions ?
+                            (typeof draft.alternative_suggestions === 'string' ? JSON.parse(draft.alternative_suggestions) : draft.alternative_suggestions) : [],
+                        route_optimization: draft.route_optimization ?
+                            (typeof draft.route_optimization === 'string' ? JSON.parse(draft.route_optimization) : draft.route_optimization) : null,
+                        modifications: draft.modifications ?
+                            (typeof draft.modifications === 'string' ? JSON.parse(draft.modifications) : draft.modifications) : null
+                    };
+                } catch (parseError) {
+                    logger.error('Error parsing JSON fields for draft:', parseError);
+                    return {
+                        ...draft,
+                        reasoning: null,
+                        alternative_suggestions: [],
+                        route_optimization: null,
+                        modifications: null
+                    };
+                }
+            });
+
+            const totalCount = drafts.length > 0 ? (drafts[0].total_count || 0) : 0;
 
             await connection.end();
 
