@@ -18,11 +18,16 @@ class AutoSchedulingController {
      * @access Private (Admin/Manager)
      */
     static async getPendingReviews(req, res) {
+        let connection;
         try {
             const { page = 1, limit = 10, status = 'pending_review' } = req.query;
-            const offset = (page - 1) * limit;
 
-            const connection = await mysql.createConnection(dbConfig);
+            // Ensure parameters are valid integers
+            const pageNum = Math.max(1, parseInt(page) || 1);
+            const limitNum = Math.max(1, Math.min(100, parseInt(limit) || 10));
+            const offset = (pageNum - 1) * limitNum;
+
+            connection = await mysql.createConnection(dbConfig);
 
             // Get pending scheduling drafts with related data
             const query = `
@@ -47,18 +52,18 @@ class AutoSchedulingController {
                 LIMIT ? OFFSET ?
             `;
 
-            const [drafts] = await connection.execute(query, [status, parseInt(limit), offset]);
+            const [drafts] = await connection.execute(query, [status, limitNum, offset]);
 
-            // Parse JSON fields
+            // Parse JSON fields safely
             const formattedDrafts = drafts.map(draft => ({
                 ...draft,
-                reasoning: draft.reasoning ? JSON.parse(draft.reasoning) : null,
+                reasoning: draft.reasoning ? (typeof draft.reasoning === 'string' ? JSON.parse(draft.reasoning) : draft.reasoning) : null,
                 alternative_suggestions: draft.alternative_suggestions ?
-                    JSON.parse(draft.alternative_suggestions) : [],
+                    (typeof draft.alternative_suggestions === 'string' ? JSON.parse(draft.alternative_suggestions) : draft.alternative_suggestions) : [],
                 route_optimization: draft.route_optimization ?
-                    JSON.parse(draft.route_optimization) : null,
+                    (typeof draft.route_optimization === 'string' ? JSON.parse(draft.route_optimization) : draft.route_optimization) : null,
                 modifications: draft.modifications ?
-                    JSON.parse(draft.modifications) : null
+                    (typeof draft.modifications === 'string' ? JSON.parse(draft.modifications) : draft.modifications) : null
             }));
 
             const totalCount = drafts.length > 0 ? drafts[0].total_count : 0;
@@ -70,10 +75,10 @@ class AutoSchedulingController {
                 data: {
                     drafts: formattedDrafts,
                     pagination: {
-                        currentPage: parseInt(page),
-                        totalPages: Math.ceil(totalCount / limit),
+                        currentPage: pageNum,
+                        totalPages: Math.ceil(totalCount / limitNum),
                         totalItems: totalCount,
-                        itemsPerPage: parseInt(limit)
+                        itemsPerPage: limitNum
                     }
                 },
                 message: `تم جلب ${formattedDrafts.length} مسودة جدولة معلقة`
@@ -81,10 +86,38 @@ class AutoSchedulingController {
 
         } catch (error) {
             logger.error('Error getting pending reviews:', error);
+
+            // Ensure connection is closed even on error
+            if (connection) {
+                try {
+                    await connection.end();
+                } catch (closeError) {
+                    logger.error('Error closing database connection:', closeError);
+                }
+            }
+
+            // Check if it's a table not found error
+            if (error.code === 'ER_NO_SUCH_TABLE') {
+                return res.status(500).json({
+                    success: false,
+                    message: 'جدول scheduling_drafts غير موجود في قاعدة البيانات',
+                    error: 'Database table missing'
+                });
+            }
+
+            // Check if it's a parameter error
+            if (error.code === 'ER_WRONG_ARGUMENTS') {
+                return res.status(500).json({
+                    success: false,
+                    message: 'خطأ في معاملات الاستعلام',
+                    error: 'Invalid query parameters'
+                });
+            }
+
             res.status(500).json({
                 success: false,
                 message: 'خطأ في جلب المسودات المعلقة',
-                error: error.message
+                error: process.env.NODE_ENV === 'development' ? error.message : 'Server error'
             });
         }
     }

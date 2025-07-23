@@ -181,3 +181,357 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Custom Scrollbar Styles */
+.scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db #f3f4f6;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
+.scrollbar-thin:hover::-webkit-scrollbar-thumb {
+    background: #9ca3af;
+}
+
+/* Enhanced Sidebar Styles */
+.sidebar-section-header {
+    @apply text-xs font-semibold text-gray-500 uppercase tracking-wider;
+}
+
+.sidebar-section-header:hover {
+    @apply text-gray-700;
+}
+
+.sidebar-item {
+    @apply transition-all duration-200 ease-in-out;
+}
+
+.sidebar-item:hover {
+    @apply transform -translate-x-1;
+}
+
+.sidebar-item-active {
+    @apply bg-blue-50 text-blue-700 border-r-2 border-blue-600 shadow-sm;
+}
+
+.sidebar-item-inactive {
+    @apply text-gray-700 hover:bg-gray-50 hover:text-gray-900;
+}
+
+/* Smooth animations for sidebar sections */
+.sidebar-section-enter {
+    opacity: 0;
+    height: 0;
+}
+
+.sidebar-section-enter-active {
+    opacity: 1;
+    height: auto;
+    transition: opacity 300ms ease-in-out, height 300ms ease-in-out;
+}
+
+.sidebar-section-exit {
+    opacity: 1;
+    height: auto;
+}
+
+.sidebar-section-exit-active {
+    opacity: 0;
+    height: 0;
+    transition: opacity 300ms ease-in-out, height 300ms ease-in-out;
+}
+
+/* Enhanced user profile section */
+.user-profile-section {
+    @apply bg-gradient-to-r from-gray-50 to-gray-100;
+}
+
+.logout-button {
+    @apply transition-all duration-200 ease-in-out;
+}
+
+.logout-button:hover {
+    @apply transform scale-105;
+}
+
+/* Responsive sidebar improvements */
+@media (max-width: 1024px) {
+    .sidebar-mobile {
+        @apply shadow-2xl;
+    }
+}
+
+/* Dark mode support for scrollbar */
+@media (prefers-color-scheme: dark) {
+    .scrollbar-thin {
+        scrollbar-color: #4b5563 #1f2937;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-track {
+        background: #1f2937;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: #4b5563;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+        background: #6b7280;
+    }
+}
+
+/* Loading and transition states */
+.sidebar-loading {
+    @apply animate-pulse;
+}
+
+.sidebar-transition {
+    @apply transition-all duration-300 ease-in-out;
+}
+
+/* Focus states for accessibility */
+.sidebar-item:focus {
+    @apply outline-none ring-2 ring-blue-500 ring-opacity-50;
+}
+
+.sidebar-section-header:focus {
+    @apply outline-none ring-2 ring-gray-400 ring-opacity-50;
+}
+
+/* Hover effects for better UX */
+.sidebar-hover-effect {
+    @apply relative overflow-hidden;
+}
+
+.sidebar-hover-effect::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 opacity-0 transition-opacity duration-200;
+}
+
+.sidebar-hover-effect:hover::before {
+    @apply opacity-10;
+}
+
+/* Custom animations for sidebar icons */
+.sidebar-icon {
+    @apply transition-transform duration-200 ease-in-out;
+}
+
+.sidebar-item:hover .sidebar-icon {
+    @apply transform scale-110;
+}
+
+/* Enhanced active state animations */
+.sidebar-item-active {
+    @apply relative;
+}
+
+.sidebar-item-active::before {
+    content: '';
+    @apply absolute inset-0 bg-blue-100 opacity-50 rounded-lg;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 0.5;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
+
+/* Section collapse/expand animations */
+.section-toggle-icon {
+    @apply transition-transform duration-200 ease-in-out;
+}
+
+.section-toggle-icon.rotated {
+    @apply transform rotate-180;
+}
+
+/* Enhanced spacing and typography */
+.sidebar-text {
+    @apply font-medium text-sm leading-relaxed;
+}
+
+.sidebar-section-title {
+    @apply font-semibold text-xs uppercase tracking-wider;
+}
+
+/* Custom scrollbar for different browsers */
+@supports (scrollbar-color: red blue) {
+    .scrollbar-thin {
+        scrollbar-color: #d1d5db #f3f4f6;
+    }
+}
+
+/* Firefox specific scrollbar */
+.scrollbar-thin {
+    scrollbar-width: thin;
+}
+
+/* Webkit browsers scrollbar */
+.scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
+/* Enhanced sidebar container */
+.sidebar-container {
+    @apply flex flex-col h-full;
+}
+
+.sidebar-header {
+    @apply flex-shrink-0;
+}
+
+.sidebar-content {
+    @apply flex-1 overflow-hidden;
+}
+
+.sidebar-footer {
+    @apply flex-shrink-0;
+}
+
+/* Improved navigation spacing */
+.navigation-section {
+    @apply space-y-2;
+}
+
+.navigation-item {
+    @apply space-y-1;
+}
+
+/* Better visual hierarchy */
+.section-header {
+    @apply px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider;
+}
+
+.section-items {
+    @apply space-y-1 pr-4;
+}
+
+/* Enhanced active state */
+.active-item {
+    @apply bg-blue-50 text-blue-700 border-r-2 border-blue-600 shadow-sm;
+}
+
+.active-item .sidebar-icon {
+    @apply text-blue-600;
+}
+
+/* Hover states */
+.hover-item {
+    @apply text-gray-700 hover:bg-gray-50 hover:text-gray-900;
+}
+
+.hover-item .sidebar-icon {
+    @apply text-gray-400 group-hover:text-gray-600;
+}
+
+/* Smooth transitions */
+.smooth-transition {
+    @apply transition-all duration-200 ease-in-out;
+}
+
+/* Enhanced user profile */
+.user-profile {
+    @apply p-4 border-t border-gray-200 bg-gray-50;
+}
+
+.user-info {
+    @apply flex items-center space-x-3 space-x-reverse;
+}
+
+.logout-btn {
+    @apply p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all duration-200;
+}
+
+.user-details {
+    @apply flex-1 min-w-0;
+}
+
+.user-name {
+    @apply text-sm font-medium text-gray-900 truncate;
+}
+
+.user-role {
+    @apply text-xs text-gray-500 truncate;
+}
+
+.user-avatar {
+    @apply w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0;
+}
+
+/* Responsive design improvements */
+@media (max-width: 1024px) {
+    .sidebar-mobile {
+        @apply shadow-2xl;
+    }
+
+    .sidebar-overlay {
+        @apply fixed inset-0 z-20 bg-black bg-opacity-50;
+    }
+}
+
+/* Accessibility improvements */
+.sidebar-focus {
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50;
+}
+
+.section-focus {
+    @apply focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50;
+}
+
+/* Performance optimizations */
+.sidebar-optimized {
+    @apply will-change-transform;
+}
+
+/* Enhanced visual feedback */
+.visual-feedback {
+    @apply transform transition-all duration-200 ease-in-out;
+}
+
+.visual-feedback:hover {
+    @apply scale-105;
+}
+
+.visual-feedback:active {
+    @apply scale-95;
+}
