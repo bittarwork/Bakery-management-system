@@ -71,6 +71,9 @@ import DistributorManagementPage from "./pages/distributors/DistributorManagemen
 import DeliverySchedulingPage from "./pages/delivery/EnhancedDeliverySchedulingPage";
 import DeliveryConfirmationPage from "./pages/delivery/DeliveryConfirmationPage";
 
+// Pages - Auto Scheduling
+import AutoSchedulingReviewPage from "./pages/scheduling/AutoSchedulingReviewPage";
+
 // Pages - Error
 import NotFoundPage from "./pages/error/NotFoundPage";
 
@@ -927,6 +930,28 @@ function App() {
                     <DeliveryConfirmationPage />
                   </Suspense>
                 </motion.div>
+              }
+            />
+
+            {/* Auto-Scheduling Routes */}
+            <Route
+              path="/scheduling/auto-review"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <AutoSchedulingReviewPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
               }
             />
 

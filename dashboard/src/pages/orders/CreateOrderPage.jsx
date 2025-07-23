@@ -1091,6 +1091,171 @@ const CreateOrderPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Auto-Scheduling Result Modal */}
+      {showSchedulingResult && autoSchedulingResult && (
+        <AutoSchedulingResultModal
+          result={autoSchedulingResult}
+          onClose={() => {
+            setShowSchedulingResult(false);
+            navigate("/orders");
+          }}
+          onReview={() => {
+            setShowSchedulingResult(false);
+            navigate("/scheduling/auto-review");
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+// Auto-Scheduling Result Modal Component
+const AutoSchedulingResultModal = ({ result, onClose, onReview }) => {
+  const getConfidenceColor = (score) => {
+    if (score >= 90) return "text-green-600 bg-green-100";
+    if (score >= 80) return "text-blue-600 bg-blue-100";
+    if (score >= 70) return "text-yellow-600 bg-yellow-100";
+    if (score >= 60) return "text-orange-600 bg-orange-100";
+    return "text-red-600 bg-red-100";
+  };
+
+  const getConfidenceIcon = (score) => {
+    if (score >= 90) return <CheckCircle className="w-6 h-6 text-green-600" />;
+    if (score >= 70) return <TrendingUp className="w-6 h-6 text-blue-600" />;
+    return <AlertTriangle className="w-6 h-6 text-orange-600" />;
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full m-4 overflow-hidden border border-blue-100"
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3 rtl:space-x-reverse">
+              <div className="p-2 bg-white bg-opacity-20 rounded-lg">
+                <Zap className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">
+                  🧠 اقتراح الجدولة الذكية
+                </h2>
+                <p className="text-white text-opacity-80 text-sm">
+                  تم تحليل الطلب وإنشاء اقتراح جدولة تلقائي
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-white hover:text-gray-200 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {/* Confidence Score */}
+          <div className="text-center">
+            <div className="flex items-center justify-center mb-4">
+              {getConfidenceIcon(result.confidence_score)}
+            </div>
+            <div
+              className={`inline-flex items-center px-4 py-2 rounded-full font-bold text-lg ${getConfidenceColor(
+                result.confidence_score
+              )}`}
+            >
+              درجة الثقة: {result.confidence_score}%
+            </div>
+            <p className="text-gray-600 mt-2">
+              {result.confidence_score >= 90 && "اقتراح ممتاز - موصى بشدة"}
+              {result.confidence_score >= 80 &&
+                result.confidence_score < 90 &&
+                "اقتراح جيد جداً"}
+              {result.confidence_score >= 70 &&
+                result.confidence_score < 80 &&
+                "اقتراح جيد"}
+              {result.confidence_score >= 60 &&
+                result.confidence_score < 70 &&
+                "اقتراح مقبول - يحتاج مراجعة"}
+              {result.confidence_score < 60 &&
+                "اقتراح منخفض الثقة - يحتاج مراجعة دقيقة"}
+            </p>
+          </div>
+
+          {/* Suggestion Details */}
+          <div className="bg-gray-50 rounded-xl p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <UserCheck className="w-5 h-5 ml-2" />
+              تفاصيل الاقتراح
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center space-x-3 rtl:space-x-reverse">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <User className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">الموزع المقترح</p>
+                  <p className="font-semibold text-gray-900">
+                    {result.suggested_distributor}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3 rtl:space-x-reverse">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Calendar className="w-4 h-4 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">تاريخ التسليم المقترح</p>
+                  <p className="font-semibold text-gray-900">
+                    {new Date(
+                      result.suggested_delivery_date
+                    ).toLocaleDateString("ar-SA")}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-between space-x-4 rtl:space-x-reverse">
+            <button
+              onClick={onClose}
+              className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors"
+            >
+              موافق - الانتهاء
+            </button>
+            <button
+              onClick={onReview}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl font-medium transition-all transform hover:scale-105"
+            >
+              مراجعة الاقتراح
+            </button>
+          </div>
+
+          {/* Note */}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-start space-x-3 rtl:space-x-reverse">
+              <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+              <div>
+                <p className="text-sm text-yellow-800">
+                  <strong>ملاحظة:</strong> هذا اقتراح من النظام الذكي يحتاج
+                  موافقة الإدمن قبل التنفيذ. يمكنك مراجعة الاقتراح وتعديله إذا
+                  لزم الأمر.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 };
