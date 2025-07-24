@@ -1,6 +1,6 @@
 import express from 'express';
 import systemController from '../controllers/systemController.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -56,7 +56,7 @@ const router = express.Router();
  *       500:
  *         description: Internal server error
  */
-router.get('/settings', authenticateToken, systemController.getSettings);
+router.get('/settings', protect, systemController.getSettings);
 
 /**
  * @swagger
@@ -103,7 +103,7 @@ router.get('/settings', authenticateToken, systemController.getSettings);
  *       500:
  *         description: Internal server error
  */
-router.put('/settings', authenticateToken, systemController.updateSettings);
+router.put('/settings', protect, systemController.updateSettings);
 
 /**
  * @swagger
@@ -149,7 +149,7 @@ router.put('/settings', authenticateToken, systemController.updateSettings);
  *       500:
  *         description: Internal server error
  */
-router.get('/info', authenticateToken, systemController.getInfo);
+router.get('/info', protect, systemController.getInfo);
 
 /**
  * @swagger
@@ -193,6 +193,6 @@ router.get('/info', authenticateToken, systemController.getInfo);
  *       500:
  *         description: Internal server error
  */
-router.get('/statistics', authenticateToken, systemController.getStatistics);
+router.get('/statistics', protect, systemController.getStatistics);
 
 export default router; 
