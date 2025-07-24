@@ -311,6 +311,23 @@ class UserService {
         };
         return statusColors[status] || 'gray';
     }
+
+    /**
+     * تحديث الملف الشخصي للمستخدم الحالي
+     * @param {Object} profileData - بيانات الملف الشخصي
+     * @returns {Promise<Object>} استجابة API
+     */
+    async updateProfile(profileData) {
+        try {
+            const response = await apiService.put('/users/profile', profileData);
+            return response;
+        } catch (error) {
+            return {
+                success: false,
+                message: error.message || 'خطأ في تحديث الملف الشخصي'
+            };
+        }
+    }
 }
 
 export default new UserService(); 
