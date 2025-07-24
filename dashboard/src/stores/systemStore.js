@@ -41,8 +41,8 @@ export const useSystemStore = create((set, get) => ({
 
     loadSystemSettings: async () => {
         try {
-            // Prevent multiple initializations
-            if (get().systemSettingsInitialized) {
+            // Prevent multiple simultaneous loads
+            if (get().isLoading) {
                 return;
             }
 
@@ -75,25 +75,25 @@ export const useSystemStore = create((set, get) => ({
                     emailPort: '587',
                     emailUser: '',
                     emailPassword: '',
-                    jwtSecret: 'your-secret-key',
+                    jwtSecret: 'default-secret',
                     sessionTimeout: '3600',
                     systemName: 'Bakery Management System',
                     version: '1.0.0',
                     maintenanceMode: false,
-                    debugMode: process.env.NODE_ENV === 'development'
+                    debugMode: true
                 };
 
                 set({
                     systemSettings: defaultSettings,
                     isLoading: false,
-                    error: null,
+                    error: response.isUnauthorized ? null : response.message,
                     systemSettingsInitialized: true
                 });
             }
         } catch (error) {
-            console.error('Error loading system settings:', error);
+            console.error('Failed to load system settings:', error);
 
-            // Use default settings as fallback
+            // Use default settings even on error
             const defaultSettings = {
                 dbHost: 'localhost',
                 dbPort: '3306',
@@ -104,21 +104,49 @@ export const useSystemStore = create((set, get) => ({
                 emailPort: '587',
                 emailUser: '',
                 emailPassword: '',
-                jwtSecret: 'your-secret-key',
+                jwtSecret: 'default-secret',
                 sessionTimeout: '3600',
                 systemName: 'Bakery Management System',
                 version: '1.0.0',
                 maintenanceMode: false,
-                debugMode: process.env.NODE_ENV === 'development'
+                debugMode: true
             };
 
             set({
                 systemSettings: defaultSettings,
                 isLoading: false,
-                error: null, // Don't show error to user since we have fallback
+                error: error.message,
                 systemSettingsInitialized: true
             });
         }
+    },
+
+    // Initialize system store - this can be called without authentication
+    initializeSystemStore: () => {
+        const defaultSettings = {
+            dbHost: 'localhost',
+            dbPort: '3306',
+            dbName: 'bakery_db',
+            dbUser: 'root',
+            dbPassword: '',
+            emailHost: 'smtp.gmail.com',
+            emailPort: '587',
+            emailUser: '',
+            emailPassword: '',
+            jwtSecret: 'default-secret',
+            sessionTimeout: '3600',
+            systemName: 'Bakery Management System',
+            version: '1.0.0',
+            maintenanceMode: false,
+            debugMode: true
+        };
+
+        set({
+            systemSettings: defaultSettings,
+            isLoading: false,
+            error: null,
+            systemSettingsInitialized: true
+        });
     },
 
     updateSystemSettings: async (settings) => {

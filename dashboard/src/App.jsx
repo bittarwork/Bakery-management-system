@@ -106,6 +106,7 @@ const App = () => {
   } = useAuthStore();
   const {
     loadSystemSettings,
+    initializeSystemStore,
     isLoading: systemLoading,
     systemSettingsInitialized,
   } = useSystemStore();
@@ -132,26 +133,36 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    // Initialize authentication state
+    // Initialize authentication state and basic system store
     initializeAuth();
-
-    // Load system settings
-    loadSystemSettings();
+    initializeSystemStore(); // Initialize with default settings immediately
   }, []); // Empty dependency array to run only once
+
+  // Load system settings only after successful authentication
+  useEffect(() => {
+    if (authInitialized && isAuthenticated && !systemSettingsInitialized) {
+      loadSystemSettings();
+    }
+  }, [
+    authInitialized,
+    isAuthenticated,
+    systemSettingsInitialized,
+    loadSystemSettings,
+  ]);
 
   // Show toast when initialization is complete
   useEffect(() => {
     if (authInitialized && systemSettingsInitialized) {
       // Only show toast if we're not already showing one
       if (!isAuthenticated) {
-        toast("مرحباً! يرجى تسجيل الدخول للوصول للنظام", { 
-          icon: 'ℹ️',
+        toast("مرحباً! يرجى تسجيل الدخول للوصول للنظام", {
+          icon: "ℹ️",
           duration: 4000,
-          id: 'welcome-message' // Prevent duplicate toasts
+          id: "welcome-message", // Prevent duplicate toasts
         });
       } else {
         toast.success("تم تحميل النظام بنجاح", {
-          id: 'system-loaded' // Prevent duplicate toasts
+          id: "system-loaded", // Prevent duplicate toasts
         });
       }
     }
