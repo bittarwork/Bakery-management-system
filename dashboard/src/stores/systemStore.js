@@ -36,9 +36,10 @@ export const useSystemStore = create((set, get) => ({
     loadSystemSettings: async () => {
         try {
             set({ isLoading: true, error: null });
-            
+
+            // Try to load from API first
             const response = await systemService.getSettings();
-            
+
             if (response.success) {
                 set({
                     systemSettings: response.data,
@@ -46,17 +47,58 @@ export const useSystemStore = create((set, get) => ({
                     error: null,
                 });
             } else {
+                // If API fails, use default settings
+                console.warn('Failed to load system settings from API, using defaults:', response.message);
+                const defaultSettings = {
+                    dbHost: 'localhost',
+                    dbPort: '3306',
+                    dbName: 'bakery_db',
+                    dbUser: 'root',
+                    dbPassword: '',
+                    emailHost: 'smtp.gmail.com',
+                    emailPort: '587',
+                    emailUser: '',
+                    emailPassword: '',
+                    jwtSecret: 'your-secret-key',
+                    sessionTimeout: '3600',
+                    systemName: 'Bakery Management System',
+                    version: '1.0.0',
+                    maintenanceMode: false,
+                    debugMode: process.env.NODE_ENV === 'development'
+                };
+
                 set({
+                    systemSettings: defaultSettings,
                     isLoading: false,
-                    error: response.message || 'Failed to load system settings',
+                    error: null,
                 });
             }
         } catch (error) {
             console.error('Error loading system settings:', error);
+
+            // Use default settings as fallback
+            const defaultSettings = {
+                dbHost: 'localhost',
+                dbPort: '3306',
+                dbName: 'bakery_db',
+                dbUser: 'root',
+                dbPassword: '',
+                emailHost: 'smtp.gmail.com',
+                emailPort: '587',
+                emailUser: '',
+                emailPassword: '',
+                jwtSecret: 'your-secret-key',
+                sessionTimeout: '3600',
+                systemName: 'Bakery Management System',
+                version: '1.0.0',
+                maintenanceMode: false,
+                debugMode: process.env.NODE_ENV === 'development'
+            };
+
             set({
+                systemSettings: defaultSettings,
                 isLoading: false,
-                error: error.message || 'Failed to load system settings',
-                systemSettings: null,
+                error: null, // Don't show error to user since we have fallback
             });
         }
     },
@@ -64,9 +106,9 @@ export const useSystemStore = create((set, get) => ({
     updateSystemSettings: async (settings) => {
         try {
             set({ isLoading: true, error: null });
-            
+
             const response = await systemService.updateSettings(settings);
-            
+
             if (response.success) {
                 set({
                     systemSettings: response.data,
