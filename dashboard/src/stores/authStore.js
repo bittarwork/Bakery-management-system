@@ -7,25 +7,66 @@ export const useAuthStore = create((set, get) => ({
     isAuthenticated: false,
     isLoading: false,
     error: null,
+    isInitialized: false, // Add initialization flag
 
     initializeAuth: async () => {
         try {
-            set({ isLoading: true });
-            const token = Cookies.get('auth_token');
-            if (!token) {
-                set({ isLoading: false });
+            // Prevent multiple initializations
+            if (get().isInitialized) {
                 return;
             }
 
-            const response = await apiService.get('/auth/me');
-            const userData = response.data || response;
+            set({ isLoading: true });
+            const token = Cookies.get('auth_token');
 
-            set({
-                user: userData,
-                isAuthenticated: true,
-                isLoading: false,
-                error: null
-            });
+            if (!token) {
+                set({
+                    isLoading: false,
+                    isInitialized: true,
+                    isAuthenticated: false,
+                    user: null
+                });
+                return;
+            }
+
+            // Try to validate token with server
+            try {
+                const response = await apiService.get('/auth/me');
+                const userData = response.data || response;
+
+                set({
+                    user: userData,
+                    isAuthenticated: true,
+                    isLoading: false,
+                    error: null,
+                    isInitialized: true
+                });
+            } catch (error) {
+                console.error('Token validation failed:', error);
+
+                // If it's a network error, keep the token but mark as not authenticated
+                // This prevents infinite reloads when server is unavailable
+                if (error.isNetworkError) {
+                    console.warn('Network error during token validation, keeping token for offline mode');
+                    set({
+                        user: null,
+                        isAuthenticated: false,
+                        isLoading: false,
+                        error: null, // Don't show error to user
+                        isInitialized: true
+                    });
+                } else {
+                    // For other errors, remove the token
+                    Cookies.remove('auth_token');
+                    set({
+                        user: null,
+                        isAuthenticated: false,
+                        isLoading: false,
+                        error: null, // Don't show error to user
+                        isInitialized: true
+                    });
+                }
+            }
         } catch (error) {
             console.error('Auth initialization error:', error);
             Cookies.remove('auth_token');
@@ -33,7 +74,8 @@ export const useAuthStore = create((set, get) => ({
                 user: null,
                 isAuthenticated: false,
                 isLoading: false,
-                error: error.message,
+                error: null, // Don't show error to user
+                isInitialized: true
             });
         }
     },
@@ -79,7 +121,8 @@ export const useAuthStore = create((set, get) => ({
                 user: userData,
                 isAuthenticated: true,
                 isLoading: false,
-                error: null
+                error: null,
+                isInitialized: true
             });
 
             console.log('Login successful, user:', userData);
@@ -118,7 +161,8 @@ export const useAuthStore = create((set, get) => ({
                 error: errorMessage,
                 isAuthenticated: false,
                 user: null,
-                isLoading: false
+                isLoading: false,
+                isInitialized: true
             });
 
             return { success: false, error: errorMessage };
@@ -131,6 +175,7 @@ export const useAuthStore = create((set, get) => ({
             user: null,
             isAuthenticated: false,
             error: null,
+            isInitialized: true
         });
     },
 

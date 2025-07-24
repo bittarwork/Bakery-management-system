@@ -98,16 +98,20 @@ apiClient.interceptors.response.use(
             let errorMessage = 'خطأ في الاتصال بالخادم';
 
             if (error.code === 'ERR_NETWORK') {
-                errorMessage = 'لا يمكن الاتصال بالخادم. تحقق من اتصال الإنترنت أو أن الخادم متاح.';
-            } else if (error.code === 'ERR_INTERNET_DISCONNECTED') {
-                errorMessage = 'لا يوجد اتصال بالإنترنت';
+                errorMessage = 'لا يمكن الاتصال بالخادم. يرجى التحقق من اتصال الإنترنت';
             } else if (error.code === 'ECONNABORTED') {
                 errorMessage = 'انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى';
-            } else if (error.message.includes('CORS')) {
-                errorMessage = 'خطأ في إعدادات الأمان (CORS). يرجى المحاولة لاحقاً';
+            } else if (error.code === 'ERR_INTERNET_DISCONNECTED') {
+                errorMessage = 'لا يوجد اتصال بالإنترنت';
             }
 
-            return Promise.reject(new Error(errorMessage));
+            // Create a structured error response
+            const networkError = new Error(errorMessage);
+            networkError.code = error.code;
+            networkError.isNetworkError = true;
+            networkError.originalError = error;
+
+            return Promise.reject(networkError);
         }
 
         // Handle different error status codes
@@ -214,10 +218,10 @@ const retryRequest = async (requestFn, maxRetries = API_CONFIG.retryAttempts) =>
 
             if (i === maxRetries - 1 || !isRetryableError) {
                 // Try fallback to local server if in development and main server fails
-                if (process.env.NODE_ENV === 'development' && 
+                if (process.env.NODE_ENV === 'development' &&
                     (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') &&
                     !originalRequest._fallbackAttempted) {
-                    
+
                     console.log('🔄 Attempting fallback to local server...');
                     try {
                         const fallback = createFallbackClient();
@@ -225,13 +229,13 @@ const retryRequest = async (requestFn, maxRetries = API_CONFIG.retryAttempts) =>
                         if (token) {
                             fallback.defaults.headers.Authorization = `Bearer ${token}`;
                         }
-                        
+
                         originalRequest._fallbackAttempted = true;
                         const fallbackResponse = await fallback.request({
                             ...originalRequest,
                             baseURL: 'http://localhost:5001/api'
                         });
-                        
+
                         console.log('✅ Fallback to local server succeeded');
                         return fallbackResponse;
                     } catch (fallbackError) {

@@ -6,6 +6,7 @@ export const useSystemStore = create((set, get) => ({
     isLoading: false,
     error: null,
     systemSettings: null,
+    systemSettingsInitialized: false, // Add flag for settings initialization
     systemStatus: {
         apiStatus: 'operational',
         lastSync: new Date().toISOString(),
@@ -13,6 +14,11 @@ export const useSystemStore = create((set, get) => ({
 
     initializeSystem: async () => {
         try {
+            // Prevent multiple initializations
+            if (get().isInitialized) {
+                return;
+            }
+
             set({ isLoading: true });
 
             // TODO: Add system initialization logic
@@ -26,7 +32,7 @@ export const useSystemStore = create((set, get) => ({
             });
         } catch (error) {
             set({
-                isInitialized: false,
+                isInitialized: true,
                 isLoading: false,
                 error: error.message,
             });
@@ -35,6 +41,11 @@ export const useSystemStore = create((set, get) => ({
 
     loadSystemSettings: async () => {
         try {
+            // Prevent multiple initializations
+            if (get().systemSettingsInitialized) {
+                return;
+            }
+
             set({ isLoading: true, error: null });
 
             // Try to load from API first
@@ -45,6 +56,7 @@ export const useSystemStore = create((set, get) => ({
                     systemSettings: response.data,
                     isLoading: false,
                     error: null,
+                    systemSettingsInitialized: true
                 });
             } else {
                 // If API fails, use default settings
@@ -66,16 +78,17 @@ export const useSystemStore = create((set, get) => ({
                     maintenanceMode: false,
                     debugMode: process.env.NODE_ENV === 'development'
                 };
-
+                
                 set({
                     systemSettings: defaultSettings,
                     isLoading: false,
                     error: null,
+                    systemSettingsInitialized: true
                 });
             }
         } catch (error) {
             console.error('Error loading system settings:', error);
-
+            
             // Use default settings as fallback
             const defaultSettings = {
                 dbHost: 'localhost',
@@ -94,11 +107,12 @@ export const useSystemStore = create((set, get) => ({
                 maintenanceMode: false,
                 debugMode: process.env.NODE_ENV === 'development'
             };
-
+            
             set({
                 systemSettings: defaultSettings,
                 isLoading: false,
                 error: null, // Don't show error to user since we have fallback
+                systemSettingsInitialized: true
             });
         }
     },

@@ -1,8 +1,9 @@
-import React, { Suspense, useEffect } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { Routes, Route, Navigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "./stores/authStore";
 import { useSystemStore } from "./stores/systemStore";
+import { toast } from "react-hot-toast";
 
 // Layout Components
 import AuthLayout from "./components/layout/AuthLayout";
@@ -97,8 +98,32 @@ const PublicRoute = ({ children }) => {
 };
 
 const App = () => {
-  const { initializeAuth } = useAuthStore();
-  const { loadSystemSettings } = useSystemStore();
+  const {
+    initializeAuth,
+    isAuthenticated,
+    isLoading: authLoading,
+    isInitialized: authInitialized,
+  } = useAuthStore();
+  const {
+    loadSystemSettings,
+    isLoading: systemLoading,
+    systemSettingsInitialized,
+  } = useSystemStore();
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  // Network status monitoring
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     // Initialize authentication state
@@ -106,11 +131,27 @@ const App = () => {
 
     // Load system settings
     loadSystemSettings();
-  }, [initializeAuth, loadSystemSettings]);
+  }, []); // Empty dependency array to run only once
+
+  // Show loading spinner while initializing
+  if (!authInitialized || !systemSettingsInitialized) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50">
+        {/* Network Status Indicator */}
+        {!isOnline && (
+          <div className="fixed top-0 left-0 right-0 bg-red-500 text-white text-center py-2 z-50">
+            لا يوجد اتصال بالإنترنت
+          </div>
+        )}
+
         <AnimatePresence mode="wait">
           <Routes>
             {/* Public Routes */}
@@ -694,8 +735,17 @@ const App = () => {
               }
             />
 
-            {/* Redirect root to dashboard */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            {/* Redirect root to dashboard or login based on auth status */}
+            <Route
+              path="/"
+              element={
+                isAuthenticated ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
 
             {/* 404 fallback */}
             <Route

@@ -46,6 +46,15 @@ class SystemService {
             const response = await this.apiService.get('/system/settings');
             return response;
         } catch (error) {
+            // If it's a network error, return a structured response
+            if (error.isNetworkError) {
+                return {
+                    success: false,
+                    message: error.message,
+                    isNetworkError: true
+                };
+            }
+            
             return {
                 success: false,
                 message: error.message || 'خطأ في جلب إعدادات النظام'
@@ -63,6 +72,15 @@ class SystemService {
             const response = await this.apiService.put('/system/settings', settings);
             return response;
         } catch (error) {
+            // If it's a network error, return a structured response
+            if (error.isNetworkError) {
+                return {
+                    success: false,
+                    message: error.message,
+                    isNetworkError: true
+                };
+            }
+            
             return {
                 success: false,
                 message: error.message || 'خطأ في تحديث إعدادات النظام'
