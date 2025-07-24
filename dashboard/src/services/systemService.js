@@ -27,7 +27,7 @@ class SystemService {
      */
     async getInfo() {
         try {
-            const response = await this.apiService.get('/info');
+            const response = await this.apiService.get('/system/info');
             return response;
         } catch (error) {
             return {
@@ -43,7 +43,7 @@ class SystemService {
      */
     async getSettings() {
         try {
-            const response = await this.apiService.get('/settings');
+            const response = await this.apiService.get('/system/settings');
             return response;
         } catch (error) {
             return {
@@ -60,7 +60,7 @@ class SystemService {
      */
     async updateSettings(settings) {
         try {
-            const response = await this.apiService.put('/settings', settings);
+            const response = await this.apiService.put('/system/settings', settings);
             return response;
         } catch (error) {
             return {
@@ -76,7 +76,7 @@ class SystemService {
      */
     async getStatistics() {
         try {
-            const response = await this.apiService.get('/statistics');
+            const response = await this.apiService.get('/system/statistics');
             return response;
         } catch (error) {
             return {

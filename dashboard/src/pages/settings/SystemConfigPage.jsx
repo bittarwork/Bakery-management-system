@@ -4,23 +4,13 @@ import {
   Settings,
   Database,
   Mail,
-  Server,
   Shield,
-  Key,
   Save,
   RefreshCw,
   CheckCircle,
   XCircle,
-  AlertCircle,
-  Globe,
-  Lock,
   Eye,
   EyeOff,
-  TestTube,
-  Activity,
-  HardDrive,
-  Wifi,
-  Cloud,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
@@ -28,52 +18,24 @@ import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import { useSystemStore } from "../../stores/systemStore";
 
 const SystemConfigPage = () => {
-  const { systemSettings, updateSystemSettings, loadSystemSettings } =
-    useSystemStore();
+  const { systemSettings, updateSystemSettings, loadSystemSettings } = useSystemStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showPasswords, setShowPasswords] = useState({});
-
-  // Form state
+  
   const [formData, setFormData] = useState({
-    // Database settings
     dbHost: "",
-    dbPort: "",
+    dbPort: "3306",
     dbName: "",
     dbUser: "",
     dbPassword: "",
-
-    // Email settings
     emailHost: "",
-    emailPort: "",
+    emailPort: "587",
     emailUser: "",
     emailPassword: "",
-    emailFrom: "",
-    emailFromName: "",
-
-    // API settings
-    apiUrl: "",
-    apiKey: "",
-    apiSecret: "",
-
-    // Security settings
     jwtSecret: "",
     sessionTimeout: "3600",
-    maxLoginAttempts: "5",
-    passwordMinLength: "8",
-
-    // File storage settings
-    storageType: "local",
-    storagePath: "",
-    maxFileSize: "10",
-    allowedFileTypes: "jpg,jpeg,png,pdf,doc,docx",
-
-    // Backup settings
-    autoBackup: false,
-    backupFrequency: "daily",
-    backupRetention: "30",
-    backupPath: "",
   });
 
   useEffect(() => {
@@ -83,60 +45,33 @@ const SystemConfigPage = () => {
   useEffect(() => {
     if (systemSettings) {
       setFormData({
-        // Database settings
         dbHost: systemSettings.dbHost || "",
         dbPort: systemSettings.dbPort || "3306",
         dbName: systemSettings.dbName || "",
         dbUser: systemSettings.dbUser || "",
         dbPassword: systemSettings.dbPassword || "",
-
-        // Email settings
         emailHost: systemSettings.emailHost || "",
         emailPort: systemSettings.emailPort || "587",
         emailUser: systemSettings.emailUser || "",
         emailPassword: systemSettings.emailPassword || "",
-        emailFrom: systemSettings.emailFrom || "",
-        emailFromName: systemSettings.emailFromName || "",
-
-        // API settings
-        apiUrl: systemSettings.apiUrl || "",
-        apiKey: systemSettings.apiKey || "",
-        apiSecret: systemSettings.apiSecret || "",
-
-        // Security settings
         jwtSecret: systemSettings.jwtSecret || "",
         sessionTimeout: systemSettings.sessionTimeout || "3600",
-        maxLoginAttempts: systemSettings.maxLoginAttempts || "5",
-        passwordMinLength: systemSettings.passwordMinLength || "8",
-
-        // File storage settings
-        storageType: systemSettings.storageType || "local",
-        storagePath: systemSettings.storagePath || "",
-        maxFileSize: systemSettings.maxFileSize || "10",
-        allowedFileTypes:
-          systemSettings.allowedFileTypes || "jpg,jpeg,png,pdf,doc,docx",
-
-        // Backup settings
-        autoBackup: systemSettings.autoBackup || false,
-        backupFrequency: systemSettings.backupFrequency || "daily",
-        backupRetention: systemSettings.backupRetention || "30",
-        backupPath: systemSettings.backupPath || "",
       });
     }
   }, [systemSettings]);
 
   const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
+    const { name, value } = e.target;
+    setFormData(prev => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: value
     }));
   };
 
   const togglePasswordVisibility = (field) => {
-    setShowPasswords((prev) => ({
+    setShowPasswords(prev => ({
       ...prev,
-      [field]: !prev[field],
+      [field]: !prev[field]
     }));
   };
 
@@ -173,47 +108,12 @@ const SystemConfigPage = () => {
         emailPort: systemSettings.emailPort || "587",
         emailUser: systemSettings.emailUser || "",
         emailPassword: systemSettings.emailPassword || "",
-        emailFrom: systemSettings.emailFrom || "",
-        emailFromName: systemSettings.emailFromName || "",
-        apiUrl: systemSettings.apiUrl || "",
-        apiKey: systemSettings.apiKey || "",
-        apiSecret: systemSettings.apiSecret || "",
         jwtSecret: systemSettings.jwtSecret || "",
         sessionTimeout: systemSettings.sessionTimeout || "3600",
-        maxLoginAttempts: systemSettings.maxLoginAttempts || "5",
-        passwordMinLength: systemSettings.passwordMinLength || "8",
-        storageType: systemSettings.storageType || "local",
-        storagePath: systemSettings.storagePath || "",
-        maxFileSize: systemSettings.maxFileSize || "10",
-        allowedFileTypes:
-          systemSettings.allowedFileTypes || "jpg,jpeg,png,pdf,doc,docx",
-        autoBackup: systemSettings.autoBackup || false,
-        backupFrequency: systemSettings.backupFrequency || "daily",
-        backupRetention: systemSettings.backupRetention || "30",
-        backupPath: systemSettings.backupPath || "",
       });
     }
     setError("");
     setSuccess("");
-  };
-
-  const testConnection = async (type) => {
-    try {
-      setIsLoading(true);
-      setError("");
-
-      // This would call the backend to test the connection
-      console.log(`Testing ${type} connection...`);
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setSuccess(`تم اختبار الاتصال بـ ${type} بنجاح`);
-    } catch (error) {
-      setError(`فشل في اختبار الاتصال بـ ${type}`);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   return (
@@ -223,15 +123,15 @@ const SystemConfigPage = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             إعدادات النظام
           </h1>
-          <p className="text-gray-600">تكوين الإعدادات المتقدمة للنظام</p>
+          <p className="text-gray-600">
+            تكوين الإعدادات المتقدمة للنظام
+          </p>
         </div>
 
-        {/* Success/Error Messages */}
         {success && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -256,27 +156,13 @@ const SystemConfigPage = () => {
 
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Database Settings */}
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Database className="w-6 h-6 text-gray-600 mr-2" />
-                    <h2 className="text-xl font-semibold text-gray-900">
-                      إعدادات قاعدة البيانات
-                    </h2>
-                  </div>
-                  <EnhancedButton
-                    type="button"
-                    onClick={() => testConnection("قاعدة البيانات")}
-                    variant="outline"
-                    size="sm"
-                    disabled={isLoading}
-                    className="flex items-center"
-                  >
-                    <TestTube className="w-4 h-4 mr-1" />
-                    اختبار الاتصال
-                  </EnhancedButton>
+                <div className="flex items-center">
+                  <Database className="w-6 h-6 text-gray-600 mr-2" />
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    إعدادات قاعدة البيانات
+                  </h2>
                 </div>
               </CardHeader>
               <CardBody>
@@ -309,7 +195,7 @@ const SystemConfigPage = () => {
                       />
                     </div>
                   </div>
-
+                  
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       اسم قاعدة البيانات
@@ -356,11 +242,7 @@ const SystemConfigPage = () => {
                         onClick={() => togglePasswordVisibility("dbPassword")}
                         className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                       >
-                        {showPasswords.dbPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
+                        {showPasswords.dbPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
@@ -368,27 +250,13 @@ const SystemConfigPage = () => {
               </CardBody>
             </Card>
 
-            {/* Email Settings */}
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Mail className="w-6 h-6 text-gray-600 mr-2" />
-                    <h2 className="text-xl font-semibold text-gray-900">
-                      إعدادات البريد الإلكتروني
-                    </h2>
-                  </div>
-                  <EnhancedButton
-                    type="button"
-                    onClick={() => testConnection("البريد الإلكتروني")}
-                    variant="outline"
-                    size="sm"
-                    disabled={isLoading}
-                    className="flex items-center"
-                  >
-                    <TestTube className="w-4 h-4 mr-1" />
-                    اختبار الاتصال
-                  </EnhancedButton>
+                <div className="flex items-center">
+                  <Mail className="w-6 h-6 text-gray-600 mr-2" />
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    إعدادات البريد الإلكتروني
+                  </h2>
                 </div>
               </CardHeader>
               <CardBody>
@@ -451,53 +319,17 @@ const SystemConfigPage = () => {
                       />
                       <button
                         type="button"
-                        onClick={() =>
-                          togglePasswordVisibility("emailPassword")
-                        }
+                        onClick={() => togglePasswordVisibility("emailPassword")}
                         className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                       >
-                        {showPasswords.emailPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
+                        {showPasswords.emailPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        من
-                      </label>
-                      <input
-                        type="email"
-                        name="emailFrom"
-                        value={formData.emailFrom}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="noreply@example.com"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        اسم المرسل
-                      </label>
-                      <input
-                        type="text"
-                        name="emailFromName"
-                        value={formData.emailFromName}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="نظام إدارة المخبز"
-                      />
                     </div>
                   </div>
                 </div>
               </CardBody>
             </Card>
 
-            {/* Security Settings */}
             <Card>
               <CardHeader>
                 <div className="flex items-center">
@@ -527,221 +359,29 @@ const SystemConfigPage = () => {
                         onClick={() => togglePasswordVisibility("jwtSecret")}
                         className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                       >
-                        {showPasswords.jwtSecret ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
+                        {showPasswords.jwtSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        مهلة الجلسة (ثانية)
-                      </label>
-                      <input
-                        type="number"
-                        name="sessionTimeout"
-                        value={formData.sessionTimeout}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        min="300"
-                        max="86400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        الحد الأقصى لمحاولات الدخول
-                      </label>
-                      <input
-                        type="number"
-                        name="maxLoginAttempts"
-                        value={formData.maxLoginAttempts}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        min="3"
-                        max="10"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        الحد الأدنى لكلمة المرور
-                      </label>
-                      <input
-                        type="number"
-                        name="passwordMinLength"
-                        value={formData.passwordMinLength}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        min="6"
-                        max="20"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-
-            {/* File Storage Settings */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center">
-                  <HardDrive className="w-6 h-6 text-gray-600 mr-2" />
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    إعدادات التخزين
-                  </h2>
-                </div>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      نوع التخزين
-                    </label>
-                    <select
-                      name="storageType"
-                      value={formData.storageType}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="local">محلي</option>
-                      <option value="s3">Amazon S3</option>
-                      <option value="cloudinary">Cloudinary</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      مسار التخزين
+                      مهلة الجلسة (ثانية)
                     </label>
                     <input
-                      type="text"
-                      name="storagePath"
-                      value={formData.storagePath}
+                      type="number"
+                      name="sessionTimeout"
+                      value={formData.sessionTimeout}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="/uploads"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        الحد الأقصى لحجم الملف (MB)
-                      </label>
-                      <input
-                        type="number"
-                        name="maxFileSize"
-                        value={formData.maxFileSize}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        min="1"
-                        max="100"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        أنواع الملفات المسموحة
-                      </label>
-                      <input
-                        type="text"
-                        name="allowedFileTypes"
-                        value={formData.allowedFileTypes}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="jpg,jpeg,png,pdf"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-
-            {/* Backup Settings */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center">
-                  <Cloud className="w-6 h-6 text-gray-600 mr-2" />
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    إعدادات النسخ الاحتياطي
-                  </h2>
-                </div>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        النسخ الاحتياطي التلقائي
-                      </label>
-                      <p className="text-sm text-gray-500">
-                        إنشاء نسخ احتياطية تلقائية
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        name="autoBackup"
-                        checked={formData.autoBackup}
-                        onChange={handleInputChange}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        تكرار النسخ الاحتياطي
-                      </label>
-                      <select
-                        name="backupFrequency"
-                        value={formData.backupFrequency}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="daily">يومي</option>
-                        <option value="weekly">أسبوعي</option>
-                        <option value="monthly">شهري</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        الاحتفاظ بالنسخ (أيام)
-                      </label>
-                      <input
-                        type="number"
-                        name="backupRetention"
-                        value={formData.backupRetention}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        min="1"
-                        max="365"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      مسار النسخ الاحتياطي
-                    </label>
-                    <input
-                      type="text"
-                      name="backupPath"
-                      value={formData.backupPath}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="/backups"
+                      min="300"
+                      max="86400"
                     />
                   </div>
                 </div>
               </CardBody>
             </Card>
 
-            {/* Action Buttons */}
             <Card>
               <CardHeader>
                 <div className="flex items-center">
@@ -756,7 +396,7 @@ const SystemConfigPage = () => {
                   <p className="text-sm text-gray-600">
                     انقر على "حفظ الإعدادات" لتطبيق التغييرات على النظام
                   </p>
-
+                  
                   <div className="flex space-x-3 space-x-reverse">
                     <EnhancedButton
                       type="button"
@@ -768,7 +408,7 @@ const SystemConfigPage = () => {
                       <RefreshCw className="w-4 h-4 mr-1" />
                       إعادة تعيين
                     </EnhancedButton>
-
+                    
                     <EnhancedButton
                       type="submit"
                       disabled={isLoading}
