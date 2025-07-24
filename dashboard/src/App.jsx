@@ -17,6 +17,9 @@ import AnalyticsPage from "./pages/dashboard/AnalyticsPage";
 
 // Pages - Distribution
 import DistributionManagerDashboard from "./pages/distribution/DistributionManagerDashboard";
+import DistributionReportsPage from "./pages/distribution/DistributionReportsPage";
+import DistributionMapsPage from "./pages/distribution/DistributionMapsPage";
+import DistributionArchivePage from "./pages/distribution/DistributionArchivePage";
 
 // Pages - Orders
 import OrdersListPage from "./pages/orders/OrdersListPage";
@@ -227,9 +230,7 @@ function App() {
             {/* Distribution Routes */}
             <Route
               path="/distribution"
-              element={
-                <Navigate to="/distribution/manager" replace />
-              }
+              element={<Navigate to="/distribution/manager" replace />}
             />
 
             <Route
@@ -253,7 +254,131 @@ function App() {
               }
             />
 
+            <Route
+              path="/distribution/reports"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <DistributionReportsPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
 
+            <Route
+              path="/distribution/maps"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <DistributionMapsPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/distribution/archive"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <DistributionArchivePage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/distribution/reports"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <DistributionReportsPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/distribution/maps"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <DistributionMapsPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/distribution/archive"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <DistributionArchivePage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
 
             {/* Orders Routes */}
             <Route

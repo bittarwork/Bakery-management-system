@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import {
   Calendar,
@@ -39,23 +40,21 @@ import {
   Navigation,
   Timer,
   Coffee,
+  ArrowRight,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import DailyOperationsManager from "../../components/distribution/DailyOperationsManager";
 import LiveDistributorTracking from "../../components/distribution/LiveDistributorTracking";
-import StoreManagement from "../../components/distribution/StoreManagement";
-import ReportsSystem from "../../components/distribution/ReportsSystem";
-import MapsSystem from "../../components/distribution/MapsSystem";
-import ArchiveSystem from "../../components/distribution/ArchiveSystem";
 
 /**
- * Distribution Manager Dashboard
- * Complete distribution management system for daily operations
- * From order receiving to weekly reporting
+ * Distribution Manager Dashboard - Overview Page
+ * Main dashboard with links to specialized pages
  */
 const DistributionManagerDashboard = () => {
+  const navigate = useNavigate();
+  
   // Main states
   const [currentView, setCurrentView] = useState("overview");
   const [isLoading, setIsLoading] = useState(true);
@@ -72,17 +71,6 @@ const DistributionManagerDashboard = () => {
     statistics: {},
     liveTracking: [],
     notifications: [],
-    reports: [],
-    routes: [],
-  });
-
-  // Filter states
-  const [filters, setFilters] = useState({
-    dateRange: "today",
-    distributor: "",
-    store: "",
-    status: "",
-    priority: "",
   });
 
   // Load dashboard data
@@ -92,420 +80,123 @@ const DistributionManagerDashboard = () => {
     // Set up real-time updates
     const interval = setInterval(loadLiveData, 30000); // Update every 30 seconds
     return () => clearInterval(interval);
-  }, [selectedDate, filters]);
+  }, [selectedDate]);
 
   const loadDashboardData = async () => {
     try {
       setIsLoading(true);
       setError("");
 
-      // Load all data in parallel
-      const [
-        ordersRes,
-        distributorsRes,
-        storesRes,
-        statsRes,
-        trackingRes,
-        notificationsRes,
-      ] = await Promise.all([
-        fetch(`/api/distribution/daily-orders?date=${selectedDate}`),
-        fetch("/api/distribution/distributors?status=active"),
-        fetch("/api/stores?status=active"),
-        fetch(`/api/distribution/statistics?date=${selectedDate}`),
-        fetch("/api/distribution/live-tracking"),
-        fetch("/api/distribution/notifications?unread=true"),
-      ]);
-
-      // Check if responses are JSON before parsing
-      const parseJsonSafely = async (response) => {
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          return await response.json();
-        } else {
-          console.warn("Non-JSON response received:", await response.text());
-          return { data: [] };
-        }
+      // Mock data for development - replace with actual API calls
+      const mockData = {
+        statistics: {
+          totalOrders: 156,
+          activeDistributors: 8,
+          completedDeliveries: 124,
+          pendingOrders: 32,
+          todayRevenue: 8450.75,
+          averageDeliveryTime: 42,
+          customerSatisfaction: 4.2,
+          onTimeDeliveryRate: 89,
+        },
+        dailyOrders: [
+          { id: 1, orderNumber: "ORD-001", store: "متجر الصباح", status: "pending", amount: 245.50 },
+          { id: 2, orderNumber: "ORD-002", store: "مخبز النور", status: "delivered", amount: 180.25 },
+          { id: 3, orderNumber: "ORD-003", store: "متجر السلام", status: "in_progress", amount: 320.00 },
+        ],
+        distributors: [
+          { id: 1, name: "أحمد محمد", status: "active", orders: 12, location: "وسط البلد" },
+          { id: 2, name: "سارة أحمد", status: "active", orders: 8, location: "الحمرا" },
+          { id: 3, name: "محمد علي", status: "break", orders: 15, location: "الأشرفية" },
+        ],
+        notifications: [
+          { id: 1, type: "warning", message: "تأخير في التسليم - الطلب #ORD-001", time: "10 دقائق" },
+          { id: 2, type: "success", message: "تم تسليم الطلب #ORD-002 بنجاح", time: "15 دقيقة" },
+          { id: 3, type: "info", message: "موزع جديد انضم للفريق", time: "30 دقيقة" },
+        ],
       };
 
-      const [
-        orders,
-        distributors,
-        stores,
-        statistics,
-        tracking,
-        notifications,
-      ] = await Promise.all([
-        parseJsonSafely(ordersRes),
-        parseJsonSafely(distributorsRes),
-        parseJsonSafely(storesRes),
-        parseJsonSafely(statsRes),
-        parseJsonSafely(trackingRes),
-        parseJsonSafely(notificationsRes),
-      ]);
-
-      setDashboardData({
-        dailyOrders: orders.data || [],
-        distributors: distributors.data || [],
-        stores: stores.data || [],
-        statistics: statistics.data || {},
-        liveTracking: tracking.data || [],
-        notifications: notifications.data || [],
-        reports: [],
-        routes: [],
-      });
+      setDashboardData(mockData);
     } catch (error) {
       console.error("Error loading dashboard data:", error);
       setError("خطأ في تحميل بيانات لوحة التحكم");
-
-      // Mock data for development
-      setDashboardData({
-        dailyOrders: [
-          {
-            id: 1,
-            store_name: "متجر الصباح",
-            total_amount: 85.5,
-            items_count: 5,
-            status: "pending",
-            priority: "normal",
-            scheduled_delivery: "09:00",
-          },
-          {
-            id: 2,
-            store_name: "مخبز النور",
-            total_amount: 120.75,
-            items_count: 8,
-            status: "confirmed",
-            priority: "high",
-            scheduled_delivery: "08:30",
-          },
-        ],
-        distributors: [
-          {
-            id: 1,
-            name: "أحمد محمد",
-            current_load: 8,
-            max_capacity: 15,
-            current_location: "المنطقة الشمالية",
-            status: "active",
-            completion_rate: 95.5,
-          },
-          {
-            id: 2,
-            name: "خالد السوري",
-            current_load: 12,
-            max_capacity: 18,
-            current_location: "المنطقة الجنوبية",
-            status: "active",
-            completion_rate: 88.2,
-          },
-        ],
-        stores: [
-          {
-            id: 1,
-            name: "متجر الصباح",
-            last_order: "2024-01-15",
-            payment_status: "paid",
-            avg_order_value: 75.25,
-            total_orders: 156,
-          },
-        ],
-        statistics: {
-          total_orders: 45,
-          completed_orders: 38,
-          pending_orders: 7,
-          total_revenue: 2850.5,
-          active_distributors: 3,
-          delivery_completion_rate: 84.4,
-        },
-        liveTracking: [],
-        notifications: [
-          {
-            id: 1,
-            type: "delay",
-            message: "الموزع أحمد محمد متأخر عن الموعد المحدد",
-            store: "متجر الصباح",
-            time: "10:30",
-          },
-        ],
-      });
     } finally {
       setIsLoading(false);
     }
   };
 
   const loadLiveData = async () => {
+    // Update live data without showing loading
     try {
-      const trackingRes = await fetch("/api/distribution/live-tracking");
-      const notificationsRes = await fetch(
-        "/api/distribution/notifications?unread=true"
-      );
-
-      const [tracking, notifications] = await Promise.all([
-        trackingRes.json(),
-        notificationsRes.json(),
-      ]);
-
-      setDashboardData((prev) => ({
-        ...prev,
-        liveTracking: tracking.data || [],
-        notifications: notifications.data || [],
-      }));
+      // Mock live updates
+      console.log("Refreshing live data...");
     } catch (error) {
-      console.warn("Error updating live data:", error);
+      console.error("Error updating live data:", error);
     }
   };
 
-  // Main view components
-  const DashboardOverview = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Statistics Cards */}
-      <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <StatCard
-          title="إجمالي الطلبات اليوم"
-          value={dashboardData.statistics.total_orders || 0}
-          change="+12%"
-          changeType="positive"
-          icon={Package}
-          color="blue"
-        />
-        <StatCard
-          title="الطلبات المكتملة"
-          value={dashboardData.statistics.completed_orders || 0}
-          change="+5%"
-          changeType="positive"
-          icon={CheckCircle}
-          color="green"
-        />
-        <StatCard
-          title="إجمالي الإيرادات"
-          value={`€${parseFloat(
-            dashboardData.statistics.total_revenue || 0
-          ).toFixed(2)}`}
-          change="+8%"
-          changeType="positive"
-          icon={Euro}
-          color="purple"
-        />
-        <StatCard
-          title="معدل إكمال التوصيل"
-          value={`${parseFloat(
-            dashboardData.statistics.delivery_completion_rate || 0
-          ).toFixed(1)}%`}
-          change="-2%"
-          changeType="negative"
-          icon={Target}
-          color="orange"
-        />
-      </div>
+  // Helper function to parse JSON safely
+  const parseJsonSafely = (response) => {
+    if (typeof response === 'string') {
+      try {
+        return JSON.parse(response);
+      } catch (error) {
+        console.warn('Failed to parse JSON response:', error);
+        return null;
+      }
+    }
+    return response;
+  };
 
-      {/* Live Notifications */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50 border-b border-red-100">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-gray-900 flex items-center">
-              <Bell className="w-5 h-5 text-red-600 ml-2" />
-              إشعارات مهمة
-            </h3>
-            <span className="bg-red-100 text-red-600 px-2 py-1 rounded-full text-xs font-medium">
-              {dashboardData.notifications.length}
-            </span>
-          </div>
-        </CardHeader>
-        <CardBody className="p-4 max-h-80 overflow-y-auto">
-          {dashboardData.notifications.length > 0 ? (
-            <div className="space-y-3">
-              {dashboardData.notifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg"
-                >
-                  <div className="flex items-start">
-                    <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 ml-2 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-800 font-medium">
-                        {notification.message}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {notification.store} - {notification.time}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              <Bell className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-              <p>لا توجد إشعارات جديدة</p>
-            </div>
-          )}
-        </CardBody>
-      </Card>
-    </div>
-  );
-
-  const DailyOperations = () => (
-    <DailyOperationsManager
-      selectedDate={selectedDate}
-      onDateChange={setSelectedDate}
-    />
-  );
-
-  const LiveTracking = () => (
-    <LiveDistributorTracking selectedDate={selectedDate} />
-  );
-
-  // Helper components
-  const StatCard = ({
-    title,
-    value,
-    change,
-    changeType,
-    icon: Icon,
-    color,
-  }) => (
+  // Quick action cards for main sections
+  const QuickActionCard = ({ title, description, icon: Icon, color, count, route, onClick }) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-xl border-0 shadow-lg overflow-hidden"
+      whileHover={{ scale: 1.02 }}
+      className="bg-white rounded-xl shadow-lg border-0 overflow-hidden cursor-pointer hover:shadow-xl transition-all duration-300"
+      onClick={onClick || (() => navigate(route))}
     >
-      <div className={`bg-gradient-to-r ${getColorGradient(color)} p-4`}>
+      <div className={`bg-gradient-to-r ${getColorGradient(color)} p-6`}>
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-white/80 text-sm font-medium">{title}</p>
-            <p className="text-white text-2xl font-bold mt-1">{value}</p>
+          <div className="flex items-center">
+            <div className="p-3 bg-white/20 rounded-lg ml-4">
+              <Icon className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white">{title}</h3>
+              <p className="text-white/80">{description}</p>
+            </div>
           </div>
-          <div className="p-3 bg-white/20 rounded-lg">
-            <Icon className="w-6 h-6 text-white" />
+          <div className="text-right">
+            {count && (
+              <div className="text-3xl font-bold text-white mb-1">{count}</div>
+            )}
+            <ArrowRight className="w-6 h-6 text-white/60" />
           </div>
-        </div>
-        <div className="flex items-center mt-3">
-          <span
-            className={`text-xs font-medium px-2 py-1 rounded-full ${
-              changeType === "positive"
-                ? "bg-green-100 text-green-800"
-                : "bg-red-100 text-red-800"
-            }`}
-          >
-            {change}
-          </span>
-          <span className="text-white/80 text-xs mr-2">من الأمس</span>
         </div>
       </div>
     </motion.div>
   );
 
-  const OrderCard = ({ order }) => (
-    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-      <div className="flex items-center justify-between">
-        <div>
-          <h5 className="font-semibold text-gray-900">{order.store_name}</h5>
-          <p className="text-sm text-gray-600">
-            {order.items_count} منتج - €
-            {parseFloat(order.total_amount).toFixed(2)}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            موعد التوصيل: {order.scheduled_delivery}
-          </p>
-        </div>
-        <div className="text-left">
-          <span
-            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-              order.status
-            )}`}
-          >
-            {getStatusText(order.status)}
-          </span>
-          <span
-            className={`block mt-1 px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
-              order.priority
-            )}`}
-          >
-            {getPriorityText(order.priority)}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-
-  const DistributorCard = ({ distributor }) => (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center">
-          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center ml-3">
-            <User className="w-5 h-5 text-blue-600" />
-          </div>
+  // Statistics cards
+  const StatCard = ({ title, value, change, icon: Icon, color }) => (
+    <Card className="border-0 shadow-lg">
+      <CardBody className="p-6">
+        <div className="flex items-center justify-between">
           <div>
-            <h5 className="font-semibold text-gray-900">{distributor.name}</h5>
-            <p className="text-sm text-gray-600">
-              {distributor.current_location}
-            </p>
+            <p className="text-gray-600 text-sm font-medium">{title}</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+            {change && (
+              <p className="text-sm text-green-600 font-medium mt-1">{change}</p>
+            )}
+          </div>
+          <div className={`p-3 rounded-lg bg-${color}-100`}>
+            <Icon className={`w-6 h-6 text-${color}-600`} />
           </div>
         </div>
-        <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            distributor.status === "active"
-              ? "bg-green-100 text-green-800"
-              : "bg-gray-100 text-gray-800"
-          }`}
-        >
-          {distributor.status === "active" ? "نشط" : "غير نشط"}
-        </span>
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-600">الحمولة الحالية:</span>
-          <span className="font-medium">
-            {distributor.current_load}/{distributor.max_capacity}
-          </span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-blue-600 h-2 rounded-full"
-            style={{
-              width: `${
-                (distributor.current_load / distributor.max_capacity) * 100
-              }%`,
-            }}
-          />
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-600">معدل الإكمال:</span>
-          <span className="font-medium text-green-600">
-            {distributor.completion_rate}%
-          </span>
-        </div>
-      </div>
-
-      <div className="flex gap-2 mt-4">
-        <EnhancedButton size="sm" variant="primary" className="flex-1">
-          تتبع مباشر
-        </EnhancedButton>
-        <EnhancedButton size="sm" variant="secondary" className="flex-1">
-          إرسال رسالة
-        </EnhancedButton>
-      </div>
-    </div>
-  );
-
-  const SuggestionCard = ({ title, description, action, type }) => (
-    <div
-      className={`rounded-lg p-4 border-l-4 ${
-        type === "warning"
-          ? "bg-yellow-50 border-yellow-400"
-          : "bg-blue-50 border-blue-400"
-      }`}
-    >
-      <h5 className="font-semibold text-gray-900 mb-1">{title}</h5>
-      <p className="text-sm text-gray-600 mb-3">{description}</p>
-      <EnhancedButton
-        size="sm"
-        variant={type === "warning" ? "warning" : "primary"}
-      >
-        {action}
-      </EnhancedButton>
-    </div>
+      </CardBody>
+    </Card>
   );
 
   // Helper functions
@@ -515,61 +206,46 @@ const DistributionManagerDashboard = () => {
       green: "from-green-600 to-green-700",
       purple: "from-purple-600 to-purple-700",
       orange: "from-orange-600 to-orange-700",
+      red: "from-red-600 to-red-700",
+      indigo: "from-indigo-600 to-indigo-700",
     };
     return gradients[color] || gradients.blue;
   };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      pending: "bg-yellow-100 text-yellow-800",
-      confirmed: "bg-blue-100 text-blue-800",
-      in_progress: "bg-purple-100 text-purple-800",
-      completed: "bg-green-100 text-green-800",
-      cancelled: "bg-red-100 text-red-800",
-    };
-    return colors[status] || colors.pending;
-  };
-
-  const getStatusText = (status) => {
-    const texts = {
-      pending: "معلق",
-      confirmed: "مؤكد",
-      in_progress: "قيد التنفيذ",
-      completed: "مكتمل",
-      cancelled: "ملغي",
-    };
-    return texts[status] || "غير معروف";
-  };
-
-  const getPriorityColor = (priority) => {
-    const colors = {
-      low: "bg-gray-100 text-gray-800",
-      normal: "bg-blue-100 text-blue-800",
-      high: "bg-orange-100 text-orange-800",
-      urgent: "bg-red-100 text-red-800",
-    };
-    return colors[priority] || colors.normal;
-  };
-
-  const getPriorityText = (priority) => {
-    const texts = {
-      low: "منخفض",
-      normal: "عادي",
-      high: "عالي",
-      urgent: "عاجل",
-    };
-    return texts[priority] || "عادي";
-  };
-
-  // Navigation menu
+  // Navigation items for main sections
   const navigationItems = [
     { key: "overview", label: "نظرة عامة", icon: BarChart3 },
     { key: "dailyOps", label: "العمليات اليومية", icon: Coffee },
     { key: "tracking", label: "التتبع المباشر", icon: Navigation },
     { key: "stores", label: "إدارة المحلات", icon: Store },
-    { key: "reports", label: "التقارير", icon: FileText },
-    { key: "maps", label: "الخرائط والمسارات", icon: Map },
-    { key: "archive", label: "الأرشيف", icon: Archive },
+  ];
+
+  // Quick actions for specialized pages
+  const quickActions = [
+    {
+      title: "تقارير التوزيع",
+      description: "تقارير شاملة وتحليلات",
+      icon: FileText,
+      color: "blue",
+      count: "12",
+      route: "/distribution/reports"
+    },
+    {
+      title: "الخرائط والمسارات",
+      description: "تتبع مباشر وتحسين المسارات",
+      icon: Map,
+      color: "green",
+      count: "8",
+      route: "/distribution/maps"
+    },
+    {
+      title: "أرشيف العمليات",
+      description: "أرشيف شامل للعمليات والتقارير",
+      icon: Archive,
+      color: "purple",
+      count: "156",
+      route: "/distribution/archive"
+    }
   ];
 
   if (isLoading) {
@@ -591,10 +267,10 @@ const DistributionManagerDashboard = () => {
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center">
                 <Truck className="w-7 h-7 text-blue-600 ml-3" />
-                إدارة التوزيع الشاملة
+                لوحة تحكم التوزيع
               </h1>
               <p className="text-gray-600 mt-1">
-                نظام إدارة شامل لعمليات التوزيع اليومية والأسبوعية
+                إدارة شاملة لعمليات التوزيع والمتابعة المباشرة
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -661,21 +337,127 @@ const DistributionManagerDashboard = () => {
             </div>
           )}
 
-          {currentView === "overview" && <DashboardOverview />}
-          {currentView === "dailyOps" && <DailyOperations />}
-          {currentView === "tracking" && <LiveTracking />}
-          {currentView === "stores" && (
-            <StoreManagement selectedDate={selectedDate} />
+          {/* Overview Content */}
+          {currentView === "overview" && (
+            <div className="space-y-6">
+              {/* Quick Actions for Specialized Pages */}
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-4">الأقسام الرئيسية</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {quickActions.map((action, index) => (
+                    <QuickActionCard key={index} {...action} />
+                  ))}
+                </div>
+              </div>
+
+              {/* Statistics */}
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-4">إحصائيات اليوم</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <StatCard
+                    title="إجمالي الطلبات"
+                    value={dashboardData.statistics.totalOrders}
+                    change="+12%"
+                    icon={Package}
+                    color="blue"
+                  />
+                  <StatCard
+                    title="الموزعين النشطين"
+                    value={dashboardData.statistics.activeDistributors}
+                    change="+2"
+                    icon={Users}
+                    color="green"
+                  />
+                  <StatCard
+                    title="التسليمات المكتملة"
+                    value={dashboardData.statistics.completedDeliveries}
+                    change="+8%"
+                    icon={CheckCircle}
+                    color="purple"
+                  />
+                  <StatCard
+                    title="إيرادات اليوم"
+                    value={`€${dashboardData.statistics.todayRevenue}`}
+                    change="+15%"
+                    icon={Euro}
+                    color="orange"
+                  />
+                </div>
+              </div>
+
+              {/* Recent Activity & Notifications */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="border-0 shadow-lg">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                      <Activity className="w-5 h-5 text-blue-600 ml-2" />
+                      الطلبات الحديثة
+                    </h3>
+                  </CardHeader>
+                  <CardBody className="p-6">
+                    <div className="space-y-4">
+                      {dashboardData.dailyOrders.map((order) => (
+                        <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <p className="font-semibold text-gray-900">{order.orderNumber}</p>
+                            <p className="text-sm text-gray-600">{order.store}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-green-600">€{order.amount}</p>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                              order.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {order.status === 'delivered' ? 'مسلم' :
+                               order.status === 'in_progress' ? 'قيد التنفيذ' : 'معلق'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardBody>
+                </Card>
+
+                <Card className="border-0 shadow-lg">
+                  <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                      <Bell className="w-5 h-5 text-green-600 ml-2" />
+                      التنبيهات والإشعارات
+                    </h3>
+                  </CardHeader>
+                  <CardBody className="p-6">
+                    <div className="space-y-4">
+                      {dashboardData.notifications.map((notification) => (
+                        <div key={notification.id} className="flex items-start p-3 bg-gray-50 rounded-lg">
+                          <div className={`p-1 rounded-full ml-3 ${
+                            notification.type === 'warning' ? 'bg-yellow-100' :
+                            notification.type === 'success' ? 'bg-green-100' : 'bg-blue-100'
+                          }`}>
+                            {notification.type === 'warning' ? 
+                              <AlertTriangle className="w-4 h-4 text-yellow-600" /> :
+                              notification.type === 'success' ?
+                              <CheckCircle className="w-4 h-4 text-green-600" /> :
+                              <Bell className="w-4 h-4 text-blue-600" />
+                            }
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-900">{notification.message}</p>
+                            <p className="text-xs text-gray-500 mt-1">منذ {notification.time}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardBody>
+                </Card>
+              </div>
+            </div>
           )}
-          {currentView === "reports" && (
-            <ReportsSystem selectedDate={selectedDate} />
-          )}
-          {currentView === "maps" && (
-            <MapsSystem selectedDate={selectedDate} />
-          )}
-          {currentView === "archive" && (
-            <ArchiveSystem selectedDate={selectedDate} />
-          )}
+
+          {/* Other Views */}
+          {currentView === "dailyOps" && <DailyOperationsManager selectedDate={selectedDate} />}
+          {currentView === "tracking" && <LiveDistributorTracking selectedDate={selectedDate} />}
+          {currentView === "stores" && <StoreManagement selectedDate={selectedDate} />}
         </motion.div>
       </div>
     </div>

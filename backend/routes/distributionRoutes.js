@@ -7,15 +7,35 @@ const router = express.Router();
 // All routes require authentication
 router.use(protect);
 
-// Admin/Manager routes
+// ===== DASHBOARD ROUTES =====
+router.get('/dashboard', authorize('admin', 'manager'), DistributionController.getDashboardData);
+
+// ===== ORDER MANAGEMENT ROUTES =====
 router.get('/orders', authorize('admin', 'manager'), DistributionController.getOrdersWithDistribution);
 router.post('/assign', authorize('admin', 'manager'), DistributionController.assignOrderToDistributor);
 router.post('/unassign', authorize('admin', 'manager'), DistributionController.unassignDistributor);
 router.post('/auto-assign', authorize('admin', 'manager'), DistributionController.autoAssignOrders);
-router.get('/stats', authorize('admin', 'manager'), DistributionController.getDistributionStats);
-router.get('/distributors', authorize('admin', 'manager'), DistributionController.getAvailableDistributors);
 
-// Distributor routes (can access their own orders)
+// ===== STATISTICS & REPORTS ROUTES =====
+router.get('/stats', authorize('admin', 'manager'), DistributionController.getDistributionStats);
+router.get('/reports/daily', authorize('admin', 'manager'), DistributionController.getDailyReports);
+router.get('/reports/weekly', authorize('admin', 'manager'), DistributionController.getWeeklyReports);
+router.get('/reports/monthly', authorize('admin', 'manager'), DistributionController.getMonthlyReports);
+
+// ===== DISTRIBUTOR ROUTES =====
+router.get('/distributors', authorize('admin', 'manager'), DistributionController.getAvailableDistributors);
 router.get('/distributor/:id/orders', DistributionController.getDistributorOrders);
+
+// ===== MAPS & ROUTES =====
+router.get('/maps/distributors', authorize('admin', 'manager'), DistributionController.getDistributorLocations);
+router.get('/maps/routes', authorize('admin', 'manager'), DistributionController.getRoutes);
+router.get('/maps/traffic', authorize('admin', 'manager'), DistributionController.getTrafficData);
+
+// ===== ARCHIVE ROUTES =====
+router.get('/archive', authorize('admin', 'manager'), DistributionController.getArchiveData);
+router.get('/archive/reports', authorize('admin', 'manager'), DistributionController.getArchivedReports);
+
+// ===== STORE ANALYTICS ROUTES =====
+router.get('/stores/analytics', authorize('admin', 'manager'), DistributionController.getStoreAnalytics);
 
 export default router; 
