@@ -46,6 +46,8 @@ import EnhancedButton from "../../components/ui/EnhancedButton";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import DailyOperationsManager from "../../components/distribution/DailyOperationsManager";
 import LiveDistributorTracking from "../../components/distribution/LiveDistributorTracking";
+// Import the updated distribution service
+import distributionService from "../../services/distributionService";
 
 /**
  * Distribution Manager Dashboard - Overview Page
@@ -86,8 +88,47 @@ const DistributionManagerDashboard = () => {
       setIsLoading(true);
       setError("");
 
-      // Mock data for development - replace with actual API calls
-      const mockData = {
+      // Use the updated distribution service
+      const response = await distributionService.getDashboardData(selectedDate);
+
+      if (response.success) {
+        setDashboardData(response.data);
+      } else {
+        // Fallback to mock data
+        setDashboardData(getMockDashboardData().data);
+        toast.error("خطأ في تحميل البيانات - جاري استخدام بيانات تجريبية");
+      }
+    } catch (error) {
+      console.error("Error loading dashboard data:", error);
+      setError("خطأ في تحميل بيانات لوحة التحكم");
+      // Fallback to mock data
+      setDashboardData(getMockDashboardData().data);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadLiveData = async () => {
+    // Update live data without showing loading
+    try {
+      const response = await distributionService.getLiveTracking(selectedDate);
+      if (response.success && response.data) {
+        setDashboardData(prev => ({
+          ...prev,
+          liveTracking: response.data,
+          distributors: response.data.distributors || prev.distributors
+        }));
+      }
+    } catch (error) {
+      console.error("Error updating live data:", error);
+    }
+  };
+
+  // Get mock data for fallback
+  const getMockDashboardData = () => {
+    return {
+      success: true,
+      data: {
         statistics: {
           totalOrders: 156,
           activeDistributors: 8,
@@ -164,25 +205,8 @@ const DistributionManagerDashboard = () => {
             time: "30 دقيقة",
           },
         ],
-      };
-
-      setDashboardData(mockData);
-    } catch (error) {
-      console.error("Error loading dashboard data:", error);
-      setError("خطأ في تحميل بيانات لوحة التحكم");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadLiveData = async () => {
-    // Update live data without showing loading
-    try {
-      // Mock live updates
-      console.log("Refreshing live data...");
-    } catch (error) {
-      console.error("Error updating live data:", error);
-    }
+      }
+    };
   };
 
   // Helper function to parse JSON safely

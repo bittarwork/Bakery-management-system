@@ -45,6 +45,11 @@ import { Card, CardHeader, CardBody } from "../ui/Card";
 import EnhancedButton from "../ui/EnhancedButton";
 import EnhancedInput from "../ui/EnhancedInput";
 import LoadingSpinner from "../ui/LoadingSpinner";
+// Import the updated distribution service
+import distributionService from "../../services/distributionService";
+import storeService from "../../services/storeService";
+import productService from "../../services/productService";
+import userService from "../../services/userService";
 
 /**
  * Daily Operations Manager Component
@@ -95,60 +100,58 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
     try {
       setIsLoading(true);
 
-      // Safe JSON parsing function
-      const parseJsonSafely = async (response) => {
-        if (!response.ok) {
-          return { data: [] };
-        }
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          return await response.json();
-        } else {
-          console.warn("Non-JSON response received:", await response.text());
-          return { data: [] };
-        }
-      };
-
-      // Load all required data in parallel
+      // Use the updated distribution service
       const [
         ordersRes,
         storesRes,
         productsRes,
         distributorsRes,
-        suggestionsRes,
       ] = await Promise.all([
-        fetch(`/api/distribution/daily-orders?date=${selectedDate}`),
-        fetch("/api/stores?status=active"),
-        fetch("/api/products?status=active&limit=100"),
-        fetch("/api/users?role=distributor&status=active"),
-        fetch(`/api/distribution/smart-suggestions?date=${selectedDate}`),
+        distributionService.getDailyOrders(selectedDate),
+        storeService.getStores({ status: 'active' }),
+        productService.getProducts({ status: 'active', limit: 100 }),
+        userService.getUsers({ role: 'distributor', status: 'active' }),
       ]);
 
-      // Process responses with safe parsing
-      const ordersData = await parseJsonSafely(ordersRes);
-      setDailyOrders(ordersData.data || []);
+      // Process responses
+      if (ordersRes.success) {
+        setDailyOrders(ordersRes.data || []);
+      }
 
-      const storesData = await parseJsonSafely(storesRes);
-      setStores(storesData.data?.stores || storesData.data || []);
+      if (storesRes.success) {
+        setStores(storesRes.data?.stores || storesRes.data || []);
+      }
 
-      const productsData = await parseJsonSafely(productsRes);
-      setProducts(productsData.data?.products || productsData.data || []);
+      if (productsRes.success) {
+        setProducts(productsRes.data?.products || productsRes.data || []);
+      }
 
-      const distributorsData = await parseJsonSafely(distributorsRes);
-      setDistributors(
-        distributorsData.data?.users || distributorsData.data || []
-      );
+      if (distributorsRes.success) {
+        setDistributors(distributorsRes.data?.users || distributorsRes.data || []);
+      }
 
-      const suggestionsData = await parseJsonSafely(suggestionsRes);
-      setSmartSuggestions(suggestionsData.data || []);
+      // Get smart suggestions from distribution service
+      try {
+        const suggestionsRes = await distributionService.getDistributionAnalytics('day', {
+          date: selectedDate,
+          type: 'suggestions'
+        });
+        if (suggestionsRes.success) {
+          setSmartSuggestions(suggestionsRes.data.suggestions || []);
+        }
+      } catch (error) {
+        console.warn("Smart suggestions not available:", error);
+        setSmartSuggestions([]);
+      }
 
       // Mock data for development if all API calls failed
-      if (!ordersRes.ok && !storesRes.ok) {
+      if (!ordersRes.success && !storesRes.success) {
         setMockData();
       }
     } catch (error) {
       console.error("Error loading daily data:", error);
-      setMockData();
+      setMockData(); // Fallback to mock data
+      toast.error("خطأ في تحميل البيانات - جاري استخدام بيانات تجريبية");
     } finally {
       setIsLoading(false);
     }
@@ -312,22 +315,15 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
         })),
       };
 
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify(orderData),
-      });
+      const response = await distributionService.addManualOrder(orderData);
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response.success) {
+        const result = response.data;
 
         // Add the new order to the list
         const store = stores.find((s) => s.id === parseInt(newOrder.store_id));
         const newOrderData = {
-          id: result.data?.id || Date.now(),
+          id: result?.id || Date.now(),
           store_name: store?.name || "متجر غير معروف",
           store_address: store?.address || "",
           total_amount: newOrder.items.reduce(
@@ -352,8 +348,7 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
 
         toast.success("تم حفظ الطلب بنجاح");
       } else {
-        const errorData = await response.json();
-        toast.error(errorData.message || "خطأ في حفظ الطلب");
+        toast.error(response.message || "خطأ في حفظ الطلب");
       }
     } catch (error) {
       console.error("Error saving order:", error);
@@ -367,23 +362,15 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
     try {
       setIsLoading(true);
 
-      const response = await fetch("/api/distribution/generate-schedules", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({ date: selectedDate }),
-      });
+      const response = await distributionService.generateSchedules(selectedDate, []);
 
-      if (response.ok) {
-        const result = await response.json();
-        setDistributionSchedules(result.data || []);
+      if (response.success) {
+        const result = response.data;
+        setDistributionSchedules(result || []);
         setCurrentStep("scheduleReview");
         toast.success("تم إنشاء جداول التوزيع بنجاح");
       } else {
-        const errorData = await response.json();
-        toast.error(errorData.message || "خطأ في إنشاء الجداول");
+        toast.error(response.message || "خطأ في إنشاء الجداول");
       }
     } catch (error) {
       console.error("Error generating schedules:", error);

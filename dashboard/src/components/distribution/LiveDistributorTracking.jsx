@@ -45,6 +45,8 @@ import {
 import { Card, CardHeader, CardBody } from "../ui/Card";
 import EnhancedButton from "../ui/EnhancedButton";
 import LoadingSpinner from "../ui/LoadingSpinner";
+// Import the updated distribution service
+import distributionService from "../../services/distributionService";
 
 /**
  * Live Distributor Tracking Component
@@ -86,30 +88,13 @@ const LiveDistributorTracking = ({ selectedDate }) => {
     try {
       setIsLoading(true);
 
-      // Safe JSON parsing function
-      const parseJsonSafely = async (response) => {
-        if (!response.ok) {
-          console.warn("API response not OK:", response.status);
-          return { data: [] };
-        }
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          return await response.json();
-        } else {
-          console.warn("Non-JSON response received:", await response.text());
-          return { data: [] };
-        }
-      };
+      // Use the updated distribution service
+      const response = await distributionService.getLiveTracking(selectedDate);
 
-      const response = await fetch(`/api/distribution/live-tracking?date=${selectedDate}`, {
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
-        }
-      });
-
-      const data = await parseJsonSafely(response);
-      if (data.data && data.data.length > 0) {
-        setDistributors(data.data);
+      if (response.success && response.data) {
+        // Transform the data to match the expected format
+        const trackingData = response.data.distributors || response.data || [];
+        setDistributors(trackingData);
         setLastUpdate(new Date());
       } else {
         // Mock data for development
@@ -118,6 +103,7 @@ const LiveDistributorTracking = ({ selectedDate }) => {
     } catch (error) {
       console.error("Error loading tracking data:", error);
       setMockTrackingData();
+      toast.error("خطأ في تحميل بيانات التتبع - جاري استخدام بيانات تجريبية");
     } finally {
       setIsLoading(false);
     }
@@ -324,7 +310,9 @@ const LiveDistributorTracking = ({ selectedDate }) => {
   // Components
   const DistributorCard = ({ distributor, onSelect }) => {
     const hasAlerts = distributor.alerts && distributor.alerts.length > 0;
-    const isOnline = new Date() - distributor.device_info.last_online < 5 * 60 * 1000; // 5 minutes
+    const isOnline = distributor.device_info?.last_online 
+      ? new Date() - new Date(distributor.device_info.last_online) < 5 * 60 * 1000 
+      : false; // 5 minutes
 
     return (
       <motion.div

@@ -8,13 +8,14 @@ class DistributionService {
     // ===== DASHBOARD & OVERVIEW =====
 
     /**
-     * Get dashboard data
+     * Get dashboard data for distribution manager
      */
     async getDashboardData(date = null) {
         try {
             const params = date ? { date } : {};
-            const response = await apiService.get(`${this.baseEndpoint}/dashboard`, params);
-            return response;
+            // Use actual backend endpoint
+            const response = await apiService.get(`${this.baseEndpoint}/manager/tracking/live`, params);
+            return this.transformDashboardData(response);
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
             return this.getMockDashboardData();
@@ -22,11 +23,41 @@ class DistributionService {
     }
 
     /**
-     * Get live tracking data
+     * Transform backend response to dashboard format
      */
-    async getLiveTracking() {
+    transformDashboardData(response) {
+        if (!response.success) {
+            return this.getMockDashboardData();
+        }
+
+        const data = response.data;
+        return {
+            success: true,
+            data: {
+                statistics: {
+                    totalOrders: data.total_orders || 0,
+                    activeDistributors: data.active_distributors || 0,
+                    completedDeliveries: data.completed_deliveries || 0,
+                    pendingOrders: data.pending_orders || 0,
+                    todayRevenue: data.total_revenue_eur || 0,
+                    averageDeliveryTime: data.average_delivery_time || 0,
+                    customerSatisfaction: 4.2, // Mock for now
+                    onTimeDeliveryRate: data.on_time_rate || 0,
+                },
+                dailyOrders: data.orders || [],
+                distributors: data.distributors || [],
+                notifications: data.notifications || [],
+            }
+        };
+    }
+
+    /**
+     * Get live tracking data using correct endpoint
+     */
+    async getLiveTracking(date = null) {
         try {
-            const response = await apiService.get(`${this.baseEndpoint}/live-tracking`);
+            const params = date ? { date } : {};
+            const response = await apiService.get(`${this.baseEndpoint}/manager/tracking/live`, params);
             return response;
         } catch (error) {
             console.error('Error fetching live tracking:', error);
@@ -35,16 +66,314 @@ class DistributionService {
     }
 
     /**
-     * Get notifications
+     * Get daily distribution schedule
+     */
+    async getDailySchedule(date = null, distributorId = null) {
+        try {
+            const params = {};
+            if (date) params.date = date;
+            if (distributorId) params.distributor_id = distributorId;
+
+            const response = await apiService.get(`${this.baseEndpoint}/schedule/daily`, params);
+            return response;
+        } catch (error) {
+            console.error('Error fetching daily schedule:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Get daily orders for processing
+     */
+    async getDailyOrders(date = null) {
+        try {
+            const params = date ? { date } : {};
+            const response = await apiService.get(`${this.baseEndpoint}/manager/orders/daily`, params);
+            return response;
+        } catch (error) {
+            console.error('Error fetching daily orders:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Generate distribution schedules
+     */
+    async generateSchedules(date, distributorAssignments) {
+        try {
+            const response = await apiService.post(`${this.baseEndpoint}/manager/schedules/generate`, {
+                date,
+                distributorAssignments
+            });
+            return response;
+        } catch (error) {
+            console.error('Error generating schedules:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Get distributor performance
+     */
+    async getDistributorPerformance(distributorId = null, period = 'week') {
+        try {
+            const params = { period };
+            if (distributorId) params.distributorId = distributorId;
+
+            const response = await apiService.get(`${this.baseEndpoint}/manager/performance`, params);
+            return response;
+        } catch (error) {
+            console.error('Error fetching distributor performance:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Get distribution analytics
+     */
+    async getDistributionAnalytics(period = 'week', filters = {}) {
+        try {
+            const params = {
+                period,
+                filters: JSON.stringify(filters)
+            };
+
+            const response = await apiService.get(`${this.baseEndpoint}/manager/analytics`, params);
+            return response;
+        } catch (error) {
+            console.error('Error fetching distribution analytics:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // ===== DISTRIBUTOR SPECIFIC FUNCTIONS =====
+
+    /**
+     * Get store delivery details
+     */
+    async getStoreDeliveryDetails(storeId) {
+        try {
+            const response = await apiService.get(`${this.baseEndpoint}/store/${storeId}/details`);
+            return response;
+        } catch (error) {
+            console.error('Error fetching store details:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Update delivery quantities
+     */
+    async updateDeliveryQuantities(deliveryId, quantities, notes) {
+        try {
+            const response = await apiService.patch(`${this.baseEndpoint}/delivery/${deliveryId}/quantities`, {
+                quantities,
+                notes
+            });
+            return response;
+        } catch (error) {
+            console.error('Error updating delivery quantities:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Complete delivery
+     */
+    async completeDelivery(deliveryId, deliveryData) {
+        try {
+            const response = await apiService.post(`${this.baseEndpoint}/delivery/${deliveryId}/complete`, deliveryData);
+            return response;
+        } catch (error) {
+            console.error('Error completing delivery:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Record payment
+     */
+    async recordPayment(paymentData) {
+        try {
+            const response = await apiService.post(`${this.baseEndpoint}/payment/record`, paymentData);
+            return response;
+        } catch (error) {
+            console.error('Error recording payment:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Get vehicle inventory
+     */
+    async getVehicleInventory(distributorId = null) {
+        try {
+            const params = distributorId ? { distributor_id: distributorId } : {};
+            const response = await apiService.get(`${this.baseEndpoint}/vehicle/inventory`, params);
+            return response;
+        } catch (error) {
+            console.error('Error fetching vehicle inventory:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Record vehicle expense
+     */
+    async recordVehicleExpense(expenseData) {
+        try {
+            const response = await apiService.post(`${this.baseEndpoint}/expense/record`, expenseData);
+            return response;
+        } catch (error) {
+            console.error('Error recording expense:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Submit daily report
+     */
+    async submitDailyReport(reportData) {
+        try {
+            const response = await apiService.post(`${this.baseEndpoint}/report/daily/submit`, reportData);
+            return response;
+        } catch (error) {
+            console.error('Error submitting daily report:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Get distributor history
+     */
+    async getDistributorHistory(distributorId = null, options = {}) {
+        try {
+            const params = { ...options };
+            if (distributorId) params.distributor_id = distributorId;
+
+            const response = await apiService.get(`${this.baseEndpoint}/history`, params);
+            return response;
+        } catch (error) {
+            console.error('Error fetching distributor history:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // ===== MANAGER FUNCTIONS =====
+
+    /**
+     * Add manual order
+     */
+    async addManualOrder(orderData) {
+        try {
+            const response = await apiService.post(`${this.baseEndpoint}/manager/orders/add`, orderData);
+            return response;
+        } catch (error) {
+            console.error('Error adding manual order:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Assign store to distributor
+     */
+    async assignStoreToDistributor(storeId, distributorId, zone) {
+        try {
+            const response = await apiService.patch(`${this.baseEndpoint}/manager/stores/assign`, {
+                storeId,
+                distributorId,
+                zone
+            });
+            return response;
+        } catch (error) {
+            console.error('Error assigning store:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Update store balance manually
+     */
+    async updateStoreBalance(storeId, amount, currency, reason, notes) {
+        try {
+            const response = await apiService.patch(`${this.baseEndpoint}/manager/stores/${storeId}/balance`, {
+                amount,
+                currency,
+                reason,
+                notes
+            });
+            return response;
+        } catch (error) {
+            console.error('Error updating store balance:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Approve distributor report
+     */
+    async approveDistributorReport(reportId, approved, notes) {
+        try {
+            const response = await apiService.patch(`${this.baseEndpoint}/manager/reports/${reportId}/approve`, {
+                approved,
+                notes
+            });
+            return response;
+        } catch (error) {
+            console.error('Error approving report:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Generate weekly report
+     */
+    async generateWeeklyReport(weekStart, weekEnd, format = 'pdf') {
+        try {
+            const response = await apiService.post(`${this.baseEndpoint}/manager/reports/weekly`, {
+                weekStart,
+                weekEnd,
+                format
+            });
+            return response;
+        } catch (error) {
+            console.error('Error generating weekly report:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // ===== LEGACY METHODS (kept for backward compatibility) =====
+
+    /**
+     * Get notifications (simplified)
      */
     async getNotifications(unreadOnly = true) {
         try {
-            const params = { unread: unreadOnly };
-            const response = await apiService.get(`${this.baseEndpoint}/notifications`, params);
-            return response;
+            // This would need a dedicated endpoint in the backend
+            return this.getMockNotifications();
         } catch (error) {
             console.error('Error fetching notifications:', error);
             return this.getMockNotifications();
+        }
+    }
+
+    /**
+     * Get available distributors
+     */
+    async getAvailableDistributors() {
+        try {
+            // This could be part of the live tracking endpoint
+            const response = await this.getLiveTracking();
+            if (response.success && response.data && response.data.distributors) {
+                return {
+                    success: true,
+                    data: response.data.distributors
+                };
+            }
+            return this.getMockDistributors();
+        } catch (error) {
+            console.error('Error fetching distributors:', error);
+            return this.getMockDistributors();
         }
     }
 
@@ -104,19 +433,6 @@ class DistributionService {
         } catch (error) {
             console.error('Error fetching distributor orders:', error);
             return { success: false, error: error.message };
-        }
-    }
-
-    /**
-     * Get available distributors
-     */
-    async getAvailableDistributors() {
-        try {
-            const response = await apiService.get(`${this.baseEndpoint}/distributors`);
-            return response;
-        } catch (error) {
-            console.error('Error fetching distributors:', error);
-            return this.getMockDistributors();
         }
     }
 

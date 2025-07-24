@@ -36,9 +36,10 @@ const getDBConnection = async () => {
 export const getDailyOrdersForProcessing = async (date) => {
     try {
         const processDate = date || new Date().toISOString().split('T')[0];
+        const connection = await getDBConnection();
 
         // Get orders for the specified date
-        const [orderRows] = await db.execute(`
+        const [orderRows] = await connection.execute(`
             SELECT 
                 o.id,
                 o.order_number,
@@ -78,7 +79,7 @@ export const getDailyOrdersForProcessing = async (date) => {
             };
         }
 
-        const [itemRows] = await db.execute(`
+        const [itemRows] = await connection.execute(`
             SELECT 
                 oi.order_id,
                 oi.product_id,
@@ -144,12 +145,13 @@ export const getDailyOrdersForProcessing = async (date) => {
 export const addManualOrder = async (orderData) => {
     try {
         const { storeId, products, notes, createdBy } = orderData;
+        const connection = await getDBConnection();
 
         // Start transaction
-        await db.beginTransaction();
+        await connection.beginTransaction();
 
         // Get store info
-        const [storeRows] = await db.execute(`
+        const [storeRows] = await connection.execute(`
             SELECT name, assigned_distributor_id FROM stores WHERE id = ?
         `, [storeId]);
 
@@ -167,7 +169,7 @@ export const addManualOrder = async (orderData) => {
         let totalSYP = 0;
 
         for (const product of products) {
-            const [productRows] = await db.execute(`
+            const [productRows] = await connection.execute(`
                 SELECT price_eur, price_syp FROM products WHERE id = ?
             `, [product.product_id]);
 
@@ -179,7 +181,7 @@ export const addManualOrder = async (orderData) => {
         }
 
         // Create order
-        const [orderResult] = await db.execute(`
+        const [orderResult] = await connection.execute(`
             INSERT INTO orders 
             (order_number, store_id, store_name, order_date, total_amount_eur, total_amount_syp, 
              final_amount_eur, final_amount_syp, status, notes, created_by, created_by_name)
@@ -194,13 +196,13 @@ export const addManualOrder = async (orderData) => {
 
         // Add order items
         for (const product of products) {
-            const [productRows] = await db.execute(`
+            const [productRows] = await connection.execute(`
                 SELECT name, price_eur, price_syp FROM products WHERE id = ?
             `, [product.product_id]);
 
             if (productRows.length > 0) {
                 const productInfo = productRows[0];
-                await db.execute(`
+                await connection.execute(`
                     INSERT INTO order_items 
                     (order_id, product_id, product_name, quantity, unit_price_eur, unit_price_syp, 
                      total_price_eur, total_price_syp, notes)
@@ -216,7 +218,7 @@ export const addManualOrder = async (orderData) => {
         }
 
         // Update store statistics
-        await db.execute(`
+        await connection.execute(`
             UPDATE stores 
             SET total_orders = total_orders + 1,
                 current_balance_eur = current_balance_eur + ?,
@@ -225,7 +227,7 @@ export const addManualOrder = async (orderData) => {
             WHERE id = ?
         `, [totalEUR, totalSYP, storeId]);
 
-        await db.commit();
+        await connection.commit();
 
         return {
             order_id: orderId,
@@ -239,7 +241,8 @@ export const addManualOrder = async (orderData) => {
         };
 
     } catch (error) {
-        await db.rollback();
+        const connection = await getDBConnection();
+        await connection.rollback();
         console.error('Error adding manual order:', error);
         throw new Error('خطأ في إضافة الطلب');
     }
@@ -253,12 +256,13 @@ export const addManualOrder = async (orderData) => {
 export const generateDistributionSchedules = async (data) => {
     try {
         const { date, distributorAssignments, createdBy } = data;
+        const connection = await getDBConnection();
 
         // Start transaction
-        await db.beginTransaction();
+        await connection.beginTransaction();
 
         // Get all orders for the specified date
-        const [orders] = await db.execute(`
+        const [orders] = await connection.execute(`
             SELECT 
                 o.id,
                 o.store_id,
@@ -299,7 +303,7 @@ export const generateDistributionSchedules = async (data) => {
             }));
 
             // Create schedule
-            const [scheduleResult] = await db.execute(`
+            const [scheduleResult] = await connection.execute(`
                 INSERT INTO distribution_schedules 
                 (distributor_id, schedule_date, total_stores, status, route_data, created_by)
                 VALUES (?, ?, ?, 'active', ?, ?)
@@ -313,12 +317,12 @@ export const generateDistributionSchedules = async (data) => {
 
             // Load vehicle inventory
             for (const order of distributorOrdersList) {
-                const [orderItems] = await db.execute(`
+                const [orderItems] = await connection.execute(`
                     SELECT product_id, quantity FROM order_items WHERE order_id = ?
                 `, [order.id]);
 
                 for (const item of orderItems) {
-                    await db.execute(`
+                    await connection.execute(`
                         INSERT INTO vehicle_inventory 
                         (distributor_id, product_id, quantity, loaded_quantity, delivered_quantity, returned_quantity)
                         VALUES (?, ?, ?, ?, 0, 0)
@@ -338,7 +342,7 @@ export const generateDistributionSchedules = async (data) => {
             });
         }
 
-        await db.commit();
+        await connection.commit();
 
         return {
             date: date,
@@ -351,7 +355,8 @@ export const generateDistributionSchedules = async (data) => {
         };
 
     } catch (error) {
-        await db.rollback();
+        const connection = await getDBConnection();
+        await connection.rollback();
         console.error('Error generating distribution schedules:', error);
         throw new Error('خطأ في توليد جداول التوزيع');
     }
@@ -365,9 +370,10 @@ export const generateDistributionSchedules = async (data) => {
 export const getLiveDistributionTracking = async (date) => {
     try {
         const trackingDate = date || new Date().toISOString().split('T')[0];
+        const connection = await getDBConnection();
 
         // Get distribution schedules for the date
-        const [schedules] = await db.execute(`
+        const [schedules] = await connection.execute(`
             SELECT 
                 ds.id as schedule_id,
                 ds.distributor_id,
@@ -387,7 +393,7 @@ export const getLiveDistributionTracking = async (date) => {
 
         for (const schedule of schedules) {
             // Get delivery status for each store
-            const [deliveries] = await db.execute(`
+            const [deliveries] = await connection.execute(`
                 SELECT 
                     o.id as order_id,
                     o.store_id,
@@ -456,9 +462,10 @@ export const getLiveDistributionTracking = async (date) => {
 export const getDistributorPerformance = async (distributorId, period) => {
     try {
         const dateRange = getDateRange(period);
+        const connection = await getDBConnection();
 
         // Get delivery performance
-        const [deliveryStats] = await db.execute(`
+        const [deliveryStats] = await connection.execute(`
             SELECT 
                 COUNT(DISTINCT dr.order_id) as total_deliveries,
                 COUNT(DISTINCT CASE WHEN o.status = 'delivered' THEN dr.order_id END) as completed_deliveries,
@@ -471,7 +478,7 @@ export const getDistributorPerformance = async (distributorId, period) => {
         `, [distributorId, dateRange.start, dateRange.end]);
 
         // Get payment collection performance
-        const [paymentStats] = await db.execute(`
+        const [paymentStats] = await connection.execute(`
             SELECT 
                 COUNT(*) as total_payments,
                 SUM(amount_eur) as collected_eur,
@@ -483,7 +490,7 @@ export const getDistributorPerformance = async (distributorId, period) => {
         `, [distributorId, dateRange.start, dateRange.end]);
 
         // Get expense data
-        const [expenseStats] = await db.execute(`
+        const [expenseStats] = await connection.execute(`
             SELECT 
                 COUNT(*) as total_expenses,
                 SUM(amount_eur) as total_expenses_eur,
@@ -548,6 +555,7 @@ export const getDistributionAnalytics = async (options) => {
     try {
         const { period, filters } = options;
         const dateRange = getDateRange(period);
+        const connection = await getDBConnection();
 
         // Build WHERE clause based on filters
         let whereClause = 'WHERE o.order_date BETWEEN ? AND ?';
@@ -569,7 +577,7 @@ export const getDistributionAnalytics = async (options) => {
         }
 
         // Get sales analytics
-        const [salesData] = await db.execute(`
+        const [salesData] = await connection.execute(`
             SELECT 
                 DATE(o.order_date) as order_date,
                 COUNT(DISTINCT o.id) as total_orders,
@@ -586,7 +594,7 @@ export const getDistributionAnalytics = async (options) => {
         `, params);
 
         // Get product analytics
-        const [productData] = await db.execute(`
+        const [productData] = await connection.execute(`
             SELECT 
                 p.category,
                 p.name as product_name,
@@ -604,7 +612,7 @@ export const getDistributionAnalytics = async (options) => {
         `, params);
 
         // Get distributor analytics
-        const [distributorData] = await db.execute(`
+        const [distributorData] = await connection.execute(`
             SELECT 
                 u.id as distributor_id,
                 u.full_name as distributor_name,
@@ -624,7 +632,7 @@ export const getDistributionAnalytics = async (options) => {
         `, params);
 
         // Get store analytics
-        const [storeData] = await db.execute(`
+        const [storeData] = await connection.execute(`
             SELECT 
                 s.category,
                 s.store_type,
@@ -672,9 +680,10 @@ export const getDistributionAnalytics = async (options) => {
 export const generateWeeklyReport = async (data) => {
     try {
         const { weekStart, weekEnd, format, generatedBy } = data;
+        const connection = await getDBConnection();
 
         // Get comprehensive weekly data
-        const [weeklyData] = await db.execute(`
+        const [weeklyData] = await connection.execute(`
             SELECT 
                 DATE(o.order_date) as order_date,
                 COUNT(DISTINCT o.id) as daily_orders,
@@ -690,7 +699,7 @@ export const generateWeeklyReport = async (data) => {
         `, [weekStart, weekEnd]);
 
         // Get distributor performance for the week
-        const [distributorWeekly] = await db.execute(`
+        const [distributorWeekly] = await connection.execute(`
             SELECT 
                 u.id as distributor_id,
                 u.full_name as distributor_name,
@@ -711,7 +720,7 @@ export const generateWeeklyReport = async (data) => {
         `, [weekStart, weekEnd, weekStart, weekEnd]);
 
         // Get top selling products
-        const [topProducts] = await db.execute(`
+        const [topProducts] = await connection.execute(`
             SELECT 
                 p.name as product_name,
                 p.category,
@@ -748,7 +757,7 @@ export const generateWeeklyReport = async (data) => {
         };
 
         // Save report to database
-        const [reportResult] = await db.execute(`
+        const [reportResult] = await connection.execute(`
             INSERT INTO weekly_reports 
             (week_start, week_end, report_data, format, generated_by, generated_at)
             VALUES (?, ?, ?, ?, ?, NOW())
@@ -773,9 +782,10 @@ export const generateWeeklyReport = async (data) => {
 export const assignStoreToDistributor = async (data) => {
     try {
         const { storeId, distributorId, zone, assignedBy } = data;
+        const connection = await getDBConnection();
 
         // Update store assignment
-        const [result] = await db.execute(`
+        const [result] = await connection.execute(`
             UPDATE stores 
             SET assigned_distributor_id = ?,
                 assigned_distributor_name = (SELECT full_name FROM users WHERE id = ?),
@@ -786,7 +796,7 @@ export const assignStoreToDistributor = async (data) => {
         `, [distributorId, distributorId, assignedBy, assignedBy, storeId]);
 
         // Log the assignment
-        await db.execute(`
+        await connection.execute(`
             INSERT INTO store_assignments 
             (store_id, distributor_id, zone, assigned_by, assigned_at)
             VALUES (?, ?, ?, ?, NOW())
@@ -814,14 +824,15 @@ export const assignStoreToDistributor = async (data) => {
 export const updateStoreBalanceManually = async (data) => {
     try {
         const { storeId, amount, currency, reason, notes, updatedBy } = data;
+        const connection = await getDBConnection();
 
         // Start transaction
-        await db.beginTransaction();
+        await connection.beginTransaction();
 
         // Update store balance
         const balanceField = currency === 'EUR' ? 'current_balance_eur' : 'current_balance_syp';
 
-        await db.execute(`
+        await connection.execute(`
             UPDATE stores 
             SET ${balanceField} = ${balanceField} + ?,
                 updated_by = ?,
@@ -831,7 +842,7 @@ export const updateStoreBalanceManually = async (data) => {
         `, [amount, updatedBy, updatedBy, storeId]);
 
         // Log the balance adjustment
-        await db.execute(`
+        await connection.execute(`
             INSERT INTO balance_adjustments 
             (store_id, amount_eur, amount_syp, currency, reason, notes, adjusted_by, adjusted_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
@@ -845,7 +856,7 @@ export const updateStoreBalanceManually = async (data) => {
             updatedBy
         ]);
 
-        await db.commit();
+        await connection.commit();
 
         return {
             store_id: storeId,
@@ -858,7 +869,8 @@ export const updateStoreBalanceManually = async (data) => {
         };
 
     } catch (error) {
-        await db.rollback();
+        const connection = await getDBConnection();
+        await connection.rollback();
         console.error('Error updating store balance:', error);
         throw new Error('خطأ في تحديث رصيد المحل');
     }
@@ -872,11 +884,12 @@ export const updateStoreBalanceManually = async (data) => {
 export const approveDistributorReport = async (data) => {
     try {
         const { reportId, approved, notes, approvedBy } = data;
+        const connection = await getDBConnection();
 
         const status = approved ? 'approved' : 'rejected';
 
         // Update report status
-        await db.execute(`
+        await connection.execute(`
             UPDATE daily_reports 
             SET status = ?,
                 approval_notes = ?,
