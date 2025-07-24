@@ -59,8 +59,12 @@ export const useSystemStore = create((set, get) => ({
                     systemSettingsInitialized: true
                 });
             } else {
-                // If API fails, use default settings
-                console.warn('Failed to load system settings from API, using defaults:', response.message);
+                // If API fails or user is not authenticated, use default settings
+                if (response.isUnauthorized) {
+                    console.log('User not authenticated, using default system settings');
+                } else {
+                    console.warn('Failed to load system settings from API, using defaults:', response.message);
+                }
                 const defaultSettings = {
                     dbHost: 'localhost',
                     dbPort: '3306',

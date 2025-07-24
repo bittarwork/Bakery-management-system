@@ -73,6 +73,15 @@ class SystemService {
                 };
             }
             
+            // Handle 401 Unauthorized specifically - this is expected when user is not logged in
+            if (error.response && error.response.status === 401) {
+                return {
+                    success: false,
+                    message: 'User not authenticated',
+                    isUnauthorized: true
+                };
+            }
+            
             return {
                 success: false,
                 message: error.message || 'خطأ في جلب إعدادات النظام'

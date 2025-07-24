@@ -142,10 +142,17 @@ const App = () => {
   // Show toast when initialization is complete
   useEffect(() => {
     if (authInitialized && systemSettingsInitialized) {
+      // Only show toast if we're not already showing one
       if (!isAuthenticated) {
-        toast.info("مرحباً! يرجى تسجيل الدخول للوصول للنظام");
+        toast("مرحباً! يرجى تسجيل الدخول للوصول للنظام", { 
+          icon: 'ℹ️',
+          duration: 4000,
+          id: 'welcome-message' // Prevent duplicate toasts
+        });
       } else {
-        toast.success("تم تحميل النظام بنجاح");
+        toast.success("تم تحميل النظام بنجاح", {
+          id: 'system-loaded' // Prevent duplicate toasts
+        });
       }
     }
   }, [authInitialized, systemSettingsInitialized, isAuthenticated]);

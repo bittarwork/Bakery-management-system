@@ -55,6 +55,17 @@ export const useAuthStore = create((set, get) => ({
                         error: null, // Don't show error to user
                         isInitialized: true
                     });
+                } else if (error.response && error.response.status === 401) {
+                    // Token is invalid or expired, remove it
+                    console.log('Token is invalid or expired, removing from storage');
+                    Cookies.remove('auth_token');
+                    set({
+                        user: null,
+                        isAuthenticated: false,
+                        isLoading: false,
+                        error: null, // Don't show error to user
+                        isInitialized: true
+                    });
                 } else {
                     // For other errors, remove the token
                     Cookies.remove('auth_token');

@@ -154,9 +154,10 @@ apiClient.interceptors.response.use(
                         originalRequest.headers.Authorization = `Bearer ${token}`;
                         return apiClient(originalRequest);
                     } catch (refreshError) {
-                        // Refresh failed, redirect to login
+                        // Refresh failed, remove token but don't redirect automatically
+                        // Let the calling code handle the authentication state
                         Cookies.remove('auth_token');
-                        window.location.href = '/login';
+                        console.log('Token refresh failed, user needs to login again');
                         return Promise.reject(refreshError);
                     }
                 }
