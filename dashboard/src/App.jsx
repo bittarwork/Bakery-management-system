@@ -113,8 +113,14 @@ const App = () => {
 
   // Network status monitoring
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast.success("تم استعادة الاتصال بالإنترنت");
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast.error("فقد الاتصال بالإنترنت");
+    };
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
@@ -132,6 +138,17 @@ const App = () => {
     // Load system settings
     loadSystemSettings();
   }, []); // Empty dependency array to run only once
+
+  // Show toast when initialization is complete
+  useEffect(() => {
+    if (authInitialized && systemSettingsInitialized) {
+      if (!isAuthenticated) {
+        toast.info("مرحباً! يرجى تسجيل الدخول للوصول للنظام");
+      } else {
+        toast.success("تم تحميل النظام بنجاح");
+      }
+    }
+  }, [authInitialized, systemSettingsInitialized, isAuthenticated]);
 
   // Show loading spinner while initializing
   if (!authInitialized || !systemSettingsInitialized) {

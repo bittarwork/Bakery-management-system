@@ -134,6 +134,8 @@ export const useAuthStore = create((set, get) => ({
 
             if (error.code === 'ERR_NETWORK') {
                 errorMessage = 'لا يمكن الاتصال بالخادم. يرجى التحقق من اتصال الإنترنت أو المحاولة لاحقاً';
+            } else if (error.isNetworkError) {
+                errorMessage = error.message || 'لا يمكن الاتصال بالخادم. يرجى التحقق من اتصال الإنترنت';
             } else if (error.response) {
                 // Server responded with error status
                 const status = error.response.status;

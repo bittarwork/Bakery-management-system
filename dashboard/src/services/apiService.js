@@ -38,6 +38,18 @@ const apiClient = axios.create({
     }
 });
 
+// Fallback client for offline mode
+const createOfflineClient = () => {
+    return axios.create({
+        baseURL: 'http://localhost:5001/api',
+        timeout: 5000,
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+    });
+};
+
 // Request interceptor
 apiClient.interceptors.request.use(
     (config) => {
@@ -290,7 +302,7 @@ const checkServerHealth = async () => {
 // API Service Class
 class ApiService {
     constructor() {
-        this.client = apiClient;
+        this.apiService = apiClient;
         this.serverHealthy = true;
         this.lastHealthCheck = 0;
         this.healthCheckInterval = 60000; // Check every minute
@@ -311,43 +323,98 @@ class ApiService {
 
     // Generic HTTP methods
     async get(url, config = {}) {
-        // Skip health check for health endpoint to avoid recursion
-        if (!url.includes('/health')) {
-            await this.ensureServerHealth();
-        }
-
-        return retryRequest(async () => {
-            const response = await this.client.get(url, config);
+        try {
+            const response = await this.apiService.get(url, config);
             return this.handleResponse(response);
-        });
+        } catch (error) {
+            // Try fallback client if main client fails
+            if (error.isNetworkError && !navigator.onLine) {
+                try {
+                    const fallbackClient = createOfflineClient();
+                    const response = await fallbackClient.get(url, config);
+                    return this.handleResponse(response);
+                } catch (fallbackError) {
+                    throw error; // Throw original error if fallback also fails
+                }
+            }
+            throw error;
+        }
     }
 
     async post(url, data = {}, config = {}) {
-        return retryRequest(async () => {
-            const response = await this.client.post(url, data, config);
+        try {
+            const response = await this.apiService.post(url, data, config);
             return this.handleResponse(response);
-        });
+        } catch (error) {
+            // Try fallback client if main client fails
+            if (error.isNetworkError && !navigator.onLine) {
+                try {
+                    const fallbackClient = createOfflineClient();
+                    const response = await fallbackClient.post(url, data, config);
+                    return this.handleResponse(response);
+                } catch (fallbackError) {
+                    throw error; // Throw original error if fallback also fails
+                }
+            }
+            throw error;
+        }
     }
 
     async put(url, data = {}, config = {}) {
-        return retryRequest(async () => {
-            const response = await this.client.put(url, data, config);
+        try {
+            const response = await this.apiService.put(url, data, config);
             return this.handleResponse(response);
-        });
+        } catch (error) {
+            // Try fallback client if main client fails
+            if (error.isNetworkError && !navigator.onLine) {
+                try {
+                    const fallbackClient = createOfflineClient();
+                    const response = await fallbackClient.put(url, data, config);
+                    return this.handleResponse(response);
+                } catch (fallbackError) {
+                    throw error; // Throw original error if fallback also fails
+                }
+            }
+            throw error;
+        }
     }
 
     async patch(url, data = {}, config = {}) {
-        return retryRequest(async () => {
-            const response = await this.client.patch(url, data, config);
+        try {
+            const response = await this.apiService.patch(url, data, config);
             return this.handleResponse(response);
-        });
+        } catch (error) {
+            // Try fallback client if main client fails
+            if (error.isNetworkError && !navigator.onLine) {
+                try {
+                    const fallbackClient = createOfflineClient();
+                    const response = await fallbackClient.patch(url, data, config);
+                    return this.handleResponse(response);
+                } catch (fallbackError) {
+                    throw error; // Throw original error if fallback also fails
+                }
+            }
+            throw error;
+        }
     }
 
     async delete(url, config = {}) {
-        return retryRequest(async () => {
-            const response = await this.client.delete(url, config);
+        try {
+            const response = await this.apiService.delete(url, config);
             return this.handleResponse(response);
-        });
+        } catch (error) {
+            // Try fallback client if main client fails
+            if (error.isNetworkError && !navigator.onLine) {
+                try {
+                    const fallbackClient = createOfflineClient();
+                    const response = await fallbackClient.delete(url, config);
+                    return this.handleResponse(response);
+                } catch (fallbackError) {
+                    throw error; // Throw original error if fallback also fails
+                }
+            }
+            throw error;
+        }
     }
 
     // Handle response format
@@ -485,6 +552,21 @@ class ApiService {
             const response = await this.get('/health');
             return response;
         } catch (error) {
+            // Try fallback client if main client fails
+            if (error.isNetworkError && !navigator.onLine) {
+                try {
+                    const fallbackClient = createOfflineClient();
+                    const response = await fallbackClient.get('/health');
+                    return this.handleResponse(response);
+                } catch (fallbackError) {
+                    return {
+                        success: false,
+                        message: 'Health check failed - offline mode',
+                        error: error.message
+                    };
+                }
+            }
+            
             return {
                 success: false,
                 message: 'Health check failed',
@@ -499,6 +581,21 @@ class ApiService {
             const response = await this.get('/info');
             return response;
         } catch (error) {
+            // Try fallback client if main client fails
+            if (error.isNetworkError && !navigator.onLine) {
+                try {
+                    const fallbackClient = createOfflineClient();
+                    const response = await fallbackClient.get('/info');
+                    return this.handleResponse(response);
+                } catch (fallbackError) {
+                    return {
+                        success: false,
+                        message: 'Failed to get API info - offline mode',
+                        error: error.message
+                    };
+                }
+            }
+            
             return {
                 success: false,
                 message: 'Failed to get API info',

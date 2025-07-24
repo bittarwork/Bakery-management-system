@@ -59,6 +59,12 @@ const config = {
 
 // Get the appropriate API URL based on environment
 export const getApiUrl = () => {
+    // Check if we're online
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        console.warn('Offline mode detected, using local fallback');
+        return config.LOCAL_API_URL;
+    }
+    
     // Always use production server for now
     return config.API_BASE_URL;
 };

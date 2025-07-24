@@ -14,6 +14,15 @@ class SystemService {
             const response = await this.apiService.get('/health');
             return response;
         } catch (error) {
+            // If it's a network error, return a structured response
+            if (error.isNetworkError) {
+                return {
+                    success: false,
+                    message: error.message,
+                    isNetworkError: true
+                };
+            }
+            
             return {
                 success: false,
                 message: error.message || 'خطأ في فحص حالة النظام'
@@ -30,6 +39,15 @@ class SystemService {
             const response = await this.apiService.get('/system/info');
             return response;
         } catch (error) {
+            // If it's a network error, return a structured response
+            if (error.isNetworkError) {
+                return {
+                    success: false,
+                    message: error.message,
+                    isNetworkError: true
+                };
+            }
+            
             return {
                 success: false,
                 message: error.message || 'خطأ في جلب معلومات النظام'
@@ -97,6 +115,15 @@ class SystemService {
             const response = await this.apiService.get('/system/statistics');
             return response;
         } catch (error) {
+            // If it's a network error, return a structured response
+            if (error.isNetworkError) {
+                return {
+                    success: false,
+                    message: error.message,
+                    isNetworkError: true
+                };
+            }
+            
             return {
                 success: false,
                 message: error.message || 'خطأ في جلب إحصائيات النظام'

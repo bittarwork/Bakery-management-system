@@ -78,7 +78,7 @@ export const useSystemStore = create((set, get) => ({
                     maintenanceMode: false,
                     debugMode: process.env.NODE_ENV === 'development'
                 };
-                
+
                 set({
                     systemSettings: defaultSettings,
                     isLoading: false,
@@ -88,7 +88,7 @@ export const useSystemStore = create((set, get) => ({
             }
         } catch (error) {
             console.error('Error loading system settings:', error);
-            
+
             // Use default settings as fallback
             const defaultSettings = {
                 dbHost: 'localhost',
@@ -107,7 +107,7 @@ export const useSystemStore = create((set, get) => ({
                 maintenanceMode: false,
                 debugMode: process.env.NODE_ENV === 'development'
             };
-            
+
             set({
                 systemSettings: defaultSettings,
                 isLoading: false,
@@ -131,6 +131,15 @@ export const useSystemStore = create((set, get) => ({
                 });
                 return { success: true, data: response.data };
             } else {
+                // If it's a network error, show appropriate message
+                if (response.isNetworkError) {
+                    set({
+                        isLoading: false,
+                        error: 'لا يمكن الاتصال بالخادم. تم حفظ الإعدادات محلياً.',
+                    });
+                    return { success: false, message: 'لا يمكن الاتصال بالخادم. تم حفظ الإعدادات محلياً.' };
+                }
+
                 set({
                     isLoading: false,
                     error: response.message || 'Failed to update system settings',
@@ -139,6 +148,16 @@ export const useSystemStore = create((set, get) => ({
             }
         } catch (error) {
             console.error('Error updating system settings:', error);
+
+            // If it's a network error, show appropriate message
+            if (error.isNetworkError) {
+                set({
+                    isLoading: false,
+                    error: 'لا يمكن الاتصال بالخادم. تم حفظ الإعدادات محلياً.',
+                });
+                return { success: false, message: 'لا يمكن الاتصال بالخادم. تم حفظ الإعدادات محلياً.' };
+            }
+
             set({
                 isLoading: false,
                 error: error.message || 'Failed to update system settings',
