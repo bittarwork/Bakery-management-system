@@ -10,7 +10,7 @@ const config = {
     IS_DEVELOPMENT: import.meta.env.DEV || window.location.hostname === 'localhost',
 
     // Enable local fallback for better development experience
-    USE_LOCAL_FALLBACK: true,
+    USE_LOCAL_FALLBACK: false,
 
     // API endpoints
     ENDPOINTS: {
@@ -59,12 +59,7 @@ const config = {
 
 // Get the appropriate API URL based on environment
 export const getApiUrl = () => {
-    // Use local server in development if available and fallback is enabled
-    if (config.IS_DEVELOPMENT && config.USE_LOCAL_FALLBACK) {
-        return config.LOCAL_API_URL;
-    }
-    
-    // Otherwise use production server
+    // Always use production server for now
     return config.API_BASE_URL;
 };
 

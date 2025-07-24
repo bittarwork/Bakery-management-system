@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "./stores/authStore";
 import { useSystemStore } from "./stores/systemStore";
@@ -17,9 +17,8 @@ import AnalyticsPage from "./pages/dashboard/AnalyticsPage";
 
 // Pages - Distribution
 import DistributionManagerDashboard from "./pages/distribution/DistributionManagerDashboard";
-import DistributionReportsPage from "./pages/distribution/DistributionReportsPage";
-import DistributionMapsPage from "./pages/distribution/DistributionMapsPage";
-import DistributionArchivePage from "./pages/distribution/DistributionArchivePage";
+import DailyOperationsPage from "./pages/distribution/DailyOperationsPage";
+import LiveTrackingPage from "./pages/distribution/LiveTrackingPage";
 
 // Pages - Orders
 import OrdersListPage from "./pages/orders/OrdersListPage";
@@ -27,11 +26,6 @@ import OrderDetailsPage from "./pages/orders/OrderDetailsPage";
 import CreateOrderPage from "./pages/orders/CreateOrderPage";
 import EditOrderPage from "./pages/orders/EditOrderPage";
 import OrderReportsPage from "./pages/orders/OrderReportsPage";
-
-// Pages - Payments
-import PaymentsListPage from "./pages/payments/PaymentsListPage";
-import PaymentDetailsPage from "./pages/payments/PaymentDetailsPage";
-import PaymentRecordPage from "./pages/payments/PaymentRecordPage";
 
 // Pages - Stores
 import StoresListPage from "./pages/stores/StoresListPage";
@@ -45,42 +39,29 @@ import ProductDetailsPage from "./pages/products/ProductDetailsPage";
 import CreateProductPage from "./pages/products/CreateProductPage";
 import EditProductPage from "./pages/products/EditProductPage";
 
-// Pages - Reports
-import ReportsOverviewPage from "./pages/reports/ReportsOverviewPage";
-import DailyReportsPage from "./pages/reports/DailyReportsPage";
-import WeeklyReportsPage from "./pages/reports/WeeklyReportsPage";
-import MonthlyReportsPage from "./pages/reports/MonthlyReportsPage";
-
 // Pages - Users
 import UsersListPage from "./pages/users/UsersListPage";
 import UserDetailsPage from "./pages/users/UserDetailsPage";
 import CreateUserPage from "./pages/users/CreateUserPage";
 import EditUserPage from "./pages/users/EditUserPage";
+import UserProfilePage from "./pages/users/UserProfilePage";
+
+// Pages - Reports
+import ReportsOverviewPage from "./pages/reports/ReportsOverviewPage";
 
 // Pages - Settings
-import SettingsPage from "./pages/settings/SettingsPage";
-import ProfilePage from "./pages/settings/ProfilePage";
-
-// Pages - Enhanced Pricing (Phase 6)
-import PricingManagementPage from "./pages/pricing/PricingManagementPage";
-
-// Pages - Distributor Management (Phase 6)
-import DistributorManagementPage from "./pages/distributors/DistributorManagementPage";
-
-
-
-// Pages - Error
-import NotFoundPage from "./pages/error/NotFoundPage";
+import GeneralSettingsPage from "./pages/settings/GeneralSettingsPage";
+import SystemConfigPage from "./pages/settings/SystemConfigPage";
 
 // Components
 import LoadingSpinner from "./components/ui/LoadingSpinner";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
 
-// Page transition variants
+// Page transition animations
 const pageVariants = {
-  initial: { opacity: 0, x: -20 },
+  initial: { opacity: 0, x: -10 },
   animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: 20 },
+  exit: { opacity: 0, x: 10 },
 };
 
 const pageTransition = {
@@ -90,39 +71,21 @@ const pageTransition = {
 };
 
 // Protected Route Component
-const ProtectedRoute = ({
-  children,
-  requiredRole = null,
-  allowedRoles = null,
-}) => {
-  const { isAuthenticated, user } = useAuthStore();
+const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+  const { user, isAuthenticated } = useAuthStore();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // Admin has access to all pages
-  if (user?.role === "admin") {
-    return children;
-  }
-
-  // Check multiple allowed roles if provided
-  if (allowedRoles && Array.isArray(allowedRoles)) {
-    if (!allowedRoles.includes(user?.role)) {
-      return <Navigate to="/unauthorized" replace />;
-    }
-    return children;
-  }
-
-  // Check specific role requirement for non-admin users
-  if (requiredRole && user?.role !== requiredRole) {
-    return <Navigate to="/unauthorized" replace />;
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
 };
 
-// Public Route Component (redirect if authenticated)
+// Public Route Component (for login page)
 const PublicRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
 
@@ -133,28 +96,17 @@ const PublicRoute = ({ children }) => {
   return children;
 };
 
-// App Component
-function App() {
-  const { initializeAuth, isLoading } = useAuthStore();
-  const { initializeSystem } = useSystemStore();
+const App = () => {
+  const { initializeAuth } = useAuthStore();
+  const { loadSystemSettings } = useSystemStore();
 
   useEffect(() => {
-    // Initialize authentication and system
+    // Initialize authentication state
     initializeAuth();
-    initializeSystem();
-  }, [initializeAuth, initializeSystem]);
 
-  if (isLoading) {
-    return (
-      <LoadingSpinner
-        size="2xl"
-        color="white"
-        text="جاري تحميل النظام..."
-        showLogo={true}
-        fullScreen={true}
-      />
-    );
-  }
+    // Load system settings
+    loadSystemSettings();
+  }, [initializeAuth, loadSystemSettings]);
 
   return (
     <ErrorBoundary>
@@ -254,7 +206,7 @@ function App() {
             />
 
             <Route
-              path="/distribution/reports"
+              path="/distribution/daily-operations"
               element={
                 <ProtectedRoute allowedRoles={["admin", "manager"]}>
                   <DashboardLayout>
@@ -266,7 +218,7 @@ function App() {
                       transition={pageTransition}
                     >
                       <Suspense fallback={<LoadingSpinner />}>
-                        <DistributionReportsPage />
+                        <DailyOperationsPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>
@@ -275,7 +227,7 @@ function App() {
             />
 
             <Route
-              path="/distribution/maps"
+              path="/distribution/live-tracking"
               element={
                 <ProtectedRoute allowedRoles={["admin", "manager"]}>
                   <DashboardLayout>
@@ -287,91 +239,7 @@ function App() {
                       transition={pageTransition}
                     >
                       <Suspense fallback={<LoadingSpinner />}>
-                        <DistributionMapsPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/distribution/archive"
-              element={
-                <ProtectedRoute allowedRoles={["admin", "manager"]}>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <DistributionArchivePage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/distribution/reports"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <DistributionReportsPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/distribution/maps"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <DistributionMapsPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/distribution/archive"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <DistributionArchivePage />
+                        <LiveTrackingPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>
@@ -467,7 +335,7 @@ function App() {
             <Route
               path="/orders/reports"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}
@@ -478,70 +346,6 @@ function App() {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <OrderReportsPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Payments Routes */}
-            <Route
-              path="/payments"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <PaymentsListPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/payments/:id"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <PaymentDetailsPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/payments/record"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <PaymentRecordPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>
@@ -595,7 +399,7 @@ function App() {
             <Route
               path="/stores/create"
               element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}
@@ -614,9 +418,9 @@ function App() {
             />
 
             <Route
-              path="/stores/edit/:id"
+              path="/stores/:id/edit"
               element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}
@@ -678,30 +482,9 @@ function App() {
             />
 
             <Route
-              path="/products/:id/edit"
-              element={
-                <ProtectedRoute requiredRole="admin">
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <EditProductPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
               path="/products/create"
               element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}
@@ -719,9 +502,8 @@ function App() {
               }
             />
 
-            {/* Reports Routes */}
             <Route
-              path="/reports"
+              path="/products/:id/edit"
               element={
                 <ProtectedRoute>
                   <DashboardLayout>
@@ -733,70 +515,7 @@ function App() {
                       transition={pageTransition}
                     >
                       <Suspense fallback={<LoadingSpinner />}>
-                        <ReportsOverviewPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/reports/daily"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <DailyReportsPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/reports/weekly"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <WeeklyReportsPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/reports/monthly"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <MonthlyReportsPage />
+                        <EditProductPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>
@@ -808,7 +527,7 @@ function App() {
             <Route
               path="/users"
               element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute allowedRoles={["admin"]}>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}
@@ -829,7 +548,7 @@ function App() {
             <Route
               path="/users/:id"
               element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute allowedRoles={["admin"]}>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}
@@ -850,7 +569,7 @@ function App() {
             <Route
               path="/users/create"
               element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute allowedRoles={["admin"]}>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}
@@ -871,7 +590,7 @@ function App() {
             <Route
               path="/users/:id/edit"
               element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute allowedRoles={["admin"]}>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}
@@ -882,28 +601,6 @@ function App() {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <EditUserPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Settings Routes */}
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <SettingsPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>
@@ -924,7 +621,7 @@ function App() {
                       transition={pageTransition}
                     >
                       <Suspense fallback={<LoadingSpinner />}>
-                        <ProfilePage />
+                        <UserProfilePage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>
@@ -932,11 +629,11 @@ function App() {
               }
             />
 
-            {/* Enhanced Order Management Routes (Phase 6) */}
+            {/* Reports Routes */}
             <Route
-              path="/pricing"
+              path="/reports"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}
@@ -946,7 +643,7 @@ function App() {
                       transition={pageTransition}
                     >
                       <Suspense fallback={<LoadingSpinner />}>
-                        <PricingManagementPage />
+                        <ReportsOverviewPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>
@@ -954,10 +651,11 @@ function App() {
               }
             />
 
+            {/* Settings Routes */}
             <Route
-              path="/distributors"
+              path="/settings"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={["admin"]}>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}
@@ -967,7 +665,7 @@ function App() {
                       transition={pageTransition}
                     >
                       <Suspense fallback={<LoadingSpinner />}>
-                        <DistributorManagementPage />
+                        <GeneralSettingsPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>
@@ -975,45 +673,50 @@ function App() {
               }
             />
 
+            <Route
+              path="/settings/system"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <SystemConfigPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
 
-
-            {/* Default routes */}
+            {/* Redirect root to dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route
-              path="/unauthorized"
-              element={
-                <div className="min-h-screen flex items-center justify-center">
-                  <div className="text-center">
-                    <h1 className="text-2xl font-bold text-red-600 mb-4">
-                      غير مصرح
-                    </h1>
-                    <p className="text-gray-600 mb-8">
-                      ليس لديك صلاحية للوصول إلى هذه الصفحة
-                    </p>
-                    <button
-                      onClick={() => window.history.back()}
-                      className="btn btn-primary"
-                    >
-                      العودة
-                    </button>
-                  </div>
-                </div>
-              }
-            />
+
+            {/* 404 fallback */}
             <Route
               path="*"
               element={
-                <motion.div
-                  variants={pageVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  transition={pageTransition}
-                >
-                  <Suspense fallback={<LoadingSpinner />}>
-                    <NotFoundPage />
-                  </Suspense>
-                </motion.div>
+                <DashboardLayout>
+                  <div className="min-h-screen flex items-center justify-center">
+                    <div className="text-center">
+                      <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                        404
+                      </h1>
+                      <p className="text-gray-600 mb-4">الصفحة غير موجودة</p>
+                      <Link
+                        to="/dashboard"
+                        className="text-blue-600 hover:text-blue-500"
+                      >
+                        العودة للرئيسية
+                      </Link>
+                    </div>
+                  </div>
+                </DashboardLayout>
               }
             />
           </Routes>
@@ -1021,6 +724,6 @@ function App() {
       </div>
     </ErrorBoundary>
   );
-}
+};
 
 export default App;

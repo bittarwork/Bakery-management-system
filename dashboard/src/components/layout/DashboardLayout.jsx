@@ -6,7 +6,6 @@ import {
   BarChart3,
   Truck,
   Package,
-  CreditCard,
   Store,
   ShoppingBag,
   FileText,
@@ -16,9 +15,8 @@ import {
   Menu,
   X,
   User,
-  Euro,
-  UserCheck,
-  CalendarClock,
+  Coffee,
+  Navigation,
   Brain,
   ChevronDown,
   ChevronUp,
@@ -29,7 +27,7 @@ import Logo from "../ui/Logo";
 const DashboardLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [expandedSections, setExpandedSections] = useState({
-    orders: true,
+    distribution: true,
     management: true,
     reports: true,
   });
@@ -42,292 +40,278 @@ const DashboardLayout = ({ children }) => {
       id: "main",
       title: "لوحة التحكم الرئيسية",
       items: [
-        { name: "الصفحة الرئيسية", path: "/dashboard", icon: LayoutDashboard },
-        { name: "التحليلات والإحصائيات", path: "/analytics", icon: BarChart3 },
-        { name: "نظام التوزيع المتقدم", path: "/distribution", icon: Truck },
+        { 
+          name: "الرئيسية", 
+          path: "/dashboard", 
+          icon: LayoutDashboard, 
+          description: "نظرة عامة على النظام" 
+        },
+        { 
+          name: "التحليلات", 
+          path: "/analytics", 
+          icon: BarChart3, 
+          description: "تحليلات وإحصائيات أساسية" 
+        },
       ],
     },
     {
-      id: "core_operations",
-      title: "العمليات الأساسية",
-      items: [
-        { name: "إدارة الطلبات", path: "/orders", icon: Package },
-        { name: "إدارة المنتجات", path: "/products", icon: ShoppingBag },
-        { name: "إدارة المتاجر", path: "/stores", icon: Store },
-        { name: "إدارة المستخدمين", path: "/users", icon: Users },
-      ],
-    },
-    {
-      id: "financial",
-      title: "الإدارة المالية",
-      items: [
-        { name: "المدفوعات والفواتير", path: "/payments", icon: CreditCard },
-        { name: "إدارة الأسعار", path: "/pricing", icon: Euro },
-      ],
-    },
-    {
-      id: "distribution_management",
+      id: "distribution",
       title: "إدارة التوزيع",
+      expandable: true,
+      roles: ["admin", "manager"],
       items: [
-        { name: "إدارة الموزعين", path: "/distributors", icon: UserCheck },
-        { name: "جدولة التسليم", path: "/delivery", icon: CalendarClock },
+        { 
+          name: "لوحة التوزيع", 
+          path: "/distribution/manager", 
+          icon: Truck, 
+          description: "إدارة عمليات التوزيع" 
+        },
+        { 
+          name: "العمليات اليومية", 
+          path: "/distribution/daily-operations", 
+          icon: Coffee, 
+          description: "إدارة المهام اليومية" 
+        },
+        { 
+          name: "التتبع المباشر", 
+          path: "/distribution/live-tracking", 
+          icon: Navigation, 
+          description: "تتبع مواقع الموزعين" 
+        },
+      ],
+    },
+    {
+      id: "management",
+      title: "إدارة البيانات الأساسية",
+      expandable: true,
+      items: [
+        { 
+          name: "الطلبات", 
+          path: "/orders", 
+          icon: Package, 
+          description: "إدارة طلبات العملاء" 
+        },
+        { 
+          name: "المتاجر", 
+          path: "/stores", 
+          icon: Store, 
+          description: "إدارة بيانات المتاجر" 
+        },
+        { 
+          name: "المنتجات", 
+          path: "/products", 
+          icon: ShoppingBag, 
+          description: "إدارة كتالوج المنتجات" 
+        },
+        { 
+          name: "المستخدمين", 
+          path: "/users", 
+          icon: Users, 
+          description: "إدارة المستخدمين", 
+          roles: ["admin"] 
+        },
       ],
     },
     {
       id: "reports",
-      title: "التقارير المتقدمة",
+      title: "التقارير والتحليلات المتقدمة",
+      expandable: true,
+      roles: ["admin", "manager"],
       items: [
-        { name: "التقارير الشاملة", path: "/reports", icon: FileText },
-        { name: "تقارير الطلبات", path: "/orders/reports", icon: BarChart3 },
+        { 
+          name: "التقارير المتقدمة", 
+          path: "/reports", 
+          icon: Brain, 
+          description: "تقارير شاملة وتحليلات ذكية" 
+        },
       ],
     },
     {
-      id: "settings",
+      id: "system",
       title: "إعدادات النظام",
-      items: [{ name: "الإعدادات العامة", path: "/settings", icon: Settings }],
+      items: [
+        { 
+          name: "الإعدادات العامة", 
+          path: "/settings", 
+          icon: Settings, 
+          description: "إعدادات النظام", 
+          roles: ["admin"] 
+        },
+        { 
+          name: "الملف الشخصي", 
+          path: "/profile", 
+          icon: User, 
+          description: "إدارة الملف الشخصي" 
+        },
+      ],
     },
   ];
+
+  const toggleSection = (sectionId) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [sectionId]: !prev[sectionId]
+    }));
+  };
 
   const handleLogout = () => {
     logout();
   };
 
-  const toggleSection = (sectionId) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [sectionId]: !prev[sectionId],
-    }));
+  const isActiveLink = (path) => {
+    if (path === '/dashboard') {
+      return location.pathname === path;
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  const hasPermission = (item) => {
+    if (!item.roles) return true;
+    return item.roles.includes(user?.role);
+  };
+
+  const hasSectionPermission = (section) => {
+    if (!section.roles) return true;
+    return section.roles.includes(user?.role);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="flex min-h-screen bg-gray-100">
       {/* Sidebar */}
-      <motion.div
-        initial={{ x: 300 }}
-        animate={{ x: isSidebarOpen ? 0 : 300 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className={`fixed inset-y-0 right-0 z-30 w-64 bg-white shadow-xl transform ${
-          isSidebarOpen ? "translate-x-0" : "translate-x-full"
-        } transition-transform duration-300 ease-in-out lg:translate-x-0 flex flex-col`}
-      >
-        {/* Sidebar Header */}
-        <div className="flex-shrink-0 flex items-center justify-between h-16 px-6 bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 text-white">
+      <div className={`bg-white shadow-xl transition-all duration-300 ${
+        isSidebarOpen ? 'w-72' : 'w-16'
+      }`}>
+        {/* Header */}
+        <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
+          {isSidebarOpen && (
+            <div className="flex items-center">
+              <Logo className="h-8 w-8 ml-2" />
+              <span className="text-xl font-bold text-gray-900">نظام المخبز</span>
+            </div>
+          )}
           <button
-            onClick={() => setIsSidebarOpen(false)}
-            className="lg:hidden p-1 rounded-md hover:bg-white hover:bg-opacity-20 transition-colors"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            <X className="w-5 h-5" />
+            {isSidebarOpen ? (
+              <X className="h-5 w-5 text-gray-600" />
+            ) : (
+              <Menu className="h-5 w-5 text-gray-600" />
+            )}
           </button>
-          <div className="flex items-center space-x-3 space-x-reverse">
-            <Logo size="sm" variant="icon-only" animated={false} />
-            <h1 className="text-xl font-bold">نظام المخبز</h1>
-          </div>
         </div>
 
-        {/* Scrollable Navigation */}
-        <div className="flex-1 overflow-hidden">
-          <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
-            <nav className="px-3 py-4">
-              <div className="space-y-2">
-                {navigationSections.map((section) => {
-                  const isExpanded = expandedSections[section.id];
-                  const hasActiveItem = section.items.some(
-                    (item) => location.pathname === item.path
-                  );
-
-                  return (
-                    <div key={section.id} className="space-y-1">
-                      {/* Section Header */}
+        {/* Navigation */}
+        <nav className="flex-1 px-2 py-4 space-y-2 overflow-y-auto">
+          {navigationSections.map((section) => {
+            if (!hasSectionPermission(section)) return null;
+            
+            return (
+              <div key={section.id} className="space-y-1">
+                {/* Section Header */}
+                {isSidebarOpen && (
+                  <div className="flex items-center justify-between px-3 py-2">
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      {section.title}
+                    </h3>
+                    {section.expandable && (
                       <button
                         onClick={() => toggleSection(section.id)}
-                        className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider rounded-md transition-colors ${
-                          hasActiveItem
-                            ? "bg-blue-50 text-blue-600"
-                            : "hover:bg-gray-50 hover:text-gray-700"
-                        }`}
+                        className="p-1 hover:bg-gray-100 rounded"
                       >
-                        <span>{section.title}</span>
-                        {section.items.length > 1 && (
-                          <motion.div
-                            animate={{ rotate: isExpanded ? 180 : 0 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            <ChevronDown className="w-3 h-3" />
-                          </motion.div>
+                        {expandedSections[section.id] ? (
+                          <ChevronUp className="h-3 w-3 text-gray-400" />
+                        ) : (
+                          <ChevronDown className="h-3 w-3 text-gray-400" />
                         )}
                       </button>
+                    )}
+                  </div>
+                )}
 
-                      {/* Section Items */}
-                      <motion.div
-                        initial={false}
-                        animate={{
-                          height: isExpanded ? "auto" : 0,
-                          opacity: isExpanded ? 1 : 0,
-                        }}
-                        transition={{ duration: 0.3, ease: "easeInOut" }}
-                        className="overflow-hidden"
-                      >
-                        <div className="space-y-1 pr-4">
-                          {section.items.map((item) => {
-                            const Icon = item.icon;
-                            const isActive = location.pathname === item.path;
+                {/* Section Items */}
+                {(!section.expandable || expandedSections[section.id]) && (
+                  <div className="space-y-1">
+                    {section.items.map((item) => {
+                      if (!hasPermission(item)) return null;
+                      
+                      const Icon = item.icon;
+                      const isActive = isActiveLink(item.path);
 
-                            return (
-                              <motion.div
-                                key={item.name}
-                                whileHover={{ x: -4 }}
-                                whileTap={{ scale: 0.95 }}
-                              >
-                                <Link
-                                  to={item.path}
-                                  className={`group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
-                                    isActive
-                                      ? "bg-blue-50 text-blue-700 border-r-2 border-blue-600 shadow-sm"
-                                      : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-                                  }`}
-                                >
-                                  <Icon
-                                    className={`w-4 h-4 ml-2 flex-shrink-0 ${
-                                      isActive
-                                        ? "text-blue-600"
-                                        : "text-gray-400 group-hover:text-gray-600"
-                                    }`}
-                                  />
-                                  <span className="truncate">{item.name}</span>
-                                </Link>
-                              </motion.div>
-                            );
-                          })}
-                        </div>
-                      </motion.div>
-                    </div>
-                  );
-                })}
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                            isActive
+                              ? 'bg-blue-50 text-blue-700 border-r-4 border-blue-700'
+                              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                          }`}
+                        >
+                          <Icon className={`h-5 w-5 ml-3 transition-colors ${
+                            isActive ? 'text-blue-700' : 'text-gray-400 group-hover:text-gray-600'
+                          }`} />
+                          {isSidebarOpen && (
+                            <div className="flex-1">
+                              <div className="font-medium">{item.name}</div>
+                              {item.description && (
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  {item.description}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </nav>
-          </div>
-        </div>
+            );
+          })}
+        </nav>
 
-        {/* User Profile Section */}
-        <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-gray-50">
-          <div className="flex items-center space-x-3 space-x-reverse">
+        {/* User Menu */}
+        <div className="border-t border-gray-200 p-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
+                <User className="h-6 w-6 text-white" />
+              </div>
+            </div>
+            {isSidebarOpen && (
+              <div className="ml-3 flex-1">
+                <div className="text-sm font-medium text-gray-900">
+                  {user?.name}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {user?.role === 'admin' ? 'مدير النظام' : 
+                   user?.role === 'manager' ? 'مدير' : 
+                   user?.role === 'distributor' ? 'موزع' : 'مستخدم'}
+                </div>
+              </div>
+            )}
+          </div>
+          {isSidebarOpen && (
             <button
               onClick={handleLogout}
-              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all duration-200"
-              title="تسجيل الخروج"
+              className="mt-3 w-full flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-colors"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="h-4 w-4 ml-2" />
+              تسجيل الخروج
             </button>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {user?.name || "المدير"}
-              </p>
-              <p className="text-xs text-gray-500 truncate">
-                {user?.role || "مدير النظام"}
-              </p>
-            </div>
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <User className="w-4 h-4 text-blue-600" />
-            </div>
-          </div>
+          )}
         </div>
-      </motion.div>
-
-      {/* Main content */}
-      <div
-        className={`${
-          isSidebarOpen ? "lg:pr-64" : ""
-        } flex flex-col flex-1 transition-all duration-300`}
-      >
-        {/* Top navigation */}
-        <motion.div
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="sticky top-0 z-20 flex items-center justify-between h-16 bg-white shadow-sm px-4 lg:px-6"
-        >
-          <div className="flex items-center space-x-4 space-x-reverse">
-            {/* User Menu */}
-            <div className="flex items-center space-x-3 space-x-reverse">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <User className="w-4 h-4 text-blue-600" />
-              </div>
-              <div className="hidden sm:block text-right">
-                <p className="text-sm font-medium text-gray-900">
-                  {user?.name || "المدير"}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {user?.role || "مدير النظام"}
-                </p>
-              </div>
-            </div>
-
-            {/* Notifications */}
-            <button
-              className="p-2 text-gray-400 hover:text-gray-600 relative transition-colors"
-              title="التنبيهات"
-            >
-              <div className="w-2 h-2 bg-red-500 rounded-full absolute top-2 left-2"></div>
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 17h5l-5 5v-5z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                />
-              </svg>
-            </button>
-          </div>
-
-          <div className="flex items-center space-x-4 space-x-reverse">
-            <div className="hidden sm:block">
-              <h2 className="text-lg font-semibold text-gray-900">
-                {navigationSections
-                  .flatMap((section) => section.items)
-                  .find((item) => item.path === location.pathname)?.name ||
-                  "لوحة التحكم"}
-              </h2>
-            </div>
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className={`${
-                isSidebarOpen ? "hidden" : "block"
-              } lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors`}
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            {children}
-          </motion.div>
-        </main>
       </div>
 
-      {/* Mobile overlay */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black bg-opacity-50 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
+          <div className="min-h-full">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   );
 };

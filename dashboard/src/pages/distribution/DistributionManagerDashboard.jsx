@@ -279,33 +279,7 @@ const DistributionManagerDashboard = () => {
     { key: "tracking", label: "التتبع المباشر", icon: Navigation },
   ];
 
-  // Quick actions for specialized pages
-  const quickActions = [
-    {
-      title: "تقارير التوزيع",
-      description: "تقارير شاملة وتحليلات",
-      icon: FileText,
-      color: "blue",
-      count: "12",
-      route: "/distribution/reports",
-    },
-    {
-      title: "الخرائط والمسارات",
-      description: "تتبع مباشر وتحسين المسارات",
-      icon: Map,
-      color: "green",
-      count: "8",
-      route: "/distribution/maps",
-    },
-    {
-      title: "أرشيف العمليات",
-      description: "أرشيف شامل للعمليات والتقارير",
-      icon: Archive,
-      color: "purple",
-      count: "156",
-      route: "/distribution/archive",
-    },
-  ];
+  // Quick actions removed - will be moved to separate pages
 
   if (isLoading) {
     return (
@@ -399,18 +373,6 @@ const DistributionManagerDashboard = () => {
           {/* Overview Content */}
           {currentView === "overview" && (
             <div className="space-y-6">
-              {/* Quick Actions for Specialized Pages */}
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
-                  الأقسام الرئيسية
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {quickActions.map((action, index) => (
-                    <QuickActionCard key={index} {...action} />
-                  ))}
-                </div>
-              </div>
-
               {/* Statistics */}
               <div>
                 <h2 className="text-xl font-bold text-gray-900 mb-4">

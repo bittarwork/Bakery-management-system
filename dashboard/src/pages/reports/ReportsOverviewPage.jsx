@@ -19,15 +19,27 @@ import {
   PieChart,
   Activity,
   Target,
+  Map,
+  Archive,
+  Brain,
+  Navigation,
+  MapPin,
+  Route,
+  TruckIcon,
+  Truck,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
+import ReportsSystem from "../../components/distribution/ReportsSystem";
+import MapsSystem from "../../components/distribution/MapsSystem";
+import ArchiveSystem from "../../components/distribution/ArchiveSystem";
 
 const ReportsOverviewPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState("month");
+  const [currentView, setCurrentView] = useState("overview");
   const [filters, setFilters] = useState({
     store: "",
     category: "",
@@ -54,452 +66,280 @@ const ReportsOverviewPage = () => {
     avgOrderGrowth: -2.1,
   };
 
-  const reportTypes = [
-    {
-      id: "daily",
-      title: "Daily Reports",
-      description:
-        "View detailed daily sales reports with hourly breakdowns and performance metrics.",
-      icon: Calendar,
-      color: "blue",
-      path: "/reports/daily",
-      features: ["Hourly breakdowns", "Performance metrics", "Real-time data"],
-    },
-    {
-      id: "weekly",
-      title: "Weekly Reports",
-      description:
-        "Analyze weekly trends, compare performance, and identify growth patterns.",
-      icon: BarChart3,
-      color: "green",
-      path: "/reports/weekly",
-      features: ["Trend analysis", "Performance comparison", "Growth patterns"],
-    },
-    {
-      id: "monthly",
-      title: "Monthly Reports",
-      description:
-        "Comprehensive monthly analysis with revenue trends and business insights.",
-      icon: PieChart,
-      color: "purple",
-      path: "/reports/monthly",
-      features: [
-        "Revenue trends",
-        "Business insights",
-        "Comprehensive analysis",
-      ],
-    },
-    {
-      id: "custom",
-      title: "Custom Reports",
-      description:
-        "Create custom reports with specific date ranges and detailed analytics.",
-      icon: FileText,
-      color: "orange",
-      path: "/reports/custom",
-      features: ["Custom date ranges", "Detailed analytics", "Export options"],
-    },
+  // Navigation tabs for advanced reports
+  const reportTabs = [
+    { key: "overview", label: "نظرة عامة", icon: BarChart3 },
+    { key: "distribution", label: "تقارير التوزيع", icon: FileText },
+    { key: "maps", label: "الخرائط والمسارات", icon: Map },
+    { key: "analytics", label: "التحليلات المتقدمة", icon: Brain },
+    { key: "archive", label: "أرشيف العمليات", icon: Archive },
   ];
-
-  const recentActivities = [
-    {
-      id: 1,
-      type: "daily_report",
-      title: "Daily Report Generated",
-      description: "March 25, 2024 - 09:00 AM",
-      amount: "€2,450.00",
-      status: "completed",
-      icon: Calendar,
-    },
-    {
-      id: 2,
-      type: "weekly_report",
-      title: "Weekly Report Completed",
-      description: "March 24, 2024 - 18:00 PM",
-      amount: "€15,200.00",
-      status: "completed",
-      icon: BarChart3,
-    },
-    {
-      id: 3,
-      type: "monthly_report",
-      title: "Monthly Report Ready",
-      description: "March 23, 2024 - 23:59 PM",
-      amount: "€45,800.00",
-      status: "pending",
-      icon: PieChart,
-    },
-    {
-      id: 4,
-      type: "export",
-      title: "Report Exported",
-      description: "March 22, 2024 - 14:30 PM",
-      amount: "€12,300.00",
-      status: "completed",
-      icon: Download,
-    },
-  ];
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "completed":
-        return "text-green-600 bg-green-100";
-      case "pending":
-        return "text-yellow-600 bg-yellow-100";
-      case "failed":
-        return "text-red-600 bg-red-100";
-      default:
-        return "text-gray-600 bg-gray-100";
-    }
-  };
-
-  const getGrowthIcon = (growth) => {
-    return growth >= 0 ? TrendingUp : TrendingDown;
-  };
-
-  const getGrowthColor = (growth) => {
-    return growth >= 0 ? "text-green-600" : "text-red-600";
-  };
-
-  const handlePeriodChange = (period) => {
-    setSelectedPeriod(period);
-    // Here you would typically fetch data for the new period
-  };
-
-  const handleExport = () => {
-    console.log("Exporting reports...");
-  };
-
-  const handleRefresh = () => {
-    setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1000);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
+        className="bg-white shadow-lg border-b border-gray-200"
       >
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reports Overview</h1>
-          <p className="text-gray-600">
-            Comprehensive analytics and business insights
-          </p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Button
-            variant="outline"
-            icon={<Download className="w-4 h-4" />}
-            onClick={handleExport}
-          >
-            Export All
-          </Button>
-          <Button
-            variant="outline"
-            icon={<RefreshCw className="w-4 h-4" />}
-            onClick={handleRefresh}
-          >
-            Refresh
-          </Button>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+                <BarChart3 className="w-7 h-7 text-blue-600 ml-3" />
+                التقارير المتقدمة
+              </h1>
+              <p className="text-gray-600 mt-1">
+                تقارير شاملة وتحليلات متقدمة لجميع عمليات النظام
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <Clock className="w-4 h-4 text-gray-600 ml-2" />
+                <span className="text-sm font-medium">
+                  {new Date().toLocaleTimeString("ar-SA", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+              <Button
+                variant="secondary"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                تحديث
+              </Button>
+            </div>
+          </div>
         </div>
       </motion.div>
 
-      {/* Period Selector */}
-      <Card>
-        <CardBody>
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Report Period
-            </h2>
-            <div className="flex space-x-2">
-              {[
-                { key: "week", label: "This Week" },
-                { key: "month", label: "This Month" },
-                { key: "quarter", label: "This Quarter" },
-                { key: "year", label: "This Year" },
-              ].map((period) => (
-                <Button
-                  key={period.key}
-                  variant={
-                    selectedPeriod === period.key ? "primary" : "outline"
-                  }
-                  size="sm"
-                  onClick={() => handlePeriodChange(period.key)}
-                >
-                  {period.label}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </CardBody>
-      </Card>
-
-      {/* Summary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Navigation Tabs */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
+          className="bg-white rounded-xl border-0 shadow-lg mb-6 overflow-hidden"
         >
-          <Card>
-            <div className="flex items-center">
-              <div className="p-3 bg-blue-100 rounded-full">
-                <DollarSign className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Sales</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  €{stats.totalSales.toLocaleString()}
-                </p>
-                <div className="flex items-center mt-1">
-                  {React.createElement(getGrowthIcon(stats.salesGrowth), {
-                    className: `w-4 h-4 mr-1 ${getGrowthColor(
-                      stats.salesGrowth
-                    )}`,
-                  })}
-                  <span
-                    className={`text-sm font-medium ${getGrowthColor(
-                      stats.salesGrowth
-                    )}`}
-                  >
-                    {stats.salesGrowth > 0 ? "+" : ""}
-                    {stats.salesGrowth}%
-                  </span>
-                  <span className="text-sm text-gray-500 ml-1">
-                    from last month
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Card>
+          <div className="flex overflow-x-auto">
+            {reportTabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setCurrentView(tab.key)}
+                className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+                  currentView === tab.key
+                    ? "text-blue-600 border-blue-600 bg-blue-50"
+                    : "text-gray-600 border-transparent hover:text-blue-600 hover:bg-blue-50"
+                }`}
+              >
+                <tab.icon className="w-4 h-4 ml-2" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </motion.div>
 
+        {/* Main Content */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          key={currentView}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3 }}
         >
-          <Card>
-            <div className="flex items-center">
-              <div className="p-3 bg-green-100 rounded-full">
-                <Package className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">
-                  Total Orders
-                </p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.totalOrders.toLocaleString()}
-                </p>
-                <div className="flex items-center mt-1">
-                  {React.createElement(getGrowthIcon(stats.ordersGrowth), {
-                    className: `w-4 h-4 mr-1 ${getGrowthColor(
-                      stats.ordersGrowth
-                    )}`,
-                  })}
-                  <span
-                    className={`text-sm font-medium ${getGrowthColor(
-                      stats.ordersGrowth
-                    )}`}
-                  >
-                    {stats.ordersGrowth > 0 ? "+" : ""}
-                    {stats.ordersGrowth}%
-                  </span>
-                  <span className="text-sm text-gray-500 ml-1">
-                    from last month
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card>
-            <div className="flex items-center">
-              <div className="p-3 bg-purple-100 rounded-full">
-                <Store className="w-6 h-6 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">
-                  Active Stores
-                </p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.activeStores}
-                </p>
-                <div className="flex items-center mt-1">
-                  {React.createElement(getGrowthIcon(stats.storesGrowth), {
-                    className: `w-4 h-4 mr-1 ${getGrowthColor(
-                      stats.storesGrowth
-                    )}`,
-                  })}
-                  <span
-                    className={`text-sm font-medium ${getGrowthColor(
-                      stats.storesGrowth
-                    )}`}
-                  >
-                    {stats.storesGrowth > 0 ? "+" : ""}
-                    {stats.storesGrowth}
-                  </span>
-                  <span className="text-sm text-gray-500 ml-1">
-                    new this month
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Card>
-            <div className="flex items-center">
-              <div className="p-3 bg-orange-100 rounded-full">
-                <Target className="w-6 h-6 text-orange-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">
-                  Avg Order Value
-                </p>
-                <p className="text-2xl font-bold text-gray-900">
-                  €{stats.avgOrderValue}
-                </p>
-                <div className="flex items-center mt-1">
-                  {React.createElement(getGrowthIcon(stats.avgOrderGrowth), {
-                    className: `w-4 h-4 mr-1 ${getGrowthColor(
-                      stats.avgOrderGrowth
-                    )}`,
-                  })}
-                  <span
-                    className={`text-sm font-medium ${getGrowthColor(
-                      stats.avgOrderGrowth
-                    )}`}
-                  >
-                    {stats.avgOrderGrowth > 0 ? "+" : ""}
-                    {stats.avgOrderGrowth}%
-                  </span>
-                  <span className="text-sm text-gray-500 ml-1">
-                    from last month
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Report Types */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {reportTypes.map((report, index) => {
-          const Icon = report.icon;
-          return (
-            <motion.div
-              key={report.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 + index * 0.1 }}
-            >
-              <Link to={report.path}>
-                <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
-                  <CardBody>
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-medium text-gray-900">
-                        {report.title}
-                      </h3>
-                      <div
-                        className={`w-8 h-8 bg-${report.color}-100 rounded-lg flex items-center justify-center`}
-                      >
-                        <Icon className={`w-5 h-5 text-${report.color}-600`} />
+          {/* Overview Content */}
+          {currentView === "overview" && (
+            <div className="space-y-6">
+              {/* Statistics Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                  <CardBody className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-blue-100 text-sm">إجمالي المبيعات</p>
+                        <p className="text-2xl font-bold">€{stats.totalSales.toLocaleString()}</p>
+                        <p className="text-blue-100 text-sm flex items-center mt-1">
+                          <TrendingUp className="w-3 h-3 ml-1" />
+                          +{stats.salesGrowth}%
+                        </p>
                       </div>
-                    </div>
-                    <p className="text-gray-600 text-sm mb-4">
-                      {report.description}
-                    </p>
-                    <div className="space-y-2">
-                      {report.features.map((feature, featureIndex) => (
-                        <div
-                          key={featureIndex}
-                          className="flex items-center text-sm text-gray-500"
-                        >
-                          <div className="w-1 h-1 bg-gray-400 rounded-full mr-2"></div>
-                          {feature}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex items-center text-blue-600 text-sm font-medium mt-4">
-                      View Reports
-                      <Eye className="w-4 h-4 ml-1" />
+                      <DollarSign className="w-8 h-8 text-blue-200" />
                     </div>
                   </CardBody>
                 </Card>
-              </Link>
-            </motion.div>
-          );
-        })}
-      </div>
 
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <h2 className="text-lg font-semibold text-gray-900">
-            Recent Report Activity
-          </h2>
-        </CardHeader>
-        <CardBody>
-          <div className="space-y-4">
-            {recentActivities.map((activity, index) => {
-              const Icon = activity.icon;
-              return (
-                <motion.div
-                  key={activity.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.6 + index * 0.1 }}
-                  className="flex items-center justify-between"
-                >
-                  <div className="flex items-center">
-                    <div
-                      className={`w-2 h-2 rounded-full mr-3 ${
-                        getStatusColor(activity.status).split(" ")[1]
-                      }`}
-                    ></div>
-                    <Icon className="w-5 h-5 text-gray-400 mr-3" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {activity.title}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {activity.description}
-                      </p>
+                <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+                  <CardBody className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-green-100 text-sm">إجمالي الطلبات</p>
+                        <p className="text-2xl font-bold">{stats.totalOrders.toLocaleString()}</p>
+                        <p className="text-green-100 text-sm flex items-center mt-1">
+                          <TrendingUp className="w-3 h-3 ml-1" />
+                          +{stats.ordersGrowth}%
+                        </p>
+                      </div>
+                      <Package className="w-8 h-8 text-green-200" />
+                    </div>
+                  </CardBody>
+                </Card>
+
+                <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                  <CardBody className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-purple-100 text-sm">المتاجر النشطة</p>
+                        <p className="text-2xl font-bold">{stats.activeStores}</p>
+                        <p className="text-purple-100 text-sm flex items-center mt-1">
+                          <TrendingUp className="w-3 h-3 ml-1" />
+                          +{stats.storesGrowth}
+                        </p>
+                      </div>
+                      <Store className="w-8 h-8 text-purple-200" />
+                    </div>
+                  </CardBody>
+                </Card>
+
+                <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+                  <CardBody className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-orange-100 text-sm">متوسط قيمة الطلب</p>
+                        <p className="text-2xl font-bold">€{stats.avgOrderValue}</p>
+                        <p className="text-orange-100 text-sm flex items-center mt-1">
+                          <TrendingDown className="w-3 h-3 ml-1" />
+                          {stats.avgOrderGrowth}%
+                        </p>
+                      </div>
+                      <Target className="w-8 h-8 text-orange-200" />
+                    </div>
+                  </CardBody>
+                </Card>
+              </div>
+
+              {/* Quick Report Access */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView("distribution")}>
+                  <CardBody className="p-6 text-center">
+                    <FileText className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+                    <h3 className="font-semibold text-gray-900 mb-2">تقارير التوزيع</h3>
+                    <p className="text-sm text-gray-600">تقارير يومية وأسبوعية وشهرية</p>
+                  </CardBody>
+                </Card>
+
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView("maps")}>
+                  <CardBody className="p-6 text-center">
+                    <Map className="w-12 h-12 text-green-600 mx-auto mb-4" />
+                    <h3 className="font-semibold text-gray-900 mb-2">الخرائط والمسارات</h3>
+                    <p className="text-sm text-gray-600">تتبع وتحليل المسارات</p>
+                  </CardBody>
+                </Card>
+
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView("analytics")}>
+                  <CardBody className="p-6 text-center">
+                    <Brain className="w-12 h-12 text-purple-600 mx-auto mb-4" />
+                    <h3 className="font-semibold text-gray-900 mb-2">التحليلات المتقدمة</h3>
+                    <p className="text-sm text-gray-600">ذكاء الأعمال والتحليلات</p>
+                  </CardBody>
+                </Card>
+
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView("archive")}>
+                  <CardBody className="p-6 text-center">
+                    <Archive className="w-12 h-12 text-orange-600 mx-auto mb-4" />
+                    <h3 className="font-semibold text-gray-900 mb-2">أرشيف العمليات</h3>
+                    <p className="text-sm text-gray-600">أرشيف شامل للبيانات</p>
+                  </CardBody>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {/* Distribution Reports */}
+          {currentView === "distribution" && <ReportsSystem />}
+
+          {/* Maps and Routes */}
+          {currentView === "maps" && <MapsSystem />}
+
+          {/* Analytics */}
+          {currentView === "analytics" && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                    <Brain className="w-5 h-5 text-purple-600 ml-2" />
+                    التحليلات المتقدمة
+                  </h2>
+                </CardHeader>
+                <CardBody className="p-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Sales Overview */}
+                    <div className="bg-gray-50 rounded-lg p-6">
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">
+                        نظرة عامة على المبيعات
+                      </h3>
+                      <div className="flex items-center justify-center h-40 bg-white rounded border-2 border-dashed border-gray-300">
+                        <div className="text-center text-gray-500">
+                          <PieChart className="w-8 h-8 mx-auto mb-2" />
+                          <p>الرسم البياني سيظهر هنا</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Revenue Trends */}
+                    <div className="bg-gray-50 rounded-lg p-6">
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">
+                        اتجاهات الإيرادات
+                      </h3>
+                      <div className="flex items-center justify-center h-40 bg-white rounded border-2 border-dashed border-gray-300">
+                        <div className="text-center text-gray-500">
+                          <BarChart3 className="w-8 h-8 mx-auto mb-2" />
+                          <p>الرسم البياني سيظهر هنا</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Performance Metrics */}
+                    <div className="bg-gray-50 rounded-lg p-6">
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">
+                        مقاييس الأداء
+                      </h3>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">معدل النمو الشهري</span>
+                          <span className="font-semibold text-green-600">+{stats.salesGrowth}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">كفاءة التوزيع</span>
+                          <span className="font-semibold text-blue-600">87%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">رضا العملاء</span>
+                          <span className="font-semibold text-purple-600">4.2/5</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Top Products */}
+                    <div className="bg-gray-50 rounded-lg p-6">
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">
+                        المنتجات الأكثر مبيعاً
+                      </h3>
+                      <div className="text-center text-gray-500 py-8">
+                        لا توجد بيانات متاحة
+                      </div>
                     </div>
                   </div>
-                  <span className="text-xs text-gray-500">
-                    {activity.amount}
-                  </span>
-                </motion.div>
-              );
-            })}
-          </div>
-        </CardBody>
-      </Card>
+                </CardBody>
+              </Card>
+            </div>
+          )}
+
+          {/* Archive */}
+          {currentView === "archive" && <ArchiveSystem />}
+        </motion.div>
+      </div>
     </div>
   );
 };
