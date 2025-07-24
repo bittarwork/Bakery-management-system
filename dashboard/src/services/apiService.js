@@ -1,14 +1,31 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import { toast } from 'react-hot-toast';
+import { getApiUrl } from '../config/config.js';
 
-// API Configuration - Railway production only
+// API Configuration with dynamic URL
 const API_CONFIG = {
-    baseURL: 'https://bakery-management-system-production.up.railway.app/api',
+    baseURL: getApiUrl(),
     timeout: 45000, // Increased timeout for Railway
-    retryAttempts: 5, // More retry attempts
+    retryAttempts: 5, // More retry attempts  
     retryDelay: 1500, // Longer delay between retries
     maxRetryDelay: 10000 // Maximum delay cap
+};
+
+// Fallback API Client for local development
+let fallbackClient = null;
+const createFallbackClient = () => {
+    if (!fallbackClient) {
+        fallbackClient = axios.create({
+            baseURL: 'http://localhost:5001/api',
+            timeout: 10000,
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+    }
+    return fallbackClient;
 };
 
 // Create axios instance
@@ -53,6 +70,12 @@ apiClient.interceptors.response.use(
         // Log performance metrics in development
         if (process.env.NODE_ENV === 'development') {
             console.log(`API ${response.config.method?.toUpperCase()} ${response.config.url} - ${duration}ms`);
+        }
+
+        // Check if response is HTML instead of JSON
+        if (response.headers['content-type']?.includes('text/html')) {
+            console.error('Received HTML response instead of JSON:', response.config.url);
+            throw new Error('Server returned HTML instead of JSON - Check API server status');
         }
 
         return response;
@@ -190,6 +213,32 @@ const retryRequest = async (requestFn, maxRetries = API_CONFIG.retryAttempts) =>
             console.log(`🔄 Request attempt ${i + 1}/${maxRetries} failed:`, error.response?.status || error.code);
 
             if (i === maxRetries - 1 || !isRetryableError) {
+                // Try fallback to local server if in development and main server fails
+                if (process.env.NODE_ENV === 'development' && 
+                    (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') &&
+                    !originalRequest._fallbackAttempted) {
+                    
+                    console.log('🔄 Attempting fallback to local server...');
+                    try {
+                        const fallback = createFallbackClient();
+                        const token = Cookies.get('auth_token');
+                        if (token) {
+                            fallback.defaults.headers.Authorization = `Bearer ${token}`;
+                        }
+                        
+                        originalRequest._fallbackAttempted = true;
+                        const fallbackResponse = await fallback.request({
+                            ...originalRequest,
+                            baseURL: 'http://localhost:5001/api'
+                        });
+                        
+                        console.log('✅ Fallback to local server succeeded');
+                        return fallbackResponse;
+                    } catch (fallbackError) {
+                        console.log('❌ Fallback to local server also failed:', fallbackError.message);
+                    }
+                }
+
                 // Create user-friendly error messages
                 if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
                     throw new Error('لا يمكن الاتصال بالخادم. تحقق من اتصال الإنترنت أو أن الخادم متاح.');

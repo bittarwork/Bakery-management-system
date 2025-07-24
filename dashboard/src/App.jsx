@@ -67,8 +67,7 @@ import PricingManagementPage from "./pages/pricing/PricingManagementPage";
 // Pages - Distributor Management (Phase 6)
 import DistributorManagementPage from "./pages/distributors/DistributorManagementPage";
 
-// Pages - Auto Scheduling
-// import AutoSchedulingReviewPage from "./pages/scheduling/AutoSchedulingReviewPage";
+
 
 // Pages - Error
 import NotFoundPage from "./pages/error/NotFoundPage";
@@ -976,27 +975,7 @@ function App() {
               }
             />
 
-            {/* Auto-Scheduling Routes */}
-            {/* <Route
-              path="/scheduling/auto-review"
-              element={
-                <ProtectedRoute requiredRole="admin">
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <AutoSchedulingReviewPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            /> */}
+
 
             {/* Default routes */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

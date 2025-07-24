@@ -36,58 +36,55 @@ const DashboardLayout = ({ children }) => {
   const location = useLocation();
   const { user, logout } = useAuthStore();
 
-  // Group navigation items into sections for better organization
+  // Enhanced navigation structure with better organization and descriptions
   const navigationSections = [
     {
       id: "main",
-      title: "القائمة الرئيسية",
+      title: "لوحة التحكم الرئيسية",
       items: [
-        { name: "لوحة التحكم", path: "/dashboard", icon: LayoutDashboard },
-        { name: "الإحصائيات", path: "/analytics", icon: BarChart3 },
-        { name: "التوزيع", path: "/distribution", icon: Truck },
+        { name: "الصفحة الرئيسية", path: "/dashboard", icon: LayoutDashboard },
+        { name: "التحليلات والإحصائيات", path: "/analytics", icon: BarChart3 },
+        { name: "نظام التوزيع المتقدم", path: "/distribution", icon: Truck },
       ],
     },
     {
-      id: "orders",
-      title: "إدارة الطلبات",
+      id: "core_operations",
+      title: "العمليات الأساسية",
       items: [
-        { name: "الطلبات", path: "/orders", icon: Package },
-        { name: "تقارير الطلبات", path: "/orders/reports", icon: FileText },
-        { name: "المدفوعات", path: "/payments", icon: CreditCard },
+        { name: "إدارة الطلبات", path: "/orders", icon: Package },
+        { name: "إدارة المنتجات", path: "/products", icon: ShoppingBag },
+        { name: "إدارة المتاجر", path: "/stores", icon: Store },
+        { name: "إدارة المستخدمين", path: "/users", icon: Users },
       ],
     },
     {
-      id: "management",
-      title: "إدارة النظام",
+      id: "financial",
+      title: "الإدارة المالية",
       items: [
-        { name: "المتاجر", path: "/stores", icon: Store },
-        { name: "المنتجات", path: "/products", icon: ShoppingBag },
-        { name: "المستخدمون", path: "/users", icon: Users },
-        { name: "إدارة التسعير", path: "/pricing", icon: Euro },
+        { name: "المدفوعات والفواتير", path: "/payments", icon: CreditCard },
+        { name: "إدارة الأسعار", path: "/pricing", icon: Euro },
+      ],
+    },
+    {
+      id: "distribution_management",
+      title: "إدارة التوزيع",
+      items: [
         { name: "إدارة الموزعين", path: "/distributors", icon: UserCheck },
-      ],
-    },
-    {
-      id: "scheduling",
-      title: "الجدولة والتسليم",
-      items: [
         { name: "جدولة التسليم", path: "/delivery", icon: CalendarClock },
-        {
-          name: "مراجعة الجدولة التلقائية",
-          path: "/scheduling/auto-review",
-          icon: Brain,
-        },
       ],
     },
     {
       id: "reports",
-      title: "التقارير والتحليلات",
-      items: [{ name: "التقارير", path: "/reports", icon: FileText }],
+      title: "التقارير المتقدمة",
+      items: [
+        { name: "التقارير الشاملة", path: "/reports", icon: FileText },
+        { name: "تقارير الطلبات", path: "/orders/reports", icon: BarChart3 },
+      ],
     },
     {
       id: "settings",
-      title: "الإعدادات",
-      items: [{ name: "الإعدادات", path: "/settings", icon: Settings }],
+      title: "إعدادات النظام",
+      items: [{ name: "الإعدادات العامة", path: "/settings", icon: Settings }],
     },
   ];
 

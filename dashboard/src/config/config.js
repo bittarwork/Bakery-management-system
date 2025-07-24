@@ -9,8 +9,8 @@ const config = {
     // Auto-detect local vs production
     IS_DEVELOPMENT: import.meta.env.DEV || window.location.hostname === 'localhost',
 
-    // Disable local fallback - always use Railway server
-    USE_LOCAL_FALLBACK: false,
+    // Enable local fallback for better development experience
+    USE_LOCAL_FALLBACK: true,
 
     // API endpoints
     ENDPOINTS: {
@@ -59,7 +59,12 @@ const config = {
 
 // Get the appropriate API URL based on environment
 export const getApiUrl = () => {
-    // Always use Railway production server
+    // Use local server in development if available and fallback is enabled
+    if (config.IS_DEVELOPMENT && config.USE_LOCAL_FALLBACK) {
+        return config.LOCAL_API_URL;
+    }
+    
+    // Otherwise use production server
     return config.API_BASE_URL;
 };
 

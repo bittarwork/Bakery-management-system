@@ -36,7 +36,6 @@ import {
   AlertCircle,
   Award,
   DollarSign,
-  Store,
   Navigation,
   Timer,
   Coffee,
@@ -54,7 +53,7 @@ import LiveDistributorTracking from "../../components/distribution/LiveDistribut
  */
 const DistributionManagerDashboard = () => {
   const navigate = useNavigate();
-  
+
   // Main states
   const [currentView, setCurrentView] = useState("overview");
   const [isLoading, setIsLoading] = useState(true);
@@ -100,19 +99,70 @@ const DistributionManagerDashboard = () => {
           onTimeDeliveryRate: 89,
         },
         dailyOrders: [
-          { id: 1, orderNumber: "ORD-001", store: "متجر الصباح", status: "pending", amount: 245.50 },
-          { id: 2, orderNumber: "ORD-002", store: "مخبز النور", status: "delivered", amount: 180.25 },
-          { id: 3, orderNumber: "ORD-003", store: "متجر السلام", status: "in_progress", amount: 320.00 },
+          {
+            id: 1,
+            orderNumber: "ORD-001",
+            store: "متجر الصباح",
+            status: "pending",
+            amount: 245.5,
+          },
+          {
+            id: 2,
+            orderNumber: "ORD-002",
+            store: "مخبز النور",
+            status: "delivered",
+            amount: 180.25,
+          },
+          {
+            id: 3,
+            orderNumber: "ORD-003",
+            store: "متجر السلام",
+            status: "in_progress",
+            amount: 320.0,
+          },
         ],
         distributors: [
-          { id: 1, name: "أحمد محمد", status: "active", orders: 12, location: "وسط البلد" },
-          { id: 2, name: "سارة أحمد", status: "active", orders: 8, location: "الحمرا" },
-          { id: 3, name: "محمد علي", status: "break", orders: 15, location: "الأشرفية" },
+          {
+            id: 1,
+            name: "أحمد محمد",
+            status: "active",
+            orders: 12,
+            location: "وسط البلد",
+          },
+          {
+            id: 2,
+            name: "سارة أحمد",
+            status: "active",
+            orders: 8,
+            location: "الحمرا",
+          },
+          {
+            id: 3,
+            name: "محمد علي",
+            status: "break",
+            orders: 15,
+            location: "الأشرفية",
+          },
         ],
         notifications: [
-          { id: 1, type: "warning", message: "تأخير في التسليم - الطلب #ORD-001", time: "10 دقائق" },
-          { id: 2, type: "success", message: "تم تسليم الطلب #ORD-002 بنجاح", time: "15 دقيقة" },
-          { id: 3, type: "info", message: "موزع جديد انضم للفريق", time: "30 دقيقة" },
+          {
+            id: 1,
+            type: "warning",
+            message: "تأخير في التسليم - الطلب #ORD-001",
+            time: "10 دقائق",
+          },
+          {
+            id: 2,
+            type: "success",
+            message: "تم تسليم الطلب #ORD-002 بنجاح",
+            time: "15 دقيقة",
+          },
+          {
+            id: 3,
+            type: "info",
+            message: "موزع جديد انضم للفريق",
+            time: "30 دقيقة",
+          },
         ],
       };
 
@@ -137,11 +187,11 @@ const DistributionManagerDashboard = () => {
 
   // Helper function to parse JSON safely
   const parseJsonSafely = (response) => {
-    if (typeof response === 'string') {
+    if (typeof response === "string") {
       try {
         return JSON.parse(response);
       } catch (error) {
-        console.warn('Failed to parse JSON response:', error);
+        console.warn("Failed to parse JSON response:", error);
         return null;
       }
     }
@@ -149,7 +199,15 @@ const DistributionManagerDashboard = () => {
   };
 
   // Quick action cards for main sections
-  const QuickActionCard = ({ title, description, icon: Icon, color, count, route, onClick }) => (
+  const QuickActionCard = ({
+    title,
+    description,
+    icon: Icon,
+    color,
+    count,
+    route,
+    onClick,
+  }) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -188,7 +246,9 @@ const DistributionManagerDashboard = () => {
             <p className="text-gray-600 text-sm font-medium">{title}</p>
             <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
             {change && (
-              <p className="text-sm text-green-600 font-medium mt-1">{change}</p>
+              <p className="text-sm text-green-600 font-medium mt-1">
+                {change}
+              </p>
             )}
           </div>
           <div className={`p-3 rounded-lg bg-${color}-100`}>
@@ -217,7 +277,6 @@ const DistributionManagerDashboard = () => {
     { key: "overview", label: "نظرة عامة", icon: BarChart3 },
     { key: "dailyOps", label: "العمليات اليومية", icon: Coffee },
     { key: "tracking", label: "التتبع المباشر", icon: Navigation },
-    { key: "stores", label: "إدارة المحلات", icon: Store },
   ];
 
   // Quick actions for specialized pages
@@ -228,7 +287,7 @@ const DistributionManagerDashboard = () => {
       icon: FileText,
       color: "blue",
       count: "12",
-      route: "/distribution/reports"
+      route: "/distribution/reports",
     },
     {
       title: "الخرائط والمسارات",
@@ -236,7 +295,7 @@ const DistributionManagerDashboard = () => {
       icon: Map,
       color: "green",
       count: "8",
-      route: "/distribution/maps"
+      route: "/distribution/maps",
     },
     {
       title: "أرشيف العمليات",
@@ -244,8 +303,8 @@ const DistributionManagerDashboard = () => {
       icon: Archive,
       color: "purple",
       count: "156",
-      route: "/distribution/archive"
-    }
+      route: "/distribution/archive",
+    },
   ];
 
   if (isLoading) {
@@ -342,7 +401,9 @@ const DistributionManagerDashboard = () => {
             <div className="space-y-6">
               {/* Quick Actions for Specialized Pages */}
               <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-4">الأقسام الرئيسية</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-4">
+                  الأقسام الرئيسية
+                </h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {quickActions.map((action, index) => (
                     <QuickActionCard key={index} {...action} />
@@ -352,7 +413,9 @@ const DistributionManagerDashboard = () => {
 
               {/* Statistics */}
               <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-4">إحصائيات اليوم</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-4">
+                  إحصائيات اليوم
+                </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <StatCard
                     title="إجمالي الطلبات"
@@ -397,20 +460,36 @@ const DistributionManagerDashboard = () => {
                   <CardBody className="p-6">
                     <div className="space-y-4">
                       {dashboardData.dailyOrders.map((order) => (
-                        <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div
+                          key={order.id}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                        >
                           <div>
-                            <p className="font-semibold text-gray-900">{order.orderNumber}</p>
-                            <p className="text-sm text-gray-600">{order.store}</p>
+                            <p className="font-semibold text-gray-900">
+                              {order.orderNumber}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {order.store}
+                            </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm font-semibold text-green-600">€{order.amount}</p>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                              order.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                              'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {order.status === 'delivered' ? 'مسلم' :
-                               order.status === 'in_progress' ? 'قيد التنفيذ' : 'معلق'}
+                            <p className="text-sm font-semibold text-green-600">
+                              €{order.amount}
+                            </p>
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                order.status === "delivered"
+                                  ? "bg-green-100 text-green-800"
+                                  : order.status === "in_progress"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                              }`}
+                            >
+                              {order.status === "delivered"
+                                ? "مسلم"
+                                : order.status === "in_progress"
+                                ? "قيد التنفيذ"
+                                : "معلق"}
                             </span>
                           </div>
                         </div>
@@ -429,21 +508,34 @@ const DistributionManagerDashboard = () => {
                   <CardBody className="p-6">
                     <div className="space-y-4">
                       {dashboardData.notifications.map((notification) => (
-                        <div key={notification.id} className="flex items-start p-3 bg-gray-50 rounded-lg">
-                          <div className={`p-1 rounded-full ml-3 ${
-                            notification.type === 'warning' ? 'bg-yellow-100' :
-                            notification.type === 'success' ? 'bg-green-100' : 'bg-blue-100'
-                          }`}>
-                            {notification.type === 'warning' ? 
-                              <AlertTriangle className="w-4 h-4 text-yellow-600" /> :
-                              notification.type === 'success' ?
-                              <CheckCircle className="w-4 h-4 text-green-600" /> :
+                        <div
+                          key={notification.id}
+                          className="flex items-start p-3 bg-gray-50 rounded-lg"
+                        >
+                          <div
+                            className={`p-1 rounded-full ml-3 ${
+                              notification.type === "warning"
+                                ? "bg-yellow-100"
+                                : notification.type === "success"
+                                ? "bg-green-100"
+                                : "bg-blue-100"
+                            }`}
+                          >
+                            {notification.type === "warning" ? (
+                              <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                            ) : notification.type === "success" ? (
+                              <CheckCircle className="w-4 h-4 text-green-600" />
+                            ) : (
                               <Bell className="w-4 h-4 text-blue-600" />
-                            }
+                            )}
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm text-gray-900">{notification.message}</p>
-                            <p className="text-xs text-gray-500 mt-1">منذ {notification.time}</p>
+                            <p className="text-sm text-gray-900">
+                              {notification.message}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              منذ {notification.time}
+                            </p>
                           </div>
                         </div>
                       ))}
@@ -455,9 +547,12 @@ const DistributionManagerDashboard = () => {
           )}
 
           {/* Other Views */}
-          {currentView === "dailyOps" && <DailyOperationsManager selectedDate={selectedDate} />}
-          {currentView === "tracking" && <LiveDistributorTracking selectedDate={selectedDate} />}
-          {currentView === "stores" && <StoreManagement selectedDate={selectedDate} />}
+          {currentView === "dailyOps" && (
+            <DailyOperationsManager selectedDate={selectedDate} />
+          )}
+          {currentView === "tracking" && (
+            <LiveDistributorTracking selectedDate={selectedDate} />
+          )}
         </motion.div>
       </div>
     </div>
