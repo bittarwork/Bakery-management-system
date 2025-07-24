@@ -929,7 +929,7 @@ export const assignStoreToDistributor = async (data) => {
 /**
  * Update store balance manually
  * @param {Object} data - Balance update data
- * @returns {Object} Balance update result
+ * @returns {Object} Update result
  */
 export const updateStoreBalanceManually = async (data) => {
     try {
@@ -940,41 +940,83 @@ export const updateStoreBalanceManually = async (data) => {
         await connection.beginTransaction();
 
         // Update store balance
-        const balanceField = currency === 'EUR' ? 'current_balance_eur' : 'current_balance_syp';
+        const amountEur = currency === 'EUR' ? amount : 0;
+        const amountSyp = currency === 'SYP' ? amount : 0;
 
         await connection.execute(`
             UPDATE stores 
-            SET ${balanceField} = ${balanceField} + ?,
-                updated_by = ?,
-                updated_by_name = (SELECT full_name FROM users WHERE id = ?),
+            SET balance_eur = balance_eur + ?,
+                balance_syp = balance_syp + ?,
                 updated_at = NOW()
             WHERE id = ?
-        `, [amount, updatedBy, updatedBy, storeId]);
+        `, [amountEur, amountSyp, storeId]);
 
         // Log the balance adjustment
         await connection.execute(`
             INSERT INTO balance_adjustments 
             (store_id, amount_eur, amount_syp, currency, reason, notes, adjusted_by, adjusted_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-        `, [storeId, amount, currency, reason, notes, updatedBy]);
+        `, [storeId, amountEur, amountSyp, currency, reason, notes, updatedBy]);
 
         await connection.commit();
 
         return {
-            store_id: storeId,
-            amount: amount,
-            currency: currency,
-            reason: reason,
-            notes: notes,
-            updated_by: updatedBy,
-            updated_at: new Date().toISOString()
+            success: true,
+            data: {
+                store_id: storeId,
+                amount: amount,
+                currency: currency,
+                reason: reason,
+                notes: notes,
+                updated_by: updatedBy,
+                updated_at: new Date().toISOString()
+            }
         };
 
     } catch (error) {
         const connection = await getDBConnection();
         await connection.rollback();
         console.error('Error updating store balance:', error);
-        throw new Error('خطأ في تحديث رصيد المحل');
+        throw new Error('Database query error in balance update');
+    }
+};
+
+/**
+ * Approve distributor report
+ * @param {Object} data - Approval data
+ * @returns {Object} Approval result
+ */
+export const approveDistributorReport = async (data) => {
+    try {
+        const { reportId, approved, notes, approvedBy } = data;
+        const connection = await getDBConnection();
+
+        const status = approved ? 'approved' : 'rejected';
+
+        // Update report status
+        await connection.execute(`
+            UPDATE daily_reports 
+            SET status = ?,
+                approval_notes = ?,
+                approved_by = ?,
+                approved_at = NOW()
+            WHERE id = ?
+        `, [status, notes, approvedBy, reportId]);
+
+        return {
+            success: true,
+            data: {
+                report_id: reportId,
+                status: status,
+                approval_notes: notes,
+                approved_by: approvedBy,
+                approved_at: new Date().toISOString()
+            }
+        };
+
+    } catch (error) {
+        console.error('Error approving distributor report:', error);
+        throw new Error('Database query error in report approval');
     }
 };
 
