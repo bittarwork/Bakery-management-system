@@ -415,15 +415,15 @@ const LiveDistributorTracking = ({ selectedDate }) => {
           <div className="flex items-center justify-between text-xs text-gray-500">
             <div className="flex items-center">
               <Battery className="w-3 h-3 ml-1" />
-              <span>{distributor.device_info.battery_level}%</span>
+              <span>{distributor.device_info?.battery_level || 'N/A'}%</span>
             </div>
             <div className="flex items-center">
               <Signal className="w-3 h-3 ml-1" />
-              <span>{distributor.device_info.signal_strength}/5</span>
+              <span>{distributor.device_info?.signal_strength || 0}/5</span>
             </div>
             <div className="flex items-center">
               <Clock className="w-3 h-3 ml-1" />
-              <span>آخر نشاط: {formatLastUpdate(distributor.device_info.last_online)}</span>
+              <span>آخر نشاط: {distributor.device_info?.last_online ? formatLastUpdate(distributor.device_info.last_online) : 'غير متاح'}</span>
             </div>
           </div>
         </div>
