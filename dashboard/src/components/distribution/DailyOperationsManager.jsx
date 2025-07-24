@@ -100,42 +100,26 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
     try {
       setIsLoading(true);
 
-      // Use the updated distribution service
-      const [
-        ordersRes,
-        storesRes,
-        productsRes,
-        distributorsRes,
-      ] = await Promise.all([
+      const [ordersRes, storesRes, productsRes, usersRes] = await Promise.all([
         distributionService.getDailyOrders(selectedDate),
-        storeService.getStores({ status: 'active' }),
-        productService.getProducts({ status: 'active', limit: 100 }),
-        userService.getUsers({ role: 'distributor', status: 'active' }),
+        storeService.getStores({ status: "active" }),
+        productService.getProducts(),
+        userService.getUsers({ role: "distributor", status: "active" }),
       ]);
 
-      // Process responses
-      if (ordersRes.success) {
-        setDailyOrders(ordersRes.data || []);
-      }
-
-      if (storesRes.success) {
-        setStores(storesRes.data?.stores || storesRes.data || []);
-      }
-
-      if (productsRes.success) {
-        setProducts(productsRes.data?.products || productsRes.data || []);
-      }
-
-      if (distributorsRes.success) {
-        setDistributors(distributorsRes.data?.users || distributorsRes.data || []);
-      }
+      // Extract data with proper structure
+      setDailyOrders(ordersRes.data?.orders || []);
+      setStores(storesRes.data || []);
+      setProducts(productsRes.data || []);
+      setDistributors(usersRes.data || []);
 
       // Get smart suggestions from distribution service
       try {
-        const suggestionsRes = await distributionService.getDistributionAnalytics('day', {
-          date: selectedDate,
-          type: 'suggestions'
-        });
+        const suggestionsRes =
+          await distributionService.getDistributionAnalytics("day", {
+            date: selectedDate,
+            type: "suggestions",
+          });
         if (suggestionsRes.success) {
           setSmartSuggestions(suggestionsRes.data.suggestions || []);
         }
@@ -362,7 +346,10 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
     try {
       setIsLoading(true);
 
-      const response = await distributionService.generateSchedules(selectedDate, []);
+      const response = await distributionService.generateSchedules(
+        selectedDate,
+        []
+      );
 
       if (response.success) {
         const result = response.data;

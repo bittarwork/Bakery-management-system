@@ -383,21 +383,17 @@ router.post('/manager/schedules/generate', authorize('manager', 'admin'), async 
     }
 });
 
-// @desc    Get real-time distribution tracking
 // @route   GET /api/distribution/manager/tracking/live
-// @access  Private (Manager/Admin)
+// @desc    Get live distribution tracking
 router.get('/manager/tracking/live', authorize('manager', 'admin'), async (req, res) => {
     try {
         const { date } = req.query;
 
-        // Get live tracking data
-        const tracking = await getLiveDistributionTracking(date);
+        // Get live tracking data - this already returns a success/data structure
+        const trackingResponse = await getLiveDistributionTracking(date);
 
-        res.json({
-            success: true,
-            data: tracking,
-            message: 'تم جلب متابعة التوزيع بنجاح'
-        });
+        // Return the response directly since it already has the proper structure
+        res.json(trackingResponse);
     } catch (error) {
         console.error('Get live tracking error:', error);
         res.status(500).json({
