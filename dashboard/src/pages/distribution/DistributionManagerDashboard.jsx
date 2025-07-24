@@ -43,6 +43,9 @@ import {
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
+import DailyOperationsManager from "../../components/distribution/DailyOperationsManager";
+import LiveDistributorTracking from "../../components/distribution/LiveDistributorTracking";
+import StoreManagement from "../../components/distribution/StoreManagement";
 
 /**
  * Distribution Manager Dashboard
@@ -54,9 +57,11 @@ const DistributionManagerDashboard = () => {
   const [currentView, setCurrentView] = useState("overview");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
 
-  // Data states  
+  // Data states
   const [dashboardData, setDashboardData] = useState({
     dailyOrders: [],
     distributors: [],
@@ -65,7 +70,7 @@ const DistributionManagerDashboard = () => {
     liveTracking: [],
     notifications: [],
     reports: [],
-    routes: []
+    routes: [],
   });
 
   // Filter states
@@ -74,13 +79,13 @@ const DistributionManagerDashboard = () => {
     distributor: "",
     store: "",
     status: "",
-    priority: ""
+    priority: "",
   });
 
   // Load dashboard data
   useEffect(() => {
     loadDashboardData();
-    
+
     // Set up real-time updates
     const interval = setInterval(loadLiveData, 30000); // Update every 30 seconds
     return () => clearInterval(interval);
@@ -92,22 +97,36 @@ const DistributionManagerDashboard = () => {
       setError("");
 
       // Load all data in parallel
-      const [ordersRes, distributorsRes, storesRes, statsRes, trackingRes, notificationsRes] = await Promise.all([
+      const [
+        ordersRes,
+        distributorsRes,
+        storesRes,
+        statsRes,
+        trackingRes,
+        notificationsRes,
+      ] = await Promise.all([
         fetch(`/api/distribution/daily-orders?date=${selectedDate}`),
         fetch("/api/distribution/distributors?status=active"),
         fetch("/api/stores?status=active"),
         fetch(`/api/distribution/statistics?date=${selectedDate}`),
         fetch("/api/distribution/live-tracking"),
-        fetch("/api/distribution/notifications?unread=true")
+        fetch("/api/distribution/notifications?unread=true"),
       ]);
 
-      const [orders, distributors, stores, statistics, tracking, notifications] = await Promise.all([
+      const [
+        orders,
+        distributors,
+        stores,
+        statistics,
+        tracking,
+        notifications,
+      ] = await Promise.all([
         ordersRes.json(),
         distributorsRes.json(),
         storesRes.json(),
         statsRes.json(),
         trackingRes.json(),
-        notificationsRes.json()
+        notificationsRes.json(),
       ]);
 
       setDashboardData({
@@ -118,24 +137,23 @@ const DistributionManagerDashboard = () => {
         liveTracking: tracking.data || [],
         notifications: notifications.data || [],
         reports: [],
-        routes: []
+        routes: [],
       });
-
     } catch (error) {
       console.error("Error loading dashboard data:", error);
       setError("خطأ في تحميل بيانات لوحة التحكم");
-      
+
       // Mock data for development
       setDashboardData({
         dailyOrders: [
           {
             id: 1,
             store_name: "متجر الصباح",
-            total_amount: 85.50,
+            total_amount: 85.5,
             items_count: 5,
             status: "pending",
             priority: "normal",
-            scheduled_delivery: "09:00"
+            scheduled_delivery: "09:00",
           },
           {
             id: 2,
@@ -144,8 +162,8 @@ const DistributionManagerDashboard = () => {
             items_count: 8,
             status: "confirmed",
             priority: "high",
-            scheduled_delivery: "08:30"
-          }
+            scheduled_delivery: "08:30",
+          },
         ],
         distributors: [
           {
@@ -155,7 +173,7 @@ const DistributionManagerDashboard = () => {
             max_capacity: 15,
             current_location: "المنطقة الشمالية",
             status: "active",
-            completion_rate: 95.5
+            completion_rate: 95.5,
           },
           {
             id: 2,
@@ -164,8 +182,8 @@ const DistributionManagerDashboard = () => {
             max_capacity: 18,
             current_location: "المنطقة الجنوبية",
             status: "active",
-            completion_rate: 88.2
-          }
+            completion_rate: 88.2,
+          },
         ],
         stores: [
           {
@@ -174,16 +192,16 @@ const DistributionManagerDashboard = () => {
             last_order: "2024-01-15",
             payment_status: "paid",
             avg_order_value: 75.25,
-            total_orders: 156
-          }
+            total_orders: 156,
+          },
         ],
         statistics: {
           total_orders: 45,
           completed_orders: 38,
           pending_orders: 7,
-          total_revenue: 2850.50,
+          total_revenue: 2850.5,
           active_distributors: 3,
-          delivery_completion_rate: 84.4
+          delivery_completion_rate: 84.4,
         },
         liveTracking: [],
         notifications: [
@@ -192,9 +210,9 @@ const DistributionManagerDashboard = () => {
             type: "delay",
             message: "الموزع أحمد محمد متأخر عن الموعد المحدد",
             store: "متجر الصباح",
-            time: "10:30"
-          }
-        ]
+            time: "10:30",
+          },
+        ],
       });
     } finally {
       setIsLoading(false);
@@ -204,17 +222,19 @@ const DistributionManagerDashboard = () => {
   const loadLiveData = async () => {
     try {
       const trackingRes = await fetch("/api/distribution/live-tracking");
-      const notificationsRes = await fetch("/api/distribution/notifications?unread=true");
-      
+      const notificationsRes = await fetch(
+        "/api/distribution/notifications?unread=true"
+      );
+
       const [tracking, notifications] = await Promise.all([
         trackingRes.json(),
-        notificationsRes.json()
+        notificationsRes.json(),
       ]);
 
-      setDashboardData(prev => ({
+      setDashboardData((prev) => ({
         ...prev,
         liveTracking: tracking.data || [],
-        notifications: notifications.data || []
+        notifications: notifications.data || [],
       }));
     } catch (error) {
       console.warn("Error updating live data:", error);
@@ -244,7 +264,9 @@ const DistributionManagerDashboard = () => {
         />
         <StatCard
           title="إجمالي الإيرادات"
-          value={`€${parseFloat(dashboardData.statistics.total_revenue || 0).toFixed(2)}`}
+          value={`€${parseFloat(
+            dashboardData.statistics.total_revenue || 0
+          ).toFixed(2)}`}
           change="+8%"
           changeType="positive"
           icon={Euro}
@@ -252,7 +274,9 @@ const DistributionManagerDashboard = () => {
         />
         <StatCard
           title="معدل إكمال التوصيل"
-          value={`${parseFloat(dashboardData.statistics.delivery_completion_rate || 0).toFixed(1)}%`}
+          value={`${parseFloat(
+            dashboardData.statistics.delivery_completion_rate || 0
+          ).toFixed(1)}%`}
           change="-2%"
           changeType="negative"
           icon={Target}
@@ -307,96 +331,25 @@ const DistributionManagerDashboard = () => {
   );
 
   const DailyOperations = () => (
-    <div className="space-y-6">
-      {/* Orders Management */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-gray-900 flex items-center">
-              <Coffee className="w-6 h-6 text-blue-600 ml-2" />
-              العمليات اليومية - {new Date(selectedDate).toLocaleDateString('ar-SA')}
-            </h3>
-            <div className="flex items-center gap-3">
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <EnhancedButton
-                onClick={() => setCurrentView("createSchedule")}
-                variant="primary"
-                icon={<Plus className="w-4 h-4" />}
-              >
-                إنشاء جداول التوزيع
-              </EnhancedButton>
-            </div>
-          </div>
-        </CardHeader>
-        <CardBody className="p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Today's Orders */}
-            <div>
-              <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Package className="w-5 h-5 text-blue-600 ml-2" />
-                طلبات اليوم ({dashboardData.dailyOrders.length})
-              </h4>
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {dashboardData.dailyOrders.map((order) => (
-                  <OrderCard key={order.id} order={order} />
-                ))}
-              </div>
-            </div>
-
-            {/* Smart Suggestions */}
-            <div>
-              <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Star className="w-5 h-5 text-yellow-600 ml-2" />
-                اقتراحات ذكية
-              </h4>
-              <div className="space-y-3">
-                <SuggestionCard
-                  title="محلات لم تطلب اليوم"
-                  description="3 محلات لم تضع طلبات اليوم"
-                  action="عرض التفاصيل"
-                  type="warning"
-                />
-                <SuggestionCard
-                  title="اقتراح كميات تلقائية"
-                  description="تم اقتراح كميات لـ5 محلات"
-                  action="مراجعة الاقتراحات"
-                  type="info"
-                />
-              </div>
-            </div>
-          </div>
-        </CardBody>
-      </Card>
-    </div>
+    <DailyOperationsManager
+      selectedDate={selectedDate}
+      onDateChange={setSelectedDate}
+    />
   );
 
   const LiveTracking = () => (
-    <div className="space-y-6">
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
-          <h3 className="text-xl font-bold text-gray-900 flex items-center">
-            <Navigation className="w-6 h-6 text-green-600 ml-2" />
-            متابعة الموزعين المباشرة
-          </h3>
-        </CardHeader>
-        <CardBody className="p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {dashboardData.distributors.map((distributor) => (
-              <DistributorCard key={distributor.id} distributor={distributor} />
-            ))}
-          </div>
-        </CardBody>
-      </Card>
-    </div>
+    <LiveDistributorTracking selectedDate={selectedDate} />
   );
 
   // Helper components
-  const StatCard = ({ title, value, change, changeType, icon: Icon, color }) => (
+  const StatCard = ({
+    title,
+    value,
+    change,
+    changeType,
+    icon: Icon,
+    color,
+  }) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -413,9 +366,13 @@ const DistributionManagerDashboard = () => {
           </div>
         </div>
         <div className="flex items-center mt-3">
-          <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-            changeType === 'positive' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-          }`}>
+          <span
+            className={`text-xs font-medium px-2 py-1 rounded-full ${
+              changeType === "positive"
+                ? "bg-green-100 text-green-800"
+                : "bg-red-100 text-red-800"
+            }`}
+          >
             {change}
           </span>
           <span className="text-white/80 text-xs mr-2">من الأمس</span>
@@ -430,17 +387,26 @@ const DistributionManagerDashboard = () => {
         <div>
           <h5 className="font-semibold text-gray-900">{order.store_name}</h5>
           <p className="text-sm text-gray-600">
-            {order.items_count} منتج - €{parseFloat(order.total_amount).toFixed(2)}
+            {order.items_count} منتج - €
+            {parseFloat(order.total_amount).toFixed(2)}
           </p>
           <p className="text-xs text-gray-500 mt-1">
             موعد التوصيل: {order.scheduled_delivery}
           </p>
         </div>
         <div className="text-left">
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+              order.status
+            )}`}
+          >
             {getStatusText(order.status)}
           </span>
-          <span className={`block mt-1 px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(order.priority)}`}>
+          <span
+            className={`block mt-1 px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
+              order.priority
+            )}`}
+          >
             {getPriorityText(order.priority)}
           </span>
         </div>
@@ -457,33 +423,47 @@ const DistributionManagerDashboard = () => {
           </div>
           <div>
             <h5 className="font-semibold text-gray-900">{distributor.name}</h5>
-            <p className="text-sm text-gray-600">{distributor.current_location}</p>
+            <p className="text-sm text-gray-600">
+              {distributor.current_location}
+            </p>
           </div>
         </div>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          distributor.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-        }`}>
-          {distributor.status === 'active' ? 'نشط' : 'غير نشط'}
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-medium ${
+            distributor.status === "active"
+              ? "bg-green-100 text-green-800"
+              : "bg-gray-100 text-gray-800"
+          }`}
+        >
+          {distributor.status === "active" ? "نشط" : "غير نشط"}
         </span>
       </div>
-      
+
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">الحمولة الحالية:</span>
-          <span className="font-medium">{distributor.current_load}/{distributor.max_capacity}</span>
+          <span className="font-medium">
+            {distributor.current_load}/{distributor.max_capacity}
+          </span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div
             className="bg-blue-600 h-2 rounded-full"
-            style={{ width: `${(distributor.current_load / distributor.max_capacity) * 100}%` }}
+            style={{
+              width: `${
+                (distributor.current_load / distributor.max_capacity) * 100
+              }%`,
+            }}
           />
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">معدل الإكمال:</span>
-          <span className="font-medium text-green-600">{distributor.completion_rate}%</span>
+          <span className="font-medium text-green-600">
+            {distributor.completion_rate}%
+          </span>
         </div>
       </div>
-      
+
       <div className="flex gap-2 mt-4">
         <EnhancedButton size="sm" variant="primary" className="flex-1">
           تتبع مباشر
@@ -496,12 +476,19 @@ const DistributionManagerDashboard = () => {
   );
 
   const SuggestionCard = ({ title, description, action, type }) => (
-    <div className={`rounded-lg p-4 border-l-4 ${
-      type === 'warning' ? 'bg-yellow-50 border-yellow-400' : 'bg-blue-50 border-blue-400'
-    }`}>
+    <div
+      className={`rounded-lg p-4 border-l-4 ${
+        type === "warning"
+          ? "bg-yellow-50 border-yellow-400"
+          : "bg-blue-50 border-blue-400"
+      }`}
+    >
       <h5 className="font-semibold text-gray-900 mb-1">{title}</h5>
       <p className="text-sm text-gray-600 mb-3">{description}</p>
-      <EnhancedButton size="sm" variant={type === 'warning' ? 'warning' : 'primary'}>
+      <EnhancedButton
+        size="sm"
+        variant={type === "warning" ? "warning" : "primary"}
+      >
         {action}
       </EnhancedButton>
     </div>
@@ -511,9 +498,9 @@ const DistributionManagerDashboard = () => {
   const getColorGradient = (color) => {
     const gradients = {
       blue: "from-blue-600 to-blue-700",
-      green: "from-green-600 to-green-700", 
+      green: "from-green-600 to-green-700",
       purple: "from-purple-600 to-purple-700",
-      orange: "from-orange-600 to-orange-700"
+      orange: "from-orange-600 to-orange-700",
     };
     return gradients[color] || gradients.blue;
   };
@@ -524,7 +511,7 @@ const DistributionManagerDashboard = () => {
       confirmed: "bg-blue-100 text-blue-800",
       in_progress: "bg-purple-100 text-purple-800",
       completed: "bg-green-100 text-green-800",
-      cancelled: "bg-red-100 text-red-800"
+      cancelled: "bg-red-100 text-red-800",
     };
     return colors[status] || colors.pending;
   };
@@ -535,7 +522,7 @@ const DistributionManagerDashboard = () => {
       confirmed: "مؤكد",
       in_progress: "قيد التنفيذ",
       completed: "مكتمل",
-      cancelled: "ملغي"
+      cancelled: "ملغي",
     };
     return texts[status] || "غير معروف";
   };
@@ -545,7 +532,7 @@ const DistributionManagerDashboard = () => {
       low: "bg-gray-100 text-gray-800",
       normal: "bg-blue-100 text-blue-800",
       high: "bg-orange-100 text-orange-800",
-      urgent: "bg-red-100 text-red-800"
+      urgent: "bg-red-100 text-red-800",
     };
     return colors[priority] || colors.normal;
   };
@@ -555,7 +542,7 @@ const DistributionManagerDashboard = () => {
       low: "منخفض",
       normal: "عادي",
       high: "عالي",
-      urgent: "عاجل"
+      urgent: "عاجل",
     };
     return texts[priority] || "عادي";
   };
@@ -568,11 +555,13 @@ const DistributionManagerDashboard = () => {
     { key: "stores", label: "إدارة المحلات", icon: Store },
     { key: "reports", label: "التقارير", icon: FileText },
     { key: "maps", label: "الخرائط والمسارات", icon: Map },
-    { key: "archive", label: "الأرشيف", icon: Archive }
+    { key: "archive", label: "الأرشيف", icon: Archive },
   ];
 
   if (isLoading) {
-    return <LoadingSpinner fullScreen text="جاري تحميل لوحة التحكم..." size="lg" />;
+    return (
+      <LoadingSpinner fullScreen text="جاري تحميل لوحة التحكم..." size="lg" />
+    );
   }
 
   return (
@@ -596,11 +585,11 @@ const DistributionManagerDashboard = () => {
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                <Clock className="w-4 h-4 text-gray-600 ml-2" /> 
+                <Clock className="w-4 h-4 text-gray-600 ml-2" />
                 <span className="text-sm font-medium">
-                  {new Date().toLocaleTimeString('ar-SA', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
+                  {new Date().toLocaleTimeString("ar-SA", {
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
                 </span>
               </div>
@@ -662,30 +651,32 @@ const DistributionManagerDashboard = () => {
           {currentView === "dailyOps" && <DailyOperations />}
           {currentView === "tracking" && <LiveTracking />}
           {currentView === "stores" && (
-            <div className="text-center py-12">
-              <Store className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">إدارة المحلات</h3>
-              <p className="text-gray-600">قيد التطوير...</p>
-            </div>
+            <StoreManagement selectedDate={selectedDate} />
           )}
           {currentView === "reports" && (
             <div className="text-center py-12">
               <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">التقارير</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                التقارير
+              </h3>
               <p className="text-gray-600">قيد التطوير...</p>
             </div>
           )}
           {currentView === "maps" && (
             <div className="text-center py-12">
               <Map className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">الخرائط والمسارات</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                الخرائط والمسارات
+              </h3>
               <p className="text-gray-600">قيد التطوير...</p>
             </div>
           )}
           {currentView === "archive" && (
             <div className="text-center py-12">
               <Archive className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">الأرشيف</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                الأرشيف
+              </h3>
               <p className="text-gray-600">قيد التطوير...</p>
             </div>
           )}
@@ -695,4 +686,4 @@ const DistributionManagerDashboard = () => {
   );
 };
 
-export default DistributionManagerDashboard; 
+export default DistributionManagerDashboard;

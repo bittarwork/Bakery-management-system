@@ -20,6 +20,7 @@ import DistributionOverviewPage from "./pages/distribution/DistributionOverviewP
 import DistributionSchedulePage from "./pages/distribution/DistributionSchedulePage";
 import DistributionTrackingPage from "./pages/distribution/DistributionTrackingPage";
 import DistributionReportsPage from "./pages/distribution/DistributionReportsPage";
+import DistributionManagerDashboard from "./pages/distribution/DistributionManagerDashboard";
 
 // Pages - Orders
 import OrdersListPage from "./pages/orders/OrdersListPage";
@@ -72,7 +73,7 @@ import DeliverySchedulingPage from "./pages/delivery/EnhancedDeliverySchedulingP
 import DeliveryConfirmationPage from "./pages/delivery/DeliveryConfirmationPage";
 
 // Pages - Auto Scheduling
-import AutoSchedulingReviewPage from "./pages/scheduling/AutoSchedulingReviewPage";
+// import AutoSchedulingReviewPage from "./pages/scheduling/AutoSchedulingReviewPage";
 
 // Pages - Error
 import NotFoundPage from "./pages/error/NotFoundPage";
@@ -246,6 +247,27 @@ function App() {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <DistributionOverviewPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/distribution/manager"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <DistributionManagerDashboard />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>
@@ -952,7 +974,7 @@ function App() {
             />
 
             {/* Auto-Scheduling Routes */}
-            <Route
+            {/* <Route
               path="/scheduling/auto-review"
               element={
                 <ProtectedRoute requiredRole="admin">
@@ -971,7 +993,7 @@ function App() {
                   </DashboardLayout>
                 </ProtectedRoute>
               }
-            />
+            /> */}
 
             {/* Default routes */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

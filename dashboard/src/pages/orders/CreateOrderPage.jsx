@@ -28,7 +28,6 @@ import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import orderService from "../../services/orderService";
 import productService from "../../services/productService";
 import storeService from "../../services/storeService";
-import autoSchedulingService from "../../services/autoSchedulingService";
 import { toast } from "react-hot-toast";
 
 const CreateOrderPage = () => {
