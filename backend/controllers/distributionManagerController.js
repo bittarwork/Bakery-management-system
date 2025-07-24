@@ -8,16 +8,24 @@ const getDBConnection = async () => {
     if (!db) {
         try {
             db = await mysql.createConnection({
-                host: process.env.DB_HOST || 'localhost',
+                host: process.env.DB_HOST || 'shinkansen.proxy.rlwy.net',
                 user: process.env.DB_USER || 'root',
-                password: process.env.DB_PASSWORD || '',
-                database: process.env.DB_NAME || 'bakery_db',
-                connectTimeout: 10000,
-                acquireTimeout: 10000,
-                timeout: 10000
+                password: process.env.DB_PASSWORD || 'ZEsGFfzwlnsvgvcUiNsvGraAKFnuVZRA',
+                database: process.env.DB_NAME || 'railway',
+                port: process.env.DB_PORT || 24785,
+                connectTimeout: 30000,
+                // Removed invalid options: acquireTimeout and timeout
+                ssl: false,
+                timezone: '+00:00'
             });
+
+            // Test connection
+            await db.ping();
+            console.log('✅ Database connected successfully in distributionManagerController');
+
         } catch (error) {
-            console.error('Database connection failed in distributionManagerController:', error.message);
+            console.error('❌ Database connection failed in distributionManagerController:', error.message);
+            db = null;
             throw new Error('Database connection unavailable');
         }
     }
@@ -98,36 +106,50 @@ export const getDailyOrdersForProcessing = async (date) => {
         `, orderIds);
 
         // Group items by order
-        const orderItems = {};
+        const itemsByOrder = {};
         itemRows.forEach(item => {
-            if (!orderItems[item.order_id]) {
-                orderItems[item.order_id] = [];
+            if (!itemsByOrder[item.order_id]) {
+                itemsByOrder[item.order_id] = [];
             }
-            orderItems[item.order_id].push(item);
+            itemsByOrder[item.order_id].push({
+                product_id: item.product_id,
+                product_name: item.product_name,
+                category: item.category,
+                quantity: item.quantity,
+                unit: item.unit,
+                unit_price_eur: parseFloat(item.unit_price_eur),
+                unit_price_syp: parseFloat(item.unit_price_syp),
+                total_price_eur: parseFloat(item.total_price_eur),
+                total_price_syp: parseFloat(item.total_price_syp)
+            });
         });
 
-        // Combine orders with items
-        const orders = orderRows.map(order => ({
+        // Add items to orders
+        const ordersWithItems = orderRows.map(order => ({
             ...order,
-            gps_coordinates: order.gps_coordinates ? JSON.parse(order.gps_coordinates) : null,
-            items: orderItems[order.id] || []
+            total_amount_eur: parseFloat(order.total_amount_eur),
+            total_amount_syp: parseFloat(order.total_amount_syp),
+            items: itemsByOrder[order.id] || [],
+            gps_coordinates: order.gps_coordinates ? JSON.parse(order.gps_coordinates) : null
         }));
 
         // Calculate summary
-        const uniqueStores = new Set(orders.map(o => o.store_id));
-        const uniqueDistributors = new Set(orders.map(o => o.assigned_distributor_id).filter(Boolean));
-        const totalAmountEUR = orders.reduce((sum, order) => sum + parseFloat(order.total_amount_eur), 0);
-        const totalAmountSYP = orders.reduce((sum, order) => sum + parseFloat(order.total_amount_syp), 0);
+        const totalAmountEur = ordersWithItems.reduce((sum, order) => sum + order.total_amount_eur, 0);
+        const totalAmountSyp = ordersWithItems.reduce((sum, order) => sum + order.total_amount_syp, 0);
+        const uniqueDistributors = [...new Set(ordersWithItems.map(order => order.assigned_distributor_id).filter(id => id))];
 
         return {
-            date: processDate,
-            orders: orders,
-            summary: {
-                total_orders: orders.length,
-                total_stores: uniqueStores.size,
-                total_distributors: uniqueDistributors.size,
-                total_amount_eur: totalAmountEUR,
-                total_amount_syp: totalAmountSYP
+            success: true,
+            data: {
+                date: processDate,
+                orders: ordersWithItems,
+                summary: {
+                    total_orders: ordersWithItems.length,
+                    total_stores: [...new Set(ordersWithItems.map(order => order.store_id))].length,
+                    total_distributors: uniqueDistributors.length,
+                    total_amount_eur: Math.round(totalAmountEur * 100) / 100,
+                    total_amount_syp: Math.round(totalAmountSyp * 100) / 100
+                }
             }
         };
 
@@ -382,7 +404,8 @@ export const getLiveDistributionTracking = async (date) => {
                 ds.status,
                 ds.route_data,
                 u.full_name as distributor_name,
-                u.phone as distributor_phone
+                u.phone as distributor_phone,
+                u.email as distributor_email
             FROM distribution_schedules ds
             JOIN users u ON ds.distributor_id = u.id
             WHERE ds.schedule_date = ?
@@ -403,9 +426,11 @@ export const getLiveDistributionTracking = async (date) => {
                     o.total_amount_syp,
                     s.name as store_name,
                     s.address,
+                    s.gps_coordinates,
                     dr.delivery_date,
                     dr.actual_quantities,
-                    dr.notes as delivery_notes
+                    dr.notes as delivery_notes,
+                    dr.created_at as delivery_time
                 FROM orders o
                 JOIN stores s ON o.store_id = s.id
                 LEFT JOIN delivery_records dr ON o.id = dr.order_id
@@ -417,39 +442,79 @@ export const getLiveDistributionTracking = async (date) => {
             const totalDeliveries = deliveries.length;
             const completionPercentage = totalDeliveries > 0 ? (completedDeliveries / totalDeliveries) * 100 : 0;
 
+            // Parse route data
+            let routeData = null;
+            try {
+                routeData = schedule.route_data ? JSON.parse(schedule.route_data) : null;
+            } catch (e) {
+                console.warn('Invalid route data for schedule:', schedule.schedule_id);
+            }
+
+            // Find current stop (first non-delivered store)
+            const currentDelivery = deliveries.find(d => d.order_status !== 'delivered');
+            const currentStop = currentDelivery ? currentDelivery.store_name : null;
+
+            // Get last known location (mock data for now)
+            const mockLocation = {
+                address: currentDelivery?.address || 'وسط بيروت',
+                lat: 33.8938,
+                lng: 35.5018,
+                last_update: new Date().toISOString()
+            };
+
             trackingData.push({
-                schedule_id: schedule.schedule_id,
-                distributor: {
-                    id: schedule.distributor_id,
-                    name: schedule.distributor_name,
-                    phone: schedule.distributor_phone
+                id: schedule.distributor_id,
+                name: schedule.distributor_name,
+                phone: schedule.distributor_phone,
+                email: schedule.distributor_email,
+                vehicle: "شاحنة توزيع", // Default vehicle type
+                status: schedule.status || 'active',
+                current_location: mockLocation,
+                current_route: {
+                    current_stop: currentStop,
+                    completed_stops: completedDeliveries,
+                    total_stops: totalDeliveries
                 },
                 progress: {
                     completed: completedDeliveries,
                     total: totalDeliveries,
-                    percentage: completionPercentage
+                    percentage: Math.round(completionPercentage)
                 },
-                deliveries: deliveries,
-                route_data: schedule.route_data ? JSON.parse(schedule.route_data) : null,
-                status: schedule.status
+                deliveries: deliveries.map(d => ({
+                    order_id: d.order_id,
+                    store_name: d.store_name,
+                    address: d.address,
+                    status: d.order_status,
+                    amount_eur: d.total_amount_eur,
+                    amount_syp: d.total_amount_syp,
+                    delivery_time: d.delivery_time,
+                    notes: d.delivery_notes
+                })),
+                alerts: [], // Initialize empty alerts array
+                device_info: {
+                    last_online: new Date().toISOString() // Mock online status
+                }
             });
         }
 
         return {
-            date: trackingDate,
-            tracking_data: trackingData,
-            summary: {
-                total_distributors: schedules.length,
-                total_deliveries: trackingData.reduce((sum, td) => sum + td.progress.total, 0),
-                completed_deliveries: trackingData.reduce((sum, td) => sum + td.progress.completed, 0),
-                overall_completion: trackingData.length > 0 ?
-                    trackingData.reduce((sum, td) => sum + td.progress.percentage, 0) / trackingData.length : 0
+            success: true,
+            data: {
+                date: trackingDate,
+                distributors: trackingData, // Changed from tracking_data to distributors
+                summary: {
+                    total_distributors: schedules.length,
+                    total_deliveries: trackingData.reduce((sum, td) => sum + td.progress.total, 0),
+                    completed_deliveries: trackingData.reduce((sum, td) => sum + td.progress.completed, 0),
+                    overall_completion: trackingData.length > 0 ?
+                        Math.round(trackingData.reduce((sum, td) => sum + td.progress.percentage, 0) / trackingData.length) : 0
+                }
             }
         };
 
     } catch (error) {
         console.error('Error getting live distribution tracking:', error);
-        throw new Error('خطأ في جلب متابعة التوزيع');
+        throw new Error('Database connection or query error');
     }
 };
 
@@ -551,46 +616,52 @@ export const getDistributorPerformance = async (distributorId, period) => {
  * @param {Object} options - Analytics options
  * @returns {Object} Analytics data
  */
-export const getDistributionAnalytics = async (options) => {
+export const getDistributionAnalytics = async (options = {}) => {
     try {
-        const { period, filters } = options;
-        const dateRange = getDateRange(period);
+        const {
+            period = 'week',
+            startDate,
+            endDate,
+            distributorId,
+            storeId,
+            currency = 'EUR'
+        } = options;
+
         const connection = await getDBConnection();
 
-        // Build WHERE clause based on filters
+        // Calculate date range based on period
+        const dateRange = getDateRange(period);
+        const fromDate = startDate || dateRange.start;
+        const toDate = endDate || dateRange.end;
+
+        // Build WHERE clause
         let whereClause = 'WHERE o.order_date BETWEEN ? AND ?';
-        const params = [dateRange.start, dateRange.end];
+        let params = [fromDate, toDate];
 
-        if (filters.distributor_id) {
+        if (distributorId) {
             whereClause += ' AND s.assigned_distributor_id = ?';
-            params.push(filters.distributor_id);
+            params.push(distributorId);
         }
 
-        if (filters.store_category) {
-            whereClause += ' AND s.category = ?';
-            params.push(filters.store_category);
+        if (storeId) {
+            whereClause += ' AND o.store_id = ?';
+            params.push(storeId);
         }
 
-        if (filters.payment_status) {
-            whereClause += ' AND o.payment_status = ?';
-            params.push(filters.payment_status);
-        }
-
-        // Get sales analytics
-        const [salesData] = await connection.execute(`
+        // Get summary analytics
+        const [summaryData] = await connection.execute(`
             SELECT 
-                DATE(o.order_date) as order_date,
                 COUNT(DISTINCT o.id) as total_orders,
+                COUNT(DISTINCT s.assigned_distributor_id) as active_distributors,
                 COUNT(DISTINCT o.store_id) as unique_stores,
-                SUM(o.total_amount_eur) as total_eur,
-                SUM(o.total_amount_syp) as total_syp,
-                AVG(o.total_amount_eur) as avg_order_eur,
-                AVG(o.total_amount_syp) as avg_order_syp
+                SUM(o.total_amount_eur) as total_revenue_eur,
+                SUM(o.total_amount_syp) as total_revenue_syp,
+                AVG(o.total_amount_eur) as avg_order_value_eur,
+                COUNT(DISTINCT CASE WHEN o.status = 'delivered' THEN o.id END) as completed_orders,
+                COUNT(DISTINCT CASE WHEN o.payment_status = 'paid' THEN o.id END) as paid_orders
             FROM orders o
             JOIN stores s ON o.store_id = s.id
             ${whereClause}
-            GROUP BY DATE(o.order_date)
-            ORDER BY order_date
         `, params);
 
         // Get product analytics
@@ -609,9 +680,10 @@ export const getDistributionAnalytics = async (options) => {
             ${whereClause}
             GROUP BY p.category, p.name
             ORDER BY total_sales_eur DESC
+            LIMIT 10
         `, params);
 
-        // Get distributor analytics
+        // Get distributor performance
         const [distributorData] = await connection.execute(`
             SELECT 
                 u.id as distributor_id,
@@ -631,44 +703,82 @@ export const getDistributionAnalytics = async (options) => {
             ORDER BY total_sales_eur DESC
         `, params);
 
-        // Get store analytics
-        const [storeData] = await connection.execute(`
+        // Get daily trends
+        const [dailyData] = await connection.execute(`
             SELECT 
-                s.category,
-                s.store_type,
-                COUNT(DISTINCT s.id) as store_count,
-                COUNT(DISTINCT o.id) as total_orders,
-                SUM(o.total_amount_eur) as total_sales_eur,
-                SUM(o.total_amount_syp) as total_sales_syp,
-                AVG(o.total_amount_eur) as avg_order_eur
-            FROM stores s
-            JOIN orders o ON s.id = o.store_id
+                DATE(o.order_date) as order_date,
+                COUNT(DISTINCT o.id) as daily_orders,
+                SUM(o.total_amount_eur) as daily_revenue_eur,
+                SUM(o.total_amount_syp) as daily_revenue_syp,
+                COUNT(DISTINCT CASE WHEN o.status = 'delivered' THEN o.id END) as delivered_orders
+            FROM orders o
+            JOIN stores s ON o.store_id = s.id
             ${whereClause}
-            GROUP BY s.category, s.store_type
-            ORDER BY total_sales_eur DESC
+            GROUP BY DATE(o.order_date)
+            ORDER BY order_date ASC
         `, params);
 
+        // Calculate performance metrics
+        const summary = summaryData[0];
+        const deliveryRate = summary.total_orders > 0 ?
+            Math.round((summary.completed_orders / summary.total_orders) * 100) : 0;
+        const paymentRate = summary.total_orders > 0 ?
+            Math.round((summary.paid_orders / summary.total_orders) * 100) : 0;
+
         return {
-            period: period,
-            date_range: dateRange,
-            filters: filters,
-            sales_analytics: {
-                daily_sales: salesData,
-                total_sales: {
-                    eur: salesData.reduce((sum, day) => sum + parseFloat(day.total_eur), 0),
-                    syp: salesData.reduce((sum, day) => sum + parseFloat(day.total_syp), 0)
+            success: true,
+            data: {
+                period: {
+                    type: period,
+                    start_date: fromDate,
+                    end_date: toDate
                 },
-                total_orders: salesData.reduce((sum, day) => sum + day.total_orders, 0),
-                unique_stores: new Set(salesData.map(day => day.unique_stores)).size
-            },
-            product_analytics: productData,
-            distributor_analytics: distributorData,
-            store_analytics: storeData
+                summary: {
+                    total_orders: summary.total_orders || 0,
+                    active_distributors: summary.active_distributors || 0,
+                    unique_stores: summary.unique_stores || 0,
+                    total_revenue_eur: parseFloat(summary.total_revenue_eur || 0),
+                    total_revenue_syp: parseFloat(summary.total_revenue_syp || 0),
+                    avg_order_value_eur: parseFloat(summary.avg_order_value_eur || 0),
+                    delivery_rate: deliveryRate,
+                    payment_rate: paymentRate
+                },
+                trends: {
+                    daily: dailyData.map(day => ({
+                        date: day.order_date,
+                        orders: day.daily_orders || 0,
+                        revenue_eur: parseFloat(day.daily_revenue_eur || 0),
+                        revenue_syp: parseFloat(day.daily_revenue_syp || 0),
+                        delivered: day.delivered_orders || 0
+                    }))
+                },
+                top_products: productData.map(product => ({
+                    category: product.category,
+                    name: product.product_name,
+                    quantity: product.total_quantity || 0,
+                    sales_eur: parseFloat(product.total_sales_eur || 0),
+                    sales_syp: parseFloat(product.total_sales_syp || 0),
+                    orders: product.order_count || 0
+                })),
+                distributor_performance: distributorData.map(dist => ({
+                    id: dist.distributor_id,
+                    name: dist.distributor_name,
+                    orders: dist.total_orders || 0,
+                    stores: dist.unique_stores || 0,
+                    sales_eur: parseFloat(dist.total_sales_eur || 0),
+                    sales_syp: parseFloat(dist.total_sales_syp || 0),
+                    avg_order_eur: parseFloat(dist.avg_order_eur || 0),
+                    delivery_rate: dist.total_orders > 0 ?
+                        Math.round((dist.delivered_orders / dist.total_orders) * 100) : 0,
+                    payment_rate: dist.total_orders > 0 ?
+                        Math.round((dist.paid_orders / dist.total_orders) * 100) : 0
+                }))
+            }
         };
 
     } catch (error) {
         console.error('Error getting distribution analytics:', error);
-        throw new Error('خطأ في جلب تحليلات التوزيع');
+        throw new Error('Database query error in analytics');
     }
 };
 
@@ -846,15 +956,7 @@ export const updateStoreBalanceManually = async (data) => {
             INSERT INTO balance_adjustments 
             (store_id, amount_eur, amount_syp, currency, reason, notes, adjusted_by, adjusted_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-        `, [
-            storeId,
-            currency === 'EUR' ? amount : 0,
-            currency === 'SYP' ? amount : 0,
-            currency,
-            reason,
-            notes,
-            updatedBy
-        ]);
+        `, [storeId, amount, currency, reason, notes, updatedBy]);
 
         await connection.commit();
 
@@ -873,42 +975,6 @@ export const updateStoreBalanceManually = async (data) => {
         await connection.rollback();
         console.error('Error updating store balance:', error);
         throw new Error('خطأ في تحديث رصيد المحل');
-    }
-};
-
-/**
- * Approve distributor report
- * @param {Object} data - Approval data
- * @returns {Object} Approval result
- */
-export const approveDistributorReport = async (data) => {
-    try {
-        const { reportId, approved, notes, approvedBy } = data;
-        const connection = await getDBConnection();
-
-        const status = approved ? 'approved' : 'rejected';
-
-        // Update report status
-        await connection.execute(`
-            UPDATE daily_reports 
-            SET status = ?,
-                approval_notes = ?,
-                approved_by = ?,
-                approved_at = NOW()
-            WHERE id = ?
-        `, [status, notes, approvedBy, reportId]);
-
-        return {
-            report_id: reportId,
-            status: status,
-            approval_notes: notes,
-            approved_by: approvedBy,
-            approved_at: new Date().toISOString()
-        };
-
-    } catch (error) {
-        console.error('Error approving distributor report:', error);
-        throw new Error('خطأ في معالجة التقرير');
     }
 };
 
@@ -949,18 +1015,3 @@ function getDateRange(period) {
         end: now.toISOString().split('T')[0]
     };
 }
-
-function calculatePerformanceRating(completionRate, avgDeliveryTime) {
-    let rating = 0;
-
-    // Completion rate (60% weight)
-    rating += (completionRate / 100) * 60;
-
-    // Delivery time (40% weight) - lower is better
-    const timeScore = Math.max(0, 100 - (avgDeliveryTime * 10));
-    rating += (timeScore / 100) * 40;
-
-    return Math.min(100, Math.max(0, rating));
-}
-
-// All exports are already individual exports above 

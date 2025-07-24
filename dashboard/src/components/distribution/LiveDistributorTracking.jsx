@@ -364,14 +364,19 @@ const LiveDistributorTracking = ({ selectedDate }) => {
             <MapPin className="w-4 h-4 text-gray-500 mt-0.5 ml-2 flex-shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900">الموقع الحالي:</p>
-              <p className="text-xs text-gray-600">{distributor.current_location.address}</p>
+              <p className="text-xs text-gray-600">
+                {distributor.current_location?.address || "غير محدد"}
+              </p>
               <p className="text-xs text-gray-500">
-                آخر تحديث: {formatLastUpdate(distributor.current_location.last_update)}
+                آخر تحديث: {distributor.current_location?.last_update 
+                  ? formatLastUpdate(distributor.current_location.last_update)
+                  : "غير متوفر"
+                }
               </p>
             </div>
           </div>
 
-          {distributor.current_route.current_stop && (
+          {distributor.current_route?.current_stop && (
             <div className="flex items-start">
               <Store className="w-4 h-4 text-blue-500 mt-0.5 ml-2 flex-shrink-0" />
               <div className="flex-1">
@@ -385,13 +390,19 @@ const LiveDistributorTracking = ({ selectedDate }) => {
           <div className="space-y-2">
             <div className="flex justify-between text-xs text-gray-600">
               <span>التقدم</span>
-              <span>{distributor.current_route.completed_stops}/{distributor.current_route.total_stops}</span>
+              <span>
+                {distributor.current_route?.completed_stops || 0}/{distributor.current_route?.total_stops || 0}
+              </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
                 className="bg-blue-600 h-2 rounded-full transition-all"
                 style={{ 
-                  width: `${(distributor.current_route.completed_stops / distributor.current_route.total_stops) * 100}%` 
+                  width: `${
+                    distributor.current_route?.total_stops 
+                      ? ((distributor.current_route.completed_stops || 0) / distributor.current_route.total_stops) * 100
+                      : 0
+                  }%` 
                 }}
               />
             </div>
