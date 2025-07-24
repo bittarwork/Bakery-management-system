@@ -61,8 +61,7 @@ router.get('/', (req, res) => {
             refunds: '/api/refunds',
             // Phase 6 Enhanced Order Management
             enhancedPricing: '/api/pricing',
-            distributors: '/api/distributors',
-            deliveryScheduling: '/api/delivery'
+            distributors: '/api/distributors'
         },
         documentation: {
             api_docs: '/api/docs',

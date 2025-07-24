@@ -64,10 +64,6 @@ import PricingManagementPage from "./pages/pricing/PricingManagementPage";
 // Pages - Distributor Management (Phase 6)
 import DistributorManagementPage from "./pages/distributors/DistributorManagementPage";
 
-// Pages - Delivery Scheduling (Phase 6)
-import DeliverySchedulingPage from "./pages/delivery/EnhancedDeliverySchedulingPage";
-import DeliveryConfirmationPage from "./pages/delivery/DeliveryConfirmationPage";
-
 // Pages - Auto Scheduling
 // import AutoSchedulingReviewPage from "./pages/scheduling/AutoSchedulingReviewPage";
 
@@ -852,45 +848,6 @@ function App() {
                     </motion.div>
                   </DashboardLayout>
                 </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/delivery"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <DeliverySchedulingPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Customer Delivery Confirmation - Public Route */}
-            <Route
-              path="/delivery/confirm/:token"
-              element={
-                <motion.div
-                  variants={pageVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  transition={pageTransition}
-                >
-                  <Suspense fallback={<LoadingSpinner />}>
-                    <DeliveryConfirmationPage />
-                  </Suspense>
-                </motion.div>
               }
             />
 

@@ -95,6 +95,20 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
     try {
       setIsLoading(true);
 
+      // Safe JSON parsing function
+      const parseJsonSafely = async (response) => {
+        if (!response.ok) {
+          return { data: [] };
+        }
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          return await response.json();
+        } else {
+          console.warn("Non-JSON response received:", await response.text());
+          return { data: [] };
+        }
+      };
+
       // Load all required data in parallel
       const [
         ordersRes,
@@ -110,36 +124,26 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
         fetch(`/api/distribution/smart-suggestions?date=${selectedDate}`),
       ]);
 
-      // Process responses
-      if (ordersRes.ok) {
-        const ordersData = await ordersRes.json();
-        setDailyOrders(ordersData.data || []);
-      }
+      // Process responses with safe parsing
+      const ordersData = await parseJsonSafely(ordersRes);
+      setDailyOrders(ordersData.data || []);
 
-      if (storesRes.ok) {
-        const storesData = await storesRes.json();
-        setStores(storesData.data?.stores || storesData.data || []);
-      }
+      const storesData = await parseJsonSafely(storesRes);
+      setStores(storesData.data?.stores || storesData.data || []);
 
-      if (productsRes.ok) {
-        const productsData = await productsRes.json();
-        setProducts(productsData.data?.products || productsData.data || []);
-      }
+      const productsData = await parseJsonSafely(productsRes);
+      setProducts(productsData.data?.products || productsData.data || []);
 
-      if (distributorsRes.ok) {
-        const distributorsData = await distributorsRes.json();
-        setDistributors(
-          distributorsData.data?.users || distributorsData.data || []
-        );
-      }
+      const distributorsData = await parseJsonSafely(distributorsRes);
+      setDistributors(
+        distributorsData.data?.users || distributorsData.data || []
+      );
 
-      if (suggestionsRes.ok) {
-        const suggestionsData = await suggestionsRes.json();
-        setSmartSuggestions(suggestionsData.data || []);
-      }
+      const suggestionsData = await parseJsonSafely(suggestionsRes);
+      setSmartSuggestions(suggestionsData.data || []);
 
-      // Mock data for development
-      if (!ordersRes.ok || !storesRes.ok) {
+      // Mock data for development if all API calls failed
+      if (!ordersRes.ok && !storesRes.ok) {
         setMockData();
       }
     } catch (error) {

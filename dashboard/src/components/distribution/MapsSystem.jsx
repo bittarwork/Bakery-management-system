@@ -41,7 +41,10 @@ const MapsSystem = ({ selectedDate }) => {
     distributors: [],
     routes: [],
     stores: [],
-    trafficData: {}
+    trafficData: {
+      overall: "جاري التحميل...",
+      zones: []
+    }
   });
 
   const [selectedDistributor, setSelectedDistributor] = useState(null);
@@ -431,15 +434,22 @@ const MapsSystem = ({ selectedDate }) => {
 
         <div className="space-y-3">
           <h4 className="font-semibold text-gray-900">المناطق:</h4>
-          {mapData.trafficData.zones.map((zone, index) => (
-            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-              <span className="text-sm text-gray-700">{zone.name}</span>
-              <div className="flex items-center">
-                <div className={`w-3 h-3 rounded-full ml-2 bg-${zone.color}-500`} />
-                <span className="text-sm font-medium">{zone.level}</span>
+          {mapData.trafficData.zones && mapData.trafficData.zones.length > 0 
+            ? mapData.trafficData.zones.map((zone, index) => (
+              <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <span className="text-sm text-gray-700">{zone.name}</span>
+                <div className="flex items-center">
+                  <div className={`w-3 h-3 rounded-full ml-2 bg-${zone.color}-500`} />
+                  <span className="text-sm font-medium">{zone.level}</span>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+            : (
+              <div className="text-center text-gray-500 py-4">
+                جاري تحميل بيانات المرور...
+              </div>
+            )
+          }
         </div>
       </CardBody>
     </Card>

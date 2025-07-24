@@ -85,16 +85,31 @@ const LiveDistributorTracking = ({ selectedDate }) => {
   const loadTrackingData = async () => {
     try {
       setIsLoading(true);
-      
+
+      // Safe JSON parsing function
+      const parseJsonSafely = async (response) => {
+        if (!response.ok) {
+          console.warn("API response not OK:", response.status);
+          return { data: [] };
+        }
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          return await response.json();
+        } else {
+          console.warn("Non-JSON response received:", await response.text());
+          return { data: [] };
+        }
+      };
+
       const response = await fetch(`/api/distribution/live-tracking?date=${selectedDate}`, {
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("token")}`
         }
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setDistributors(data.data || []);
+      const data = await parseJsonSafely(response);
+      if (data.data && data.data.length > 0) {
+        setDistributors(data.data);
         setLastUpdate(new Date());
       } else {
         // Mock data for development

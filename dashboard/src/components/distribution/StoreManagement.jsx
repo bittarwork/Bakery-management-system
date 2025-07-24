@@ -90,10 +90,28 @@ const StoreManagement = ({ selectedDate }) => {
   const loadStoresData = async () => {
     try {
       setIsLoading(true);
-      
+
+      // Safe JSON parsing function
+      const parseJsonSafely = async (response) => {
+        if (!response.ok) {
+          console.warn("API response not OK:", response.status);
+          return { data: [] };
+        }
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          return await response.json();
+        } else {
+          console.warn("Non-JSON response received:", await response.text());
+          return { data: [] };
+        }
+      };
+
       const queryParams = new URLSearchParams({
         date: selectedDate,
-        ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v !== "all" && v !== ""))
+        search: filters.search,
+        area: filters.area,
+        payment_status: filters.payment_status,
+        order_frequency: filters.order_frequency
       });
 
       const [storesRes, analyticsRes] = await Promise.all([
@@ -105,11 +123,11 @@ const StoreManagement = ({ selectedDate }) => {
         })
       ]);
 
-      if (storesRes.ok && analyticsRes.ok) {
-        const storesData = await storesRes.json();
-        const analyticsData = await analyticsRes.json();
-        
-        setStores(storesData.data || []);
+      const storesData = await parseJsonSafely(storesRes);
+      const analyticsData = await parseJsonSafely(analyticsRes);
+      
+      if (storesData.data && storesData.data.length > 0) {
+        setStores(storesData.data);
         setAnalytics(analyticsData.data || {});
       } else {
         // Mock data for development

@@ -116,6 +116,17 @@ const DistributionManagerDashboard = () => {
         fetch("/api/distribution/notifications?unread=true"),
       ]);
 
+      // Check if responses are JSON before parsing
+      const parseJsonSafely = async (response) => {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          return await response.json();
+        } else {
+          console.warn("Non-JSON response received:", await response.text());
+          return { data: [] };
+        }
+      };
+
       const [
         orders,
         distributors,
@@ -124,12 +135,12 @@ const DistributionManagerDashboard = () => {
         tracking,
         notifications,
       ] = await Promise.all([
-        ordersRes.json(),
-        distributorsRes.json(),
-        storesRes.json(),
-        statsRes.json(),
-        trackingRes.json(),
-        notificationsRes.json(),
+        parseJsonSafely(ordersRes),
+        parseJsonSafely(distributorsRes),
+        parseJsonSafely(storesRes),
+        parseJsonSafely(statsRes),
+        parseJsonSafely(trackingRes),
+        parseJsonSafely(notificationsRes),
       ]);
 
       setDashboardData({
