@@ -16,10 +16,6 @@ import DashboardHomePage from "./pages/dashboard/DashboardHomePage";
 import AnalyticsPage from "./pages/dashboard/AnalyticsPage";
 
 // Pages - Distribution
-import DistributionOverviewPage from "./pages/distribution/DistributionOverviewPage";
-import DistributionSchedulePage from "./pages/distribution/DistributionSchedulePage";
-import DistributionTrackingPage from "./pages/distribution/DistributionTrackingPage";
-import DistributionReportsPage from "./pages/distribution/DistributionReportsPage";
 import DistributionManagerDashboard from "./pages/distribution/DistributionManagerDashboard";
 
 // Pages - Orders
@@ -236,21 +232,7 @@ function App() {
             <Route
               path="/distribution"
               element={
-                <ProtectedRoute allowedRoles={["admin", "manager"]}>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <DistributionOverviewPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
+                <Navigate to="/distribution/manager" replace />
               }
             />
 
@@ -275,68 +257,7 @@ function App() {
               }
             />
 
-            <Route
-              path="/distribution/schedule"
-              element={
-                <ProtectedRoute allowedRoles={["admin", "manager"]}>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <DistributionSchedulePage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
 
-            <Route
-              path="/distribution/tracking"
-              element={
-                <ProtectedRoute allowedRoles={["admin", "manager"]}>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <DistributionTrackingPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/distribution/reports"
-              element={
-                <ProtectedRoute allowedRoles={["admin", "manager"]}>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <DistributionReportsPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
 
             {/* Orders Routes */}
             <Route

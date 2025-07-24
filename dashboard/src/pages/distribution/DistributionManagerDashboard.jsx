@@ -46,6 +46,9 @@ import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import DailyOperationsManager from "../../components/distribution/DailyOperationsManager";
 import LiveDistributorTracking from "../../components/distribution/LiveDistributorTracking";
 import StoreManagement from "../../components/distribution/StoreManagement";
+import ReportsSystem from "../../components/distribution/ReportsSystem";
+import MapsSystem from "../../components/distribution/MapsSystem";
+import ArchiveSystem from "../../components/distribution/ArchiveSystem";
 
 /**
  * Distribution Manager Dashboard
@@ -654,31 +657,13 @@ const DistributionManagerDashboard = () => {
             <StoreManagement selectedDate={selectedDate} />
           )}
           {currentView === "reports" && (
-            <div className="text-center py-12">
-              <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                التقارير
-              </h3>
-              <p className="text-gray-600">قيد التطوير...</p>
-            </div>
+            <ReportsSystem selectedDate={selectedDate} />
           )}
           {currentView === "maps" && (
-            <div className="text-center py-12">
-              <Map className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                الخرائط والمسارات
-              </h3>
-              <p className="text-gray-600">قيد التطوير...</p>
-            </div>
+            <MapsSystem selectedDate={selectedDate} />
           )}
           {currentView === "archive" && (
-            <div className="text-center py-12">
-              <Archive className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                الأرشيف
-              </h3>
-              <p className="text-gray-600">قيد التطوير...</p>
-            </div>
+            <ArchiveSystem selectedDate={selectedDate} />
           )}
         </motion.div>
       </div>
