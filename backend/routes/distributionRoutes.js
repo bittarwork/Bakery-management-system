@@ -10,6 +10,11 @@ router.use(protect);
 // ===== DASHBOARD ROUTES =====
 router.get('/dashboard', authorize('admin', 'manager'), DistributionController.getDashboardData);
 
+// ===== MANAGER SPECIFIC ROUTES =====
+router.get('/manager/tracking/live', authorize('admin', 'manager'), DistributionController.getLiveTracking);
+router.get('/manager/orders/daily', authorize('admin', 'manager'), DistributionController.getDailyOrders);
+router.get('/manager/analytics', authorize('admin', 'manager'), DistributionController.getDistributionAnalytics);
+
 // ===== ORDER MANAGEMENT ROUTES =====
 router.get('/orders', authorize('admin', 'manager'), DistributionController.getOrdersWithDistribution);
 router.post('/assign', authorize('admin', 'manager'), DistributionController.assignOrderToDistributor);

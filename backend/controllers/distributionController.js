@@ -1012,4 +1012,214 @@ class DistributionController {
     }
 }
 
+    /**
+     * Get live tracking data for distribution manager
+     * @route GET /api/distribution/manager/tracking/live
+     * @access Private (Admin/Manager)
+     */
+    static async getLiveTracking(req, res) {
+    try {
+        const { date } = req.query;
+
+        // Get active distributors with their current assignments
+        const distributors = await User.findAll({
+            where: {
+                role: 'distributor',
+                status: 'active'
+            },
+            attributes: ['id', 'full_name', 'phone', 'status'],
+            include: [
+                {
+                    model: Order,
+                    as: 'assigned_orders',
+                    where: {
+                        status: ['pending', 'confirmed', 'in_progress'],
+                        ...(date && { order_date: date })
+                    },
+                    required: false,
+                    attributes: ['id', 'order_number', 'status', 'total_amount_eur']
+                }
+            ]
+        });
+
+        // Calculate statistics
+        const totalOrders = await Order.count({
+            where: {
+                ...(date && { order_date: date })
+            }
+        });
+
+        const completedDeliveries = await Order.count({
+            where: {
+                status: 'delivered',
+                ...(date && { order_date: date })
+            }
+        });
+
+        const pendingOrders = await Order.count({
+            where: {
+                status: ['pending', 'confirmed'],
+                ...(date && { order_date: date })
+            }
+        });
+
+        const totalRevenue = await Order.sum('total_amount_eur', {
+            where: {
+                status: 'delivered',
+                ...(date && { order_date: date })
+            }
+        }) || 0;
+
+        res.json({
+            success: true,
+            data: {
+                total_orders: totalOrders,
+                active_distributors: distributors.length,
+                completed_deliveries: completedDeliveries,
+                pending_orders: pendingOrders,
+                total_revenue_eur: parseFloat(totalRevenue),
+                average_delivery_time: 35, // Mock data
+                on_time_rate: 85, // Mock data
+                distributors: distributors.map(d => ({
+                    id: d.id,
+                    name: d.full_name,
+                    phone: d.phone,
+                    status: d.status,
+                    orders_count: d.assigned_orders ? d.assigned_orders.length : 0,
+                    current_orders: d.assigned_orders || []
+                })),
+                orders: [], // Will be populated with actual order data if needed
+                notifications: [] // Mock notifications
+            }
+        });
+
+    } catch (error) {
+        logger.error('Error fetching live tracking data:', error);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في جلب بيانات التتبع المباشر',
+            error: error.message
+        });
+    }
+}
+
+    /**
+     * Get daily orders for distribution manager
+     * @route GET /api/distribution/manager/orders/daily
+     * @access Private (Admin/Manager)
+     */
+    static async getDailyOrders(req, res) {
+    try {
+        const { date } = req.query;
+        const targetDate = date ? new Date(date) : new Date();
+        const dateString = targetDate.toISOString().split('T')[0];
+
+        const orders = await Order.findAll({
+            where: {
+                order_date: dateString
+            },
+            include: [
+                {
+                    model: Store,
+                    as: 'store',
+                    attributes: ['id', 'name', 'address', 'phone']
+                },
+                {
+                    model: User,
+                    as: 'assigned_distributor',
+                    attributes: ['id', 'full_name', 'phone'],
+                    required: false
+                }
+            ],
+            order: [['created_at', 'DESC']]
+        });
+
+        res.json({
+            success: true,
+            data: {
+                orders: orders.map(order => ({
+                    id: order.id,
+                    order_number: order.order_number,
+                    store_name: order.store?.name || 'غير محدد',
+                    store_address: order.store?.address || 'غير محدد',
+                    total_amount: parseFloat(order.total_amount_eur || 0),
+                    status: order.status,
+                    priority: order.priority || 'normal',
+                    distributor: order.assigned_distributor ? {
+                        id: order.assigned_distributor.id,
+                        name: order.assigned_distributor.full_name
+                    } : null,
+                    created_at: order.created_at
+                }))
+            }
+        });
+
+    } catch (error) {
+        logger.error('Error fetching daily orders:', error);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في جلب الطلبات اليومية',
+            error: error.message
+        });
+    }
+}
+
+    /**
+     * Get distribution analytics for manager
+     * @route GET /api/distribution/manager/analytics
+     * @access Private (Admin/Manager)
+     */
+    static async getDistributionAnalytics(req, res) {
+    try {
+        const { period = 'week', filters = '{}' } = req.query;
+
+        // Basic analytics - can be expanded based on needs
+        const totalOrders = await Order.count();
+        const completedOrders = await Order.count({
+            where: { status: 'delivered' }
+        });
+        const totalRevenue = await Order.sum('total_amount_eur') || 0;
+        const activeDistributors = await User.count({
+            where: {
+                role: 'distributor',
+                status: 'active'
+            }
+        });
+
+        res.json({
+            success: true,
+            data: {
+                summary: {
+                    totalOrders,
+                    completedOrders,
+                    totalRevenue: parseFloat(totalRevenue),
+                    activeDistributors,
+                    completionRate: totalOrders > 0 ? Math.round((completedOrders / totalOrders) * 100) : 0
+                },
+                suggestions: [
+                    {
+                        type: 'optimization',
+                        message: 'يمكن تحسين كفاءة التوزيع بتجميع الطلبات حسب المنطقة',
+                        priority: 'medium'
+                    },
+                    {
+                        type: 'alert',
+                        message: 'هناك تأخير في بعض التسليمات، يرجى المتابعة',
+                        priority: 'high'
+                    }
+                ]
+            }
+        });
+
+    } catch (error) {
+        logger.error('Error fetching distribution analytics:', error);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في جلب تحليلات التوزيع',
+            error: error.message
+        });
+    }
+}
+}
+
 export default DistributionController; 

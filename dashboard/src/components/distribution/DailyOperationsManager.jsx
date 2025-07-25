@@ -107,11 +107,13 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
         userService.getUsers({ role: "distributor", status: "active" }),
       ]);
 
-      // Extract data with proper structure
-      setDailyOrders(ordersRes.data?.orders || []);
-      setStores(storesRes.data || []);
-      setProducts(productsRes.data || []);
-      setDistributors(usersRes.data || []);
+      // Extract data with proper structure and additional safety checks
+      setDailyOrders(
+        Array.isArray(ordersRes.data?.orders) ? ordersRes.data.orders : []
+      );
+      setStores(Array.isArray(storesRes.data) ? storesRes.data : []);
+      setProducts(Array.isArray(productsRes.data) ? productsRes.data : []);
+      setDistributors(Array.isArray(usersRes.data) ? usersRes.data : []);
 
       // Get smart suggestions from distribution service
       try {
@@ -134,8 +136,15 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
       }
     } catch (error) {
       console.error("Error loading daily data:", error);
-      setMockData(); // Fallback to mock data
-      toast.error("خطأ في تحميل البيانات - جاري استخدام بيانات تجريبية");
+
+      // Ensure all states are properly initialized even on error
+      setDailyOrders([]);
+      setStores([]);
+      setProducts([]);
+      setDistributors([]);
+      setSmartSuggestions([]);
+
+      toast.error("خطأ في تحميل البيانات، يرجى المحاولة لاحقاً");
     } finally {
       setIsLoading(false);
     }
