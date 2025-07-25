@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-hot-toast";
 import {
@@ -20,38 +20,37 @@ import {
   Activity,
   Battery,
   Signal,
-  Zap,
   Truck,
   Store,
   Euro,
   Target,
   TrendingUp,
-  TrendingDown,
   Coffee,
-  Pause,
   Play,
-  MoreVertical,
+  Pause,
   Settings,
   Bell,
   Map as MapIcon,
   Navigation2,
   CircleDot,
-  MapPin as LocationPin,
   Compass,
-  Shield,
   AlertCircle,
-  Info
+  Info,
+  BarChart3,
+  Calendar,
+  Filter,
+  Search,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../ui/Card";
 import EnhancedButton from "../ui/EnhancedButton";
+import EnhancedInput from "../ui/EnhancedInput";
 import LoadingSpinner from "../ui/LoadingSpinner";
-// Import the updated distribution service
 import distributionService from "../../services/distributionService";
-import orderService from "../../services/orderService"; // Added import for orderService
+import config from "../../config/config";
 
 /**
- * Live Distributor Tracking Component
- * Real-time tracking of distributors with location, status, and performance
+ * Live Distributor Tracking Component - Enhanced with Google Maps
+ * Real-time tracking of distributors with interactive map and detailed analytics
  */
 const LiveDistributorTracking = ({ selectedDate }) => {
   // States
@@ -60,173 +59,321 @@ const LiveDistributorTracking = ({ selectedDate }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [refreshInterval, setRefreshInterval] = useState(30); // seconds
-  const [viewMode, setViewMode] = useState("grid"); // grid, list, map
+  const [refreshInterval, setRefreshInterval] = useState(30);
+  const [viewMode, setViewMode] = useState("split"); // split, map, grid
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   // Filter states
   const [filters, setFilters] = useState({
-    status: "all", // all, active, inactive, delayed
-    zone: "all",
-    search: ""
+    status: "all",
+    search: "",
   });
+
+  // Map refs
+  const mapRef = useRef(null);
+  const googleMapRef = useRef(null);
+  const markersRef = useRef([]);
 
   // Load distributor tracking data
   useEffect(() => {
     loadTrackingData();
-    
-    // Set up auto-refresh
+
     let interval;
     if (autoRefresh) {
       interval = setInterval(loadTrackingData, refreshInterval * 1000);
     }
-    
+
     return () => {
       if (interval) clearInterval(interval);
     };
   }, [selectedDate, autoRefresh, refreshInterval]);
 
-  const loadTrackingData = async () => {
-    try {
-      setIsLoading(true);
+  // Initialize Google Maps
+  useEffect(() => {
+    loadGoogleMaps();
+  }, []);
 
-      // Load actual orders with distributor assignments for the selected date
-      const ordersResponse = await orderService.getOrders({
-        date_from: selectedDate,
-        date_to: selectedDate,
-        status: 'confirmed,in_progress', // Only active orders
-        limit: 100
+  // Update map markers when distributors change
+  useEffect(() => {
+    if (mapLoaded && googleMapRef.current) {
+      updateMapMarkers();
+    }
+  }, [distributors, mapLoaded]);
+
+  const loadGoogleMaps = async () => {
+    if (window.google && window.google.maps) {
+      initializeMap();
+      return;
+    }
+
+    try {
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${config.GOOGLE_MAPS_API_KEY}&libraries=geometry`;
+      script.async = true;
+      script.defer = true;
+
+      script.onload = () => {
+        initializeMap();
+      };
+
+      script.onerror = () => {
+        console.error("Failed to load Google Maps");
+        toast.error("فشل في تحميل الخريطة");
+      };
+
+      document.head.appendChild(script);
+    } catch (error) {
+      console.error("Error loading Google Maps:", error);
+    }
+  };
+
+  const initializeMap = () => {
+    if (!mapRef.current || !window.google) return;
+
+    try {
+      const map = new window.google.maps.Map(mapRef.current, {
+        center: {
+          lat: config.DEFAULT_MAP_CENTER.lat,
+          lng: config.DEFAULT_MAP_CENTER.lng,
+        },
+        zoom: config.GOOGLE_MAPS_SETTINGS.zoom,
+        mapTypeId: config.GOOGLE_MAPS_SETTINGS.mapTypeId,
+        disableDefaultUI: !config.GOOGLE_MAPS_SETTINGS.disableDefaultUI,
+        zoomControl: config.GOOGLE_MAPS_SETTINGS.zoomControl,
+        streetViewControl: config.GOOGLE_MAPS_SETTINGS.streetViewControl,
+        fullscreenControl: config.GOOGLE_MAPS_SETTINGS.fullscreenControl,
+        styles: [
+          {
+            featureType: "poi",
+            elementType: "labels",
+            stylers: [{ visibility: "off" }],
+          },
+        ],
       });
 
-      if (ordersResponse.success) {
-        const ordersData = ordersResponse.data?.orders || ordersResponse.data || [];
-        
-        // Transform orders data to distributor tracking format
-        const distributorMap = new Map();
-        
-        ordersData.forEach(order => {
-          if (order.assigned_distributor_id) {
-            const distributorId = order.assigned_distributor_id;
-            
-            if (!distributorMap.has(distributorId)) {
-              distributorMap.set(distributorId, {
-                id: distributorId,
-                name: order.distributor_name || `موزع ${distributorId}`,
-                phone: order.distributor_phone || '',
-                status: order.status === 'in_progress' ? 'active' : 'pending',
-                current_location: {
-                  address: order.store?.address || 'غير محدد',
-                  lat: order.store?.latitude || 33.8938,
-                  lng: order.store?.longitude || 35.5018,
-                  last_update: new Date().toISOString()
-                },
-                orders: [],
-                todayOrders: 0,
-                completedOrders: 0,
-                todayRevenue: 0,
-                current_route: {
-                  current_stop: '',
-                  completed_stops: 0,
-                  total_stops: 0
-                }
-              });
-            }
-            
-            const distributor = distributorMap.get(distributorId);
-            distributor.orders.push(order);
-            distributor.todayOrders++;
-            
-            if (order.status === 'delivered') {
-              distributor.completedOrders++;
-            }
-            
-            distributor.todayRevenue += parseFloat(order.total_amount_eur || 0);
-            
-            // Update current route info
-            distributor.current_route.total_stops = distributor.orders.length;
-            distributor.current_route.completed_stops = distributor.completedOrders;
-            
-            if (order.status === 'in_progress') {
-              distributor.current_route.current_stop = order.store?.name || '';
-              distributor.current_location.address = order.store?.address || '';
-              distributor.current_location.lat = order.store?.latitude || 33.8938;
-              distributor.current_location.lng = order.store?.longitude || 35.5018;
-            }
-          }
+      googleMapRef.current = map;
+      setMapLoaded(true);
+    } catch (error) {
+      console.error("Error initializing map:", error);
+    }
+  };
+
+  const updateMapMarkers = () => {
+    if (!googleMapRef.current || !window.google) return;
+
+    // Clear existing markers
+    markersRef.current.forEach((marker) => marker.setMap(null));
+    markersRef.current = [];
+
+    // Add new markers for each distributor
+    distributors.forEach((distributor) => {
+      if (
+        distributor.current_location?.lat &&
+        distributor.current_location?.lng
+      ) {
+        const marker = new window.google.maps.Marker({
+          position: {
+            lat: distributor.current_location.lat,
+            lng: distributor.current_location.lng,
+          },
+          map: googleMapRef.current,
+          title: distributor.name,
+          icon: {
+            url: getMarkerIcon(distributor.status),
+            scaledSize: new window.google.maps.Size(40, 40),
+          },
         });
-        
-        // Convert map to array
-        const trackingData = Array.from(distributorMap.values());
-        setDistributors(trackingData);
-        setLastUpdate(new Date());
-      } else {
-        console.warn('Failed to load tracking data, using fallback');
-        setDistributors([]);
+
+        // Add info window
+        const infoWindow = new window.google.maps.InfoWindow({
+          content: createInfoWindowContent(distributor),
+        });
+
+        marker.addListener("click", () => {
+          infoWindow.open(googleMapRef.current, marker);
+          setSelectedDistributor(distributor);
+        });
+
+        markersRef.current.push(marker);
+      }
+    });
+  };
+
+  const getMarkerIcon = (status) => {
+    const icons = {
+      active:
+        "data:image/svg+xml;base64," +
+        btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#10B981">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+          <circle cx="12" cy="9" r="2.5" fill="white"/>
+        </svg>
+      `),
+      completed:
+        "data:image/svg+xml;base64," +
+        btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#3B82F6">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+          <path d="M10 14l-2-2 1.41-1.41L10 11.17l4.59-4.58L16 8l-6 6z" fill="white"/>
+        </svg>
+      `),
+      offline:
+        "data:image/svg+xml;base64=" +
+        btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#6B7280">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+          <circle cx="12" cy="9" r="2.5" fill="white"/>
+        </svg>
+      `),
+    };
+    return icons[status] || icons.offline;
+  };
+
+  const createInfoWindowContent = (distributor) => {
+    return `
+      <div style="padding: 10px; min-width: 200px;">
+        <h3 style="margin: 0 0 10px 0; color: #1F2937; font-size: 16px; font-weight: bold;">
+          ${distributor.name}
+        </h3>
+        <div style="display: flex; flex-direction: column; gap: 5px; font-size: 14px;">
+          <div style="display: flex; align-items: center; gap: 5px;">
+            <span style="color: #6B7280;">الحالة:</span>
+            <span style="color: ${
+              distributor.status === "active" ? "#10B981" : "#6B7280"
+            }; font-weight: 500;">
+              ${getStatusText(distributor.status)}
+            </span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 5px;">
+            <span style="color: #6B7280;">الطلبات المكتملة:</span>
+            <span style="font-weight: 500;">${
+              distributor.orders_delivered_today || 0
+            }</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 5px;">
+            <span style="color: #6B7280;">الكفاءة:</span>
+            <span style="font-weight: 500;">${
+              distributor.efficiency_score || 0
+            }%</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 5px;">
+            <span style="color: #6B7280;">الموقع الحالي:</span>
+            <span style="font-weight: 500;">${
+              distributor.current_location?.address || "غير محدد"
+            }</span>
+          </div>
+        </div>
+      </div>
+    `;
+  };
+
+  const loadTrackingData = async () => {
+    try {
+      if (distributors.length === 0) {
+        setIsLoading(true);
       }
 
+      const response = await distributionService.getLiveTracking(selectedDate);
+
+      if (response.success && response.data) {
+        setDistributors(response.data.distributors || []);
+        setLastUpdate(new Date());
+      } else {
+        // Fallback to mock data
+        setDistributors(getMockTrackingData());
+        setLastUpdate(new Date());
+      }
     } catch (error) {
-      console.error('Error loading tracking data:', error);
-      // Fallback to mock data for development
+      console.error("Error loading tracking data:", error);
       setDistributors(getMockTrackingData());
+      setLastUpdate(new Date());
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Mock data for development/fallback
   const getMockTrackingData = () => {
     return [
       {
         id: 1,
-        name: "أحمد محمد",
-        phone: "+961 71 123456",
+        name: "أحمد محمود",
+        phone: "+961 70 123 456",
         status: "active",
         current_location: {
-          address: "شارع الحمراء، بيروت",
+          address: "بيروت - الحمرا",
           lat: 33.8938,
           lng: 35.5018,
-          last_update: new Date().toISOString()
+          last_update: new Date().toISOString(),
         },
-        orders: [],
-        todayOrders: 5,
-        completedOrders: 3,
-        todayRevenue: 245.50,
         current_route: {
-          current_stop: "متجر الحمراء الرئيسي",
-          completed_stops: 3,
-          total_stops: 5
-        }
+          current_stop: "مخبزة النور",
+          completed_stops: 8,
+          total_stops: 12,
+        },
+        orders_delivered_today: 8,
+        total_orders: 12,
+        efficiency_score: 85,
+        daily_revenue: 650.75,
+        progress: { percentage: 67 },
       },
       {
         id: 2,
-        name: "محمد علي",
-        phone: "+961 71 234567",
+        name: "سارة أحمد",
+        phone: "+961 71 234 567",
         status: "active",
         current_location: {
-          address: "شارع فردان، بيروت",
+          address: "بيروت - الأشرفية",
+          lat: 33.8959,
+          lng: 35.5131,
+          last_update: new Date().toISOString(),
+        },
+        current_route: {
+          current_stop: "متجر الصباح",
+          completed_stops: 5,
+          total_stops: 9,
+        },
+        orders_delivered_today: 5,
+        total_orders: 9,
+        efficiency_score: 92,
+        daily_revenue: 420.25,
+        progress: { percentage: 56 },
+      },
+      {
+        id: 3,
+        name: "خالد السوري",
+        phone: "+961 76 345 678",
+        status: "completed",
+        current_location: {
+          address: "بيروت - وسط البلد",
           lat: 33.8869,
           lng: 35.5131,
-          last_update: new Date().toISOString()
+          last_update: new Date().toISOString(),
         },
-        orders: [],
-        todayOrders: 4,
-        completedOrders: 2,
-        todayRevenue: 180.25,
         current_route: {
-          current_stop: "سوبر ماركت فردان",
-          completed_stops: 2,
-          total_stops: 4
-        }
-      }
+          current_stop: null,
+          completed_stops: 15,
+          total_stops: 15,
+        },
+        orders_delivered_today: 15,
+        total_orders: 15,
+        efficiency_score: 95,
+        daily_revenue: 890.5,
+        progress: { percentage: 100 },
+      },
     ];
   };
 
   // Filter distributors
-  const filteredDistributors = distributors.filter(distributor => {
-    const matchesStatus = filters.status === "all" || distributor.status === filters.status;
-    const matchesSearch = !filters.search || 
+  const filteredDistributors = distributors.filter((distributor) => {
+    const matchesStatus =
+      filters.status === "all" || distributor.status === filters.status;
+    const matchesSearch =
+      !filters.search ||
       distributor.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-      distributor.vehicle.toLowerCase().includes(filters.search.toLowerCase());
-    
+      distributor.current_location?.address
+        ?.toLowerCase()
+        .includes(filters.search.toLowerCase());
+
     return matchesStatus && matchesSearch;
   });
 
@@ -234,713 +381,589 @@ const LiveDistributorTracking = ({ selectedDate }) => {
   const getStatusColor = (status) => {
     const colors = {
       active: "bg-green-100 text-green-800 border-green-200",
-      inactive: "bg-gray-100 text-gray-800 border-gray-200",
-      delayed: "bg-red-100 text-red-800 border-red-200",
-      offline: "bg-yellow-100 text-yellow-800 border-yellow-200"
+      completed: "bg-blue-100 text-blue-800 border-blue-200",
+      offline: "bg-gray-100 text-gray-800 border-gray-200",
     };
-    return colors[status] || colors.inactive;
-  };
-
-  const getStatusIcon = (status) => {
-    const icons = {
-      active: <Activity className="w-4 h-4" />,
-      inactive: <Pause className="w-4 h-4" />,
-      delayed: <AlertTriangle className="w-4 h-4" />,
-      offline: <XCircle className="w-4 h-4" />
-    };
-    return icons[status] || icons.inactive;
+    return colors[status] || colors.offline;
   };
 
   const getStatusText = (status) => {
     const texts = {
       active: "نشط",
-      inactive: "غير نشط",
-      delayed: "متأخر",
-      offline: "غير متصل"
+      completed: "مكتمل",
+      offline: "غير متصل",
     };
-    return texts[status] || "غير معروف";
+    return texts[status] || texts.offline;
   };
 
-  const formatLastUpdate = (date) => {
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    
-    if (diffMins < 1) return "الآن";
-    if (diffMins < 60) return `منذ ${diffMins} دقيقة`;
-    
-    const diffHours = Math.floor(diffMins / 60);
-    return `منذ ${diffHours} ساعة`;
-  };
-
-  const sendMessageToDistributor = async (distributorId, message) => {
-    try {
-      const response = await fetch("/api/distribution/send-message", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
-        },
-        body: JSON.stringify({
-          distributor_id: distributorId,
-          message: message
-        })
-      });
-
-      if (response.ok) {
-        toast.success("تم إرسال الرسالة بنجاح");
-      } else {
-        toast.error("خطأ في إرسال الرسالة");
-      }
-    } catch (error) {
-      console.error("Error sending message:", error);
-      toast.error("خطأ في إرسال الرسالة");
-    }
+  const getStatusIcon = (status) => {
+    const icons = {
+      active: <CheckCircle className="w-4 h-4 text-green-600" />,
+      completed: <Target className="w-4 h-4 text-blue-600" />,
+      offline: <XCircle className="w-4 h-4 text-gray-600" />,
+    };
+    return icons[status] || icons.offline;
   };
 
   // Components
-  const DistributorCard = ({ distributor, onSelect }) => {
-    const hasAlerts = distributor.alerts && distributor.alerts.length > 0;
-    const isOnline = distributor.device_info?.last_online 
-      ? new Date() - new Date(distributor.device_info.last_online) < 5 * 60 * 1000 
-      : false; // 5 minutes
-
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`bg-white rounded-xl border-2 shadow-lg hover:shadow-xl transition-all cursor-pointer ${
-          selectedDistributor?.id === distributor.id ? "border-blue-500 bg-blue-50" : "border-gray-200"
-        }`}
-        onClick={() => onSelect(distributor)}
-      >
-        {/* Header */}
-        <div className="p-4 border-b border-gray-100">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="relative">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <User className="w-6 h-6 text-blue-600" />
-                </div>
-                {/* Online indicator */}
-                <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
-                  isOnline ? "bg-green-500" : "bg-gray-400"
-                }`} />
-              </div>
-              <div className="mr-3">
-                <h4 className="font-semibold text-gray-900">{distributor.name}</h4>
-                <p className="text-sm text-gray-600">{distributor.vehicle}</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(distributor.status)}`}>
-                {getStatusIcon(distributor.status)}
-                <span className="mr-1">{getStatusText(distributor.status)}</span>
-              </span>
-              {hasAlerts && (
-                <div className="mt-1">
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                    <Bell className="w-3 h-3 ml-1" />
-                    {distributor.alerts.length} تنبيه
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Current Location & Route */}
-        <div className="p-4 space-y-3">
-          <div className="flex items-start">
-            <MapPin className="w-4 h-4 text-gray-500 mt-0.5 ml-2 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">الموقع الحالي:</p>
-              <p className="text-xs text-gray-600">
-                {distributor.current_location?.address || "غير محدد"}
-              </p>
-              <p className="text-xs text-gray-500">
-                آخر تحديث: {distributor.current_location?.last_update 
-                  ? formatLastUpdate(distributor.current_location.last_update)
-                  : "غير متوفر"
-                }
-              </p>
-            </div>
-          </div>
-
-          {distributor.current_route?.current_stop && (
-            <div className="flex items-start">
-              <Store className="w-4 h-4 text-blue-500 mt-0.5 ml-2 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">المحل الحالي:</p>
-                <p className="text-xs text-blue-600">{distributor.current_route.current_stop}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Progress Bar */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs text-gray-600">
-              <span>التقدم</span>
-              <span>
-                {distributor.current_route?.completed_stops || 0}/{distributor.current_route?.total_stops || 0}
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full transition-all"
-                style={{ 
-                  width: `${
-                    distributor.current_route?.total_stops 
-                      ? ((distributor.current_route.completed_stops || 0) / distributor.current_route.total_stops) * 100
-                      : 0
-                  }%` 
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Key Metrics */}
-          <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
-            <div className="text-center">
-              <p className="text-xs text-gray-600">الطلبات المسلمة</p>
-              <p className="text-sm font-semibold text-gray-900">
-                {distributor.orders_delivered_today || distributor.progress?.completed || 0}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-600">نقاط الكفاءة</p>
-              <p className="text-sm font-semibold text-green-600">
-                {distributor.efficiency_score || Math.round((distributor.progress?.percentage || 0) * 0.9 + 10)}%
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Device Info */}
-        <div className="px-4 pb-4">
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <div className="flex items-center">
-              <Battery className="w-3 h-3 ml-1" />
-              <span>{distributor.device_info?.battery_level || 'N/A'}%</span>
-            </div>
-            <div className="flex items-center">
-              <Signal className="w-3 h-3 ml-1" />
-              <span>{distributor.device_info?.signal_strength || 0}/5</span>
-            </div>
-            <div className="flex items-center">
-              <Clock className="w-3 h-3 ml-1" />
-              <span>آخر نشاط: {distributor.device_info?.last_online ? formatLastUpdate(distributor.device_info.last_online) : 'غير متاح'}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="p-3 bg-gray-50 rounded-b-xl">
-          <div className="flex gap-2">
-            <EnhancedButton size="sm" variant="primary" className="flex-1">
-              <Navigation className="w-3 h-3 ml-1" />
-              تتبع
-            </EnhancedButton>
-            <EnhancedButton size="sm" variant="secondary" className="flex-1">
-              <MessageSquare className="w-3 h-3 ml-1" />
-              رسالة
-            </EnhancedButton>
-            <EnhancedButton size="sm" variant="secondary">
-              <Phone className="w-3 h-3" />
-            </EnhancedButton>
-          </div>
-        </div>
-      </motion.div>
-    );
-  };
-
-  const DistributorDetails = ({ distributor, onClose }) => (
+  const DistributorCard = ({ distributor }) => (
     <motion.div
-      initial={{ opacity: 0, x: 300 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 300 }}
-      className="bg-white rounded-xl border-0 shadow-lg"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`bg-white rounded-lg shadow-md p-4 border-2 transition-all cursor-pointer hover:shadow-lg ${
+        selectedDistributor?.id === distributor.id
+          ? "border-blue-500 bg-blue-50"
+          : "border-gray-200 hover:border-blue-300"
+      }`}
+      onClick={() => setSelectedDistributor(distributor)}
     >
-      <div className="p-6 border-b border-gray-100">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center ml-4">
-              <User className="w-8 h-8 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-gray-900">{distributor.name}</h3>
-              <p className="text-gray-600">{distributor.vehicle}</p>
-              <p className="text-sm text-gray-500">{distributor.phone}</p>
-            </div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-3 space-x-reverse">
+          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+            <User className="w-5 h-5 text-blue-600" />
           </div>
-          <EnhancedButton onClick={onClose} variant="secondary" size="sm">
-            <XCircle className="w-4 h-4" />
-          </EnhancedButton>
+          <div>
+            <h4 className="font-semibold text-gray-900">{distributor.name}</h4>
+            <p className="text-sm text-gray-600">{distributor.phone}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2 space-x-reverse">
+          {getStatusIcon(distributor.status)}
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+              distributor.status
+            )}`}
+          >
+            {getStatusText(distributor.status)}
+          </span>
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
-        {/* Performance Metrics */}
-        <div>
-          <h4 className="text-lg font-semibold text-gray-900 mb-4">الأداء اليومي</h4>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-blue-50 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">معدل الإكمال</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {distributor.progress?.percentage || 0}%
-                  </p>
-                </div>
-                <Target className="w-8 h-8 text-blue-600" />
-              </div>
-            </div>
-
-            <div className="bg-green-50 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">نقاط الكفاءة</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {distributor.efficiency_score || 85}%
-                  </p>
-                </div>
-                <Euro className="w-8 h-8 text-green-600" />
-              </div>
-            </div>
-
-            <div className="bg-purple-50 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">الطلبات المكتملة</p>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {distributor.orders_delivered_today || distributor.progress?.completed || 0}
-                  </p>
-                </div>
-                <Timer className="w-8 h-8 text-purple-600" />
-              </div>
-            </div>
-
-            <div className="bg-yellow-50 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">إجمالي الطلبات</p>
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {distributor.total_orders || distributor.progress?.total || 0}
-                  </p>
-                </div>
-                <TrendingUp className="w-8 h-8 text-yellow-600" />
-              </div>
-            </div>
+      {/* Current Location */}
+      <div className="mb-3 p-2 bg-gray-50 rounded-lg">
+        <div className="flex items-start space-x-2 space-x-reverse">
+          <MapPin className="w-4 h-4 text-red-500 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-gray-900">الموقع الحالي</p>
+            <p className="text-xs text-gray-600">
+              {distributor.current_location?.address || "غير محدد"}
+            </p>
+            {distributor.current_route?.current_stop && (
+              <p className="text-xs text-blue-600 mt-1">
+                المحطة الحالية: {distributor.current_route.current_stop}
+              </p>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Current Route Status */}
-        <div>
-          <h4 className="text-lg font-semibold text-gray-900 mb-4">حالة المسار</h4>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-600">المحطات المكتملة:</span>
-                <span className="font-semibold">{distributor.current_route.completed_stops}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">المحطات المتبقية:</span>
-                <span className="font-semibold">{distributor.current_route.remaining_stops}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">الإكمال المتوقع:</span>
-                <span className="font-semibold">{distributor.current_route.estimated_completion}</span>
-              </div>
-              {distributor.current_route.current_stop && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">المحل الحالي:</span>
-                  <span className="font-semibold text-blue-600">{distributor.current_route.current_stop}</span>
-                </div>
-              )}
-            </div>
-          </div>
+      {/* Progress */}
+      <div className="mb-3">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm text-gray-600">تقدم التوزيع</span>
+          <span className="text-sm font-medium">
+            {distributor.current_route?.completed_stops || 0} /{" "}
+            {distributor.current_route?.total_stops || 0}
+          </span>
         </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div
+            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${distributor.progress?.percentage || 0}%` }}
+          ></div>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          {distributor.progress?.percentage || 0}% مكتمل
+        </p>
+      </div>
 
-        {/* Alerts */}
-        {distributor.alerts && distributor.alerts.length > 0 && (
-          <div>
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">التنبيهات</h4>
-            <div className="space-y-2">
-              {distributor.alerts.map((alert, index) => (
-                <div key={index} className={`p-3 rounded-lg border-l-4 ${
-                  alert.type === 'delay' ? 'bg-red-50 border-red-400' : 
-                  alert.type === 'low_battery' ? 'bg-yellow-50 border-yellow-400' : 
-                  'bg-blue-50 border-blue-400'
-                }`}>
-                  <div className="flex items-start">
-                    <AlertTriangle className={`w-4 h-4 mt-0.5 ml-2 ${
-                      alert.type === 'delay' ? 'text-red-600' : 
-                      alert.type === 'low_battery' ? 'text-yellow-600' : 
-                      'text-blue-600'
-                    }`} />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{alert.message}</p>
-                      <p className="text-xs text-gray-500">{formatLastUpdate(alert.timestamp)}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+      {/* Metrics */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="text-center p-2 bg-green-50 rounded">
+          <p className="text-xs text-gray-600">الطلبات</p>
+          <p className="text-sm font-bold text-green-700">
+            {distributor.orders_delivered_today || 0}
+          </p>
+        </div>
+        <div className="text-center p-2 bg-blue-50 rounded">
+          <p className="text-xs text-gray-600">الكفاءة</p>
+          <p className="text-sm font-bold text-blue-700">
+            {distributor.efficiency_score || 0}%
+          </p>
+        </div>
+        <div className="text-center p-2 bg-purple-50 rounded">
+          <p className="text-xs text-gray-600">الإيرادات</p>
+          <p className="text-sm font-bold text-purple-700">
+            €{(distributor.daily_revenue || 0).toFixed(0)}
+          </p>
+        </div>
+      </div>
+
+      {/* Last Update */}
+      <div className="mt-3 pt-2 border-t border-gray-100">
+        <div className="flex items-center justify-between text-xs text-gray-500">
+          <div className="flex items-center space-x-1 space-x-reverse">
+            <Clock className="w-3 h-3" />
+            <span>آخر تحديث</span>
           </div>
-        )}
-
-        {/* Actions */}
-        <div className="flex gap-3 pt-4 border-t border-gray-200">
-          <EnhancedButton variant="primary" className="flex-1">
-            <Navigation className="w-4 h-4 ml-1" />
-            عرض على الخريطة
-          </EnhancedButton>
-          <EnhancedButton variant="secondary" className="flex-1">
-            <MessageSquare className="w-4 h-4 ml-1" />
-            إرسال رسالة
-          </EnhancedButton>
-          <EnhancedButton variant="secondary">
-            <Phone className="w-4 h-4" />
-          </EnhancedButton>
+          <span>
+            {new Date(
+              distributor.current_location?.last_update || new Date()
+            ).toLocaleTimeString("ar-SA")}
+          </span>
         </div>
       </div>
     </motion.div>
   );
 
-  // Interactive Map Component
-  const InteractiveMap = () => {
-    return (
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-        <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
-          <h3 className="text-lg font-bold text-gray-900 flex items-center">
-            <MapIcon className="w-5 h-5 text-blue-600 ml-2" />
-            خريطة التتبع المباشر
+  const DetailedView = ({ distributor }) => (
+    <Card className="bg-white shadow-lg h-full">
+      <CardHeader className="border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <Eye className="w-5 h-5 mr-2" />
+            تفاصيل الموزع
           </h3>
-          <p className="text-sm text-gray-600 mt-1">
-            مواقع الموزعين والطلبات في الوقت الفعلي
-          </p>
+          <EnhancedButton
+            onClick={() => setSelectedDistributor(null)}
+            variant="outline"
+            size="sm"
+          >
+            إغلاق
+          </EnhancedButton>
         </div>
-        
-        <div className="relative h-96 bg-gradient-to-br from-blue-100 to-green-100">
-          {/* Map Container */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center">
-              <MapIcon className="w-16 h-16 text-blue-400 mx-auto mb-4" />
-              <p className="text-lg font-semibold text-gray-700 mb-2">
-                خريطة تفاعلية
-              </p>
-              <p className="text-sm text-gray-500 mb-4">
-                عرض مواقع الموزعين والطلبات
-              </p>
-              
-              {/* Distributor Markers */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
-                {distributors.map((distributor, index) => (
-                  <div 
-                    key={distributor.id}
-                    className="bg-white rounded-lg p-3 shadow-md border border-gray-200"
-                    style={{
-                      position: 'relative',
-                      left: `${(index % 2) * 200 - 100}px`,
-                      top: `${Math.floor(index / 2) * 80 - 40}px`
-                    }}
-                  >
-                    <div className="flex items-center">
-                      <div className={`w-3 h-3 rounded-full mr-2 ${
-                        distributor.status === 'active' 
-                          ? 'bg-green-500 animate-pulse' 
-                          : 'bg-gray-400'
-                      }`}></div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {distributor.name}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          {distributor.current_location.address}
-                        </p>
-                        <p className="text-xs text-blue-600">
-                          {distributor.current_route.completed_stops}/{distributor.current_route.total_stops} طلبات
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Map Legend */}
-          <div className="absolute bottom-4 left-4 bg-white rounded-lg p-3 shadow-lg">
-            <p className="text-xs font-semibold text-gray-700 mb-2">وسائل الإيضاح</p>
-            <div className="space-y-1">
-              <div className="flex items-center text-xs">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                <span>موزع نشط</span>
-              </div>
-              <div className="flex items-center text-xs">
-                <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
-                <span>موزع غير نشط</span>
-              </div>
-              <div className="flex items-center text-xs">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                <span>موقع طلب</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Real-time Update Indicator */}
-          <div className="absolute top-4 right-4 bg-white rounded-lg p-2 shadow-lg">
-            <div className="flex items-center text-xs">
-              <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-              <span className="text-gray-700">تحديث مباشر</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Map Controls */}
-        <div className="p-4 bg-gray-50 border-t">
-          <div className="flex items-center justify-between">
+      </CardHeader>
+      <CardBody className="p-6">
+        {distributor ? (
+          <div className="space-y-6">
+            {/* Distributor Info */}
             <div className="flex items-center space-x-4 space-x-reverse">
-              <button className="flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200 transition-colors">
-                <Navigation2 className="w-4 h-4 ml-1" />
-                توسيط الخريطة
-              </button>
-              <button className="flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm hover:bg-green-200 transition-colors">
-                <RefreshCw className="w-4 h-4 ml-1" />
-                تحديث المواقع
-              </button>
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                <User className="w-8 h-8 text-blue-600" />
+              </div>
+              <div>
+                <h4 className="text-xl font-bold text-gray-900">
+                  {distributor.name}
+                </h4>
+                <p className="text-gray-600">{distributor.phone}</p>
+                <span
+                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                    distributor.status
+                  )}`}
+                >
+                  {getStatusIcon(distributor.status)}
+                  <span className="mr-1">
+                    {getStatusText(distributor.status)}
+                  </span>
+                </span>
+              </div>
             </div>
-            
-            <div className="text-xs text-gray-500">
-              آخر تحديث: {lastUpdate.toLocaleTimeString('ar-SA')}
+
+            {/* Current Location Details */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
+                <MapPin className="w-4 h-4 mr-2 text-red-500" />
+                معلومات الموقع
+              </h5>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="text-gray-600">العنوان: </span>
+                  <span className="font-medium">
+                    {distributor.current_location?.address || "غير محدد"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-600">الإحداثيات: </span>
+                  <span className="font-mono">
+                    {distributor.current_location?.lat?.toFixed(6) || "N/A"},
+                    {distributor.current_location?.lng?.toFixed(6) || "N/A"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-600">آخر تحديث: </span>
+                  <span className="font-medium">
+                    {new Date(
+                      distributor.current_location?.last_update || new Date()
+                    ).toLocaleString("ar-SA")}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Route Progress */}
+            <div className="bg-blue-50 rounded-lg p-4">
+              <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
+                <Route className="w-4 h-4 mr-2 text-blue-500" />
+                تقدم المسار
+              </h5>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">
+                    المحطات المكتملة
+                  </span>
+                  <span className="font-bold text-blue-600">
+                    {distributor.current_route?.completed_stops || 0} /{" "}
+                    {distributor.current_route?.total_stops || 0}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div
+                    className="bg-blue-500 h-3 rounded-full"
+                    style={{
+                      width: `${distributor.progress?.percentage || 0}%`,
+                    }}
+                  ></div>
+                </div>
+                <div className="text-center">
+                  <span className="text-lg font-bold text-blue-600">
+                    {distributor.progress?.percentage || 0}%
+                  </span>
+                  <span className="text-sm text-gray-600 mr-2">مكتمل</span>
+                </div>
+                {distributor.current_route?.current_stop && (
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">المحطة التالية:</p>
+                    <p className="font-medium text-gray-900">
+                      {distributor.current_route.current_stop}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Performance Metrics */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-green-50 rounded-lg p-4 text-center">
+                <Package className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                <p className="text-2xl font-bold text-green-700">
+                  {distributor.orders_delivered_today || 0}
+                </p>
+                <p className="text-sm text-gray-600">طلبات مكتملة</p>
+              </div>
+              <div className="bg-purple-50 rounded-lg p-4 text-center">
+                <Euro className="w-8 h-8 text-purple-500 mx-auto mb-2" />
+                <p className="text-2xl font-bold text-purple-700">
+                  €{(distributor.daily_revenue || 0).toFixed(2)}
+                </p>
+                <p className="text-sm text-gray-600">إيرادات اليوم</p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-3">
+              <EnhancedButton
+                variant="outline"
+                className="flex items-center justify-center space-x-2 space-x-reverse"
+                onClick={() => {
+                  if (distributor.phone) {
+                    window.open(`tel:${distributor.phone}`, "_self");
+                  }
+                }}
+              >
+                <Phone className="w-4 h-4" />
+                <span>اتصال</span>
+              </EnhancedButton>
+              <EnhancedButton
+                variant="outline"
+                className="flex items-center justify-center space-x-2 space-x-reverse"
+                onClick={() => {
+                  // Navigate to distributor details page
+                  window.location.href = `/distribution/distributor/${distributor.id}`;
+                }}
+              >
+                <Eye className="w-4 h-4" />
+                <span>التفاصيل</span>
+              </EnhancedButton>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="text-center py-12">
+            <Navigation className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">اختر موزعاً لعرض التفاصيل</p>
+          </div>
+        )}
+      </CardBody>
+    </Card>
+  );
+
+  if (isLoading && distributors.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <LoadingSpinner size="large" />
       </div>
     );
-  };
-
-  if (isLoading) {
-    return <LoadingSpinner text="جاري تحميل بيانات التتبع..." size="lg" />;
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-xl border-0 shadow-lg p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <div className="p-3 bg-green-100 rounded-xl ml-4">
-              <Navigation className="w-6 h-6 text-green-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">تتبع الموزعين المباشر</h2>
-              <p className="text-gray-600">
-                آخر تحديث: {lastUpdate.toLocaleTimeString('ar-SA')}
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            {/* View Mode Toggle */}
-            <div className="flex items-center bg-gray-100 rounded-lg p-1">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === "grid"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                شبكة
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === "list"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                قائمة
-              </button>
-              <button
-                onClick={() => setViewMode("map")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === "map"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                خريطة
-              </button>
-            </div>
-            
-            {/* Auto Refresh Toggle */}
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="autoRefresh"
-                checked={autoRefresh}
-                onChange={(e) => setAutoRefresh(e.target.checked)}
-                className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-              />
-              <label htmlFor="autoRefresh" className="mr-2 text-sm text-gray-700">
-                تحديث تلقائي
-              </label>
-            </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+            <Navigation className="w-6 h-6 mr-3" />
+            التتبع المباشر للموزعين
+          </h2>
+          <p className="text-gray-600 mt-1">
+            متابعة مباشرة لموقع وأداء الموزعين لتاريخ{" "}
+            {new Date(selectedDate).toLocaleDateString("en-GB")}
+          </p>
+        </div>
 
-            {/* Refresh Interval */}
-            <select
-              value={refreshInterval}
-              onChange={(e) => setRefreshInterval(parseInt(e.target.value))}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
-              disabled={!autoRefresh}
+        <div className="flex items-center space-x-4 space-x-reverse">
+          <div className="flex items-center space-x-2 space-x-reverse text-sm text-gray-600">
+            <Clock className="w-4 h-4" />
+            <span>آخر تحديث: {lastUpdate.toLocaleTimeString("ar-SA")}</span>
+          </div>
+
+          <div className="flex items-center space-x-2 space-x-reverse">
+            <EnhancedButton
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              variant={autoRefresh ? "primary" : "outline"}
+              size="sm"
+              className="flex items-center space-x-2 space-x-reverse"
             >
-              <option value={15}>15 ثانية</option>
-              <option value={30}>30 ثانية</option>
-              <option value={60}>دقيقة واحدة</option>
-              <option value={300}>5 دقائق</option>
-            </select>
+              {autoRefresh ? (
+                <Pause className="w-4 h-4" />
+              ) : (
+                <Play className="w-4 h-4" />
+              )}
+              <span>{autoRefresh ? "إيقاف" : "تشغيل"} التحديث التلقائي</span>
+            </EnhancedButton>
 
             <EnhancedButton
               onClick={loadTrackingData}
-              variant="secondary"
-              icon={<RefreshCw className="w-4 h-4" />}
+              variant="outline"
+              size="sm"
+              disabled={isLoading}
+              className="flex items-center space-x-2 space-x-reverse"
             >
-              تحديث الآن
+              <RefreshCw
+                className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
+              />
+              <span>تحديث</span>
             </EnhancedButton>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex items-center gap-4 mt-6">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">الحالة:</label>
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
-            >
-              <option value="all">الكل ({distributors.length})</option>
-              <option value="active">نشط ({distributors.filter(d => d.status === 'active').length})</option>
-              <option value="inactive">غير نشط ({distributors.filter(d => d.status === 'inactive').length})</option>
-              <option value="delayed">متأخر ({distributors.filter(d => d.status === 'delayed').length})</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">البحث:</label>
-            <input
-              type="text"
-              value={filters.search}
-              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-              placeholder="اسم الموزع أو رقم المركبة..."
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm w-64"
-            />
           </div>
         </div>
       </div>
 
+      {/* Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+          <CardBody className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-100 text-sm">موزعين نشطين</p>
+                <p className="text-2xl font-bold">
+                  {
+                    filteredDistributors.filter((d) => d.status === "active")
+                      .length
+                  }
+                </p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-green-200" />
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+          <CardBody className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100 text-sm">مكتملين</p>
+                <p className="text-2xl font-bold">
+                  {
+                    filteredDistributors.filter((d) => d.status === "completed")
+                      .length
+                  }
+                </p>
+              </div>
+              <Target className="w-8 h-8 text-blue-200" />
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+          <CardBody className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100 text-sm">إجمالي الطلبات</p>
+                <p className="text-2xl font-bold">
+                  {filteredDistributors.reduce(
+                    (sum, d) => sum + (d.orders_delivered_today || 0),
+                    0
+                  )}
+                </p>
+              </div>
+              <Package className="w-8 h-8 text-purple-200" />
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">
+          <CardBody className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-yellow-100 text-sm">إجمالي الإيرادات</p>
+                <p className="text-2xl font-bold">
+                  €
+                  {filteredDistributors
+                    .reduce((sum, d) => sum + (d.daily_revenue || 0), 0)
+                    .toFixed(0)}
+                </p>
+              </div>
+              <Euro className="w-8 h-8 text-yellow-200" />
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card className="bg-white shadow-lg">
+        <CardBody className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <EnhancedInput
+                type="text"
+                placeholder="البحث في الموزعين..."
+                value={filters.search}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, search: e.target.value }))
+                }
+                icon={<Search className="w-4 h-4" />}
+              />
+            </div>
+
+            <div>
+              <select
+                value={filters.status}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, status: e.target.value }))
+                }
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">جميع الحالات</option>
+                <option value="active">نشط</option>
+                <option value="completed">مكتمل</option>
+                <option value="offline">غير متصل</option>
+              </select>
+            </div>
+
+            <div>
+              <select
+                value={viewMode}
+                onChange={(e) => setViewMode(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="split">عرض مقسم</option>
+                <option value="map">الخريطة فقط</option>
+                <option value="grid">الشبكة فقط</option>
+              </select>
+            </div>
+
+            <div>
+              <select
+                value={refreshInterval}
+                onChange={(e) => setRefreshInterval(parseInt(e.target.value))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="15">كل 15 ثانية</option>
+                <option value="30">كل 30 ثانية</option>
+                <option value="60">كل دقيقة</option>
+                <option value="300">كل 5 دقائق</option>
+              </select>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
       {/* Main Content */}
-      {viewMode === "map" ? (
-        // Map View
-        <InteractiveMap />
-      ) : (
-        // Grid/List View
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Distributors List */}
-          <div className="lg:col-span-2">
-            {viewMode === "grid" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredDistributors.map((distributor) => (
-                  <DistributorCard
-                    key={distributor.id}
-                    distributor={distributor}
-                    onSelect={setSelectedDistributor}
-                  />
-                ))}
-                {filteredDistributors.length === 0 && (
-                  <div className="col-span-2 text-center py-12">
-                    <Navigation className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">لا توجد موزعون</h3>
-                    <p className="text-gray-600">لا يوجد موزعون متاحون بالمعايير المحددة</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              // List View
-              <div className="space-y-4">
-                {filteredDistributors.map((distributor) => (
-                  <div
-                    key={distributor.id}
-                    className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 hover:shadow-xl transition-all cursor-pointer"
-                    onClick={() => setSelectedDistributor(distributor)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className={`w-4 h-4 rounded-full mr-3 ${
-                          distributor.status === 'active' 
-                            ? 'bg-green-500 animate-pulse' 
-                            : 'bg-gray-400'
-                        }`}></div>
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900">{distributor.name}</h3>
-                          <p className="text-sm text-gray-600">{distributor.phone}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-600">الطلبات اليوم</p>
-                        <p className="text-xl font-bold text-blue-600">
-                          {distributor.current_route.completed_stops}/{distributor.current_route.total_stops}
-                        </p>
+      <div
+        className={`grid gap-6 ${
+          viewMode === "split"
+            ? "lg:grid-cols-3"
+            : viewMode === "map"
+            ? "grid-cols-1"
+            : "grid-cols-1"
+        }`}
+      >
+        {/* Map View */}
+        {(viewMode === "split" || viewMode === "map") && (
+          <div
+            className={viewMode === "split" ? "lg:col-span-2" : "col-span-1"}
+          >
+            <Card className="bg-white shadow-lg">
+              <CardHeader className="border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <MapIcon className="w-5 h-5 mr-2" />
+                  خريطة التتبع المباشر
+                </h3>
+              </CardHeader>
+              <CardBody className="p-0">
+                <div
+                  ref={mapRef}
+                  className="w-full h-96 lg:h-[600px] rounded-b-lg"
+                  style={{ minHeight: "400px" }}
+                >
+                  {!mapLoaded && (
+                    <div className="flex items-center justify-center h-full bg-gray-100 rounded-b-lg">
+                      <div className="text-center">
+                        <MapIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                        <p className="text-gray-500">جاري تحميل الخريطة...</p>
                       </div>
                     </div>
-                    <div className="mt-3 pt-3 border-t border-gray-100">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">الموقع الحالي:</span>
-                        <span className="text-gray-900">{distributor.current_location.address}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm mt-1">
-                        <span className="text-gray-600">الإيرادات:</span>
-                        <span className="text-green-600 font-semibold">€{distributor.todayRevenue}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {filteredDistributors.length === 0 && (
-                  <div className="text-center py-12">
+                  )}
+                </div>
+              </CardBody>
+            </Card>
+          </div>
+        )}
+
+        {/* Distributors Grid or Detailed View */}
+        {viewMode === "split" && (
+          <div className="space-y-4">
+            <DetailedView distributor={selectedDistributor} />
+          </div>
+        )}
+
+        {(viewMode === "grid" || viewMode === "map") && (
+          <div className="space-y-6">
+            {/* Distributors Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <AnimatePresence>
+                {filteredDistributors.length > 0 ? (
+                  filteredDistributors.map((distributor) => (
+                    <DistributorCard
+                      key={distributor.id}
+                      distributor={distributor}
+                    />
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-12">
                     <Navigation className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">لا توجد موزعون</h3>
-                    <p className="text-gray-600">لا يوجد موزعون متاحون بالمعايير المحددة</p>
+                    <p className="text-gray-500 text-lg">
+                      لا يوجد موزعين متاحين
+                    </p>
+                    <p className="text-gray-400 text-sm">
+                      {filters.search || filters.status !== "all"
+                        ? "جرب تغيير معايير البحث"
+                        : "لا يوجد موزعين نشطين في الوقت الحالي"}
+                    </p>
                   </div>
                 )}
-              </div>
+              </AnimatePresence>
+            </div>
+
+            {/* Selected Distributor Details */}
+            {selectedDistributor && (
+              <DetailedView distributor={selectedDistributor} />
             )}
           </div>
-
-          {/* Distributor Details */}
-          <div className="lg:col-span-1">
-            <AnimatePresence>
-              {selectedDistributor ? (
-                <DistributorDetails
-                  key={selectedDistributor.id}
-                  distributor={selectedDistributor}
-                  onClose={() => setSelectedDistributor(null)}
-                />
-              ) : (
-                <div className="bg-white rounded-xl border-0 shadow-lg p-8 text-center">
-                  <Eye className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">اختر موزع للعرض</h3>
-                  <p className="text-gray-600">انقر على أي موزع لعرض التفاصيل الكاملة</p>
-                </div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
 
-export default LiveDistributorTracking; 
+export default LiveDistributorTracking;

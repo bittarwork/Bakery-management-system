@@ -41,24 +41,24 @@ import {
   Coffee,
   ArrowRight,
   User,
+  Fuel,
+  Wrench,
+  Phone,
+  Mail,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
-import DailyOperationsManager from "../../components/distribution/DailyOperationsManager";
-import LiveDistributorTracking from "../../components/distribution/LiveDistributorTracking";
-// Import the updated distribution service
 import distributionService from "../../services/distributionService";
 
 /**
- * Distribution Manager Dashboard - Overview Page
- * Main dashboard with links to specialized pages
+ * Distribution Manager Dashboard - Simplified Overview
+ * Focused on distributor information and daily performance
  */
 const DistributionManagerDashboard = () => {
   const navigate = useNavigate();
 
   // Main states
-  const [currentView, setCurrentView] = useState("overview");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedDate, setSelectedDate] = useState(
@@ -67,11 +67,8 @@ const DistributionManagerDashboard = () => {
 
   // Data states
   const [dashboardData, setDashboardData] = useState({
-    dailyOrders: [],
     distributors: [],
-    stores: [],
     statistics: {},
-    liveTracking: [],
     notifications: [],
   });
 
@@ -80,7 +77,7 @@ const DistributionManagerDashboard = () => {
     loadDashboardData();
 
     // Set up real-time updates
-    const interval = setInterval(loadLiveData, 30000); // Update every 30 seconds
+    const interval = setInterval(loadLiveData, 60000); // Update every minute
     return () => clearInterval(interval);
   }, [selectedDate]);
 
@@ -89,34 +86,33 @@ const DistributionManagerDashboard = () => {
       setIsLoading(true);
       setError("");
 
-      // Use the updated distribution service
       const response = await distributionService.getDashboardData(selectedDate);
 
       if (response.success) {
-        setDashboardData(response.data);
+        setDashboardData({
+          distributors: response.data.distributors || [],
+          statistics: response.data.statistics || {},
+          notifications: response.data.notifications || [],
+        });
       } else {
-        // Fallback to mock data
-        setDashboardData(getMockDashboardData().data);
-        toast.error("خطأ في تحميل البيانات - جاري استخدام بيانات تجريبية");
+        setDashboardData(getMockDashboardData());
+        toast.error("Error loading data - using mock data");
       }
     } catch (error) {
       console.error("Error loading dashboard data:", error);
-      setError("خطأ في تحميل بيانات لوحة التحكم");
-      // Fallback to mock data
-      setDashboardData(getMockDashboardData().data);
+      setError("Error loading dashboard data");
+      setDashboardData(getMockDashboardData());
     } finally {
       setIsLoading(false);
     }
   };
 
   const loadLiveData = async () => {
-    // Update live data without showing loading
     try {
       const response = await distributionService.getLiveTracking(selectedDate);
       if (response.success && response.data) {
         setDashboardData((prev) => ({
           ...prev,
-          liveTracking: response.data,
           distributors: response.data.distributors || prev.distributors,
         }));
       }
@@ -128,464 +124,469 @@ const DistributionManagerDashboard = () => {
   // Get mock data for fallback
   const getMockDashboardData = () => {
     return {
-      success: true,
-      data: {
-        statistics: {
-          totalOrders: 156,
-          activeDistributors: 8,
-          completedDeliveries: 124,
-          pendingOrders: 32,
-          todayRevenue: 8450.75,
-          averageDeliveryTime: 42,
-          customerSatisfaction: 4.2,
-          onTimeDeliveryRate: 89,
-        },
-        dailyOrders: [
-          {
-            id: 1,
-            orderNumber: "ORD-001",
-            store: "متجر الصباح",
-            status: "pending",
-            amount: 245.5,
-          },
-          {
-            id: 2,
-            orderNumber: "ORD-002",
-            store: "مخبز النور",
-            status: "delivered",
-            amount: 180.25,
-          },
-          {
-            id: 3,
-            orderNumber: "ORD-003",
-            store: "متجر السلام",
-            status: "in_progress",
-            amount: 320.0,
-          },
-        ],
-        distributors: [
-          {
-            id: 1,
-            name: "أحمد محمد",
-            status: "active",
-            orders: 12,
-            location: "وسط البلد",
-          },
-          {
-            id: 2,
-            name: "سارة أحمد",
-            status: "active",
-            orders: 8,
-            location: "الحمرا",
-          },
-          {
-            id: 3,
-            name: "محمد علي",
-            status: "break",
-            orders: 15,
-            location: "الأشرفية",
-          },
-        ],
-        notifications: [
-          {
-            id: 1,
-            type: "warning",
-            message: "تأخير في التسليم - الطلب #ORD-001",
-            time: "10 دقائق",
-          },
-          {
-            id: 2,
-            type: "success",
-            message: "تم تسليم الطلب #ORD-002 بنجاح",
-            time: "15 دقيقة",
-          },
-          {
-            id: 3,
-            type: "info",
-            message: "موزع جديد انضم للفريق",
-            time: "30 دقيقة",
-          },
-        ],
+      statistics: {
+        totalOrders: 156,
+        activeDistributors: 8,
+        completedDeliveries: 124,
+        pendingOrders: 32,
+        todayRevenue: 8450.75,
+        averageDeliveryTime: 42,
+        onTimeDeliveryRate: 89,
       },
+      distributors: [
+        {
+          id: 1,
+          name: "أحمد محمود",
+          phone: "+961 70 123 456",
+          email: "ahmed@bakery.com",
+          status: "active",
+          current_location: {
+            address: "بيروت - الحمرا",
+            lat: 33.8938,
+            lng: 35.5018,
+            last_update: new Date().toISOString(),
+          },
+          current_route: {
+            current_stop: "مخبزة النور",
+            completed_stops: 12,
+            total_stops: 18,
+          },
+          daily_expenses: {
+            fuel: 45.5,
+            maintenance: 12.0,
+            other: 8.75,
+          },
+          daily_revenue: 1250.75,
+          orders_delivered_today: 12,
+          total_orders: 18,
+          efficiency_score: 89,
+        },
+      ],
+      notifications: [],
     };
   };
 
-  // Helper function to parse JSON safely
-  const parseJsonSafely = (response) => {
-    if (typeof response === "string") {
-      try {
-        return JSON.parse(response);
-      } catch (error) {
-        console.warn("Failed to parse JSON response:", error);
-        return null;
-      }
+  const navigateToDistributorDetails = (distributorId) => {
+    navigate(`/distribution/distributor/${distributorId}`, {
+      state: { date: selectedDate },
+    });
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "active":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "completed":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "offline":
+        return "bg-gray-100 text-gray-800 border-gray-200";
+      default:
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
     }
-    return response;
   };
 
-  // Quick action cards for main sections
-  const QuickActionCard = ({
-    title,
-    description,
-    icon: Icon,
-    color,
-    count,
-    route,
-    onClick,
-  }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ scale: 1.02 }}
-      className="bg-white rounded-xl shadow-lg border-0 overflow-hidden cursor-pointer hover:shadow-xl transition-all duration-300"
-      onClick={onClick || (() => navigate(route))}
-    >
-      <div className={`bg-gradient-to-r ${getColorGradient(color)} p-6`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <div className="p-3 bg-white/20 rounded-lg ml-4">
-              <Icon className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-white">{title}</h3>
-              <p className="text-white/80">{description}</p>
-            </div>
-          </div>
-          <div className="text-right">
-            {count && (
-              <div className="text-3xl font-bold text-white mb-1">{count}</div>
-            )}
-            <ArrowRight className="w-6 h-6 text-white/60" />
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-
-  // Statistics cards
-  const StatCard = ({ title, value, change, icon: Icon, color }) => (
-    <Card className="border-0 shadow-lg">
-      <CardBody className="p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-gray-600 text-sm font-medium">{title}</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-            {change && (
-              <p className="text-sm text-green-600 font-medium mt-1">
-                {change}
-              </p>
-            )}
-          </div>
-          <div className={`p-3 rounded-lg bg-${color}-100`}>
-            <Icon className={`w-6 h-6 text-${color}-600`} />
-          </div>
-        </div>
-      </CardBody>
-    </Card>
-  );
-
-  // Helper functions
-  const getColorGradient = (color) => {
-    const gradients = {
-      blue: "from-blue-600 to-blue-700",
-      green: "from-green-600 to-green-700",
-      purple: "from-purple-600 to-purple-700",
-      orange: "from-orange-600 to-orange-700",
-      red: "from-red-600 to-red-700",
-      indigo: "from-indigo-600 to-indigo-700",
-    };
-    return gradients[color] || gradients.blue;
+  const getStatusText = (status) => {
+    switch (status) {
+      case "active":
+        return "نشط";
+      case "completed":
+        return "مكتمل";
+      case "offline":
+        return "غير متصل";
+      default:
+        return "غير محدد";
+    }
   };
-
-  // Navigation items for main sections
-  const navigationItems = [
-    { key: "overview", label: "نظرة عامة", icon: BarChart3 },
-    { key: "dailyOps", label: "العمليات اليومية", icon: Coffee },
-    { key: "tracking", label: "التتبع المباشر", icon: Navigation },
-  ];
-
-  // Quick actions removed - will be moved to separate pages
 
   if (isLoading) {
     return (
-      <LoadingSpinner fullScreen text="جاري تحميل لوحة التحكم..." size="lg" />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <LoadingSpinner size="large" />
+      </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white shadow-lg border-b border-gray-200"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="container mx-auto px-4 py-6">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-                <Truck className="w-7 h-7 text-blue-600 ml-3" />
-                لوحة تحكم التوزيع
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                لوحة التوزيع
               </h1>
-              <p className="text-gray-600 mt-1">
-                إدارة شاملة لعمليات التوزيع والمتابعة المباشرة
+              <p className="text-gray-600">
+                إدارة ومراقبة عمليات التوزيع اليومية
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                <Clock className="w-4 h-4 text-gray-600 ml-2" />
-                <span className="text-sm font-medium">
-                  {new Date().toLocaleTimeString("ar-SA", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
+
+            <div className="flex items-center space-x-4 space-x-reverse mt-4 md:mt-0">
+              <div className="flex items-center space-x-2 space-x-reverse">
+                <Calendar className="w-5 h-5 text-gray-500" />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
+
               <EnhancedButton
                 onClick={loadDashboardData}
-                variant="secondary"
-                icon={<RefreshCw className="w-4 h-4" />}
+                variant="outline"
+                size="sm"
+                className="flex items-center space-x-2 space-x-reverse"
               >
-                تحديث
+                <RefreshCw className="w-4 h-4" />
+                <span>تحديث</span>
               </EnhancedButton>
             </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Navigation Tabs */}
+        {/* Statistics Cards */}
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl border-0 shadow-lg mb-6 overflow-hidden"
+          className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"
         >
-          <div className="flex overflow-x-auto">
-            {navigationItems.map((item) => (
-              <button
-                key={item.key}
-                onClick={() => setCurrentView(item.key)}
-                className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                  currentView === item.key
-                    ? "text-blue-600 border-blue-600 bg-blue-50"
-                    : "text-gray-600 border-transparent hover:text-blue-600 hover:bg-blue-50"
-                }`}
-              >
-                <item.icon className="w-4 h-4 ml-2" />
-                {item.label}
-              </button>
-            ))}
+          <Card className="bg-white shadow-lg">
+            <CardBody className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">إجمالي الطلبات</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {dashboardData.statistics.totalOrders || 0}
+                  </p>
+                </div>
+                <Package className="w-8 h-8 text-blue-500" />
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card className="bg-white shadow-lg">
+            <CardBody className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">الموزعين النشطين</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {dashboardData.statistics.activeDistributors || 0}
+                  </p>
+                </div>
+                <Users className="w-8 h-8 text-green-500" />
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card className="bg-white shadow-lg">
+            <CardBody className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">التسليمات المكتملة</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {dashboardData.statistics.completedDeliveries || 0}
+                  </p>
+                </div>
+                <CheckCircle className="w-8 h-8 text-blue-500" />
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card className="bg-white shadow-lg">
+            <CardBody className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">إيرادات اليوم</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    €
+                    {dashboardData.statistics.todayRevenue?.toFixed(2) ||
+                      "0.00"}
+                  </p>
+                </div>
+                <Euro className="w-8 h-8 text-yellow-500" />
+              </div>
+            </CardBody>
+          </Card>
+        </motion.div>
+
+        {/* Distributors Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+              <Truck className="w-6 h-6 mr-3" />
+              الموزعين ومعلومات التوزيع
+            </h2>
+
+            <EnhancedButton
+              onClick={() => navigate("/distribution/daily-operations")}
+              variant="primary"
+              className="flex items-center space-x-2 space-x-reverse"
+            >
+              <Coffee className="w-4 h-4" />
+              <span>العمليات اليومية</span>
+            </EnhancedButton>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {dashboardData.distributors &&
+            dashboardData.distributors.length > 0 ? (
+              dashboardData.distributors.map((distributor) => (
+                <motion.div
+                  key={distributor.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  whileHover={{ scale: 1.02 }}
+                  className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-all duration-300"
+                >
+                  {/* Distributor Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3 space-x-reverse">
+                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <User className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {distributor.name}
+                        </h3>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(
+                            distributor.status
+                          )}`}
+                        >
+                          {getStatusText(distributor.status)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <EnhancedButton
+                      onClick={() =>
+                        navigateToDistributorDetails(distributor.id)
+                      }
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center space-x-1 space-x-reverse"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>التفاصيل</span>
+                    </EnhancedButton>
+                  </div>
+
+                  {/* Contact Information */}
+                  <div className="mb-4 space-y-2">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Phone className="w-4 h-4 mr-2" />
+                      <span>{distributor.phone || "غير محدد"}</span>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Mail className="w-4 h-4 mr-2" />
+                      <span>{distributor.email || "غير محدد"}</span>
+                    </div>
+                  </div>
+
+                  {/* Current Location */}
+                  <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-start space-x-2 space-x-reverse">
+                      <MapPin className="w-4 h-4 text-red-500 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">
+                          الموقع الحالي
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {distributor.current_location?.address || "غير محدد"}
+                        </p>
+                        {distributor.current_route?.current_stop && (
+                          <p className="text-xs text-blue-600 mt-1">
+                            المحطة الحالية:{" "}
+                            {distributor.current_route.current_stop}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-gray-600">
+                        تقدم التوزيع
+                      </span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {distributor.current_route?.completed_stops || 0} /{" "}
+                        {distributor.current_route?.total_stops || 0}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-500 h-2 rounded-full"
+                        style={{
+                          width: `${distributor.progress?.percentage || 0}%`,
+                        }}
+                      ></div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {distributor.progress?.percentage || 0}% مكتمل
+                    </p>
+                  </div>
+
+                  {/* Daily Performance */}
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="text-center p-2 bg-green-50 rounded-lg">
+                      <p className="text-xs text-gray-600">طلبات اليوم</p>
+                      <p className="text-lg font-bold text-green-700">
+                        {distributor.orders_delivered_today || 0}
+                      </p>
+                    </div>
+                    <div className="text-center p-2 bg-blue-50 rounded-lg">
+                      <p className="text-xs text-gray-600">الكفاءة</p>
+                      <p className="text-lg font-bold text-blue-700">
+                        {distributor.efficiency_score || 0}%
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Daily Revenue & Expenses */}
+                  <div className="border-t pt-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Revenue */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-gray-600 flex items-center">
+                            <Euro className="w-4 h-4 mr-1" />
+                            الإيرادات
+                          </span>
+                          <span className="text-lg font-bold text-green-600">
+                            €{(distributor.daily_revenue || 0).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Expenses */}
+                      <div>
+                        <div className="mb-2">
+                          <span className="text-sm text-gray-600 flex items-center">
+                            <DollarSign className="w-4 h-4 mr-1" />
+                            المصاريف
+                          </span>
+                        </div>
+                        {distributor.daily_expenses && (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center text-gray-500">
+                                <Fuel className="w-3 h-3 mr-1" />
+                                وقود
+                              </span>
+                              <span className="text-red-600">
+                                €
+                                {distributor.daily_expenses.fuel?.toFixed(2) ||
+                                  "0.00"}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center text-gray-500">
+                                <Wrench className="w-3 h-3 mr-1" />
+                                صيانة
+                              </span>
+                              <span className="text-red-600">
+                                €
+                                {distributor.daily_expenses.maintenance?.toFixed(
+                                  2
+                                ) || "0.00"}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-gray-500">أخرى</span>
+                              <span className="text-red-600">
+                                €
+                                {distributor.daily_expenses.other?.toFixed(2) ||
+                                  "0.00"}
+                              </span>
+                            </div>
+                            <div className="border-t pt-1 mt-2">
+                              <div className="flex items-center justify-between text-sm font-medium">
+                                <span className="text-gray-700">المجموع</span>
+                                <span className="text-red-700">
+                                  €
+                                  {(
+                                    (distributor.daily_expenses.fuel || 0) +
+                                    (distributor.daily_expenses.maintenance ||
+                                      0) +
+                                    (distributor.daily_expenses.other || 0)
+                                  ).toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <Truck className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">لا توجد موزعين متاحين</p>
+                <p className="text-gray-400 text-sm">
+                  قم بإضافة موزعين من قسم إدارة المستخدمين
+                </p>
+              </div>
+            )}
           </div>
         </motion.div>
 
-        {/* Main Content */}
+        {/* Quick Actions */}
         <motion.div
-          key={currentView}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mt-8"
         >
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-              <div className="flex items-center">
-                <AlertCircle className="w-5 h-5 text-red-600 ml-2" />
-                <span className="text-red-800 font-medium">{error}</span>
-              </div>
-            </div>
-          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <EnhancedButton
+              onClick={() => navigate("/distribution/live-tracking")}
+              variant="outline"
+              className="flex items-center justify-center space-x-2 space-x-reverse p-4"
+            >
+              <Navigation className="w-5 h-5" />
+              <span>التتبع المباشر</span>
+            </EnhancedButton>
 
-          {/* Overview - Simplified to show only distributors and basic stats */}
-          {currentView === "overview" && (
-            <div className="space-y-6">
-              {/* Basic Statistics */}
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
-                  إحصائيات التوزيع العامة
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <StatCard
-                    title="إجمالي الطلبات"
-                    value={dashboardData.statistics.totalOrders || 0}
-                    change="+12%"
-                    icon={Package}
-                    color="blue"
-                  />
-                  <StatCard
-                    title="الموزعين النشطين"
-                    value={dashboardData.statistics.activeDistributors || 0}
-                    change="+2"
-                    icon={Users}
-                    color="green"
-                  />
-                  <StatCard
-                    title="التسليمات المكتملة"
-                    value={dashboardData.statistics.completedDeliveries || 0}
-                    change="+8%"
-                    icon={CheckCircle}
-                    color="purple"
-                  />
-                  <StatCard
-                    title="إيرادات اليوم"
-                    value={`€${dashboardData.statistics.todayRevenue || 0}`}
-                    change="+15%"
-                    icon={Euro}
-                    color="orange"
-                  />
-                </div>
-              </div>
+            <EnhancedButton
+              onClick={() => navigate("/reports")}
+              variant="outline"
+              className="flex items-center justify-center space-x-2 space-x-reverse p-4"
+            >
+              <BarChart3 className="w-5 h-5" />
+              <span>التقارير</span>
+            </EnhancedButton>
 
-              {/* Distributors List with their information */}
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
-                  الموزعين ومعلومات التوزيع
-                </h2>
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {dashboardData.distributors &&
-                  dashboardData.distributors.length > 0 ? (
-                    dashboardData.distributors.map((distributor) => (
-                      <motion.div
-                        key={distributor.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden"
-                      >
-                        <div className="p-6">
-                          {/* Distributor Header */}
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center">
-                              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
-                                <User className="w-6 h-6 text-white" />
-                              </div>
-                              <div className="mr-3">
-                                <h3 className="text-lg font-bold text-gray-900">
-                                  {distributor.name}
-                                </h3>
-                                <p className="text-sm text-gray-600">
-                                  {distributor.phone}
-                                </p>
-                              </div>
-                            </div>
-                            <div
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                distributor.status === "active"
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {distributor.status === "active"
-                                ? "نشط"
-                                : "غير نشط"}
-                            </div>
-                          </div>
+            <EnhancedButton
+              onClick={() => navigate("/users?role=distributor")}
+              variant="outline"
+              className="flex items-center justify-center space-x-2 space-x-reverse p-4"
+            >
+              <UserPlus className="w-5 h-5" />
+              <span>إدارة الموزعين</span>
+            </EnhancedButton>
 
-                          {/* Distributor Statistics */}
-                          <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div className="text-center p-3 bg-blue-50 rounded-lg">
-                              <div className="text-2xl font-bold text-blue-600">
-                                {distributor.todayOrders || 0}
-                              </div>
-                              <div className="text-xs text-blue-700">
-                                طلبات اليوم
-                              </div>
-                            </div>
-                            <div className="text-center p-3 bg-green-50 rounded-lg">
-                              <div className="text-2xl font-bold text-green-600">
-                                {distributor.completedOrders || 0}
-                              </div>
-                              <div className="text-xs text-green-700">
-                                مكتملة
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Current Location */}
-                          {distributor.current_location && (
-                            <div className="mb-4">
-                              <div className="flex items-center text-sm text-gray-600 mb-1">
-                                <MapPin className="w-4 h-4 ml-1" />
-                                الموقع الحالي
-                              </div>
-                              <p className="text-sm text-gray-800">
-                                {distributor.current_location.address ||
-                                  "غير محدد"}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Current Route Progress */}
-                          {distributor.current_route && (
-                            <div className="mb-4">
-                              <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
-                                <span>تقدم المسار</span>
-                                <span>
-                                  {distributor.current_route.completed_stops ||
-                                    0}
-                                  /{distributor.current_route.total_stops || 0}
-                                </span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div
-                                  className="bg-blue-600 h-2 rounded-full"
-                                  style={{
-                                    width: `${
-                                      distributor.current_route.total_stops > 0
-                                        ? (distributor.current_route
-                                            .completed_stops /
-                                            distributor.current_route
-                                              .total_stops) *
-                                          100
-                                        : 0
-                                    }%`,
-                                  }}
-                                ></div>
-                              </div>
-                              {distributor.current_route.current_stop && (
-                                <p className="text-xs text-gray-600 mt-1">
-                                  المحطة الحالية:{" "}
-                                  {distributor.current_route.current_stop}
-                                </p>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Revenue */}
-                          <div className="border-t pt-3">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-gray-600">
-                                إيرادات اليوم
-                              </span>
-                              <span className="text-lg font-bold text-green-600">
-                                €{distributor.todayRevenue || 0}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))
-                  ) : (
-                    <div className="col-span-full text-center py-12">
-                      <Truck className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500 text-lg">
-                        لا توجد موزعين متاحين
-                      </p>
-                      <p className="text-gray-400 text-sm">
-                        قم بإضافة موزعين من قسم إدارة المستخدمين
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Other Views */}
-          {currentView === "dailyOps" && (
-            <DailyOperationsManager selectedDate={selectedDate} />
-          )}
-          {currentView === "tracking" && (
-            <LiveDistributorTracking selectedDate={selectedDate} />
-          )}
+            <EnhancedButton
+              onClick={() => navigate("/settings")}
+              variant="outline"
+              className="flex items-center justify-center space-x-2 space-x-reverse p-4"
+            >
+              <Settings className="w-5 h-5" />
+              <span>الإعدادات</span>
+            </EnhancedButton>
+          </div>
         </motion.div>
       </div>
     </div>
