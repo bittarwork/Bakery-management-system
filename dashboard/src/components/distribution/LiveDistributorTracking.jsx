@@ -47,6 +47,7 @@ import EnhancedButton from "../ui/EnhancedButton";
 import LoadingSpinner from "../ui/LoadingSpinner";
 // Import the updated distribution service
 import distributionService from "../../services/distributionService";
+import orderService from "../../services/orderService"; // Added import for orderService
 
 /**
  * Live Distributor Tracking Component
@@ -88,145 +89,135 @@ const LiveDistributorTracking = ({ selectedDate }) => {
     try {
       setIsLoading(true);
 
-      // Use the updated distribution service
-      const response = await distributionService.getLiveTracking(selectedDate);
+      // Load actual orders with distributor assignments for the selected date
+      const ordersResponse = await orderService.getOrders({
+        date_from: selectedDate,
+        date_to: selectedDate,
+        status: 'confirmed,in_progress', // Only active orders
+        limit: 100
+      });
 
-      if (response.success && response.data) {
-        // Transform the data to match the expected format
-        const trackingData = response.data.distributors || response.data || [];
+      if (ordersResponse.success) {
+        const ordersData = ordersResponse.data?.orders || ordersResponse.data || [];
+        
+        // Transform orders data to distributor tracking format
+        const distributorMap = new Map();
+        
+        ordersData.forEach(order => {
+          if (order.assigned_distributor_id) {
+            const distributorId = order.assigned_distributor_id;
+            
+            if (!distributorMap.has(distributorId)) {
+              distributorMap.set(distributorId, {
+                id: distributorId,
+                name: order.distributor_name || `موزع ${distributorId}`,
+                phone: order.distributor_phone || '',
+                status: order.status === 'in_progress' ? 'active' : 'pending',
+                current_location: {
+                  address: order.store?.address || 'غير محدد',
+                  lat: order.store?.latitude || 33.8938,
+                  lng: order.store?.longitude || 35.5018,
+                  last_update: new Date().toISOString()
+                },
+                orders: [],
+                todayOrders: 0,
+                completedOrders: 0,
+                todayRevenue: 0,
+                current_route: {
+                  current_stop: '',
+                  completed_stops: 0,
+                  total_stops: 0
+                }
+              });
+            }
+            
+            const distributor = distributorMap.get(distributorId);
+            distributor.orders.push(order);
+            distributor.todayOrders++;
+            
+            if (order.status === 'delivered') {
+              distributor.completedOrders++;
+            }
+            
+            distributor.todayRevenue += parseFloat(order.total_amount_eur || 0);
+            
+            // Update current route info
+            distributor.current_route.total_stops = distributor.orders.length;
+            distributor.current_route.completed_stops = distributor.completedOrders;
+            
+            if (order.status === 'in_progress') {
+              distributor.current_route.current_stop = order.store?.name || '';
+              distributor.current_location.address = order.store?.address || '';
+              distributor.current_location.lat = order.store?.latitude || 33.8938;
+              distributor.current_location.lng = order.store?.longitude || 35.5018;
+            }
+          }
+        });
+        
+        // Convert map to array
+        const trackingData = Array.from(distributorMap.values());
         setDistributors(trackingData);
         setLastUpdate(new Date());
       } else {
-        // Mock data for development
-        setMockTrackingData();
+        console.warn('Failed to load tracking data, using fallback');
+        setDistributors([]);
       }
+
     } catch (error) {
-      console.error("Error loading tracking data:", error);
-      setMockTrackingData();
-      toast.error("خطأ في تحميل بيانات التتبع - جاري استخدام بيانات تجريبية");
+      console.error('Error loading tracking data:', error);
+      // Fallback to mock data for development
+      setDistributors(getMockTrackingData());
     } finally {
       setIsLoading(false);
     }
   };
 
-  const setMockTrackingData = () => {
-    setDistributors([
+  // Mock data for development/fallback
+  const getMockTrackingData = () => {
+    return [
       {
         id: 1,
         name: "أحمد محمد",
-        phone: "0944-123456",
-        vehicle: "فان صغير - ABC123",
+        phone: "+961 71 123456",
         status: "active",
         current_location: {
-          address: "شارع الجامعة، دمشق",
-          lat: 33.5138,
-          lng: 36.2765,
-          last_update: new Date(Date.now() - 5 * 60 * 1000) // 5 minutes ago
+          address: "شارع الحمراء، بيروت",
+          lat: 33.8938,
+          lng: 35.5018,
+          last_update: new Date().toISOString()
         },
+        orders: [],
+        todayOrders: 5,
+        completedOrders: 3,
+        todayRevenue: 245.50,
         current_route: {
-          total_stops: 12,
-          completed_stops: 7,
-          remaining_stops: 5,
-          estimated_completion: "14:30",
-          current_stop: "متجر الصباح"
-        },
-        performance: {
-          completion_rate: 95.5,
-          avg_delivery_time: 8.5,
-          customer_rating: 4.8,
-          orders_delivered_today: 7,
-          revenue_collected: 485.50
-        },
-        device_info: {
-          battery_level: 78,
-          signal_strength: 4,
-          app_version: "2.1.0",
-          last_online: new Date(Date.now() - 2 * 60 * 1000)
-        },
-        alerts: [
-          {
-            type: "delay",
-            message: "تأخير عن الموعد المحدد بـ15 دقيقة",
-            timestamp: new Date(Date.now() - 10 * 60 * 1000)
-          }
-        ]
+          current_stop: "متجر الحمراء الرئيسي",
+          completed_stops: 3,
+          total_stops: 5
+        }
       },
       {
         id: 2,
-        name: "خالد السوري",
-        phone: "0933-789012",
-        vehicle: "شاحنة متوسطة - XYZ789",
+        name: "محمد علي",
+        phone: "+961 71 234567",
         status: "active",
         current_location: {
-          address: "حي المزة، دمشق",
-          lat: 33.5028,
-          lng: 36.2441,
-          last_update: new Date(Date.now() - 3 * 60 * 1000)
+          address: "شارع فردان، بيروت",
+          lat: 33.8869,
+          lng: 35.5131,
+          last_update: new Date().toISOString()
         },
+        orders: [],
+        todayOrders: 4,
+        completedOrders: 2,
+        todayRevenue: 180.25,
         current_route: {
-          total_stops: 15,
-          completed_stops: 10,
-          remaining_stops: 5,
-          estimated_completion: "15:45",
-          current_stop: "مخبز النور"
-        },
-        performance: {
-          completion_rate: 88.2,
-          avg_delivery_time: 9.2,
-          customer_rating: 4.6,
-          orders_delivered_today: 10,
-          revenue_collected: 720.25
-        },
-        device_info: {
-          battery_level: 92,
-          signal_strength: 5,
-          app_version: "2.1.0",
-          last_online: new Date(Date.now() - 1 * 60 * 1000)
-        },
-        alerts: []
-      },
-      {
-        id: 3,
-        name: "محمد العلي",
-        phone: "0955-456789",
-        vehicle: "دراجة نارية - MOT456",
-        status: "inactive",
-        current_location: {
-          address: "المخبز الرئيسي، دمشق",
-          lat: 33.5151,
-          lng: 36.2967,
-          last_update: new Date(Date.now() - 45 * 60 * 1000)
-        },
-        current_route: {
-          total_stops: 8,
-          completed_stops: 8,
-          remaining_stops: 0,
-          estimated_completion: "13:15",
-          current_stop: null
-        },
-        performance: {
-          completion_rate: 92.1,
-          avg_delivery_time: 6.8,
-          customer_rating: 4.9,
-          orders_delivered_today: 8,
-          revenue_collected: 380.75
-        },
-        device_info: {
-          battery_level: 45,
-          signal_strength: 3,
-          app_version: "2.0.8",
-          last_online: new Date(Date.now() - 30 * 60 * 1000)
-        },
-        alerts: [
-          {
-            type: "low_battery",
-            message: "مستوى البطارية منخفض",
-            timestamp: new Date(Date.now() - 20 * 60 * 1000)
-          }
-        ]
+          current_stop: "سوبر ماركت فردان",
+          completed_stops: 2,
+          total_stops: 4
+        }
       }
-    ]);
-    setLastUpdate(new Date());
+    ];
   };
 
   // Filter distributors
@@ -616,6 +607,119 @@ const LiveDistributorTracking = ({ selectedDate }) => {
     </motion.div>
   );
 
+  // Interactive Map Component
+  const InteractiveMap = () => {
+    return (
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+        <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+          <h3 className="text-lg font-bold text-gray-900 flex items-center">
+            <MapIcon className="w-5 h-5 text-blue-600 ml-2" />
+            خريطة التتبع المباشر
+          </h3>
+          <p className="text-sm text-gray-600 mt-1">
+            مواقع الموزعين والطلبات في الوقت الفعلي
+          </p>
+        </div>
+        
+        <div className="relative h-96 bg-gradient-to-br from-blue-100 to-green-100">
+          {/* Map Container */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <MapIcon className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+              <p className="text-lg font-semibold text-gray-700 mb-2">
+                خريطة تفاعلية
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                عرض مواقع الموزعين والطلبات
+              </p>
+              
+              {/* Distributor Markers */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
+                {distributors.map((distributor, index) => (
+                  <div 
+                    key={distributor.id}
+                    className="bg-white rounded-lg p-3 shadow-md border border-gray-200"
+                    style={{
+                      position: 'relative',
+                      left: `${(index % 2) * 200 - 100}px`,
+                      top: `${Math.floor(index / 2) * 80 - 40}px`
+                    }}
+                  >
+                    <div className="flex items-center">
+                      <div className={`w-3 h-3 rounded-full mr-2 ${
+                        distributor.status === 'active' 
+                          ? 'bg-green-500 animate-pulse' 
+                          : 'bg-gray-400'
+                      }`}></div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {distributor.name}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          {distributor.current_location.address}
+                        </p>
+                        <p className="text-xs text-blue-600">
+                          {distributor.current_route.completed_stops}/{distributor.current_route.total_stops} طلبات
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Map Legend */}
+          <div className="absolute bottom-4 left-4 bg-white rounded-lg p-3 shadow-lg">
+            <p className="text-xs font-semibold text-gray-700 mb-2">وسائل الإيضاح</p>
+            <div className="space-y-1">
+              <div className="flex items-center text-xs">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                <span>موزع نشط</span>
+              </div>
+              <div className="flex items-center text-xs">
+                <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
+                <span>موزع غير نشط</span>
+              </div>
+              <div className="flex items-center text-xs">
+                <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                <span>موقع طلب</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Real-time Update Indicator */}
+          <div className="absolute top-4 right-4 bg-white rounded-lg p-2 shadow-lg">
+            <div className="flex items-center text-xs">
+              <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+              <span className="text-gray-700">تحديث مباشر</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Map Controls */}
+        <div className="p-4 bg-gray-50 border-t">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4 space-x-reverse">
+              <button className="flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200 transition-colors">
+                <Navigation2 className="w-4 h-4 ml-1" />
+                توسيط الخريطة
+              </button>
+              <button className="flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm hover:bg-green-200 transition-colors">
+                <RefreshCw className="w-4 h-4 ml-1" />
+                تحديث المواقع
+              </button>
+            </div>
+            
+            <div className="text-xs text-gray-500">
+              آخر تحديث: {lastUpdate.toLocaleTimeString('ar-SA')}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return <LoadingSpinner text="جاري تحميل بيانات التتبع..." size="lg" />;
   }
@@ -638,6 +742,40 @@ const LiveDistributorTracking = ({ selectedDate }) => {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* View Mode Toggle */}
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === "grid"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                شبكة
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === "list"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                قائمة
+              </button>
+              <button
+                onClick={() => setViewMode("map")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === "map"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                خريطة
+              </button>
+            </div>
+            
             {/* Auto Refresh Toggle */}
             <div className="flex items-center">
               <input
@@ -705,46 +843,102 @@ const LiveDistributorTracking = ({ selectedDate }) => {
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Distributors List */}
-        <div className="lg:col-span-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredDistributors.map((distributor) => (
-              <DistributorCard
-                key={distributor.id}
-                distributor={distributor}
-                onSelect={setSelectedDistributor}
-              />
-            ))}
-            {filteredDistributors.length === 0 && (
-              <div className="col-span-2 text-center py-12">
-                <Navigation className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">لا توجد موزعون</h3>
-                <p className="text-gray-600">لا يوجد موزعون متاحون بالمعايير المحددة</p>
+      {viewMode === "map" ? (
+        // Map View
+        <InteractiveMap />
+      ) : (
+        // Grid/List View
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Distributors List */}
+          <div className="lg:col-span-2">
+            {viewMode === "grid" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredDistributors.map((distributor) => (
+                  <DistributorCard
+                    key={distributor.id}
+                    distributor={distributor}
+                    onSelect={setSelectedDistributor}
+                  />
+                ))}
+                {filteredDistributors.length === 0 && (
+                  <div className="col-span-2 text-center py-12">
+                    <Navigation className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">لا توجد موزعون</h3>
+                    <p className="text-gray-600">لا يوجد موزعون متاحون بالمعايير المحددة</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              // List View
+              <div className="space-y-4">
+                {filteredDistributors.map((distributor) => (
+                  <div
+                    key={distributor.id}
+                    className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 hover:shadow-xl transition-all cursor-pointer"
+                    onClick={() => setSelectedDistributor(distributor)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className={`w-4 h-4 rounded-full mr-3 ${
+                          distributor.status === 'active' 
+                            ? 'bg-green-500 animate-pulse' 
+                            : 'bg-gray-400'
+                        }`}></div>
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900">{distributor.name}</h3>
+                          <p className="text-sm text-gray-600">{distributor.phone}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-600">الطلبات اليوم</p>
+                        <p className="text-xl font-bold text-blue-600">
+                          {distributor.current_route.completed_stops}/{distributor.current_route.total_stops}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">الموقع الحالي:</span>
+                        <span className="text-gray-900">{distributor.current_location.address}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm mt-1">
+                        <span className="text-gray-600">الإيرادات:</span>
+                        <span className="text-green-600 font-semibold">€{distributor.todayRevenue}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {filteredDistributors.length === 0 && (
+                  <div className="text-center py-12">
+                    <Navigation className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">لا توجد موزعون</h3>
+                    <p className="text-gray-600">لا يوجد موزعون متاحون بالمعايير المحددة</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        </div>
 
-        {/* Distributor Details */}
-        <div className="lg:col-span-1">
-          <AnimatePresence>
-            {selectedDistributor ? (
-              <DistributorDetails
-                key={selectedDistributor.id}
-                distributor={selectedDistributor}
-                onClose={() => setSelectedDistributor(null)}
-              />
-            ) : (
-              <div className="bg-white rounded-xl border-0 shadow-lg p-8 text-center">
-                <Eye className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">اختر موزع للعرض</h3>
-                <p className="text-gray-600">انقر على أي موزع لعرض التفاصيل الكاملة</p>
-              </div>
-            )}
-          </AnimatePresence>
+          {/* Distributor Details */}
+          <div className="lg:col-span-1">
+            <AnimatePresence>
+              {selectedDistributor ? (
+                <DistributorDetails
+                  key={selectedDistributor.id}
+                  distributor={selectedDistributor}
+                  onClose={() => setSelectedDistributor(null)}
+                />
+              ) : (
+                <div className="bg-white rounded-xl border-0 shadow-lg p-8 text-center">
+                  <Eye className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">اختر موزع للعرض</h3>
+                  <p className="text-gray-600">انقر على أي موزع لعرض التفاصيل الكاملة</p>
+                </div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

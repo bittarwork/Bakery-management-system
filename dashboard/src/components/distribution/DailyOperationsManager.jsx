@@ -50,6 +50,7 @@ import distributionService from "../../services/distributionService";
 import storeService from "../../services/storeService";
 import productService from "../../services/productService";
 import userService from "../../services/userService";
+import orderService from "../../services/orderService";
 
 /**
  * Daily Operations Manager Component
@@ -100,53 +101,121 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
     try {
       setIsLoading(true);
 
-      const [ordersRes, storesRes, productsRes, usersRes] = await Promise.all([
-        distributionService.getDailyOrders(selectedDate),
-        storeService.getStores({ status: "active" }),
-        productService.getProducts(),
-        userService.getUsers({ role: "distributor", status: "active" }),
-      ]);
+      // Load actual orders for the selected date using orderService
+      const ordersResponse = await orderService.getOrders({
+        date_from: selectedDate,
+        date_to: selectedDate,
+        limit: 100, // Get all orders for the day
+      });
 
-      // Extract data with proper structure and additional safety checks
-      setDailyOrders(
-        Array.isArray(ordersRes.data?.orders) ? ordersRes.data.orders : []
-      );
-      setStores(Array.isArray(storesRes.data) ? storesRes.data : []);
-      setProducts(Array.isArray(productsRes.data) ? productsRes.data : []);
-      setDistributors(Array.isArray(usersRes.data) ? usersRes.data : []);
-
-      // Get smart suggestions from distribution service
-      try {
-        const suggestionsRes =
-          await distributionService.getDistributionAnalytics("day", {
-            date: selectedDate,
-            type: "suggestions",
-          });
-        if (suggestionsRes.success) {
-          setSmartSuggestions(suggestionsRes.data.suggestions || []);
-        }
-      } catch (error) {
-        console.warn("Smart suggestions not available:", error);
-        setSmartSuggestions([]);
+      if (ordersResponse.success) {
+        // Transform orders data to match the expected format
+        const ordersData =
+          ordersResponse.data?.orders || ordersResponse.data || [];
+        setDailyOrders(ordersData);
+      } else {
+        console.warn("Failed to load orders, using fallback");
+        setDailyOrders([]);
       }
 
-      // Mock data for development if all API calls failed
-      if (!ordersRes.success && !storesRes.success) {
-        setMockData();
+      // Load stores, products, and distributors in parallel
+      const [storesResponse, productsResponse, distributorsResponse] =
+        await Promise.all([
+          storeService.getStores({ limit: 100 }),
+          productService.getProducts({ limit: 100, status: "active" }),
+          userService.getUsers({
+            role: "distributor",
+            status: "active",
+            limit: 50,
+          }),
+        ]);
+
+      if (storesResponse.success) {
+        setStores(storesResponse.data?.stores || storesResponse.data || []);
       }
+
+      if (productsResponse.success) {
+        setProducts(
+          productsResponse.data?.products || productsResponse.data || []
+        );
+      }
+
+      if (distributorsResponse.success) {
+        setDistributors(
+          distributorsResponse.data?.users || distributorsResponse.data || []
+        );
+      }
+
+      // Generate smart suggestions based on loaded data
+      generateSmartSuggestions();
     } catch (error) {
       console.error("Error loading daily data:", error);
-
-      // Ensure all states are properly initialized even on error
-      setDailyOrders([]);
-      setStores([]);
-      setProducts([]);
-      setDistributors([]);
-      setSmartSuggestions([]);
-
-      toast.error("خطأ في تحميل البيانات، يرجى المحاولة لاحقاً");
+      toast.error("خطأ في تحميل البيانات");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Generate smart suggestions based on loaded data
+  const generateSmartSuggestions = () => {
+    try {
+      const suggestions = [];
+
+      // Suggest high-priority orders first
+      const highPriorityOrders = dailyOrders.filter(
+        (order) => order.priority === "high" || order.priority === "urgent"
+      );
+
+      if (highPriorityOrders.length > 0) {
+        suggestions.push({
+          type: "priority",
+          title: "طلبات عالية الأولوية",
+          message: `يوجد ${highPriorityOrders.length} طلب عالي الأولوية يحتاج معالجة فورية`,
+          count: highPriorityOrders.length,
+          action: "review_priority",
+        });
+      }
+
+      // Suggest unassigned orders
+      const unassignedOrders = dailyOrders.filter(
+        (order) => !order.assigned_distributor_id
+      );
+
+      if (unassignedOrders.length > 0) {
+        suggestions.push({
+          type: "assignment",
+          title: "طلبات غير مُعيَّنة",
+          message: `يوجد ${unassignedOrders.length} طلب يحتاج تعيين موزع`,
+          count: unassignedOrders.length,
+          action: "assign_distributor",
+        });
+      }
+
+      // Suggest distributor workload balance
+      if (distributors.length > 0) {
+        const workloadBalance = distributors.map((dist) => ({
+          id: dist.id,
+          name: dist.full_name,
+          workload: dist.current_workload || 0,
+        }));
+
+        const maxWorkload = Math.max(...workloadBalance.map((d) => d.workload));
+        const minWorkload = Math.min(...workloadBalance.map((d) => d.workload));
+
+        if (maxWorkload - minWorkload > 3) {
+          suggestions.push({
+            type: "balance",
+            title: "توزيع غير متوازن",
+            message: "يوجد عدم توازن في أحمال الموزعين",
+            action: "rebalance_workload",
+          });
+        }
+      }
+
+      setSmartSuggestions(suggestions);
+    } catch (error) {
+      console.error("Error generating smart suggestions:", error);
+      setSmartSuggestions([]);
     }
   };
 

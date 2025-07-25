@@ -8,18 +8,169 @@ class DistributionService {
     // ===== DASHBOARD & OVERVIEW =====
 
     /**
-     * Get dashboard data for distribution manager
+     * Get comprehensive dashboard data
      */
     async getDashboardData(date = null) {
         try {
-            const params = date ? { date } : {};
-            // Use actual backend endpoint
-            const response = await apiService.get(`${this.baseEndpoint}/manager/tracking/live`, params);
-            return this.transformDashboardData(response);
+            const targetDate = date || new Date().toISOString().split('T')[0];
+            
+            // Load real data from multiple sources
+            const [ordersResponse, distributorsResponse, statsResponse] = await Promise.all([
+                // Get orders for the date
+                apiService.get('/orders', {
+                    date_from: targetDate,
+                    date_to: targetDate,
+                    limit: 100
+                }),
+                // Get distributors
+                apiService.get('/users', {
+                    role: 'distributor',
+                    status: 'active',
+                    limit: 50
+                }),
+                // Get basic stats
+                this.getDistributionStats()
+            ]);
+
+            // Process orders data
+            const orders = ordersResponse.success ? (ordersResponse.data?.orders || ordersResponse.data || []) : [];
+            const distributors = distributorsResponse.success ? (distributorsResponse.data?.users || distributorsResponse.data || []) : [];
+
+            // Transform distributors with order data
+            const distributorMap = new Map();
+            
+            // Initialize distributors
+            distributors.forEach(dist => {
+                distributorMap.set(dist.id, {
+                    id: dist.id,
+                    name: dist.full_name || dist.username,
+                    phone: dist.phone || '',
+                    email: dist.email || '',
+                    status: dist.status || 'active',
+                    current_location: {
+                        address: 'غير محدد',
+                        lat: 33.8938,
+                        lng: 35.5018,
+                        last_update: new Date().toISOString()
+                    },
+                    current_route: {
+                        current_stop: '',
+                        completed_stops: 0,
+                        total_stops: 0
+                    },
+                    todayOrders: 0,
+                    completedOrders: 0,
+                    todayRevenue: 0
+                });
+            });
+
+            // Process orders and update distributor data
+            orders.forEach(order => {
+                if (order.assigned_distributor_id && distributorMap.has(order.assigned_distributor_id)) {
+                    const distributor = distributorMap.get(order.assigned_distributor_id);
+                    
+                    distributor.todayOrders++;
+                    distributor.todayRevenue += parseFloat(order.total_amount_eur || 0);
+                    
+                    if (order.status === 'delivered') {
+                        distributor.completedOrders++;
+                    }
+                    
+                    // Update current location from active orders
+                    if (order.status === 'in_progress' && order.store) {
+                        distributor.current_location.address = order.store.address || 'غير محدد';
+                        distributor.current_location.lat = order.store.latitude || 33.8938;
+                        distributor.current_location.lng = order.store.longitude || 35.5018;
+                        distributor.current_route.current_stop = order.store.name || '';
+                    }
+                    
+                    // Update route progress
+                    distributor.current_route.total_stops = distributor.todayOrders;
+                    distributor.current_route.completed_stops = distributor.completedOrders;
+                }
+            });
+
+            // Calculate statistics
+            const statistics = {
+                totalOrders: orders.length,
+                activeDistributors: Array.from(distributorMap.values()).filter(d => d.status === 'active').length,
+                completedDeliveries: orders.filter(o => o.status === 'delivered').length,
+                todayRevenue: orders.reduce((sum, order) => sum + parseFloat(order.total_amount_eur || 0), 0)
+            };
+
+            return {
+                success: true,
+                data: {
+                    dailyOrders: orders,
+                    distributors: Array.from(distributorMap.values()),
+                    stores: [],
+                    statistics: statistics,
+                    liveTracking: Array.from(distributorMap.values()),
+                    notifications: this.generateNotifications(orders, Array.from(distributorMap.values()))
+                }
+            };
+
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
             return this.getMockDashboardData();
         }
+    }
+
+    /**
+     * Generate notifications based on orders and distributors data
+     */
+    generateNotifications(orders, distributors) {
+        const notifications = [];
+
+        // Check for unassigned orders
+        const unassignedOrders = orders.filter(order => !order.assigned_distributor_id);
+        if (unassignedOrders.length > 0) {
+            notifications.push({
+                id: 'unassigned-orders',
+                type: 'warning',
+                message: `يوجد ${unassignedOrders.length} طلب غير مُعيَّن لموزع`,
+                time: 'الآن'
+            });
+        }
+
+        // Check for high priority orders
+        const highPriorityOrders = orders.filter(order => 
+            order.priority === 'high' || order.priority === 'urgent'
+        );
+        if (highPriorityOrders.length > 0) {
+            notifications.push({
+                id: 'high-priority',
+                type: 'info',
+                message: `يوجد ${highPriorityOrders.length} طلب عالي الأولوية`,
+                time: 'منذ 5 دقائق'
+            });
+        }
+
+        // Check for distributor workload
+        const overloadedDistributors = distributors.filter(dist => 
+            dist.todayOrders > 10
+        );
+        if (overloadedDistributors.length > 0) {
+            notifications.push({
+                id: 'overloaded',
+                type: 'warning',
+                message: `${overloadedDistributors.length} موزع لديه حمولة عالية`,
+                time: 'منذ 10 دقائق'
+            });
+        }
+
+        // Success notification for completed orders
+        const completedToday = orders.filter(order => order.status === 'delivered').length;
+        if (completedToday > 0) {
+            notifications.push({
+                id: 'completed',
+                type: 'success',
+                message: `تم تسليم ${completedToday} طلب بنجاح اليوم`,
+                time: 'منذ ساعة'
+            });
+        }
+
+        return notifications.slice(0, 5); // Return max 5 notifications
     }
 
     /**
@@ -441,13 +592,30 @@ class DistributionService {
     /**
      * Get distribution statistics
      */
-    async getDistributionStats(params = {}) {
+    async getDistributionStats() {
         try {
-            const response = await apiService.get(`${this.baseEndpoint}/stats`, params);
-            return response;
+            // This would normally call a specific stats endpoint
+            // For now, return basic structure
+            return {
+                success: true,
+                data: {
+                    total_orders: 0,
+                    assigned_orders: 0,
+                    completed_orders: 0,
+                    active_distributors: 0
+                }
+            };
         } catch (error) {
-            console.error('Error fetching distribution stats:', error);
-            return this.getMockStats();
+            console.error('Error getting distribution stats:', error);
+            return {
+                success: false,
+                data: {
+                    total_orders: 0,
+                    assigned_orders: 0,
+                    completed_orders: 0,
+                    active_distributors: 0
+                }
+            };
         }
     }
 

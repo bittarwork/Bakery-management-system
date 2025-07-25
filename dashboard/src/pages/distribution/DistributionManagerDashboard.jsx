@@ -40,6 +40,7 @@ import {
   Timer,
   Coffee,
   ArrowRight,
+  User,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
@@ -113,10 +114,10 @@ const DistributionManagerDashboard = () => {
     try {
       const response = await distributionService.getLiveTracking(selectedDate);
       if (response.success && response.data) {
-        setDashboardData(prev => ({
+        setDashboardData((prev) => ({
           ...prev,
           liveTracking: response.data,
-          distributors: response.data.distributors || prev.distributors
+          distributors: response.data.distributors || prev.distributors,
         }));
       }
     } catch (error) {
@@ -205,7 +206,7 @@ const DistributionManagerDashboard = () => {
             time: "30 دقيقة",
           },
         ],
-      }
+      },
     };
   };
 
@@ -394,39 +395,39 @@ const DistributionManagerDashboard = () => {
             </div>
           )}
 
-          {/* Overview Content */}
+          {/* Overview - Simplified to show only distributors and basic stats */}
           {currentView === "overview" && (
             <div className="space-y-6">
-              {/* Statistics */}
+              {/* Basic Statistics */}
               <div>
                 <h2 className="text-xl font-bold text-gray-900 mb-4">
-                  إحصائيات اليوم
+                  إحصائيات التوزيع العامة
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <StatCard
                     title="إجمالي الطلبات"
-                    value={dashboardData.statistics.totalOrders}
+                    value={dashboardData.statistics.totalOrders || 0}
                     change="+12%"
                     icon={Package}
                     color="blue"
                   />
                   <StatCard
                     title="الموزعين النشطين"
-                    value={dashboardData.statistics.activeDistributors}
+                    value={dashboardData.statistics.activeDistributors || 0}
                     change="+2"
                     icon={Users}
                     color="green"
                   />
                   <StatCard
                     title="التسليمات المكتملة"
-                    value={dashboardData.statistics.completedDeliveries}
+                    value={dashboardData.statistics.completedDeliveries || 0}
                     change="+8%"
                     icon={CheckCircle}
                     color="purple"
                   />
                   <StatCard
                     title="إيرادات اليوم"
-                    value={`€${dashboardData.statistics.todayRevenue}`}
+                    value={`€${dashboardData.statistics.todayRevenue || 0}`}
                     change="+15%"
                     icon={Euro}
                     color="orange"
@@ -434,100 +435,146 @@ const DistributionManagerDashboard = () => {
                 </div>
               </div>
 
-              {/* Recent Activity & Notifications */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="border-0 shadow-lg">
-                  <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
-                    <h3 className="text-lg font-bold text-gray-900 flex items-center">
-                      <Activity className="w-5 h-5 text-blue-600 ml-2" />
-                      الطلبات الحديثة
-                    </h3>
-                  </CardHeader>
-                  <CardBody className="p-6">
-                    <div className="space-y-4">
-                      {dashboardData.dailyOrders.map((order) => (
-                        <div
-                          key={order.id}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                        >
-                          <div>
-                            <p className="font-semibold text-gray-900">
-                              {order.orderNumber}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              {order.store}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-semibold text-green-600">
-                              €{order.amount}
-                            </p>
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                order.status === "delivered"
+              {/* Distributors List with their information */}
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-4">
+                  الموزعين ومعلومات التوزيع
+                </h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {dashboardData.distributors &&
+                  dashboardData.distributors.length > 0 ? (
+                    dashboardData.distributors.map((distributor) => (
+                      <motion.div
+                        key={distributor.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden"
+                      >
+                        <div className="p-6">
+                          {/* Distributor Header */}
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center">
+                              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                                <User className="w-6 h-6 text-white" />
+                              </div>
+                              <div className="mr-3">
+                                <h3 className="text-lg font-bold text-gray-900">
+                                  {distributor.name}
+                                </h3>
+                                <p className="text-sm text-gray-600">
+                                  {distributor.phone}
+                                </p>
+                              </div>
+                            </div>
+                            <div
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                distributor.status === "active"
                                   ? "bg-green-100 text-green-800"
-                                  : order.status === "in_progress"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : "bg-yellow-100 text-yellow-800"
+                                  : "bg-red-100 text-red-800"
                               }`}
                             >
-                              {order.status === "delivered"
-                                ? "مسلم"
-                                : order.status === "in_progress"
-                                ? "قيد التنفيذ"
-                                : "معلق"}
-                            </span>
+                              {distributor.status === "active"
+                                ? "نشط"
+                                : "غير نشط"}
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardBody>
-                </Card>
 
-                <Card className="border-0 shadow-lg">
-                  <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
-                    <h3 className="text-lg font-bold text-gray-900 flex items-center">
-                      <Bell className="w-5 h-5 text-green-600 ml-2" />
-                      التنبيهات والإشعارات
-                    </h3>
-                  </CardHeader>
-                  <CardBody className="p-6">
-                    <div className="space-y-4">
-                      {dashboardData.notifications.map((notification) => (
-                        <div
-                          key={notification.id}
-                          className="flex items-start p-3 bg-gray-50 rounded-lg"
-                        >
-                          <div
-                            className={`p-1 rounded-full ml-3 ${
-                              notification.type === "warning"
-                                ? "bg-yellow-100"
-                                : notification.type === "success"
-                                ? "bg-green-100"
-                                : "bg-blue-100"
-                            }`}
-                          >
-                            {notification.type === "warning" ? (
-                              <AlertTriangle className="w-4 h-4 text-yellow-600" />
-                            ) : notification.type === "success" ? (
-                              <CheckCircle className="w-4 h-4 text-green-600" />
-                            ) : (
-                              <Bell className="w-4 h-4 text-blue-600" />
-                            )}
+                          {/* Distributor Statistics */}
+                          <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="text-center p-3 bg-blue-50 rounded-lg">
+                              <div className="text-2xl font-bold text-blue-600">
+                                {distributor.todayOrders || 0}
+                              </div>
+                              <div className="text-xs text-blue-700">
+                                طلبات اليوم
+                              </div>
+                            </div>
+                            <div className="text-center p-3 bg-green-50 rounded-lg">
+                              <div className="text-2xl font-bold text-green-600">
+                                {distributor.completedOrders || 0}
+                              </div>
+                              <div className="text-xs text-green-700">
+                                مكتملة
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex-1">
-                            <p className="text-sm text-gray-900">
-                              {notification.message}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              منذ {notification.time}
-                            </p>
+
+                          {/* Current Location */}
+                          {distributor.current_location && (
+                            <div className="mb-4">
+                              <div className="flex items-center text-sm text-gray-600 mb-1">
+                                <MapPin className="w-4 h-4 ml-1" />
+                                الموقع الحالي
+                              </div>
+                              <p className="text-sm text-gray-800">
+                                {distributor.current_location.address ||
+                                  "غير محدد"}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Current Route Progress */}
+                          {distributor.current_route && (
+                            <div className="mb-4">
+                              <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                                <span>تقدم المسار</span>
+                                <span>
+                                  {distributor.current_route.completed_stops ||
+                                    0}
+                                  /{distributor.current_route.total_stops || 0}
+                                </span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-blue-600 h-2 rounded-full"
+                                  style={{
+                                    width: `${
+                                      distributor.current_route.total_stops > 0
+                                        ? (distributor.current_route
+                                            .completed_stops /
+                                            distributor.current_route
+                                              .total_stops) *
+                                          100
+                                        : 0
+                                    }%`,
+                                  }}
+                                ></div>
+                              </div>
+                              {distributor.current_route.current_stop && (
+                                <p className="text-xs text-gray-600 mt-1">
+                                  المحطة الحالية:{" "}
+                                  {distributor.current_route.current_stop}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Revenue */}
+                          <div className="border-t pt-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-600">
+                                إيرادات اليوم
+                              </span>
+                              <span className="text-lg font-bold text-green-600">
+                                €{distributor.todayRevenue || 0}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      ))}
+                      </motion.div>
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-12">
+                      <Truck className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500 text-lg">
+                        لا توجد موزعين متاحين
+                      </p>
+                      <p className="text-gray-400 text-sm">
+                        قم بإضافة موزعين من قسم إدارة المستخدمين
+                      </p>
                     </div>
-                  </CardBody>
-                </Card>
+                  )}
+                </div>
               </div>
             </div>
           )}
