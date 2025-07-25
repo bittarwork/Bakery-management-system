@@ -614,33 +614,29 @@ export const generateDistributionSchedules = async (data) => {
  * @returns {Object} Live tracking data
  */
 export const getLiveDistributionTracking = async (date) => {
+    const trackingDate = date || new Date().toISOString().split('T')[0];
+    
     try {
-        const trackingDate = date || new Date().toISOString().split('T')[0];
         const connection = await getDBConnection();
 
-        // Get distribution schedules for the date
-        const [schedules] = await connection.execute(`
+        // Get all distributors (users with role distributor)
+        const [distributors] = await connection.execute(`
             SELECT 
-                ds.id as schedule_id,
-                ds.distributor_id,
-                ds.schedule_date,
-                ds.total_stores,
-                ds.status,
-                ds.route_data,
-                u.full_name as distributor_name,
-                u.phone as distributor_phone,
-                u.email as distributor_email
-            FROM distribution_schedules ds
-            JOIN users u ON ds.distributor_id = u.id
-            WHERE ds.schedule_date = ?
+                u.id,
+                u.full_name,
+                u.phone,
+                u.email,
+                u.status
+            FROM users u
+            WHERE u.role = 'distributor'
             ORDER BY u.full_name
-        `, [trackingDate]);
+        `);
 
         const trackingData = [];
 
-        for (const schedule of schedules) {
-            // Get delivery status for each store
-            const [deliveries] = await connection.execute(`
+        for (const distributor of distributors) {
+            // Get orders assigned to this distributor for the date
+            const [orders] = await connection.execute(`
                 SELECT 
                     o.id as order_id,
                     o.store_id,
@@ -648,52 +644,57 @@ export const getLiveDistributionTracking = async (date) => {
                     o.payment_status,
                     o.total_amount_eur,
                     o.total_amount_syp,
+                    o.created_at,
                     s.name as store_name,
                     s.address,
-                    s.gps_coordinates,
-                    dr.delivery_date,
-                    dr.actual_quantities,
-                    dr.notes as delivery_notes,
-                    dr.created_at as delivery_time
+                    s.latitude,
+                    s.longitude,
+                    s.phone as store_phone
                 FROM orders o
                 JOIN stores s ON o.store_id = s.id
-                LEFT JOIN delivery_records dr ON o.id = dr.order_id
-                WHERE o.order_date = ? AND s.assigned_distributor_id = ?
-                ORDER BY s.name
-            `, [trackingDate, schedule.distributor_id]);
+                WHERE DATE(o.created_at) = ? AND o.assigned_distributor_id = ?
+                ORDER BY o.created_at
+            `, [trackingDate, distributor.id]);
 
-            const completedDeliveries = deliveries.filter(d => d.order_status === 'delivered').length;
-            const totalDeliveries = deliveries.length;
+            const completedDeliveries = orders.filter(o => o.order_status === 'delivered').length;
+            const totalDeliveries = orders.length;
             const completionPercentage = totalDeliveries > 0 ? (completedDeliveries / totalDeliveries) * 100 : 0;
 
-            // Parse route data
-            let routeData = null;
-            try {
-                routeData = schedule.route_data ? JSON.parse(schedule.route_data) : null;
-            } catch (e) {
-                console.warn('Invalid route data for schedule:', schedule.schedule_id);
-            }
+            // Find current stop (first non-delivered order)
+            const currentOrder = orders.find(o => o.order_status === 'pending' || o.order_status === 'in_progress');
+            const currentStop = currentOrder ? currentOrder.store_name : null;
 
-            // Find current stop (first non-delivered store)
-            const currentDelivery = deliveries.find(d => d.order_status !== 'delivered');
-            const currentStop = currentDelivery ? currentDelivery.store_name : null;
+            // Calculate daily revenue for this distributor
+            const dailyRevenue = orders.reduce((sum, order) => {
+                return sum + (parseFloat(order.total_amount_eur) || 0);
+            }, 0);
 
-            // Get last known location (mock data for now)
-            const mockLocation = {
-                address: currentDelivery?.address || 'وسط بيروت',
-                lat: 33.8938,
-                lng: 35.5018,
+            // Determine current location based on active order or default
+            let currentLocation = {
+                address: currentOrder?.address || 'Distribution Center',
+                lat: currentOrder?.latitude || 33.8938,
+                lng: currentOrder?.longitude || 35.5018,
                 last_update: new Date().toISOString()
             };
 
+            // Determine distributor status
+            let distributorStatus = 'offline';
+            if (totalDeliveries > 0) {
+                if (currentOrder) {
+                    distributorStatus = 'active';
+                } else if (completedDeliveries === totalDeliveries) {
+                    distributorStatus = 'completed';
+                }
+            }
+
             trackingData.push({
-                id: schedule.distributor_id,
-                name: schedule.distributor_name,
-                phone: schedule.distributor_phone,
-                email: schedule.distributor_email,
-                vehicle: "شاحنة توزيع", // Default vehicle type
-                status: schedule.status || 'active',
-                current_location: mockLocation,
+                id: distributor.id,
+                name: distributor.full_name,
+                phone: distributor.phone,
+                email: distributor.email,
+                vehicle: "Distribution Vehicle",
+                status: distributorStatus,
+                current_location: currentLocation,
                 current_route: {
                     current_stop: currentStop,
                     completed_stops: completedDeliveries,
@@ -704,23 +705,25 @@ export const getLiveDistributionTracking = async (date) => {
                     total: totalDeliveries,
                     percentage: Math.round(completionPercentage)
                 },
-                deliveries: deliveries.map(d => ({
-                    order_id: d.order_id,
-                    store_name: d.store_name,
-                    address: d.address,
-                    status: d.order_status,
-                    amount_eur: d.total_amount_eur,
-                    amount_syp: d.total_amount_syp,
-                    delivery_time: d.delivery_time,
-                    notes: d.delivery_notes
+                deliveries: orders.map(o => ({
+                    order_id: o.order_id,
+                    store_name: o.store_name,
+                    address: o.address,
+                    status: o.order_status,
+                    amount_eur: parseFloat(o.total_amount_eur) || 0,
+                    amount_syp: parseFloat(o.total_amount_syp) || 0,
+                    created_at: o.created_at,
+                    store_phone: o.store_phone
                 })),
-                alerts: [], // Initialize empty alerts array
-                device_info: {
-                    last_online: new Date().toISOString() // Mock online status
+                daily_expenses: {
+                    fuel: Math.random() * 50 + 20, // Mock fuel expenses
+                    maintenance: Math.random() * 30,
+                    other: Math.random() * 20
                 },
+                daily_revenue: dailyRevenue,
                 orders_delivered_today: completedDeliveries,
                 total_orders: totalDeliveries,
-                efficiency_score: Math.round(completionPercentage * 0.9 + Math.random() * 20)
+                efficiency_score: Math.min(100, Math.round(completionPercentage + Math.random() * 10))
             });
         }
 
@@ -728,11 +731,13 @@ export const getLiveDistributionTracking = async (date) => {
             success: true,
             data: {
                 date: trackingDate,
-                distributors: trackingData, // Changed from tracking_data to distributors
+                distributors: trackingData,
                 summary: {
-                    total_distributors: schedules.length,
+                    total_distributors: distributors.length,
+                    active_distributors: trackingData.filter(d => d.status === 'active').length,
                     total_deliveries: trackingData.reduce((sum, td) => sum + td.progress.total, 0),
                     completed_deliveries: trackingData.reduce((sum, td) => sum + td.progress.completed, 0),
+                    total_revenue: trackingData.reduce((sum, td) => sum + td.daily_revenue, 0),
                     overall_completion: trackingData.length > 0 ?
                         Math.round(trackingData.reduce((sum, td) => sum + td.progress.percentage, 0) / trackingData.length) : 0
                 }
@@ -749,12 +754,14 @@ export const getLiveDistributionTracking = async (date) => {
         return {
             success: true,
             data: {
-                date: trackingDate || new Date().toISOString().split('T')[0],
+                date: trackingDate,
                 distributors: mockDistributors,
                 summary: {
                     total_distributors: mockDistributors.length,
+                    active_distributors: mockDistributors.filter(d => d.status === 'active').length,
                     total_deliveries: mockDistributors.reduce((sum, d) => sum + d.total_orders, 0),
                     completed_deliveries: mockDistributors.reduce((sum, d) => sum + d.orders_delivered_today, 0),
+                    total_revenue: mockDistributors.reduce((sum, d) => sum + (d.daily_revenue || 0), 0),
                     overall_completion: Math.round(mockDistributors.reduce((sum, d) => sum + d.progress.percentage, 0) / mockDistributors.length)
                 }
             },

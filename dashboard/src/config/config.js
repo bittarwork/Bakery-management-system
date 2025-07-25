@@ -40,8 +40,19 @@ const config = {
 
     // Map settings
     DEFAULT_MAP_CENTER: {
-        lat: 50.8503,
-        lng: 4.3517 // Brussels
+        lat: 33.8938, // Beirut, Lebanon
+        lng: 35.5018
+    },
+    
+    // Google Maps API configuration
+    GOOGLE_MAPS_API_KEY: 'AIzaSyDhnQwiZuURSLApdQAR_86POf0a_f9n2IE',
+    GOOGLE_MAPS_SETTINGS: {
+        zoom: 13,
+        mapTypeId: 'roadmap',
+        disableDefaultUI: false,
+        zoomControl: true,
+        streetViewControl: true,
+        fullscreenControl: true
     },
 
     // File upload limits
