@@ -29,15 +29,12 @@ class AIChatController {
                 });
             }
 
-            // Basic content filtering
-            const inappropriateWords = ['spam', 'hack', 'malware'];
-            const lowerMessage = message.toLowerCase();
-            const hasInappropriateContent = inappropriateWords.some(word => lowerMessage.includes(word));
-            
-            if (hasInappropriateContent) {
+            // Enhanced content filtering
+            const contentValidation = this.validateMessageContent(message);
+            if (!contentValidation.isValid) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Message contains inappropriate content'
+                    error: contentValidation.reason
                 });
             }
 
@@ -302,6 +299,52 @@ class AIChatController {
         };
 
         return prompts[reportType] || prompts.general;
+    }
+
+    /**
+     * Enhanced content validation
+     */
+    validateMessageContent(message) {
+        // Check if message exists and is string
+        if (!message || typeof message !== 'string') {
+            return { isValid: false, reason: 'Invalid message format' };
+        }
+
+        // Check message length
+        if (message.trim().length === 0) {
+            return { isValid: false, reason: 'Message cannot be empty' };
+        }
+
+        // Basic inappropriate content filtering
+        const inappropriatePatterns = [
+            /\b(hack|crack|exploit|malware|virus|spam)\b/gi,
+            /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+            /javascript:/gi,
+            /on\w+\s*=/gi
+        ];
+
+        const lowerMessage = message.toLowerCase();
+
+        for (const pattern of inappropriatePatterns) {
+            if (pattern.test(message)) {
+                return { isValid: false, reason: 'Message contains inappropriate content' };
+            }
+        }
+
+        // Check for SQL injection attempts
+        const sqlPatterns = [
+            /(\bselect\b|\binsert\b|\bupdate\b|\bdelete\b|\bdrop\b|\bunion\b).*(\bfrom\b|\binto\b|\bwhere\b)/gi,
+            /(\bor\b|\band\b)\s+\d+\s*=\s*\d+/gi,
+            /['"]\s*(or|and)\s+['"]\w+['"]\s*=\s*['"]\w+['"]|['"]\s*(or|and)\s+\d+\s*=\s*\d+/gi
+        ];
+
+        for (const pattern of sqlPatterns) {
+            if (pattern.test(message)) {
+                return { isValid: false, reason: 'Suspicious content detected' };
+            }
+        }
+
+        return { isValid: true };
     }
 }
 

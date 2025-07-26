@@ -30,6 +30,7 @@ import enhancedDistributorRoutes from './enhancedDistributorRoutes.js';
 
 // Import AI Chat routes
 import aiChatRoutes from './aiChatRoutes.js';
+import conversationRoutes from './conversationRoutes.js';
 
 const router = express.Router();
 
@@ -112,6 +113,9 @@ router.use('/distributors', enhancedDistributorRoutes);
 
 // Mount AI Chat routes
 router.use('/ai-chat', aiChatRoutes);
+
+// Mount conversation management routes
+router.use('/conversations', conversationRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {

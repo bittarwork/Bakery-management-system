@@ -158,6 +158,12 @@ export const getOrder = async (req, res) => {
                 { model: Store, as: 'store' },
                 { model: User, as: 'creator', attributes: ['id', 'full_name', 'username'] },
                 {
+                    model: User,
+                    as: 'assignedDistributor',
+                    attributes: ['id', 'full_name', 'username', 'phone', 'email'],
+                    required: false
+                },
+                {
                     model: OrderItem,
                     as: 'items',
                     include: [{ model: Product, as: 'product' }]
@@ -180,7 +186,7 @@ export const getOrder = async (req, res) => {
             });
         }
 
-        const orderResponse = new OrderResponse(order, true, true, true);
+        const orderResponse = new OrderResponse(order, true, true, true, true);
 
         res.json({
             success: true,
@@ -291,7 +297,7 @@ export const createOrder = async (req, res) => {
             // Calculate prices
             const unitPriceEur = parseFloat(item.unit_price) || product.price_eur;
             const unitPriceSyp = product.price_syp;
-            
+
             const itemTotalEur = unitPriceEur * quantity;
             const itemTotalSyp = unitPriceSyp * quantity;
             const itemCostEur = (product.cost_eur || 0) * quantity;
@@ -408,7 +414,7 @@ export const createOrder = async (req, res) => {
         if (autoDistributionEnabled) {
             try {
                 logger.info(`Auto-assigning distributor for order ${order.order_number}`);
-                
+
                 // Assign distributor using simple service
                 const assignmentResult = await SimpleDistributionService.assignOrderToDistributor(
                     {
@@ -428,7 +434,7 @@ export const createOrder = async (req, res) => {
                         assigned_distributor_id: assignmentResult.assigned_distributor.id,
                         status: ORDER_STATUS.CONFIRMED // Move to confirmed status
                     }, { transaction });
-                    
+
                     logger.info(`Order ${order.order_number} assigned to distributor: ${assignmentResult.assigned_distributor.full_name}`);
                 } else {
                     logger.warn(`Failed to assign distributor for order ${order.order_number}: ${assignmentResult.message}`);
@@ -466,7 +472,7 @@ export const createOrder = async (req, res) => {
                 const assignedDistributor = await User.findByPk(completeOrder.assigned_distributor_id, {
                     attributes: ['id', 'full_name', 'phone']
                 });
-                
+
                 if (assignedDistributor) {
                     assignmentInfo = {
                         distributor_id: assignedDistributor.id,
@@ -496,7 +502,7 @@ export const createOrder = async (req, res) => {
         } catch (rollbackError) {
             logger.error('[ORDERS] Error rolling back transaction:', rollbackError);
         }
-        
+
         console.error('[ORDERS] Failed to create order:', error.message);
 
         // Handle specific database errors

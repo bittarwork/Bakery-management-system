@@ -779,6 +779,110 @@ const OrderDetailsPage = () => {
                       </div>
                     </div>
 
+                    {/* Distribution Information Section */}
+                    <div className="mt-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                        <Truck className="w-5 h-5 mr-2 text-blue-600" />
+                        معلومات التوزيع
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 bg-white rounded-xl border border-gray-100">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            الموظف المكلف
+                          </label>
+                          <div className="flex items-center text-gray-700">
+                            <User className="w-5 h-5 mr-2" />
+                            <span className="font-medium">
+                              {order.assigned_distributor
+                                ? order.assigned_distributor.full_name
+                                : "لم يتم التعيين"}
+                            </span>
+                          </div>
+                          {order.assigned_distributor && (
+                            <div className="mt-2 text-sm text-gray-500 flex items-center">
+                              <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                              {order.assigned_distributor.phone ||
+                                order.assigned_distributor.email}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="p-4 bg-white rounded-xl border border-gray-100">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            حالة التوزيع
+                          </label>
+                          <div className="flex items-center">
+                            <div
+                              className={`w-3 h-3 rounded-full mr-2 ${
+                                order.distribution_status_info?.color ===
+                                "green"
+                                  ? "bg-green-500"
+                                  : order.distribution_status_info?.color ===
+                                    "yellow"
+                                  ? "bg-yellow-500"
+                                  : order.distribution_status_info?.color ===
+                                    "red"
+                                  ? "bg-red-500"
+                                  : "bg-gray-500"
+                              }`}
+                            ></div>
+                            <span className="font-medium text-gray-700">
+                              {order.distribution_status_info?.label ||
+                                "في الانتظار"}
+                            </span>
+                            <span className="mr-2">
+                              {order.distribution_status_info?.icon || "⏳"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {order.assigned_at && (
+                          <div className="p-4 bg-white rounded-xl border border-gray-100">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              تاريخ التعيين
+                            </label>
+                            <div className="flex items-center text-gray-700">
+                              <Calendar className="w-5 h-5 mr-2" />
+                              <span className="font-medium">
+                                {new Date(order.assigned_at).toLocaleDateString(
+                                  "ar"
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {order.delivery_started_at && (
+                          <div className="p-4 bg-white rounded-xl border border-gray-100">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              بدء التوصيل
+                            </label>
+                            <div className="flex items-center text-gray-700">
+                              <Clock className="w-5 h-5 mr-2" />
+                              <span className="font-medium">
+                                {new Date(
+                                  order.delivery_started_at
+                                ).toLocaleDateString("ar")}{" "}
+                                -{" "}
+                                {new Date(
+                                  order.delivery_started_at
+                                ).toLocaleTimeString("ar")}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {!order.has_assigned_distributor && (
+                        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl flex items-center">
+                          <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2" />
+                          <span className="text-yellow-800 font-medium">
+                            هذا الطلب لم يتم تعيين موظف توزيع له بعد
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
                     {order.notes && (
                       <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-100">
                         <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">

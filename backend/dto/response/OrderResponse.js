@@ -4,7 +4,7 @@ import { ORDER_STATUS, PAYMENT_STATUS } from '../../constants/index.js';
  * Data Transfer Object for order response
  */
 export class OrderResponse {
-    constructor(order, includeItems = false, includeStore = false, includeCreator = false) {
+    constructor(order, includeItems = false, includeStore = false, includeCreator = false, includeDistributor = false) {
         this.id = order.id;
         this.order_number = order.order_number;
         this.store_id = order.store_id;
@@ -24,14 +24,22 @@ export class OrderResponse {
         this.created_at = order.created_at;
         this.updated_at = order.updated_at;
 
+        // Add distribution fields
+        this.assigned_distributor_id = order.assigned_distributor_id;
+        this.assigned_at = order.assigned_at;
+        this.delivery_started_at = order.delivery_started_at;
+        this.delivery_status = order.delivery_status || 'pending';
+
         // Add status labels and colors
         this.status_info = this.getStatusInfo();
         this.payment_status_info = this.getPaymentStatusInfo();
+        this.distribution_status_info = this.getDistributionStatusInfo();
 
         // Add computed properties
         this.can_be_modified = this.canBeModified();
         this.can_be_cancelled = this.canBeCancelled();
         this.is_overdue = this.isOverdue();
+        this.has_assigned_distributor = !!this.assigned_distributor_id;
 
         // Include related data if requested
         if (includeItems && (order.OrderItems || order.items)) {
@@ -57,6 +65,17 @@ export class OrderResponse {
                 id: creator.id,
                 full_name: creator.full_name,
                 username: creator.username
+            };
+        }
+
+        if (includeDistributor && (order.AssignedDistributor || order.assignedDistributor)) {
+            const distributor = order.AssignedDistributor || order.assignedDistributor;
+            this.assigned_distributor = {
+                id: distributor.id,
+                full_name: distributor.full_name,
+                username: distributor.username,
+                phone: distributor.phone,
+                email: distributor.email
             };
         }
     }
@@ -90,6 +109,22 @@ export class OrderResponse {
         };
 
         return statusMap[this.payment_status] || { label: this.payment_status, color: 'gray', icon: '❓' };
+    }
+
+    /**
+     * Get distribution status information with label and color
+     * @returns {Object} distribution status info
+     */
+    getDistributionStatusInfo() {
+        const statusMap = {
+            'pending': { label: 'في الانتظار', color: 'gray', icon: '⏳' },
+            'in_transit': { label: 'في الطريق', color: 'yellow', icon: '🚚' },
+            'delivered': { label: 'تم التسليم', color: 'green', icon: '✅' },
+            'returned': { label: 'مرتجع', color: 'red', icon: '↩️' },
+            'cancelled': { label: 'ملغي', color: 'red', icon: '❌' }
+        };
+
+        return statusMap[this.delivery_status] || { label: this.delivery_status, color: 'gray', icon: '❓' };
     }
 
     /**
@@ -152,7 +187,11 @@ export class OrderResponse {
             can_be_cancelled: this.can_be_cancelled,
             is_overdue: this.is_overdue,
             created_at: this.created_at,
-            updated_at: this.updated_at
+            updated_at: this.updated_at,
+            assigned_distributor: this.assigned_distributor,
+            has_assigned_distributor: this.has_assigned_distributor,
+            distribution_status: this.delivery_status,
+            distribution_status_info: this.distribution_status_info
         };
     }
 }

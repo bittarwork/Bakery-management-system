@@ -66,6 +66,7 @@ const defineAssociations = () => {
     // Order associations
     Order.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
     Order.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+    Order.belongsTo(User, { foreignKey: 'assigned_distributor_id', as: 'assignedDistributor' });
     Order.hasMany(OrderItem, { foreignKey: 'order_id', as: 'items' });
     Order.hasMany(Payment, { foreignKey: 'order_id', as: 'payments' });
 
@@ -82,6 +83,7 @@ const defineAssociations = () => {
 
     // User associations
     User.hasMany(Order, { foreignKey: 'created_by', as: 'orders' });
+    User.hasMany(Order, { foreignKey: 'assigned_distributor_id', as: 'distributedOrders' });
     User.hasMany(UserSession, { foreignKey: 'user_id', as: 'sessions' });
     User.hasMany(Payment, { foreignKey: 'created_by', as: 'payments' });
 
