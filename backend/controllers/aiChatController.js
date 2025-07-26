@@ -29,8 +29,12 @@ class AIChatController {
                 });
             }
 
-            // Content filtering (basic)
-            if (this.containsInappropriateContent(message)) {
+            // Basic content filtering
+            const inappropriateWords = ['spam', 'hack', 'malware'];
+            const lowerMessage = message.toLowerCase();
+            const hasInappropriateContent = inappropriateWords.some(word => lowerMessage.includes(word));
+            
+            if (hasInappropriateContent) {
                 return res.status(400).json({
                     success: false,
                     error: 'Message contains inappropriate content'
@@ -298,17 +302,6 @@ class AIChatController {
         };
 
         return prompts[reportType] || prompts.general;
-    }
-
-    /**
-     * Basic content filtering
-     */
-    containsInappropriateContent(message) {
-        // Basic filtering - can be enhanced with more sophisticated methods
-        const inappropriateWords = ['spam', 'hack', 'malware'];
-        const lowerMessage = message.toLowerCase();
-
-        return inappropriateWords.some(word => lowerMessage.includes(word));
     }
 }
 

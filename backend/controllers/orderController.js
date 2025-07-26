@@ -202,7 +202,10 @@ export const getOrder = async (req, res) => {
 // @access  Private
 export const createOrder = async (req, res) => {
     const sequelize = await getSequelizeConnection();
-    const transaction = await sequelize.transaction();
+    const transaction = await sequelize.transaction({
+        isolationLevel: sequelize.Transaction.ISOLATION_LEVELS.READ_COMMITTED,
+        timeout: 30000 // 30 seconds timeout
+    });
 
     try {
         // Create DTO and validate
@@ -360,15 +363,16 @@ export const createOrder = async (req, res) => {
                         total_amount_eur: order.total_amount_eur,
                         priority: priority
                     },
-                    req.user.id
+                    req.user.id,
+                    transaction
                 );
 
                 if (assignmentResult.success) {
-                    // Update order with assigned distributor
+                    // Update order with assigned distributor within the transaction
                     await order.update({
                         assigned_distributor_id: assignmentResult.assigned_distributor.id,
                         status: ORDER_STATUS.CONFIRMED // Move to confirmed status
-                    });
+                    }, { transaction });
                     
                     logger.info(`Order ${order.order_number} assigned to distributor: ${assignmentResult.assigned_distributor.full_name}`);
                 } else {
@@ -432,8 +436,22 @@ export const createOrder = async (req, res) => {
         });
 
     } catch (error) {
-        await transaction.rollback();
+        try {
+            await transaction.rollback();
+        } catch (rollbackError) {
+            logger.error('[ORDERS] Error rolling back transaction:', rollbackError);
+        }
+        
         console.error('[ORDERS] Failed to create order:', error.message);
+
+        // Handle specific database errors
+        if (error.original && error.original.code === 'ER_LOCK_WAIT_TIMEOUT') {
+            return res.status(409).json({
+                success: false,
+                message: 'تم تجاوز مهلة انتظار القفل. يرجى المحاولة مرة أخرى.',
+                error: 'Lock wait timeout exceeded'
+            });
+        }
 
         if (error.name === 'SequelizeValidationError') {
             return res.status(400).json({

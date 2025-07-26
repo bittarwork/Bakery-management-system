@@ -11,7 +11,7 @@ class SimpleDistributionService {
      * Assign order to best available distributor
      * Simple logic: round-robin with availability check
      */
-    static async assignOrderToDistributor(order, userId = null) {
+    static async assignOrderToDistributor(order, userId = null, transaction = null) {
         try {
             logger.info(`[DISTRIBUTION] Starting assignment for order ${order.order_number || order.id}`);
 
@@ -53,8 +53,8 @@ class SimpleDistributionService {
             const assignedDistributor = await this.selectBestDistributor(availableDistributors, order);
             logger.info(`[DISTRIBUTION] Selected distributor: ${assignedDistributor.full_name} (ID: ${assignedDistributor.id})`);
 
-            // Update distributor workload
-            await this.updateDistributorWorkload(assignedDistributor.id, 1);
+            // Update distributor workload within transaction if provided
+            await this.updateDistributorWorkload(assignedDistributor.id, 1, transaction);
 
             logger.info(`[DISTRIBUTION] Successfully assigned order ${order.order_number || order.id} to distributor: ${assignedDistributor.full_name}`);
 
@@ -105,7 +105,8 @@ class SimpleDistributionService {
                 order: [
                     ['current_workload', 'ASC'], // Prefer less busy distributors
                     ['performance_rating', 'DESC'] // Prefer better rated distributors
-                ]
+                ],
+                lock: false // Avoid row-level locking to prevent deadlocks
             });
 
             return distributors || [];
@@ -138,14 +139,14 @@ class SimpleDistributionService {
     /**
      * Update distributor workload
      */
-    static async updateDistributorWorkload(distributorId, increment = 1) {
+    static async updateDistributorWorkload(distributorId, increment = 1, transaction = null) {
         try {
             const distributor = await User.findByPk(distributorId);
             if (distributor) {
                 const currentWorkload = distributor.current_workload || 0;
                 await distributor.update({
                     current_workload: Math.max(0, currentWorkload + increment)
-                });
+                }, { transaction });
 
                 logger.info(`Updated distributor ${distributorId} workload: ${currentWorkload + increment}`);
             }

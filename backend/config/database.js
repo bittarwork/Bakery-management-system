@@ -24,9 +24,9 @@ const config = {
         dialect: 'mysql',
         logging: false, // استخدم middleware الجديد بدلاً من sequelize logging
         pool: {
-            max: 5,
-            min: 0,
-            acquire: 30000,
+            max: 10,
+            min: 2,
+            acquire: 60000,
             idle: 10000
         },
         timezone: '+02:00', // Brussels timezone
@@ -36,6 +36,14 @@ const config = {
             timestamps: true,
             underscored: true,
             freezeTableName: true
+        },
+        dialectOptions: {
+            connectTimeout: 60000,
+            acquireTimeout: 60000,
+            timeout: 60000,
+            multipleStatements: true,
+            supportBigNumbers: true,
+            bigNumberStrings: true
         }
     },
     test: {
@@ -56,8 +64,8 @@ const config = {
         dialect: 'mysql',
         logging: false,
         pool: {
-            max: 20,
-            min: 0,
+            max: 25,
+            min: 5,
             acquire: 60000,
             idle: 10000
         },
@@ -68,6 +76,14 @@ const config = {
             timestamps: true,
             underscored: true,
             freezeTableName: true
+        },
+        dialectOptions: {
+            connectTimeout: 60000,
+            acquireTimeout: 60000,
+            timeout: 60000,
+            multipleStatements: true,
+            supportBigNumbers: true,
+            bigNumberStrings: true
         }
     }
 };
