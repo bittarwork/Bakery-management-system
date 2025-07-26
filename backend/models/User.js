@@ -83,6 +83,35 @@ const User = sequelize.define('User', {
     last_login: {
         type: DataTypes.DATE,
         allowNull: true
+    },
+    // Distributor location tracking fields
+    current_location: {
+        type: DataTypes.JSON,
+        allowNull: true,
+        comment: 'Current GPS location with timestamp for distributors'
+    },
+    location_updated_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        comment: 'When location was last updated'
+    },
+    // Vehicle information for distributors
+    vehicle_info: {
+        type: DataTypes.JSON,
+        allowNull: true,
+        comment: 'Vehicle details for distributors'
+    },
+    // Work status for distributors
+    work_status: {
+        type: DataTypes.ENUM('available', 'busy', 'offline', 'break'),
+        allowNull: true,
+        comment: 'Current work status for distributors'
+    },
+    // Performance metrics
+    daily_performance: {
+        type: DataTypes.JSON,
+        allowNull: true,
+        comment: 'Daily performance metrics for distributors'
     }
 }, {
     tableName: 'users',
@@ -184,6 +213,66 @@ User.getUsersByRole = async function (role) {
         where: {
             role: role,
             status: 'active'
+        },
+        order: [['full_name', 'ASC']]
+    });
+};
+
+// New methods for distributor management
+User.prototype.updateLocation = async function (location) {
+    if (this.role !== 'distributor') {
+        throw new Error('Only distributors can update location');
+    }
+    
+    this.current_location = {
+        ...location,
+        timestamp: new Date()
+    };
+    this.location_updated_at = new Date();
+    
+    await this.save();
+    return this;
+};
+
+User.prototype.updateWorkStatus = async function (workStatus) {
+    if (this.role !== 'distributor') {
+        throw new Error('Only distributors can update work status');
+    }
+    
+    const validStatuses = ['available', 'busy', 'offline', 'break'];
+    if (!validStatuses.includes(workStatus)) {
+        throw new Error('Invalid work status');
+    }
+    
+    this.work_status = workStatus;
+    await this.save();
+    return this;
+};
+
+User.prototype.updateDailyPerformance = async function (performanceData) {
+    if (this.role !== 'distributor') {
+        throw new Error('Only distributors can update performance');
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    const currentPerformance = this.daily_performance || {};
+    
+    currentPerformance[today] = {
+        ...performanceData,
+        updated_at: new Date()
+    };
+    
+    this.daily_performance = currentPerformance;
+    await this.save();
+    return this;
+};
+
+User.getActiveDistributorsWithLocation = async function () {
+    return await User.findAll({
+        where: {
+            role: 'distributor',
+            status: 'active',
+            work_status: ['available', 'busy']
         },
         order: [['full_name', 'ASC']]
     });

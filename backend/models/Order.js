@@ -122,6 +122,35 @@ const Order = sequelize.define('Order', {
     created_by_name: {
         type: DataTypes.STRING(100),
         allowNull: true
+    },
+    // Distributor assignment fields
+    assigned_distributor_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'users',
+            key: 'id'
+        }
+    },
+    assigned_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        comment: 'When the order was assigned to distributor'
+    },
+    delivery_started_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        comment: 'When distributor started delivery'
+    },
+    delivery_completed_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        comment: 'When delivery was completed'
+    },
+    delivery_notes: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        comment: 'Delivery notes from distributor'
     }
 }, {
     tableName: 'orders',

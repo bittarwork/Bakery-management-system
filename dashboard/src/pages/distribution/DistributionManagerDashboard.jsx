@@ -542,52 +542,6 @@ const DistributionManagerDashboard = () => {
             )}
           </div>
         </motion.div>
-
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mt-8"
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <EnhancedButton
-              onClick={() => navigate("/distribution/live-tracking")}
-              variant="outline"
-              className="flex items-center justify-center space-x-2 space-x-reverse p-4"
-            >
-              <Navigation className="w-5 h-5" />
-              <span>التتبع المباشر</span>
-            </EnhancedButton>
-
-            <EnhancedButton
-              onClick={() => navigate("/reports")}
-              variant="outline"
-              className="flex items-center justify-center space-x-2 space-x-reverse p-4"
-            >
-              <BarChart3 className="w-5 h-5" />
-              <span>التقارير</span>
-            </EnhancedButton>
-
-            <EnhancedButton
-              onClick={() => navigate("/users?role=distributor")}
-              variant="outline"
-              className="flex items-center justify-center space-x-2 space-x-reverse p-4"
-            >
-              <UserPlus className="w-5 h-5" />
-              <span>إدارة الموزعين</span>
-            </EnhancedButton>
-
-            <EnhancedButton
-              onClick={() => navigate("/settings")}
-              variant="outline"
-              className="flex items-center justify-center space-x-2 space-x-reverse p-4"
-            >
-              <Settings className="w-5 h-5" />
-              <span>الإعدادات</span>
-            </EnhancedButton>
-          </div>
-        </motion.div>
       </div>
     </div>
   );

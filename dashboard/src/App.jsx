@@ -20,6 +20,7 @@ import AnalyticsPage from "./pages/dashboard/AnalyticsPage";
 import DistributionManagerDashboard from "./pages/distribution/DistributionManagerDashboard";
 import DailyOperationsPage from "./pages/distribution/DailyOperationsPage";
 import LiveTrackingPage from "./pages/distribution/LiveTrackingPage";
+import DistributorDetails from "./pages/distribution/DistributorDetails";
 
 // Pages - Orders
 import OrdersListPage from "./pages/orders/OrdersListPage";
@@ -316,6 +317,27 @@ const App = () => {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <LiveTrackingPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/distribution/distributor/:id"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <DistributorDetails />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>

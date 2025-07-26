@@ -14,6 +14,8 @@ import TempDeliverySchedule from './TempDeliverySchedule.js';
 import DeliverySchedule from './DeliverySchedule.js';
 import DeliveryCapacity from './DeliveryCapacity.js';
 import DeliveryTracking from './DeliveryTracking.js';
+import LocationHistory from './LocationHistory.js';
+import DistributorDailyPerformance from './DistributorDailyPerformance.js';
 
 // Database connection factory
 let sequelize = null;
@@ -218,6 +220,8 @@ export {
     DeliverySchedule,
     DeliveryCapacity,
     DeliveryTracking,
+    LocationHistory,
+    DistributorDailyPerformance,
     initializeModels
 };
 
@@ -238,5 +242,7 @@ export default {
     DeliverySchedule,
     DeliveryCapacity,
     DeliveryTracking,
+    LocationHistory,
+    DistributorDailyPerformance,
     initializeModels
 }; 

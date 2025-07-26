@@ -32,7 +32,7 @@ import {
   BarChart3,
   Coffee,
   Phone,
-  Mail
+  Mail,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../ui/Card";
 import EnhancedButton from "../ui/EnhancedButton";
@@ -74,20 +74,31 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
       // Load orders for the selected date
       const ordersResponse = await orderService.getOrders({
         date: selectedDate,
-        limit: 100
+        limit: 100,
       });
 
       if (ordersResponse.success) {
         setDailyOrders(ordersResponse.data.orders || []);
-        
+
         // Calculate statistics
         const orders = ordersResponse.data.orders || [];
         const stats = {
           totalOrders: orders.length,
-          completedOrders: orders.filter(o => o.status === 'delivered').length,
-          pendingOrders: orders.filter(o => o.status === 'pending').length,
-          totalRevenue: orders.reduce((sum, order) => sum + (parseFloat(order.total_amount_eur) || 0), 0),
-          averageOrderValue: orders.length > 0 ? orders.reduce((sum, order) => sum + (parseFloat(order.total_amount_eur) || 0), 0) / orders.length : 0
+          completedOrders: orders.filter((o) => o.status === "delivered")
+            .length,
+          pendingOrders: orders.filter((o) => o.status === "pending").length,
+          totalRevenue: orders.reduce(
+            (sum, order) => sum + (parseFloat(order.total_amount_eur) || 0),
+            0
+          ),
+          averageOrderValue:
+            orders.length > 0
+              ? orders.reduce(
+                  (sum, order) =>
+                    sum + (parseFloat(order.total_amount_eur) || 0),
+                  0
+                ) / orders.length
+              : 0,
         };
         setStatistics(stats);
       } else {
@@ -98,11 +109,12 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
       }
 
       // Load distributor information
-      const distributionResponse = await distributionService.getDashboardData(selectedDate);
+      const distributionResponse = await distributionService.getDashboardData(
+        selectedDate
+      );
       if (distributionResponse.success) {
         setDistributors(distributionResponse.data.distributors || []);
       }
-
     } catch (error) {
       console.error("Error loading daily data:", error);
       const mockData = getMockDailyData();
@@ -124,11 +136,11 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
           store_address: "بيروت - الحمرا",
           status: "delivered",
           priority: "high",
-          total_amount_eur: 125.50,
+          total_amount_eur: 125.5,
           items_count: 5,
           distributor_name: "أحمد محمود",
           created_at: new Date().toISOString(),
-          notes: "طلب عاجل للصباح"
+          notes: "طلب عاجل للصباح",
         },
         {
           id: 2,
@@ -140,35 +152,42 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
           items_count: 3,
           distributor_name: "سارة أحمد",
           created_at: new Date().toISOString(),
-          notes: ""
-        }
+          notes: "",
+        },
       ],
       statistics: {
         totalOrders: 15,
         completedOrders: 8,
         pendingOrders: 7,
         totalRevenue: 1250.75,
-        averageOrderValue: 83.38
-      }
+        averageOrderValue: 83.38,
+      },
     };
   };
 
   // Filter and sort orders
   const filteredOrders = dailyOrders
     .filter((order) => {
-      const matchesSearch = !filters.search || 
-        order.store_name?.toLowerCase().includes(filters.search.toLowerCase()) ||
-        order.distributor_name?.toLowerCase().includes(filters.search.toLowerCase());
-      const matchesStatus = filters.status === "all" || order.status === filters.status;
-      const matchesPriority = filters.priority === "all" || order.priority === filters.priority;
-      
+      const matchesSearch =
+        !filters.search ||
+        order.store_name
+          ?.toLowerCase()
+          .includes(filters.search.toLowerCase()) ||
+        order.distributor_name
+          ?.toLowerCase()
+          .includes(filters.search.toLowerCase());
+      const matchesStatus =
+        filters.status === "all" || order.status === filters.status;
+      const matchesPriority =
+        filters.priority === "all" || order.priority === filters.priority;
+
       return matchesSearch && matchesStatus && matchesPriority;
     })
     .sort((a, b) => {
       const aValue = a[sortField];
       const bValue = b[sortField];
       const direction = sortDirection === "asc" ? 1 : -1;
-      
+
       if (sortField === "created_at") {
         return direction * (new Date(aValue) - new Date(bValue));
       }
@@ -247,9 +266,11 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
             <p className="text-sm text-gray-600">طلب #{order.id}</p>
           </div>
         </div>
-        
+
         <span
-          className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(order.status)}`}
+          className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+            order.status
+          )}`}
         >
           {getStatusText(order.status)}
         </span>
@@ -263,7 +284,9 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
         </div>
         <div>
           <p className="text-xs text-gray-500 mb-1">الموزع</p>
-          <p className="text-sm text-gray-900">{order.distributor_name || "غير محدد"}</p>
+          <p className="text-sm text-gray-900">
+            {order.distributor_name || "غير محدد"}
+          </p>
         </div>
       </div>
 
@@ -271,7 +294,9 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
       <div className="grid grid-cols-3 gap-4 mb-3">
         <div className="text-center p-2 bg-gray-50 rounded-lg">
           <p className="text-xs text-gray-600">المنتجات</p>
-          <p className="text-sm font-semibold text-gray-900">{order.items_count || 0}</p>
+          <p className="text-sm font-semibold text-gray-900">
+            {order.items_count || 0}
+          </p>
         </div>
         <div className="text-center p-2 bg-green-50 rounded-lg">
           <p className="text-xs text-gray-600">القيمة</p>
@@ -282,7 +307,9 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
         <div className="text-center p-2 bg-blue-50 rounded-lg">
           <p className="text-xs text-gray-600">الأولوية</p>
           <span
-            className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(order.priority)}`}
+            className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(
+              order.priority
+            )}`}
           >
             {getPriorityText(order.priority)}
           </span>
@@ -293,11 +320,19 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
       <div className="flex items-center justify-between text-xs text-gray-500 border-t pt-3">
         <div className="flex items-center space-x-1 space-x-reverse">
           <Clock className="w-3 h-3" />
-          <span>تاريخ الطلب: {new Date(order.created_at).toLocaleDateString('en-GB')}</span>
+          <span>
+            تاريخ الطلب:{" "}
+            {new Date(order.created_at).toLocaleDateString("en-GB")}
+          </span>
         </div>
         <div className="flex items-center space-x-1 space-x-reverse">
           <Calendar className="w-3 h-3" />
-          <span>{new Date(order.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span>
+          <span>
+            {new Date(order.created_at).toLocaleTimeString("ar-SA", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
         </div>
       </div>
 
@@ -313,14 +348,13 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
 
       {/* Action Button */}
       <div className="mt-4">
-        <EnhancedButton 
-          size="sm" 
-          variant="outline" 
+        <EnhancedButton
+          size="sm"
+          variant="outline"
           className="w-full flex items-center justify-center space-x-2 space-x-reverse"
           onClick={() => {
-            // Navigate to order details (if available)
-            // For now, just show a message
-            toast.success(`عرض تفاصيل الطلب #${order.id}`);
+            // Navigate to order details page
+            window.location.href = `/orders/${order.id}`;
           }}
         >
           <Eye className="w-4 h-4" />
@@ -348,16 +382,17 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
             العمليات اليومية
           </h2>
           <p className="text-gray-600 mt-1">
-            إدارة ومراقبة الطلبات اليومية لتاريخ {new Date(selectedDate).toLocaleDateString('en-GB')}
+            إدارة ومراقبة الطلبات اليومية لتاريخ{" "}
+            {new Date(selectedDate).toLocaleDateString("en-GB")}
           </p>
         </div>
-        
+
         <div className="flex items-center space-x-4 space-x-reverse">
           <div className="flex items-center space-x-2 space-x-reverse text-sm text-gray-600">
             <Calendar className="w-4 h-4" />
-            <span>{new Date(selectedDate).toLocaleDateString('en-GB')}</span>
+            <span>{new Date(selectedDate).toLocaleDateString("en-GB")}</span>
           </div>
-          
+
           <EnhancedButton
             onClick={loadDailyData}
             variant="outline"
@@ -365,7 +400,9 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
             disabled={isLoading}
             className="flex items-center space-x-2 space-x-reverse"
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
+            />
             <span>تحديث</span>
           </EnhancedButton>
         </div>
@@ -378,7 +415,9 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-blue-100 text-sm">إجمالي الطلبات</p>
-                <p className="text-2xl font-bold">{statistics.totalOrders || 0}</p>
+                <p className="text-2xl font-bold">
+                  {statistics.totalOrders || 0}
+                </p>
               </div>
               <Package className="w-8 h-8 text-blue-200" />
             </div>
@@ -390,7 +429,9 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-100 text-sm">تم التسليم</p>
-                <p className="text-2xl font-bold">{statistics.completedOrders || 0}</p>
+                <p className="text-2xl font-bold">
+                  {statistics.completedOrders || 0}
+                </p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-200" />
             </div>
@@ -402,7 +443,9 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-yellow-100 text-sm">في الانتظار</p>
-                <p className="text-2xl font-bold">{statistics.pendingOrders || 0}</p>
+                <p className="text-2xl font-bold">
+                  {statistics.pendingOrders || 0}
+                </p>
               </div>
               <Clock className="w-8 h-8 text-yellow-200" />
             </div>
@@ -414,7 +457,9 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-purple-100 text-sm">إجمالي الإيرادات</p>
-                <p className="text-2xl font-bold">€{(statistics.totalRevenue || 0).toFixed(2)}</p>
+                <p className="text-2xl font-bold">
+                  €{(statistics.totalRevenue || 0).toFixed(2)}
+                </p>
               </div>
               <Euro className="w-8 h-8 text-purple-200" />
             </div>
@@ -426,7 +471,9 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-indigo-100 text-sm">متوسط قيمة الطلب</p>
-                <p className="text-2xl font-bold">€{(statistics.averageOrderValue || 0).toFixed(2)}</p>
+                <p className="text-2xl font-bold">
+                  €{(statistics.averageOrderValue || 0).toFixed(2)}
+                </p>
               </div>
               <BarChart3 className="w-8 h-8 text-indigo-200" />
             </div>
@@ -443,15 +490,19 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
                 type="text"
                 placeholder="البحث في الطلبات..."
                 value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, search: e.target.value }))
+                }
                 icon={<Search className="w-4 h-4" />}
               />
             </div>
-            
+
             <div>
               <select
                 value={filters.status}
-                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, status: e.target.value }))
+                }
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">جميع الحالات</option>
@@ -462,11 +513,13 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
                 <option value="cancelled">ملغي</option>
               </select>
             </div>
-            
+
             <div>
               <select
                 value={filters.priority}
-                onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, priority: e.target.value }))
+                }
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">جميع الأولويات</option>
@@ -476,7 +529,7 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
                 <option value="urgent">عاجلة</option>
               </select>
             </div>
-            
+
             <div className="flex space-x-2 space-x-reverse">
               <EnhancedButton
                 onClick={() => handleSort("created_at")}
@@ -484,7 +537,11 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
                 size="sm"
                 className="flex items-center space-x-1 space-x-reverse flex-1"
               >
-                {sortDirection === "asc" ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+                {sortDirection === "asc" ? (
+                  <SortAsc className="w-4 h-4" />
+                ) : (
+                  <SortDesc className="w-4 h-4" />
+                )}
                 <span>التاريخ</span>
               </EnhancedButton>
             </div>
@@ -504,7 +561,9 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
               <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 text-lg">لا توجد طلبات متاحة</p>
               <p className="text-gray-400 text-sm">
-                {filters.search || filters.status !== "all" || filters.priority !== "all"
+                {filters.search ||
+                filters.status !== "all" ||
+                filters.priority !== "all"
                   ? "جرب تغيير معايير البحث"
                   : "لم يتم إنشاء أي طلبات لهذا اليوم"}
               </p>
@@ -512,67 +571,6 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
           )}
         </AnimatePresence>
       </div>
-
-      {/* Quick Actions */}
-      <Card className="bg-white shadow-lg">
-        <CardHeader className="border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <Activity className="w-5 h-5 mr-2" />
-            إجراءات سريعة
-          </h3>
-        </CardHeader>
-        <CardBody className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <EnhancedButton
-              variant="outline"
-              className="flex items-center justify-center space-x-2 space-x-reverse p-4"
-              onClick={() => {
-                // Navigate to create order page
-                window.location.href = "/orders/create";
-              }}
-            >
-              <Package className="w-5 h-5" />
-              <span>إنشاء طلب جديد</span>
-            </EnhancedButton>
-            
-            <EnhancedButton
-              variant="outline"
-              className="flex items-center justify-center space-x-2 space-x-reverse p-4"
-              onClick={() => {
-                // Export daily report
-                toast.success("جاري تصدير التقرير...");
-              }}
-            >
-              <Download className="w-5 h-5" />
-              <span>تصدير التقرير</span>
-            </EnhancedButton>
-            
-            <EnhancedButton
-              variant="outline"
-              className="flex items-center justify-center space-x-2 space-x-reverse p-4"
-              onClick={() => {
-                // Navigate to distribution tracking
-                window.location.href = "/distribution/live-tracking";
-              }}
-            >
-              <Truck className="w-5 h-5" />
-              <span>تتبع التوزيع</span>
-            </EnhancedButton>
-            
-            <EnhancedButton
-              variant="outline"
-              className="flex items-center justify-center space-x-2 space-x-reverse p-4"
-              onClick={() => {
-                // Navigate to reports
-                window.location.href = "/reports";
-              }}
-            >
-              <BarChart3 className="w-5 h-5" />
-              <span>التقارير</span>
-            </EnhancedButton>
-          </div>
-        </CardBody>
-      </Card>
     </div>
   );
 };
