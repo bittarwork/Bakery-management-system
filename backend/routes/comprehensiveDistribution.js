@@ -9,7 +9,8 @@ import {
     getVehicleInventory,
     recordVehicleExpense,
     submitDailyReport,
-    getDistributorHistory
+    getDistributorHistory,
+    getDistributorDetails
 } from '../controllers/comprehensiveDistributionController.js';
 
 import {
@@ -29,6 +30,35 @@ const router = express.Router();
 
 // Apply authentication to all routes
 router.use(protect);
+
+// ==========================================
+// 📊 DISTRIBUTOR DETAILS ROUTES (تفاصيل الموزع)
+// ==========================================
+
+// @desc    Get distributor details
+// @route   GET /api/distribution/:distributorId/details
+// @access  Private (Manager/Admin)
+router.get('/:distributorId/details', authorize('manager', 'admin'), async (req, res) => {
+    try {
+        const { distributorId } = req.params;
+        const { date } = req.query;
+
+        // Get comprehensive distributor details
+        const distributorDetails = await getDistributorDetails(distributorId, date);
+
+        res.json({
+            success: true,
+            data: distributorDetails,
+            message: 'تم جلب تفاصيل الموزع بنجاح'
+        });
+    } catch (error) {
+        console.error('Get distributor details error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في جلب تفاصيل الموزع'
+        });
+    }
+});
 
 // ==========================================
 // 🚚 DISTRIBUTOR ROUTES (عامل التوزيع)

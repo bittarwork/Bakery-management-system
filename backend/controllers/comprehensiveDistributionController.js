@@ -776,4 +776,190 @@ export const getDistributorHistory = async (distributorId, options) => {
     }
 };
 
+/**
+ * Get comprehensive distributor details
+ * @param {number} distributorId - Distributor ID
+ * @param {string} date - Optional date filter
+ * @returns {Object} Distributor details with performance metrics
+ */
+export const getDistributorDetails = async (distributorId, date = null) => {
+    try {
+        // Get distributor basic information
+        const [distributorRows] = await (await getDBConnection()).execute(`
+            SELECT 
+                u.id,
+                u.full_name,
+                u.email,
+                u.phone,
+                u.role,
+                u.status,
+                u.created_at,
+                u.last_login,
+                u.vehicle_info,
+                u.zone_assignment,
+                u.performance_rating,
+                u.total_deliveries,
+                u.successful_deliveries,
+                u.avg_delivery_time,
+                u.avg_customer_rating
+            FROM users u
+            WHERE u.id = ? AND u.role = 'distributor'
+        `, [distributorId]);
+
+        if (distributorRows.length === 0) {
+            throw new Error('الموزع غير موجود');
+        }
+
+        const distributor = distributorRows[0];
+
+        // Get recent deliveries (last 30 days)
+        const [recentDeliveries] = await (await getDBConnection()).execute(`
+            SELECT 
+                o.id as order_id,
+                o.order_number,
+                o.order_date,
+                o.total_amount_eur,
+                o.total_amount_syp,
+                o.status,
+                o.payment_status,
+                s.name as store_name,
+                s.address as store_address,
+                s.phone as store_phone
+            FROM orders o
+            JOIN stores s ON o.store_id = s.id
+            WHERE o.assigned_distributor_id = ?
+            ORDER BY o.order_date DESC
+            LIMIT 10
+        `, [distributorId]);
+
+        // Get performance statistics
+        const [performanceStats] = await (await getDBConnection()).execute(`
+            SELECT 
+                COUNT(*) as total_orders,
+                COUNT(CASE WHEN status = 'delivered' THEN 1 END) as delivered_orders,
+                COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_orders,
+                AVG(CASE WHEN status = 'delivered' THEN total_amount_eur END) as avg_order_value_eur,
+                AVG(CASE WHEN status = 'delivered' THEN total_amount_syp END) as avg_order_value_syp,
+                SUM(CASE WHEN status = 'delivered' THEN total_amount_eur END) as total_revenue_eur,
+                SUM(CASE WHEN status = 'delivered' THEN total_amount_syp END) as total_revenue_syp
+            FROM orders
+            WHERE assigned_distributor_id = ? 
+            AND order_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        `, [distributorId]);
+
+        // Get today's schedule if date is provided
+        let todaySchedule = null;
+        if (date) {
+            const [scheduleRows] = await (await getDBConnection()).execute(`
+                SELECT 
+                    ds.id,
+                    ds.schedule_date,
+                    ds.status,
+                    ds.route_data,
+                    ds.notes,
+                    COUNT(dsi.id) as total_stores
+                FROM distribution_schedules ds
+                LEFT JOIN distribution_schedule_items dsi ON ds.id = dsi.schedule_id
+                WHERE ds.distributor_id = ? AND ds.schedule_date = ?
+                GROUP BY ds.id
+            `, [distributorId, date]);
+
+            if (scheduleRows.length > 0) {
+                todaySchedule = {
+                    ...scheduleRows[0],
+                    route_data: scheduleRows[0].route_data ? JSON.parse(scheduleRows[0].route_data) : null
+                };
+            }
+        }
+
+        // Get assigned stores
+        const [assignedStores] = await (await getDBConnection()).execute(`
+            SELECT 
+                s.id,
+                s.name,
+                s.address,
+                s.phone,
+                s.store_type,
+                s.current_balance_eur,
+                s.current_balance_syp,
+                s.last_order_date,
+                s.performance_rating
+            FROM stores s
+            WHERE s.assigned_distributor_id = ?
+            ORDER BY s.name
+        `, [distributorId]);
+
+        // Get recent payments collected
+        const [recentPayments] = await (await getDBConnection()).execute(`
+            SELECT 
+                p.id,
+                p.amount_eur,
+                p.amount_syp,
+                p.payment_method,
+                p.payment_date,
+                p.notes,
+                s.name as store_name
+            FROM payments p
+            JOIN stores s ON p.store_id = s.id
+            WHERE p.collected_by = ?
+            ORDER BY p.payment_date DESC
+            LIMIT 10
+        `, [distributorId]);
+
+        // Calculate efficiency metrics
+        const efficiencyScore = distributor.total_deliveries > 0 
+            ? (distributor.successful_deliveries / distributor.total_deliveries) * 100 
+            : 0;
+
+        const deliverySuccessRate = distributor.total_deliveries > 0 
+            ? (distributor.successful_deliveries / distributor.total_deliveries) * 100 
+            : 0;
+
+        return {
+            distributor: {
+                id: distributor.id,
+                name: distributor.full_name,
+                email: distributor.email,
+                phone: distributor.phone,
+                status: distributor.status,
+                created_at: distributor.created_at,
+                last_login: distributor.last_login,
+                vehicle_info: distributor.vehicle_info ? JSON.parse(distributor.vehicle_info) : null,
+                zone_assignment: distributor.zone_assignment,
+                performance_rating: distributor.performance_rating,
+                total_deliveries: distributor.total_deliveries,
+                successful_deliveries: distributor.successful_deliveries,
+                avg_delivery_time: distributor.avg_delivery_time,
+                avg_customer_rating: distributor.avg_customer_rating
+            },
+            performance: {
+                efficiency_score: efficiencyScore,
+                delivery_success_rate: deliverySuccessRate,
+                total_orders: performanceStats[0].total_orders,
+                delivered_orders: performanceStats[0].delivered_orders,
+                cancelled_orders: performanceStats[0].cancelled_orders,
+                avg_order_value_eur: performanceStats[0].avg_order_value_eur,
+                avg_order_value_syp: performanceStats[0].avg_order_value_syp,
+                total_revenue_eur: performanceStats[0].total_revenue_eur,
+                total_revenue_syp: performanceStats[0].total_revenue_syp
+            },
+            recent_deliveries: recentDeliveries,
+            today_schedule: todaySchedule,
+            assigned_stores: assignedStores,
+            recent_payments: recentPayments,
+            summary: {
+                total_stores: assignedStores.length,
+                total_recent_orders: recentDeliveries.length,
+                total_recent_payments: recentPayments.length,
+                efficiency_score: efficiencyScore,
+                delivery_success_rate: deliverySuccessRate
+            }
+        };
+
+    } catch (error) {
+        console.error('Error getting distributor details:', error);
+        throw new Error('خطأ في جلب تفاصيل الموزع');
+    }
+};
+
 // All exports are already individual exports above 
