@@ -647,8 +647,7 @@ export const getLiveDistributionTracking = async (date) => {
                     o.created_at,
                     s.name as store_name,
                     s.address,
-                    s.latitude,
-                    s.longitude,
+                    s.gps_coordinates,
                     s.phone as store_phone
                 FROM orders o
                 JOIN stores s ON o.store_id = s.id
@@ -672,10 +671,26 @@ export const getLiveDistributionTracking = async (date) => {
             // Determine current location based on active order or default
             let currentLocation = {
                 address: currentOrder?.address || 'Distribution Center',
-                lat: currentOrder?.latitude || 33.8938,
-                lng: currentOrder?.longitude || 35.5018,
+                lat: 33.8938, // Default Beirut coordinates
+                lng: 35.5018,
                 last_update: new Date().toISOString()
             };
+
+            // Extract GPS coordinates from JSON field if available
+            if (currentOrder && currentOrder.gps_coordinates) {
+                try {
+                    const coords = typeof currentOrder.gps_coordinates === 'string' 
+                        ? JSON.parse(currentOrder.gps_coordinates) 
+                        : currentOrder.gps_coordinates;
+                    
+                    if (coords && coords.latitude && coords.longitude) {
+                        currentLocation.lat = parseFloat(coords.latitude);
+                        currentLocation.lng = parseFloat(coords.longitude);
+                    }
+                } catch (e) {
+                    console.log('[DISTRIBUTION] Invalid GPS coordinates format:', e.message);
+                }
+            }
 
             // Determine distributor status
             let distributorStatus = 'offline';

@@ -13,7 +13,7 @@ class DistributionService {
     async getDashboardData(date = null) {
         try {
             const targetDate = date || new Date().toISOString().split('T')[0];
-            
+
             // Load real data from multiple sources
             const [ordersResponse, distributorsResponse, statsResponse] = await Promise.all([
                 // Get orders for the date
@@ -38,7 +38,7 @@ class DistributionService {
 
             // Transform distributors with order data
             const distributorMap = new Map();
-            
+
             // Initialize distributors
             distributors.forEach(dist => {
                 distributorMap.set(dist.id, {
@@ -68,14 +68,14 @@ class DistributionService {
             orders.forEach(order => {
                 if (order.assigned_distributor_id && distributorMap.has(order.assigned_distributor_id)) {
                     const distributor = distributorMap.get(order.assigned_distributor_id);
-                    
+
                     distributor.todayOrders++;
                     distributor.todayRevenue += parseFloat(order.total_amount_eur || 0);
-                    
+
                     if (order.status === 'delivered') {
                         distributor.completedOrders++;
                     }
-                    
+
                     // Update current location from active orders
                     if (order.status === 'in_progress' && order.store) {
                         distributor.current_location.address = order.store.address || 'غير محدد';
@@ -83,7 +83,7 @@ class DistributionService {
                         distributor.current_location.lng = order.store.longitude || 35.5018;
                         distributor.current_route.current_stop = order.store.name || '';
                     }
-                    
+
                     // Update route progress
                     distributor.current_route.total_stops = distributor.todayOrders;
                     distributor.current_route.completed_stops = distributor.completedOrders;
@@ -112,7 +112,25 @@ class DistributionService {
 
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
-            return this.getMockDashboardData();
+
+            // Return error response - NO MOCK DATA
+            return {
+                success: false,
+                error: 'Failed to fetch distribution data',
+                data: {
+                    dailyOrders: [],
+                    distributors: [],
+                    stores: [],
+                    statistics: {
+                        totalOrders: 0,
+                        activeDistributors: 0,
+                        completedDeliveries: 0,
+                        todayRevenue: 0
+                    },
+                    liveTracking: [],
+                    notifications: []
+                }
+            };
         }
     }
 
@@ -134,7 +152,7 @@ class DistributionService {
         }
 
         // Check for high priority orders
-        const highPriorityOrders = orders.filter(order => 
+        const highPriorityOrders = orders.filter(order =>
             order.priority === 'high' || order.priority === 'urgent'
         );
         if (highPriorityOrders.length > 0) {
@@ -147,7 +165,7 @@ class DistributionService {
         }
 
         // Check for distributor workload
-        const overloadedDistributors = distributors.filter(dist => 
+        const overloadedDistributors = distributors.filter(dist =>
             dist.todayOrders > 10
         );
         if (overloadedDistributors.length > 0) {
@@ -178,7 +196,23 @@ class DistributionService {
      */
     transformDashboardData(response) {
         if (!response.success) {
-            return this.getMockDashboardData();
+            return {
+                success: false,
+                error: 'Failed to transform distribution data',
+                data: {
+                    dailyOrders: [],
+                    distributors: [],
+                    stores: [],
+                    statistics: {
+                        totalOrders: 0,
+                        activeDistributors: 0,
+                        completedDeliveries: 0,
+                        todayRevenue: 0
+                    },
+                    liveTracking: [],
+                    notifications: []
+                }
+            };
         }
 
         const data = response.data;
@@ -535,7 +569,7 @@ class DistributionService {
         try {
             // Get dashboard data which includes distributors
             const dashboardResponse = await this.getDashboardData();
-            
+
             if (dashboardResponse.success && dashboardResponse.data) {
                 return {
                     success: true,
@@ -546,7 +580,7 @@ class DistributionService {
                     }
                 };
             }
-            
+
             // Fallback to mock data
             return this.getMockActiveDistributors();
         } catch (error) {
@@ -825,370 +859,18 @@ class DistributionService {
             return response;
         } catch (error) {
             console.error('Error fetching store orders:', error);
-            return this.getMockStoreOrders();
+            return {
+                success: false,
+                error: 'Failed to fetch store orders',
+                data: []
+            };
         }
     }
 
-    // ===== MOCK DATA METHODS =====
-
-    getMockDashboardData() {
-        return {
-            success: true,
-            data: {
-                statistics: {
-                    totalOrders: 156,
-                    activeDistributors: 8,
-                    completedDeliveries: 124,
-                    pendingOrders: 32,
-                    todayRevenue: 8450.75,
-                    averageDeliveryTime: 42,
-                    customerSatisfaction: 4.2,
-                    onTimeDeliveryRate: 89,
-                },
-                dailyOrders: [
-                    { id: 1, orderNumber: "ORD-001", store: "متجر الصباح", status: "pending", amount: 245.50 },
-                    { id: 2, orderNumber: "ORD-002", store: "مخبز النور", status: "delivered", amount: 180.25 },
-                    { id: 3, orderNumber: "ORD-003", store: "متجر السلام", status: "in_progress", amount: 320.00 },
-                ],
-                distributors: [
-                    { id: 1, name: "أحمد محمد", status: "active", orders: 12, location: "وسط البلد" },
-                    { id: 2, name: "سارة أحمد", status: "active", orders: 8, location: "الحمرا" },
-                    { id: 3, name: "محمد علي", status: "break", orders: 15, location: "الأشرفية" },
-                ],
-                notifications: [
-                    { id: 1, type: "warning", message: "تأخير في التسليم - الطلب #ORD-001", time: "10 دقائق" },
-                    { id: 2, type: "success", message: "تم تسليم الطلب #ORD-002 بنجاح", time: "15 دقيقة" },
-                    { id: 3, type: "info", message: "موزع جديد انضم للفريق", time: "30 دقيقة" },
-                ],
-            }
-        };
-    }
-
-    getMockLiveTracking() {
-        return {
-            success: true,
-            data: [
-                {
-                    id: 1,
-                    distributor: "أحمد محمد",
-                    currentLocation: { lat: 33.5138, lng: 36.2765 },
-                    status: "active",
-                    ordersCount: 12,
-                    lastUpdate: new Date().toISOString()
-                }
-            ]
-        };
-    }
-
-    getMockNotifications() {
-        return {
-            success: true,
-            data: [
-                { id: 1, type: "warning", message: "تأخير في التسليم", time: "10 دقائق" },
-                { id: 2, type: "success", message: "تم تسليم الطلب بنجاح", time: "15 دقيقة" },
-            ]
-        };
-    }
-
-    getMockDistributors() {
-        return {
-            success: true,
-            data: [
-                { id: 1, name: "أحمد محمد", status: "active", capacity: 15, currentLoad: 8 },
-                { id: 2, name: "سارة أحمد", status: "active", capacity: 12, currentLoad: 5 },
-                { id: 3, name: "محمد علي", status: "break", capacity: 18, currentLoad: 0 },
-            ]
-        };
-    }
-
-    getMockActiveDistributors() {
-        return {
-            success: true,
-            data: {
-                distributors: [
-                    {
-                        id: 1,
-                        name: "أحمد محمد",
-                        phone: "+32-489-123-001",
-                        email: "ahmed@bakery.com",
-                        status: "active",
-                        todayOrders: 8,
-                        completedOrders: 6,
-                        current_location: {
-                            address: "شارع الاستقلال، دمشق",
-                            lat: 33.5138,
-                            lng: 36.2765
-                        },
-                        current_route: {
-                            current_stop: "متجر النور",
-                            total_stops: 8,
-                            completed_stops: 6,
-                            estimated_completion: "14:30"
-                        },
-                        performance: {
-                            efficiency: 92,
-                            onTimeRate: 88,
-                            todayRevenue: 450.75
-                        }
-                    },
-                    {
-                        id: 2,
-                        name: "سارة أحمد", 
-                        phone: "+32-489-123-002",
-                        email: "sara@bakery.com",
-                        status: "active",
-                        todayOrders: 5,
-                        completedOrders: 4,
-                        current_location: {
-                            address: "حي المزة، دمشق",
-                            lat: 33.5024,
-                            lng: 36.2623
-                        },
-                        current_route: {
-                            current_stop: "سوبر ماركت الأمل",
-                            total_stops: 5,
-                            completed_stops: 4,
-                            estimated_completion: "15:15"
-                        },
-                        performance: {
-                            efficiency: 85,
-                            onTimeRate: 90,
-                            todayRevenue: 320.50
-                        }
-                    }
-                ],
-                statistics: {
-                    totalOrders: 156,
-                    activeDistributors: 2,
-                    completedDeliveries: 124,
-                    todayRevenue: 771.25
-                },
-                notifications: [
-                    {
-                        type: "info",
-                        message: "جميع الموزعين نشطين اليوم",
-                        timestamp: new Date().toISOString()
-                    }
-                ]
-            }
-        };
-    }
-
-    getMockStats() {
-        return {
-            success: true,
-            data: {
-                totalOrders: 156,
-                completedOrders: 124,
-                averageDeliveryTime: 42,
-                onTimeRate: 89,
-                totalRevenue: 8450.75,
-                activeDistributors: 8
-            }
-        };
-    }
-
-    getMockDailyReport() {
-        return {
-            success: true,
-            data: {
-                summary: {
-                    totalOrders: 45,
-                    completedOrders: 38,
-                    pendingOrders: 7,
-                    totalRevenue: 2850.50,
-                    averageOrderValue: 63.34,
-                    deliveryRate: 84.4,
-                    customerSatisfaction: 4.2
-                },
-                ordersByHour: [
-                    { hour: "08:00", orders: 5, revenue: 315 },
-                    { hour: "09:00", orders: 8, revenue: 512 },
-                    { hour: "10:00", orders: 12, revenue: 768 },
-                ],
-                topProducts: [
-                    { name: "خبز عربي", quantity: 120, revenue: 360 },
-                    { name: "كعك محلى", quantity: 85, revenue: 680 },
-                ],
-                distributorPerformance: [
-                    { name: "أحمد محمد", orders: 15, completionRate: 93, revenue: 980 },
-                    { name: "سارة أحمد", orders: 12, completionRate: 88, revenue: 756 },
-                ]
-            }
-        };
-    }
-
-    getMockWeeklyReport() {
-        return {
-            success: true,
-            data: {
-                summary: {
-                    totalOrders: 315,
-                    completedOrders: 267,
-                    totalRevenue: 19950.75,
-                    deliveryRate: 84.8,
-                    customerSatisfaction: 4.1
-                },
-                dailyTrend: [
-                    { day: "الأحد", orders: 42, revenue: 2680 },
-                    { day: "الاثنين", orders: 48, revenue: 3040 },
-                    { day: "الثلاثاء", orders: 45, revenue: 2850 },
-                ]
-            }
-        };
-    }
-
-    getMockMonthlyReport() {
-        return {
-            success: true,
-            data: {
-                summary: {
-                    totalOrders: 1380,
-                    completedOrders: 1295,
-                    totalRevenue: 87650.25,
-                    deliveryRate: 93.8,
-                    customerSatisfaction: 4.3
-                },
-                weeklyTrend: [
-                    { week: "الأسبوع الأول", orders: 320, revenue: 20380 },
-                    { week: "الأسبوع الثاني", orders: 365, revenue: 23200 },
-                ]
-            }
-        };
-    }
-
-    getMockDistributorLocations() {
-        return {
-            success: true,
-            data: [
-                {
-                    id: 1,
-                    name: "أحمد محمد",
-                    currentLocation: { lat: 33.5138, lng: 36.2765 },
-                    status: "active",
-                    route: "المسار الشمالي"
-                }
-            ]
-        };
-    }
-
-    getMockRoutes() {
-        return {
-            success: true,
-            data: [
-                {
-                    id: 1,
-                    name: "المسار الشمالي",
-                    distributor: "أحمد محمد",
-                    status: "active",
-                    totalDistance: "45 كم",
-                    stores: 12,
-                    completedStores: 8
-                }
-            ]
-        };
-    }
-
-    getMockTrafficData() {
-        return {
-            success: true,
-            data: {
-                overall: "متوسط",
-                zones: [
-                    { name: "وسط بيروت", level: "عالي", color: "red" },
-                    { name: "الحمرا", level: "متوسط", color: "yellow" },
-                ]
-            }
-        };
-    }
-
-    getMockArchiveData() {
-        return {
-            success: true,
-            data: {
-                summary: {
-                    totalOperations: 1250,
-                    totalRevenue: 89500.75,
-                    completedOrders: 1180,
-                    successRate: 94.4
-                },
-                operations: [
-                    {
-                        id: 1,
-                        date: "2024-01-15",
-                        title: "توزيع يومي - المنطقة الشمالية",
-                        distributor: "أحمد محمد",
-                        status: "completed",
-                        orders: 12,
-                        revenue: 890.50
-                    }
-                ]
-            }
-        };
-    }
-
-    getMockArchivedOperations() {
-        return {
-            success: true,
-            data: [
-                {
-                    id: 1,
-                    date: "2024-01-15",
-                    title: "توزيع يومي",
-                    status: "completed",
-                    orders: 12,
-                    revenue: 890.50
-                }
-            ]
-        };
-    }
-
-    getMockArchivedReports() {
-        return {
-            success: true,
-            data: [
-                {
-                    id: 1,
-                    name: "تقرير التوزيع الأسبوعي",
-                    date: "2024-01-15",
-                    type: "weekly",
-                    size: "2.4 MB",
-                    status: "available"
-                }
-            ]
-        };
-    }
-
-    getMockStoreAnalytics() {
-        return {
-            success: true,
-            data: {
-                totalStores: 45,
-                activeStores: 38,
-                averageOrderValue: 185.25,
-                topStores: [
-                    { name: "متجر الصباح", orders: 156, revenue: 12450 },
-                    { name: "مخبز النور", orders: 134, revenue: 10890 },
-                ]
-            }
-        };
-    }
-
-    getMockStoreOrders() {
-        return {
-            success: true,
-            data: [
-                {
-                    id: 1,
-                    orderNumber: "ORD-001",
-                    date: "2024-01-15",
-                    amount: 245.50,
-                    status: "delivered"
-                }
-            ]
-        };
-    }
 }
 
 // Create and export service instance
-export default new DistributionService();
+export const distributionService = new DistributionService();
+
+// Export default
+export default distributionService;

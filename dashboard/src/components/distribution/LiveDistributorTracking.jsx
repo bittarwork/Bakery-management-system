@@ -299,8 +299,19 @@ const LiveDistributorTracking = ({ selectedDate }) => {
   };
 
   const initializeMap = () => {
-    if (!mapRef.current || !window.google || !window.google.maps) {
-      console.warn("Cannot initialize map: missing dependencies");
+    if (!mapRef.current) {
+      console.warn("Cannot initialize map: mapRef not available");
+      return;
+    }
+
+    if (!window.google || !window.google.maps) {
+      console.warn("Cannot initialize map: Google Maps API not loaded yet");
+      // Retry after a short delay
+      setTimeout(() => {
+        if (window.google && window.google.maps && mapRef.current) {
+          initializeMap();
+        }
+      }, 1000);
       return;
     }
 
