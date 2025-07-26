@@ -138,6 +138,28 @@ const User = sequelize.define('User', {
         type: DataTypes.JSON,
         allowNull: true,
         comment: 'Daily performance metrics for distributors'
+    },
+    // Workload tracking for automatic distribution
+    current_workload: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        allowNull: false,
+        comment: 'Current number of assigned orders for distributors'
+    },
+    performance_rating: {
+        type: DataTypes.DECIMAL(3, 2),
+        defaultValue: 0.00,
+        allowNull: false,
+        validate: {
+            min: 0,
+            max: 5
+        },
+        comment: 'Performance rating out of 5 for distributors'
+    },
+    last_active: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        comment: 'Last activity timestamp for distributors'
     }
 }, {
     tableName: 'users',

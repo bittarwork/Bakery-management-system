@@ -423,7 +423,7 @@ const OrdersListPage = () => {
   const formatDate = (date) => {
     if (!date) return "غير محدد";
     try {
-      return new Date(date).toLocaleDateString("ar-EG");
+      return formatDateShort(date);
     } catch (error) {
       return "تاريخ غير صحيح";
     }

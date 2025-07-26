@@ -1,12 +1,10 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import OpenAI from 'openai';
 import mysql from 'mysql2/promise';
 import logger from '../config/logger.js';
 
 class AIService {
     constructor() {
         this.gemini = null;
-        this.openai = null;
         this.dbPool = null;
         this.cache = new Map();
         this.initializeServices();
@@ -17,24 +15,15 @@ class AIService {
      */
     async initializeServices() {
         try {
-            logger.info('🔧 Initializing AI services...');
-            
-            // Initialize Gemini if API key is provided
+            logger.info('🔧 Initializing Gemini AI service...');
+
+            // Initialize Gemini - Required for AI functionality
             if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here') {
                 this.gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-                logger.info('✅ Gemini AI service initialized with key: ' + process.env.GEMINI_API_KEY.substring(0, 10) + '...');
+                logger.info('✅ Gemini AI service initialized successfully');
             } else {
-                logger.warn('⚠️ Gemini API key not provided or is placeholder');
-            }
-
-            // Initialize OpenAI as fallback if API key is provided
-            if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your_openai_api_key_here_if_needed') {
-                this.openai = new OpenAI({
-                    apiKey: process.env.OPENAI_API_KEY,
-                });
-                logger.info('✅ OpenAI service initialized as fallback');
-            } else {
-                logger.warn('⚠️ OpenAI API key not provided or is placeholder');
+                logger.error('❌ Gemini API key not provided - AI functionality will not work');
+                throw new Error('Gemini API key is required for AI functionality');
             }
 
             // Initialize database connection for context
@@ -49,9 +38,9 @@ class AIService {
                 queueLimit: 0
             });
 
-            logger.info('🚀 AI Service fully initialized');
+            logger.info('🚀 Gemini AI Service fully initialized');
         } catch (error) {
-            logger.error('❌ Failed to initialize AI Service:', error);
+            logger.error('❌ Failed to initialize Gemini AI Service:', error);
             throw error;
         }
     }
@@ -82,40 +71,24 @@ class AIService {
             // Prepare the enhanced message with context
             const enhancedMessage = await this.prepareMessageWithContext(message, businessContext, context);
 
-            let response;
-            const provider = process.env.AI_PROVIDER || 'gemini';
-
-            // Check if AI services are initialized
-            if (!this.gemini && !this.openai) {
-                throw new Error('No AI services initialized. Check API keys.');
+            // Check if Gemini AI service is initialized
+            if (!this.gemini) {
+                throw new Error('Gemini AI service not initialized. Check API key.');
             }
 
-            if (provider === 'gemini' && this.gemini) {
-                logger.info('🤖 Using Gemini AI provider');
-                response = await this.getGeminiResponse(enhancedMessage);
-            } else if (provider === 'openai' && this.openai) {
-                logger.info('🤖 Using OpenAI provider');
-                response = await this.getOpenAIResponse(enhancedMessage);
-            } else if (this.gemini) {
-                logger.info('🤖 Fallback to Gemini AI provider');
-                response = await this.getGeminiResponse(enhancedMessage);
-            } else if (this.openai) {
-                logger.info('🤖 Fallback to OpenAI provider');
-                response = await this.getOpenAIResponse(enhancedMessage);
-            } else {
-                throw new Error(`AI provider "${provider}" not available. Available providers: ${this.gemini ? 'Gemini' : ''} ${this.openai ? 'OpenAI' : ''}`);
-            }
+            logger.info('🤖 Using Gemini AI');
+            const response = await this.getGeminiResponse(enhancedMessage);
 
             // Cache the response
             if (process.env.AI_CACHE_ENABLED === 'true') {
                 this.cacheResponse(cacheKey, response);
             }
 
-            logger.info(`🤖 AI response generated using ${provider}`);
+            logger.info('🤖 Gemini AI response generated successfully');
             return {
                 response,
                 cached: false,
-                provider,
+                provider: 'gemini',
                 timestamp: new Date()
             };
 
@@ -145,7 +118,7 @@ class AIService {
             }
 
             const model = this.gemini.getGenerativeModel({
-                model: process.env.GEMINI_MODEL || 'gemini-1.5-pro-latest'
+                model: process.env.GEMINI_MODEL || 'gemini-1.5-flash'
             });
 
             const generationConfig = {
@@ -175,24 +148,7 @@ class AIService {
         }
     }
 
-    /**
-     * Get response from OpenAI (fallback)
-     */
-    async getOpenAIResponse(message) {
-        try {
-            const completion = await this.openai.chat.completions.create({
-                model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
-                messages: [{ role: 'user', content: message }],
-                max_tokens: parseInt(process.env.OPENAI_MAX_TOKENS || '2048'),
-                temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.4'),
-            });
 
-            return completion.choices[0].message.content;
-        } catch (error) {
-            logger.error('❌ OpenAI API error:', error);
-            throw error;
-        }
-    }
 
     /**
      * Get business context from database

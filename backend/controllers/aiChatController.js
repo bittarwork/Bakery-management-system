@@ -107,7 +107,7 @@ class AIChatController {
                     contextMemory: process.env.ENABLE_CONTEXT_MEMORY === 'true',
                     advancedAnalytics: process.env.ENABLE_ADVANCED_ANALYTICS === 'true'
                 },
-                provider: process.env.AI_PROVIDER || 'gemini',
+                provider: 'gemini',
                 userRole: req.user.role
             };
 
@@ -230,7 +230,7 @@ class AIChatController {
         try {
             const health = {
                 aiService: 'operational',
-                provider: process.env.AI_PROVIDER || 'unknown',
+                provider: 'gemini',
                 cacheEnabled: process.env.AI_CACHE_ENABLED === 'true',
                 timestamp: new Date().toISOString()
             };

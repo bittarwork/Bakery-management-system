@@ -13,26 +13,50 @@ class SimpleDistributionService {
      */
     static async assignOrderToDistributor(order, userId = null) {
         try {
-            logger.info(`Assigning order ${order.order_number || order.id} to distributor`);
+            logger.info(`[DISTRIBUTION] Starting assignment for order ${order.order_number || order.id}`);
 
             // Find available distributors
             const availableDistributors = await this.getAvailableDistributors();
+            logger.info(`[DISTRIBUTION] Found ${availableDistributors.length} available distributors`);
 
             if (availableDistributors.length === 0) {
+                logger.warn(`[DISTRIBUTION] No available distributors found for order ${order.order_number || order.id}`);
+                
+                // Check if there are any distributors at all
+                const allDistributors = await User.findAll({
+                    where: { role: 'distributor' },
+                    attributes: ['id', 'full_name', 'status']
+                });
+                
+                logger.info(`[DISTRIBUTION] Total distributors in system: ${allDistributors.length}`);
+                allDistributors.forEach(dist => {
+                    logger.info(`[DISTRIBUTION] Distributor: ${dist.full_name}, Status: ${dist.status}`);
+                });
+
                 return {
                     success: false,
-                    message: 'No available distributors found',
-                    assigned_distributor: null
+                    message: `No available distributors found. Total distributors: ${allDistributors.length}`,
+                    assigned_distributor: null,
+                    debug_info: {
+                        total_distributors: allDistributors.length,
+                        distributors: allDistributors.map(d => ({ name: d.full_name, status: d.status }))
+                    }
                 };
             }
 
+            // Log available distributors
+            availableDistributors.forEach(dist => {
+                logger.info(`[DISTRIBUTION] Available: ${dist.full_name}, Workload: ${dist.current_workload || 0}, Rating: ${dist.performance_rating || 0}`);
+            });
+
             // Simple assignment logic - get next available distributor
             const assignedDistributor = await this.selectBestDistributor(availableDistributors, order);
+            logger.info(`[DISTRIBUTION] Selected distributor: ${assignedDistributor.full_name} (ID: ${assignedDistributor.id})`);
 
             // Update distributor workload
             await this.updateDistributorWorkload(assignedDistributor.id, 1);
 
-            logger.info(`Order ${order.order_number || order.id} assigned to distributor: ${assignedDistributor.full_name}`);
+            logger.info(`[DISTRIBUTION] Successfully assigned order ${order.order_number || order.id} to distributor: ${assignedDistributor.full_name}`);
 
             return {
                 success: true,
@@ -48,7 +72,7 @@ class SimpleDistributionService {
             };
 
         } catch (error) {
-            logger.error('Error in assignOrderToDistributor:', error);
+            logger.error('[DISTRIBUTION] Error in assignOrderToDistributor:', error);
             return {
                 success: false,
                 message: 'Failed to assign distributor',

@@ -305,7 +305,7 @@ const DistributorDetails = () => {
                   تفاصيل الموزع - {distributorData.name}
                 </h1>
                 <p className="text-gray-600">
-                  تفاصيل الأعمال اليومية لتاريخ {new Date(selectedDate).toLocaleDateString('ar-SA')}
+                  تفاصيل الأعمال اليومية لتاريخ {formatDateShort(selectedDate)}
                 </p>
               </div>
             </div>
@@ -313,7 +313,7 @@ const DistributorDetails = () => {
             <div className="flex items-center space-x-4 space-x-reverse">
               <div className="flex items-center space-x-2 space-x-reverse text-sm text-gray-600">
                 <Calendar className="w-4 h-4" />
-                <span>{new Date(selectedDate).toLocaleDateString('ar-SA')}</span>
+                <span>{formatDateShort(selectedDate)}</span>
               </div>
               
               <EnhancedButton
@@ -377,13 +377,7 @@ const DistributorDetails = () => {
                     </div>
                     {distributorData.location_updated_at && (
                       <div className="text-xs text-gray-400 mt-1">
-                        آخر تحديث للموقع: {new Date(distributorData.location_updated_at).toLocaleDateString('ar-SA', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                                        آخر تحديث للموقع: {formatDateTimeArabic(distributorData.location_updated_at)}
                       </div>
                     )}
                   </div>
@@ -741,7 +735,7 @@ const DistributorDetails = () => {
                     
                     <div className="border-t pt-4">
                       <p className="text-xs text-gray-500">
-                        آخر تحديث: {new Date(distributorData.current_location?.last_update || new Date()).toLocaleString('ar-SA')}
+                        آخر تحديث: {formatDateTimeArabic(distributorData.current_location?.last_update || new Date())}
                       </p>
                     </div>
                   </div>
@@ -861,7 +855,7 @@ const DistributorDetails = () => {
                         
                         <div className="mt-3 pt-3 border-t border-gray-100">
                           <p className="text-xs text-gray-500">
-                            تاريخ الطلب: {new Date(delivery.created_at).toLocaleString('ar-SA')}
+                            تاريخ الطلب: {formatDateTimeArabic(delivery.created_at)}
                           </p>
                         </div>
                       </div>

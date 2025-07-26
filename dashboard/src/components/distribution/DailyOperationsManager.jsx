@@ -325,13 +325,7 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
           {order.assigned_at && (
             <div className="text-xs text-blue-700 mt-1">
               تم التعيين:{" "}
-              {new Date(order.assigned_at).toLocaleString("ar-SA", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {formatDateTimeArabic(order.assigned_at)}
             </div>
           )}
         </div>
@@ -375,10 +369,7 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
           {order.delivery_started_at && (
             <div className="text-xs text-yellow-700">
               بدأ التوصيل:{" "}
-              {new Date(order.delivery_started_at).toLocaleString("ar-SA", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {formatTimeArabic(order.delivery_started_at)}
             </div>
           )}
         </div>
@@ -392,11 +383,7 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
             <span>تاريخ الطلب:</span>
           </div>
           <span className="font-medium">
-            {new Date(order.created_at).toLocaleDateString("en-GB", {
-              year: "numeric",
-              month: "2-digit",
-              day: "2-digit",
-            })}
+            {formatDateShort(order.created_at)}
           </span>
         </div>
         <div className="flex items-center justify-between text-xs text-gray-500">
@@ -405,10 +392,7 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
             <span>الوقت:</span>
           </div>
           <span className="font-medium">
-            {new Date(order.created_at).toLocaleTimeString("ar-SA", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            {formatTimeArabic(order.created_at)}
           </span>
         </div>
         {order.delivery_completed_at && (
@@ -418,11 +402,11 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
               <span>تم التسليم:</span>
             </div>
             <span className="font-medium">
-              {new Date(order.delivery_completed_at).toLocaleString("ar-SA", {
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
+              {formatDateTimeArabic(order.delivery_completed_at, { 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
               })}
             </span>
           </div>
@@ -496,18 +480,18 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
           </h2>
           <p className="text-gray-600 mt-1">
             إدارة ومراقبة الطلبات اليومية لتاريخ{" "}
-            {new Date(selectedDate).toLocaleDateString("en-GB", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
+                    {formatDateArabic(selectedDate, { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        })}
           </p>
         </div>
 
         <div className="flex items-center space-x-4 space-x-reverse">
           <div className="flex items-center space-x-2 space-x-reverse text-sm text-gray-600">
             <Calendar className="w-4 h-4" />
-            <span>{new Date(selectedDate).toLocaleDateString("en-GB")}</span>
+            <span>{formatDateShort(selectedDate)}</span>
           </div>
 
           <EnhancedButton

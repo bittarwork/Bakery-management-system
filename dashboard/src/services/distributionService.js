@@ -1404,67 +1404,91 @@ class DistributionService {
     }
 
     /**
+     * Get real distributor details from API
+     */
+    async getRealDistributorDetails(distributorId, date = null) {
+        const currentDate = date || new Date().toISOString().split('T')[0];
+
+        try {
+            // Try to get real distributor data from API
+            const userResponse = await apiService.get(`/users/${distributorId}`);
+            if (userResponse.success && userResponse.data) {
+                const user = userResponse.data;
+
+                // Transform user data to distributor format with real data
+                const distributor = {
+                    id: user.id,
+                    name: user.full_name,
+                    phone: user.phone || 'غير محدد',
+                    email: user.email || 'غير محدد',
+                    status: user.status || 'active',
+                    work_status: user.work_status || 'offline',
+                    hire_date: user.hired_date || user.created_at,
+                    zone: user.address || 'غير محدد',
+                    vehicle_number: user.vehicle_info?.plate || 'غير محدد',
+                    current_location: user.current_location || {
+                        address: "الموقع غير محدد",
+                        lat: 33.5138,
+                        lng: 36.2765,
+                        last_update: new Date().toISOString()
+                    }
+                };
+
+                return {
+                    success: true,
+                    data: {
+                        distributor: distributor,
+                        daily_performance: user.daily_performance || {
+                            date: currentDate,
+                            orders_assigned: 0,
+                            orders_completed: 0,
+                            orders_pending: 0,
+                            orders_cancelled: 0,
+                            total_revenue: 0,
+                            total_distance: 0,
+                            working_hours: 0,
+                            efficiency_rate: 0,
+                            customer_rating: 0,
+                            on_time_deliveries: 0,
+                            late_deliveries: 0
+                        },
+                        orders: [],
+                        location_history: []
+                    }
+                };
+            }
+        } catch (error) {
+            console.error('Error fetching real distributor data:', error);
+        }
+
+        // Fallback to mock data if API fails
+        return this.getMockDistributorDetails(distributorId, date);
+    }
+
+    /**
      * Mock distributor details for fallback
      */
     getMockDistributorDetails(distributorId, date = null) {
         const currentDate = date || new Date().toISOString().split('T')[0];
 
-        // Generate different data based on distributorId
-        const distributors = [
-            {
-                id: 1,
-                name: 'أحمد محمد السوري',
-                phone: '+963 12 345 6789',
-                email: 'ahmed@bakery.com',
-                status: 'active',
-                work_status: 'on_delivery',
-                hire_date: '2024-01-15',
-                zone: 'دمشق المركز',
-                vehicle_number: 'Damascus-123',
-                current_location: {
-                    address: 'شارع الحمرا - دمشق',
-                    lat: 33.5138,
-                    lng: 36.2765,
-                    last_update: new Date().toISOString()
-                }
-            },
-            {
-                id: 2,
-                name: 'فاطمة عبدالله',
-                phone: '+963 11 234 5678',
-                email: 'fatima@bakery.com',
-                status: 'active',
-                work_status: 'available',
-                hire_date: '2024-02-20',
-                zone: 'حلب الشرقية',
-                vehicle_number: 'Aleppo-456',
-                current_location: {
-                    address: 'شارع العزيزية - حلب',
-                    lat: 36.2021,
-                    lng: 37.1343,
-                    last_update: new Date().toISOString()
-                }
-            },
-            {
-                id: 3,
-                name: 'محمد حسن',
-                phone: '+963 15 987 6543',
-                email: 'mohamed@bakery.com',
-                status: 'active',
-                work_status: 'resting',
-                hire_date: '2023-12-10',
-                zone: 'حمص الوعر',
-                vehicle_number: 'Homs-789',
-                current_location: {
-                    address: 'حي الوعر - حمص',
-                    lat: 34.7394,
-                    lng: 36.7163,
-                    last_update: new Date().toISOString()
-                }
+        // Create basic distributor data based on ID
+        const distributor = {
+            id: parseInt(distributorId),
+            name: `موزع ${distributorId}`,
+            phone: 'غير محدد',
+            email: 'غير محدد',
+            status: 'active',
+            work_status: 'offline',
+            hire_date: new Date().toISOString().split('T')[0],
+            zone: 'غير محدد',
+            vehicle_number: 'غير محدد',
+            current_location: {
+                address: "الموقع غير محدد",
+                lat: 33.5138,
+                lng: 36.2765,
+                last_update: new Date().toISOString()
             }
-        ];
-
-        const distributor = distributors.find(d => d.id == distributorId) || distributors[0];
+        };
 
         return {
             success: true,
