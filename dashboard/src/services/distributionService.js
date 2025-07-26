@@ -867,6 +867,447 @@ class DistributionService {
         }
     }
 
+    // ===== MOCK DATA METHODS (for backward compatibility and error fallbacks) =====
+
+    /**
+     * Get mock active distributors data
+     */
+    getMockActiveDistributors() {
+        return {
+            success: true,
+            data: {
+                distributors: [
+                    {
+                        id: 1,
+                        name: 'أحمد محمد',
+                        phone: '+963 12 345 6789',
+                        email: 'ahmed@bakery.com',
+                        status: 'active',
+                        current_location: {
+                            address: 'دمشق - المالكي',
+                            lat: 33.5138,
+                            lng: 36.2765,
+                            last_update: new Date().toISOString()
+                        },
+                        current_route: {
+                            current_stop: 'سوبرماركت الأمل',
+                            completed_stops: 3,
+                            total_stops: 8
+                        },
+                        todayOrders: 8,
+                        completedOrders: 3,
+                        todayRevenue: 450.75
+                    },
+                    {
+                        id: 2,
+                        name: 'فاطمة عبدالله',
+                        phone: '+963 11 234 5678',
+                        email: 'fatima@bakery.com',
+                        status: 'active',
+                        current_location: {
+                            address: 'حلب - العزيزية',
+                            lat: 36.2021,
+                            lng: 37.1343,
+                            last_update: new Date().toISOString()
+                        },
+                        current_route: {
+                            current_stop: 'مقهى الياسمين',
+                            completed_stops: 5,
+                            total_stops: 10
+                        },
+                        todayOrders: 10,
+                        completedOrders: 5,
+                        todayRevenue: 625.30
+                    },
+                    {
+                        id: 3,
+                        name: 'محمد السوري',
+                        phone: '+963 15 987 6543',
+                        email: 'mohamed@bakery.com',
+                        status: 'active',
+                        current_location: {
+                            address: 'حمص - الوعر',
+                            lat: 34.7394,
+                            lng: 36.7163,
+                            last_update: new Date().toISOString()
+                        },
+                        current_route: {
+                            current_stop: 'متجر البركة',
+                            completed_stops: 2,
+                            total_stops: 6
+                        },
+                        todayOrders: 6,
+                        completedOrders: 2,
+                        todayRevenue: 380.50
+                    }
+                ],
+                statistics: {
+                    totalOrders: 24,
+                    activeDistributors: 3,
+                    completedDeliveries: 10,
+                    todayRevenue: 1456.55
+                },
+                notifications: [
+                    {
+                        id: 'mock-1',
+                        type: 'info',
+                        message: 'يوجد 14 طلب قيد التسليم',
+                        time: 'الآن'
+                    },
+                    {
+                        id: 'mock-2',
+                        type: 'success',
+                        message: 'تم تسليم 10 طلبات بنجاح اليوم',
+                        time: 'منذ ساعة'
+                    }
+                ]
+            }
+        };
+    }
+
+    /**
+     * Get mock distributors list
+     */
+    getMockDistributors() {
+        return {
+            success: true,
+            data: [
+                {
+                    id: 1,
+                    name: 'أحمد محمد',
+                    phone: '+963 12 345 6789',
+                    status: 'active',
+                    zone: 'دمشق'
+                },
+                {
+                    id: 2,
+                    name: 'فاطمة عبدالله',
+                    phone: '+963 11 234 5678',
+                    status: 'active',
+                    zone: 'حلب'
+                },
+                {
+                    id: 3,
+                    name: 'محمد السوري',
+                    phone: '+963 15 987 6543',
+                    status: 'active',
+                    zone: 'حمص'
+                }
+            ]
+        };
+    }
+
+    /**
+     * Get mock live tracking data
+     */
+    getMockLiveTracking() {
+        return {
+            success: true,
+            data: {
+                distributors: [
+                    {
+                        id: 1,
+                        name: 'أحمد محمد',
+                        location: {
+                            lat: 33.5138,
+                            lng: 36.2765,
+                            address: 'دمشق - المالكي',
+                            last_update: new Date().toISOString()
+                        },
+                        status: 'delivering',
+                        current_order: 'ORD-2025-001',
+                        estimated_arrival: '15 دقيقة'
+                    },
+                    {
+                        id: 2,
+                        name: 'فاطمة عبدالله',
+                        location: {
+                            lat: 36.2021,
+                            lng: 37.1343,
+                            address: 'حلب - العزيزية',
+                            last_update: new Date().toISOString()
+                        },
+                        status: 'en_route',
+                        current_order: 'ORD-2025-002',
+                        estimated_arrival: '25 دقيقة'
+                    }
+                ]
+            }
+        };
+    }
+
+    /**
+     * Get mock notifications
+     */
+    getMockNotifications() {
+        return {
+            success: true,
+            data: [
+                {
+                    id: 1,
+                    type: 'info',
+                    title: 'طلب جديد',
+                    message: 'تم إضافة طلب جديد من سوبرماركت الأمل',
+                    time: new Date().toISOString(),
+                    read: false
+                },
+                {
+                    id: 2,
+                    type: 'success',
+                    title: 'تسليم مكتمل',
+                    message: 'تم تسليم الطلب ORD-2025-001 بنجاح',
+                    time: new Date(Date.now() - 3600000).toISOString(),
+                    read: false
+                },
+                {
+                    id: 3,
+                    type: 'warning',
+                    title: 'تأخير في التسليم',
+                    message: 'تأخر تسليم الطلب ORD-2025-003',
+                    time: new Date(Date.now() - 7200000).toISOString(),
+                    read: true
+                }
+            ]
+        };
+    }
+
+    /**
+     * Get mock daily report
+     */
+    getMockDailyReport() {
+        return {
+            success: true,
+            data: {
+                date: new Date().toISOString().split('T')[0],
+                summary: {
+                    totalOrders: 24,
+                    completedOrders: 18,
+                    pendingOrders: 6,
+                    totalRevenue: 1456.55,
+                    activeDistributors: 3
+                },
+                distributors: [
+                    {
+                        id: 1,
+                        name: 'أحمد محمد',
+                        completedOrders: 8,
+                        revenue: 450.75,
+                        efficiency: 92
+                    },
+                    {
+                        id: 2,
+                        name: 'فاطمة عبدالله',
+                        completedOrders: 6,
+                        revenue: 380.50,
+                        efficiency: 88
+                    }
+                ]
+            }
+        };
+    }
+
+    /**
+     * Get mock weekly report
+     */
+    getMockWeeklyReport() {
+        return {
+            success: true,
+            data: {
+                week: 'Week 1, 2025',
+                summary: {
+                    totalOrders: 168,
+                    completedOrders: 156,
+                    totalRevenue: 10195.85,
+                    averageDeliveryTime: 45,
+                    customerSatisfaction: 4.3
+                }
+            }
+        };
+    }
+
+    /**
+     * Get mock monthly report
+     */
+    getMockMonthlyReport() {
+        return {
+            success: true,
+            data: {
+                month: 'January 2025',
+                summary: {
+                    totalOrders: 672,
+                    completedOrders: 624,
+                    totalRevenue: 40783.40,
+                    averageDeliveryTime: 42,
+                    customerSatisfaction: 4.4
+                }
+            }
+        };
+    }
+
+    /**
+     * Get mock distributor locations
+     */
+    getMockDistributorLocations() {
+        return {
+            success: true,
+            data: [
+                {
+                    id: 1,
+                    name: 'أحمد محمد',
+                    lat: 33.5138,
+                    lng: 36.2765,
+                    status: 'delivering',
+                    last_update: new Date().toISOString()
+                },
+                {
+                    id: 2,
+                    name: 'فاطمة عبدالله',
+                    lat: 36.2021,
+                    lng: 37.1343,
+                    status: 'en_route',
+                    last_update: new Date().toISOString()
+                }
+            ]
+        };
+    }
+
+    /**
+     * Get mock routes data
+     */
+    getMockRoutes() {
+        return {
+            success: true,
+            data: [
+                {
+                    id: 1,
+                    name: 'Route Damascus Central',
+                    distributor_id: 1,
+                    stops: [
+                        { store_id: 1, address: 'سوبرماركت الأمل', status: 'completed' },
+                        { store_id: 2, address: 'مقهى الياسمين', status: 'in_progress' },
+                        { store_id: 3, address: 'متجر البركة', status: 'pending' }
+                    ]
+                }
+            ]
+        };
+    }
+
+    /**
+     * Get mock traffic data
+     */
+    getMockTrafficData() {
+        return {
+            success: true,
+            data: {
+                current_conditions: 'moderate',
+                average_delay: 15,
+                affected_routes: ['Route 1', 'Route 3']
+            }
+        };
+    }
+
+    /**
+     * Get mock archive data
+     */
+    getMockArchiveData() {
+        return {
+            success: true,
+            data: {
+                total_records: 1250,
+                date_range: {
+                    from: '2024-01-01',
+                    to: '2024-12-31'
+                },
+                summary: {
+                    completed_orders: 1180,
+                    total_revenue: 125600.75
+                }
+            }
+        };
+    }
+
+    /**
+     * Get mock archived operations
+     */
+    getMockArchivedOperations() {
+        return {
+            success: true,
+            data: [
+                {
+                    id: 1,
+                    date: '2024-12-31',
+                    total_orders: 45,
+                    completed_orders: 42,
+                    revenue: 2150.30
+                },
+                {
+                    id: 2,
+                    date: '2024-12-30',
+                    total_orders: 38,
+                    completed_orders: 36,
+                    revenue: 1890.75
+                }
+            ]
+        };
+    }
+
+    /**
+     * Get mock archived reports
+     */
+    getMockArchivedReports() {
+        return {
+            success: true,
+            data: [
+                {
+                    id: 1,
+                    type: 'monthly',
+                    period: 'December 2024',
+                    created_at: '2025-01-01',
+                    file_url: '/reports/monthly-dec-2024.pdf'
+                },
+                {
+                    id: 2,
+                    type: 'weekly',
+                    period: 'Week 52, 2024',
+                    created_at: '2024-12-30',
+                    file_url: '/reports/weekly-52-2024.pdf'
+                }
+            ]
+        };
+    }
+
+    /**
+     * Get mock store analytics
+     */
+    getMockStoreAnalytics() {
+        return {
+            success: true,
+            data: {
+                top_stores: [
+                    {
+                        id: 1,
+                        name: 'سوبرماركت الأمل',
+                        total_orders: 156,
+                        revenue: 7850.30,
+                        satisfaction: 4.5
+                    },
+                    {
+                        id: 2,
+                        name: 'مقهى الياسمين',
+                        total_orders: 89,
+                        revenue: 4230.75,
+                        satisfaction: 4.2
+                    }
+                ],
+                performance_metrics: {
+                    average_order_value: 58.75,
+                    delivery_success_rate: 95.2,
+                    customer_retention: 87.3
+                }
+            }
+        };
+    }
+
 }
 
 // Create and export service instance
