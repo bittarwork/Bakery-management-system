@@ -528,6 +528,33 @@ class DistributionService {
         }
     }
 
+    /**
+     * Get active distributors with enhanced data for dashboard
+     */
+    async getActiveDistributors(options = {}) {
+        try {
+            // Get dashboard data which includes distributors
+            const dashboardResponse = await this.getDashboardData();
+            
+            if (dashboardResponse.success && dashboardResponse.data) {
+                return {
+                    success: true,
+                    data: {
+                        distributors: dashboardResponse.data.distributors || [],
+                        statistics: dashboardResponse.data.statistics || {},
+                        notifications: dashboardResponse.data.notifications || []
+                    }
+                };
+            }
+            
+            // Fallback to mock data
+            return this.getMockActiveDistributors();
+        } catch (error) {
+            console.error('Error fetching active distributors:', error);
+            return this.getMockActiveDistributors();
+        }
+    }
+
     // ===== ORDERS & DISTRIBUTION =====
 
     /**
@@ -871,6 +898,79 @@ class DistributionService {
                 { id: 2, name: "سارة أحمد", status: "active", capacity: 12, currentLoad: 5 },
                 { id: 3, name: "محمد علي", status: "break", capacity: 18, currentLoad: 0 },
             ]
+        };
+    }
+
+    getMockActiveDistributors() {
+        return {
+            success: true,
+            data: {
+                distributors: [
+                    {
+                        id: 1,
+                        name: "أحمد محمد",
+                        phone: "+32-489-123-001",
+                        email: "ahmed@bakery.com",
+                        status: "active",
+                        todayOrders: 8,
+                        completedOrders: 6,
+                        current_location: {
+                            address: "شارع الاستقلال، دمشق",
+                            lat: 33.5138,
+                            lng: 36.2765
+                        },
+                        current_route: {
+                            current_stop: "متجر النور",
+                            total_stops: 8,
+                            completed_stops: 6,
+                            estimated_completion: "14:30"
+                        },
+                        performance: {
+                            efficiency: 92,
+                            onTimeRate: 88,
+                            todayRevenue: 450.75
+                        }
+                    },
+                    {
+                        id: 2,
+                        name: "سارة أحمد", 
+                        phone: "+32-489-123-002",
+                        email: "sara@bakery.com",
+                        status: "active",
+                        todayOrders: 5,
+                        completedOrders: 4,
+                        current_location: {
+                            address: "حي المزة، دمشق",
+                            lat: 33.5024,
+                            lng: 36.2623
+                        },
+                        current_route: {
+                            current_stop: "سوبر ماركت الأمل",
+                            total_stops: 5,
+                            completed_stops: 4,
+                            estimated_completion: "15:15"
+                        },
+                        performance: {
+                            efficiency: 85,
+                            onTimeRate: 90,
+                            todayRevenue: 320.50
+                        }
+                    }
+                ],
+                statistics: {
+                    totalOrders: 156,
+                    activeDistributors: 2,
+                    completedDeliveries: 124,
+                    todayRevenue: 771.25
+                },
+                notifications: [
+                    {
+                        type: "info",
+                        message: "جميع الموزعين نشطين اليوم",
+                        timestamp: new Date().toISOString()
+                    }
+                ]
+            }
         };
     }
 
