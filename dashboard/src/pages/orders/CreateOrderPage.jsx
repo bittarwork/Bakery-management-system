@@ -208,23 +208,55 @@ const CreateOrderPage = () => {
       return;
     }
 
-    const newItem = {
-      ...currentItem,
-      id: Date.now(),
-      product_id: parseInt(currentItem.product_id),
-      product_name: currentItem.product_name,
-      quantity: parseInt(currentItem.quantity),
-      total_price: parseFloat(
-        parseFloat(currentItem.quantity || 0) *
-          parseFloat(currentItem.unit_price || 0) -
-          parseFloat(currentItem.discount_amount || 0)
-      ),
-    };
+    // Check if product already exists in order
+    const existingItemIndex = formData.items.findIndex(
+      (item) => item.product_id === parseInt(currentItem.product_id)
+    );
 
-    setFormData((prev) => ({
-      ...prev,
-      items: [...prev.items, newItem],
-    }));
+    if (existingItemIndex !== -1) {
+      // Update existing item quantity
+      const updatedItems = [...formData.items];
+      updatedItems[existingItemIndex] = {
+        ...updatedItems[existingItemIndex],
+        quantity:
+          updatedItems[existingItemIndex].quantity +
+          parseInt(currentItem.quantity),
+        total_price: parseFloat(
+          (updatedItems[existingItemIndex].quantity +
+            parseInt(currentItem.quantity)) *
+            parseFloat(currentItem.unit_price || 0) -
+            parseFloat(currentItem.discount_amount || 0)
+        ),
+      };
+
+      setFormData((prev) => ({
+        ...prev,
+        items: updatedItems,
+      }));
+
+      toast.success("تم تحديث كمية المنتج في الطلب");
+    } else {
+      // Add new item
+      const newItem = {
+        ...currentItem,
+        id: Date.now(),
+        product_id: parseInt(currentItem.product_id),
+        product_name: currentItem.product_name,
+        quantity: parseInt(currentItem.quantity),
+        total_price: parseFloat(
+          parseFloat(currentItem.quantity || 0) *
+            parseFloat(currentItem.unit_price || 0) -
+            parseFloat(currentItem.discount_amount || 0)
+        ),
+      };
+
+      setFormData((prev) => ({
+        ...prev,
+        items: [...prev.items, newItem],
+      }));
+
+      toast.success("تم إضافة المنتج إلى الطلب");
+    }
 
     // Reset current item
     setCurrentItem({
@@ -237,8 +269,6 @@ const CreateOrderPage = () => {
       gift_reason: "",
       notes: "",
     });
-
-    toast.success("تم إضافة المنتج إلى الطلب");
   };
 
   // Remove item from order
@@ -260,10 +290,15 @@ const CreateOrderPage = () => {
       (sum, item) => sum + parseFloat(item.gift_quantity || 0),
       0
     );
+    const totalDiscount = formData.items.reduce(
+      (sum, item) => sum + parseFloat(item.discount_amount || 0),
+      0
+    );
 
     return {
       subtotal,
       totalGifts,
+      totalDiscount,
       totalItems: formData.items.length,
     };
   };
@@ -571,14 +606,35 @@ const CreateOrderPage = () => {
                               className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
                             >
                               <option value="">-- اختر المنتج --</option>
-                              {products.map((product) => (
-                                <option key={product.id} value={product.id}>
-                                  {product.name} - €
-                                  {parseFloat(product.price_eur || 0).toFixed(
-                                    2
-                                  )}
-                                </option>
-                              ))}
+                              {products.map((product) => {
+                                const stockInfo =
+                                  product.stock_quantity !== null
+                                    ? ` (متوفر: ${product.stock_quantity})`
+                                    : "";
+                                const statusInfo =
+                                  product.status === "inactive"
+                                    ? " (غير متاح)"
+                                    : "";
+
+                                return (
+                                  <option
+                                    key={product.id}
+                                    value={product.id}
+                                    disabled={
+                                      product.status === "inactive" ||
+                                      (product.stock_quantity !== null &&
+                                        product.stock_quantity <= 0)
+                                    }
+                                  >
+                                    {product.name} - €
+                                    {parseFloat(product.price_eur || 0).toFixed(
+                                      2
+                                    )}
+                                    {stockInfo}
+                                    {statusInfo}
+                                  </option>
+                                );
+                              })}
                             </select>
                           </div>
 
@@ -669,6 +725,61 @@ const CreateOrderPage = () => {
                           </div>
                         </div>
 
+                        {/* Gift and Notes Section */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                              كمية الهدايا
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={currentItem.gift_quantity}
+                              onChange={(e) =>
+                                handleCurrentItemChange(
+                                  "gift_quantity",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                              placeholder="0"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                              سبب الهدية
+                            </label>
+                            <input
+                              type="text"
+                              value={currentItem.gift_reason}
+                              onChange={(e) =>
+                                handleCurrentItemChange(
+                                  "gift_reason",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                              placeholder="مثل: عرض خاص، عميل مميز"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                              ملاحظات المنتج
+                            </label>
+                            <input
+                              type="text"
+                              value={currentItem.notes}
+                              onChange={(e) =>
+                                handleCurrentItemChange("notes", e.target.value)
+                              }
+                              className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                              placeholder="ملاحظات خاصة بهذا المنتج"
+                            />
+                          </div>
+                        </div>
+
                         <div className="mt-6">
                           <motion.button
                             whileHover={{ scale: 1.02 }}
@@ -727,6 +838,9 @@ const CreateOrderPage = () => {
                                     سعر الوحدة
                                   </th>
                                   <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
+                                    خصم/هدايا
+                                  </th>
+                                  <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
                                     الإجمالي
                                   </th>
                                   <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
@@ -746,13 +860,9 @@ const CreateOrderPage = () => {
                                       <div className="font-medium text-gray-900">
                                         {item.product_name}
                                       </div>
-                                      {parseFloat(item.discount_amount || 0) >
-                                        0 && (
-                                        <div className="text-sm text-red-600">
-                                          خصم: €
-                                          {parseFloat(
-                                            item.discount_amount
-                                          ).toFixed(2)}
+                                      {item.notes && (
+                                        <div className="text-sm text-gray-600">
+                                          ملاحظة: {item.notes}
                                         </div>
                                       )}
                                     </td>
@@ -766,6 +876,39 @@ const CreateOrderPage = () => {
                                       {parseFloat(item.unit_price || 0).toFixed(
                                         2
                                       )}
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                      <div className="space-y-1">
+                                        {parseFloat(item.discount_amount || 0) >
+                                          0 && (
+                                          <div className="text-sm text-red-600">
+                                            خصم: €
+                                            {parseFloat(
+                                              item.discount_amount
+                                            ).toFixed(2)}
+                                          </div>
+                                        )}
+                                        {parseInt(item.gift_quantity || 0) >
+                                          0 && (
+                                          <div className="text-sm text-green-600">
+                                            هدية: {item.gift_quantity}
+                                            {item.gift_reason && (
+                                              <div className="text-xs text-gray-500">
+                                                ({item.gift_reason})
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                        {parseFloat(
+                                          item.discount_amount || 0
+                                        ) === 0 &&
+                                          parseInt(item.gift_quantity || 0) ===
+                                            0 && (
+                                            <span className="text-sm text-gray-400">
+                                              -
+                                            </span>
+                                          )}
+                                      </div>
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                       <span className="text-lg font-bold text-green-600">
@@ -1043,6 +1186,14 @@ const CreateOrderPage = () => {
                       <span className="text-gray-600">إجمالي الهدايا:</span>
                       <span className="font-semibold">{totals.totalGifts}</span>
                     </div>
+                    {totals.totalDiscount > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">إجمالي الخصومات:</span>
+                        <span className="font-semibold text-red-600">
+                          -€{totals.totalDiscount.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
                     <div className="border-t pt-4">
                       <div className="flex justify-between items-center">
                         <span className="text-lg font-semibold text-gray-900">

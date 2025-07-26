@@ -9,6 +9,8 @@ export class CreateOrderRequest {
         this.notes = data.notes || '';
         this.priority = data.priority || 'normal';
         this.scheduled_delivery_date = data.scheduled_delivery_date || null;
+        this.currency = data.currency || 'EUR';
+        this.enable_auto_scheduling = data.enable_auto_scheduling !== false; // Default true
     }
 
     /**
@@ -63,6 +65,36 @@ export class CreateOrderRequest {
                         message: `Quantity must be a positive number for item ${index + 1}`
                     });
                 }
+
+                // Validate unit_price if provided
+                if (item.unit_price !== undefined && item.unit_price !== null && item.unit_price !== '') {
+                    if (isNaN(parseFloat(item.unit_price)) || parseFloat(item.unit_price) < 0) {
+                        errors.push({
+                            field: `items[${index}].unit_price`,
+                            message: `Unit price must be a valid positive number for item ${index + 1}`
+                        });
+                    }
+                }
+
+                // Validate discount_amount if provided
+                if (item.discount_amount !== undefined && item.discount_amount !== null && item.discount_amount !== '') {
+                    if (isNaN(parseFloat(item.discount_amount)) || parseFloat(item.discount_amount) < 0) {
+                        errors.push({
+                            field: `items[${index}].discount_amount`,
+                            message: `Discount amount must be a valid positive number for item ${index + 1}`
+                        });
+                    }
+                }
+
+                // Validate gift_quantity if provided
+                if (item.gift_quantity !== undefined && item.gift_quantity !== null && item.gift_quantity !== '') {
+                    if (isNaN(parseInt(item.gift_quantity)) || parseInt(item.gift_quantity) < 0) {
+                        errors.push({
+                            field: `items[${index}].gift_quantity`,
+                            message: `Gift quantity must be a valid positive number for item ${index + 1}`
+                        });
+                    }
+                }
             });
         }
 
@@ -72,6 +104,15 @@ export class CreateOrderRequest {
             errors.push({
                 field: 'priority',
                 message: 'Priority must be one of: low, normal, high, urgent'
+            });
+        }
+
+        // Validate currency
+        const validCurrencies = ['EUR', 'SYP', 'MIXED'];
+        if (this.currency && !validCurrencies.includes(this.currency)) {
+            errors.push({
+                field: 'currency',
+                message: 'Currency must be one of: EUR, SYP, MIXED'
             });
         }
 

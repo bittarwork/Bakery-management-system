@@ -221,7 +221,7 @@ export const createOrder = async (req, res) => {
             });
         }
 
-        const { store_id, items, notes, priority = 'medium', scheduled_delivery_date } = req.body;
+        const { store_id, items, notes, priority = 'medium', scheduled_delivery_date, currency = 'EUR' } = req.body;
 
         // Verify store exists
         const store = await Store.findByPk(store_id);
@@ -254,6 +254,15 @@ export const createOrder = async (req, res) => {
                 });
             }
 
+            // Check if product is active
+            if (product.status === 'inactive') {
+                await transaction.rollback();
+                return res.status(400).json({
+                    success: false,
+                    message: `المنتج ${product.name} غير متاح حالياً`
+                });
+            }
+
             const quantity = parseInt(item.quantity);
             if (quantity <= 0) {
                 await transaction.rollback();
@@ -263,32 +272,56 @@ export const createOrder = async (req, res) => {
                 });
             }
 
-            const itemTotalEur = product.price_eur * quantity;
-            const itemTotalSyp = product.price_syp * quantity;
-            const itemCostEur = product.cost_eur * quantity;
-            const itemCostSyp = product.cost_syp * quantity;
+            // Check stock availability
+            if (product.stock_quantity !== null && product.stock_quantity < quantity) {
+                await transaction.rollback();
+                return res.status(400).json({
+                    success: false,
+                    message: `الكمية المطلوبة (${quantity}) غير متوفرة للمنتج ${product.name}. الكمية المتاحة: ${product.stock_quantity}`
+                });
+            }
 
-            totalAmountEur += itemTotalEur;
-            totalAmountSyp += itemTotalSyp;
+            // Parse discount and gift data from frontend
+            const discountAmountEur = parseFloat(item.discount_amount) || 0.00;
+            const discountAmountSyp = parseFloat(item.discount_amount_syp) || 0.00;
+            const giftQuantity = parseInt(item.gift_quantity) || 0;
+            const giftReason = item.gift_reason || null;
+            const itemNotes = item.notes || null;
+
+            // Calculate prices
+            const unitPriceEur = parseFloat(item.unit_price) || product.price_eur;
+            const unitPriceSyp = product.price_syp;
+            
+            const itemTotalEur = unitPriceEur * quantity;
+            const itemTotalSyp = unitPriceSyp * quantity;
+            const itemCostEur = (product.cost_eur || 0) * quantity;
+            const itemCostSyp = (product.cost_syp || 0) * quantity;
+
+            // Apply discounts
+            const finalPriceEur = Math.max(0, itemTotalEur - discountAmountEur);
+            const finalPriceSyp = Math.max(0, itemTotalSyp - discountAmountSyp);
+
+            totalAmountEur += finalPriceEur;
+            totalAmountSyp += finalPriceSyp;
             totalCostEur += itemCostEur;
             totalCostSyp += itemCostSyp;
 
             validatedItems.push({
                 product_id: item.product_id,
                 quantity,
-                unit_price_eur: product.price_eur,
-                unit_price_syp: product.price_syp,
+                unit_price_eur: unitPriceEur,
+                unit_price_syp: unitPriceSyp,
                 total_price_eur: itemTotalEur,
                 total_price_syp: itemTotalSyp,
-                discount_amount_eur: 0.00, // No discounts for now
-                discount_amount_syp: 0.00, // No discounts for now
-                final_price_eur: itemTotalEur, // Same as total since no discounts
-                final_price_syp: itemTotalSyp, // Same as total since no discounts
+                discount_amount_eur: discountAmountEur,
+                discount_amount_syp: discountAmountSyp,
+                final_price_eur: finalPriceEur,
+                final_price_syp: finalPriceSyp,
                 // Legacy columns for backward compatibility
-                unit_price: product.price_eur, // Legacy unit_price field
-                total_price: itemTotalEur, // Legacy total_price field
-                discount_amount: 0.00, // Legacy discount_amount field
-                final_price: itemTotalEur, // Legacy final_price field
+                unit_price: unitPriceEur,
+                total_price: itemTotalEur,
+                discount_amount: discountAmountEur,
+                final_price: finalPriceEur,
                 // Product details
                 product_name: product.name,
                 product_unit: product.unit || 'piece',
@@ -312,25 +345,47 @@ export const createOrder = async (req, res) => {
                 delivery_method: 'delivery',
                 estimated_delivery_date: null,
                 actual_delivery_date: null,
-                // Gift fields
-                gift_quantity: 0,
-                gift_reason: null,
-                // Notes
-                notes: null
+                // Gift fields - now properly handled
+                gift_quantity: giftQuantity,
+                gift_reason: giftReason,
+                // Notes - now properly handled
+                notes: itemNotes
             });
+        }
+
+        // Calculate final amounts based on selected currency
+        let finalAmountEur = 0;
+        let finalAmountSyp = 0;
+        let exchangeRate = null;
+
+        if (currency === 'EUR') {
+            finalAmountEur = totalAmountEur;
+            finalAmountSyp = 0;
+        } else if (currency === 'SYP') {
+            finalAmountEur = 0;
+            finalAmountSyp = totalAmountSyp;
+        } else if (currency === 'MIXED') {
+            finalAmountEur = totalAmountEur;
+            finalAmountSyp = totalAmountSyp;
+            // Get current exchange rate (you may want to get this from a service)
+            exchangeRate = 1800; // Default rate, should be fetched from exchange service
         }
 
         // Create order
         const order = await Order.create({
             order_number: orderNumber,
             store_id,
-            store_name: store.name, // Add store name
+            store_name: store.name,
             total_amount_eur: totalAmountEur,
             total_amount_syp: totalAmountSyp,
+            final_amount_eur: finalAmountEur,
+            final_amount_syp: finalAmountSyp,
             total_cost_eur: totalCostEur,
             total_cost_syp: totalCostSyp,
             commission_eur: (totalAmountEur - totalCostEur) * 0.1, // 10% commission
             commission_syp: (totalAmountSyp - totalCostSyp) * 0.1,
+            currency: currency,
+            exchange_rate: exchangeRate,
             status: ORDER_STATUS.DRAFT,
             payment_status: PAYMENT_STATUS.PENDING,
             priority: priority === 'medium' ? 'normal' : priority, // Map 'medium' to 'normal' for existing enum
