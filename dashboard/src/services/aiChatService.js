@@ -16,9 +16,8 @@ class AIChatService {
         try {
             this.isTyping = true;
             
-            const response = await apiService.request(
+            const response = await apiService.post(
                 `${this.baseUrl}/message`,
-                'POST',
                 { message, context }
             );
 
@@ -49,9 +48,8 @@ class AIChatService {
      */
     async getSuggestedQuestions() {
         try {
-            const response = await apiService.request(
-                `${this.baseUrl}/suggested-questions`,
-                'GET'
+            const response = await apiService.get(
+                `${this.baseUrl}/suggested-questions`
             );
 
             if (response.success) {
@@ -74,9 +72,8 @@ class AIChatService {
                 return this.config;
             }
 
-            const response = await apiService.request(
-                `${this.baseUrl}/config`,
-                'GET'
+            const response = await apiService.get(
+                `${this.baseUrl}/config`
             );
 
             if (response.success) {
@@ -105,9 +102,8 @@ class AIChatService {
      */
     async getAnalyticsReport(reportType = 'general') {
         try {
-            const response = await apiService.request(
-                `${this.baseUrl}/analytics?reportType=${reportType}`,
-                'GET'
+            const response = await apiService.get(
+                `${this.baseUrl}/analytics?reportType=${reportType}`
             );
 
             if (response.success) {
@@ -127,9 +123,8 @@ class AIChatService {
      */
     async clearCache() {
         try {
-            const response = await apiService.request(
-                `${this.baseUrl}/cache`,
-                'DELETE'
+            const response = await apiService.delete(
+                `${this.baseUrl}/cache`
             );
 
             if (response.success) {
@@ -150,9 +145,8 @@ class AIChatService {
      */
     async getCacheStats() {
         try {
-            const response = await apiService.request(
-                `${this.baseUrl}/cache/stats`,
-                'GET'
+            const response = await apiService.get(
+                `${this.baseUrl}/cache/stats`
             );
 
             if (response.success) {
@@ -171,9 +165,8 @@ class AIChatService {
      */
     async healthCheck() {
         try {
-            const response = await apiService.request(
-                `${this.baseUrl}/health`,
-                'GET'
+            const response = await apiService.get(
+                `${this.baseUrl}/health`
             );
 
             return response.success ? response.data : null;
