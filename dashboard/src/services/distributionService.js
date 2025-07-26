@@ -2,7 +2,7 @@ import apiService from './apiService';
 
 class DistributionService {
     constructor() {
-        this.baseEndpoint = '/distribution';
+        this.baseEndpoint = '/distributors';
     }
 
     // ===== DASHBOARD & OVERVIEW =====
@@ -877,16 +877,18 @@ class DistributionService {
             const params = {};
             if (date) params.date = date;
 
-            const response = await apiService.get(`${this.baseEndpoint}/distributor/${distributorId}/details`, params);
+            const response = await apiService.get(`${this.baseEndpoint}/${distributorId}/details`, params);
 
             if (response.success) {
                 return response;
             }
 
             // Fallback to mock data if API fails
+            console.log('API returned unsuccessful response, using mock data');
             return this.getMockDistributorDetails(distributorId, date);
         } catch (error) {
             console.error('Error fetching distributor details:', error);
+            console.log('Using mock data due to API error');
             return this.getMockDistributorDetails(distributorId, date);
         }
     }

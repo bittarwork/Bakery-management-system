@@ -1,13 +1,26 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import mysql from 'mysql2/promise';
 import logger from '../config/logger.js';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Ensure environment variables are loaded
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+try {
+    dotenv.config({ path: path.join(__dirname, '../config.env') });
+} catch (err) {
+    dotenv.config();
+}
 
 class AIService {
     constructor() {
         this.gemini = null;
         this.dbPool = null;
         this.cache = new Map();
-        this.initializeServices();
+        this.initialized = false;
+        // Don't initialize immediately, do it lazily
     }
 
     /**
@@ -15,6 +28,10 @@ class AIService {
      */
     async initializeServices() {
         try {
+            if (this.initialized) {
+                return; // Already initialized
+            }
+
             logger.info('🔧 Initializing Gemini AI service...');
 
             // Initialize Gemini - Required for AI functionality
@@ -23,6 +40,9 @@ class AIService {
                 logger.info('✅ Gemini AI service initialized successfully');
             } else {
                 logger.error('❌ Gemini API key not provided - AI functionality will not work');
+                logger.error('Environment variables status:');
+                logger.error('- GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
+                logger.error('- GEMINI_API_KEY length:', process.env.GEMINI_API_KEY?.length || 0);
                 throw new Error('Gemini API key is required for AI functionality');
             }
 
@@ -38,9 +58,11 @@ class AIService {
                 queueLimit: 0
             });
 
+            this.initialized = true;
             logger.info('🚀 Gemini AI Service fully initialized');
         } catch (error) {
             logger.error('❌ Failed to initialize Gemini AI Service:', error);
+            this.initialized = false;
             throw error;
         }
     }
@@ -50,6 +72,11 @@ class AIService {
      */
     async getAIResponse(message, userId, context = {}) {
         try {
+            // Initialize services if not already done
+            if (!this.initialized) {
+                await this.initializeServices();
+            }
+
             const cacheKey = await this.generateCacheKey(message, userId);
 
             // Check cache first
@@ -161,7 +188,7 @@ class AIService {
                     (SELECT COUNT(*) FROM products WHERE status = 'active') as active_products,
                     (SELECT COUNT(*) FROM stores WHERE status = 'active') as active_stores,
                     (SELECT COUNT(*) FROM users WHERE status = 'active') as active_users,
-                    (SELECT SUM(total_amount) FROM orders WHERE DATE(created_at) = CURDATE()) as today_revenue,
+                    (SELECT COALESCE(SUM(total_amount_eur), 0) FROM orders WHERE DATE(created_at) = CURDATE()) as today_revenue,
                     (SELECT COUNT(*) FROM orders WHERE status = 'pending') as pending_orders
             `);
 

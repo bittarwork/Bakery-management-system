@@ -3,6 +3,10 @@ import { motion } from "framer-motion";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import {
+  formatDateShort,
+  formatDateTimeArabic,
+} from "../../utils/dateFormatter";
+import {
   ArrowLeft,
   User,
   Phone,
@@ -35,7 +39,7 @@ import {
   MapIcon,
   Route,
   History,
-  Battery
+  Battery,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
@@ -47,12 +51,13 @@ import distributionService from "../../services/distributionService";
  * Shows comprehensive distributor information including daily performance, vehicle info, and real-time location
  */
 const DistributorDetails = () => {
-  const { distributorId } = useParams();
+  const { id: distributorId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // Get date from state or use today
-  const selectedDate = location.state?.date || new Date().toISOString().split("T")[0];
+  const selectedDate =
+    location.state?.date || new Date().toISOString().split("T")[0];
 
   // Main states
   const [isLoading, setIsLoading] = useState(true);
@@ -73,34 +78,49 @@ const DistributorDetails = () => {
       setIsLoading(true);
       setError("");
 
+      // Check if distributorId is available
+      if (!distributorId) {
+        setError("معرف الموزع غير محدد");
+        toast.error("معرف الموزع غير محدد");
+        setIsLoading(false);
+        return;
+      }
+
       // Try to get real distributor data from enhanced API
-      const distributorResponse = await distributionService.getDistributorDetails(distributorId, selectedDate);
-      
+      const distributorResponse =
+        await distributionService.getDistributorDetails(
+          distributorId,
+          selectedDate
+        );
+
       if (distributorResponse.success && distributorResponse.data) {
         setDistributorData(distributorResponse.data.distributor);
         setDailyPerformance(distributorResponse.data.daily_performance);
         setOrderHistory(distributorResponse.data.orders || []);
         setLocationHistory(distributorResponse.data.location_history || []);
       } else {
+        console.log(
+          "Using fallback data due to API error or insufficient permissions"
+        );
         // Fallback: Try to get user data
         const userResponse = await fetch(`/api/users/${distributorId}`);
         if (userResponse.ok) {
           const userData = await userResponse.json();
           const user = userData.data;
-          
+
           // Transform user data to distributor format
           const transformedData = {
             id: user.id,
             name: user.full_name,
             phone: user.phone,
             email: user.email,
-            status: user.status || 'active',
-            work_status: user.work_status || 'offline',
+            status: user.status || "active",
+            work_status: user.work_status || "offline",
             current_location: user.current_location || {
               address: "الموقع غير محدد",
               lat: 33.8938,
               lng: 35.5018,
-              last_update: new Date().toISOString()
+              last_update: new Date().toISOString(),
             },
             location_updated_at: user.location_updated_at,
             vehicle_info: user.vehicle_info || {
@@ -108,7 +128,7 @@ const DistributorDetails = () => {
               plate_number: `ABC-${user.id}`,
               model: "Ford Transit",
               year: "2020",
-              color: "أبيض"
+              color: "أبيض",
             },
             daily_performance: user.daily_performance || {
               work_started_at: null,
@@ -117,63 +137,82 @@ const DistributorDetails = () => {
               total_orders_assigned: 0,
               total_orders_delivered: 0,
               total_distance_km: 0,
-              efficiency_score: 0
+              efficiency_score: 0,
             },
             daily_revenue: 0,
             daily_expenses: {
               fuel: 0,
               maintenance: 0,
-              other: 0
+              other: 0,
             },
             orders_delivered_today: 0,
             current_route: {
               current_stop: "في انتظار التعيين",
               completed_stops: 0,
-              total_stops: 0
-            }
+              total_stops: 0,
+            },
           };
 
           setDistributorData(transformedData);
-          
+
           // Try to get today's orders for this distributor
-          const ordersResponse = await fetch(`/api/orders?distributor_id=${distributorId}&date=${selectedDate}`);
+          const ordersResponse = await fetch(
+            `/api/orders?distributor_id=${distributorId}&date=${selectedDate}`
+          );
           if (ordersResponse.ok) {
             const ordersData = await ordersResponse.json();
             setOrderHistory(ordersData.data?.orders || []);
           }
         } else {
-          throw new Error('Failed to load distributor data');
+          throw new Error("Failed to load distributor data");
         }
       }
     } catch (error) {
       console.error("Error loading distributor data:", error);
       setError("حدث خطأ في تحميل بيانات الموزع");
       toast.error("خطأ في تحميل بيانات الموزع");
-      
-      // Create basic empty state
-      setDistributorData({
-        id: parseInt(distributorId),
-        name: `موزع ${distributorId}`,
-        phone: "غير محدد",
-        email: "غير محدد",
-        status: 'active',
-        work_status: 'offline',
-        current_location: {
-          address: "الموقع غير محدد",
-          lat: 33.8938,
-          lng: 35.5018,
-          last_update: new Date().toISOString()
-        },
-        vehicle_info: {
-          type: "شاحنة توزيع",
-          plate_number: "غير محدد",
-          model: "غير محدد"
-        },
-        daily_revenue: 0,
-        daily_expenses: { fuel: 0, maintenance: 0, other: 0 },
-        efficiency_score: 0,
-        orders_delivered_today: 0
-      });
+
+      // Try to use mock data as fallback
+      try {
+        const mockData = distributionService.getMockDistributorDetails(
+          distributorId,
+          selectedDate
+        );
+        if (mockData.success && mockData.data) {
+          setDistributorData(mockData.data.distributor);
+          setDailyPerformance(mockData.data.daily_performance);
+          setOrderHistory(mockData.data.orders || []);
+          setLocationHistory(mockData.data.location_history || []);
+          setError(""); // Clear error if mock data loaded successfully
+        } else {
+          throw new Error("Mock data not available");
+        }
+      } catch (mockError) {
+        // Create basic empty state
+        setDistributorData({
+          id: parseInt(distributorId),
+          name: `موزع ${distributorId}`,
+          phone: "غير محدد",
+          email: "غير محدد",
+          status: "active",
+          work_status: "offline",
+          current_location: {
+            address: "الموقع غير محدد",
+            lat: 33.8938,
+            lng: 35.5018,
+            last_update: new Date().toISOString(),
+          },
+          vehicle_info: {
+            type: "شاحنة توزيع",
+            plate_number: "غير محدد",
+            model: "غير محدد",
+          },
+          daily_revenue: 0,
+          daily_expenses: { fuel: 0, maintenance: 0, other: 0 },
+          efficiency_score: 0,
+          orders_delivered_today: 0,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -256,9 +295,14 @@ const DistributorDetails = () => {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">خطأ في تحميل البيانات</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            خطأ في تحميل البيانات
+          </h2>
           <p className="text-gray-600 mb-4">لم يتم العثور على بيانات الموزع</p>
-          <EnhancedButton onClick={() => navigate("/distribution")} variant="primary">
+          <EnhancedButton
+            onClick={() => navigate("/distribution")}
+            variant="primary"
+          >
             العودة للوحة التوزيع
           </EnhancedButton>
         </div>
@@ -266,9 +310,10 @@ const DistributorDetails = () => {
     );
   }
 
-  const totalExpenses = (distributorData.daily_expenses?.fuel || 0) +
-                       (distributorData.daily_expenses?.maintenance || 0) +
-                       (distributorData.daily_expenses?.other || 0);
+  const totalExpenses =
+    (distributorData.daily_expenses?.fuel || 0) +
+    (distributorData.daily_expenses?.maintenance || 0) +
+    (distributorData.daily_expenses?.other || 0);
 
   const netProfit = distributorData.daily_revenue - totalExpenses;
 
@@ -299,7 +344,7 @@ const DistributorDetails = () => {
                 <ArrowLeft className="w-4 h-4" />
                 <span>العودة</span>
               </EnhancedButton>
-              
+
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">
                   تفاصيل الموزع - {distributorData.name}
@@ -309,13 +354,13 @@ const DistributorDetails = () => {
                 </p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4 space-x-reverse">
               <div className="flex items-center space-x-2 space-x-reverse text-sm text-gray-600">
                 <Calendar className="w-4 h-4" />
                 <span>{formatDateShort(selectedDate)}</span>
               </div>
-              
+
               <EnhancedButton
                 onClick={loadDistributorData}
                 variant="outline"
@@ -344,13 +389,19 @@ const DistributorDetails = () => {
                       <User className="w-10 h-10 text-white" />
                     </div>
                     {/* Work status indicator */}
-                    <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-3 border-white ${
-                      distributorData.work_status === 'active' ? 'bg-green-500' :
-                      distributorData.work_status === 'busy' ? 'bg-yellow-500' :
-                      distributorData.work_status === 'break' ? 'bg-blue-500' : 'bg-gray-500'
-                    }`}></div>
+                    <div
+                      className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-3 border-white ${
+                        distributorData.work_status === "active"
+                          ? "bg-green-500"
+                          : distributorData.work_status === "busy"
+                          ? "bg-yellow-500"
+                          : distributorData.work_status === "break"
+                          ? "bg-blue-500"
+                          : "bg-gray-500"
+                      }`}
+                    ></div>
                   </div>
-                  
+
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">
                       {distributorData.name}
@@ -368,21 +419,29 @@ const DistributorDetails = () => {
                     <div className="flex items-center space-x-2 space-x-reverse mt-2">
                       <MapPin className="w-4 h-4 text-red-500" />
                       <span className="text-sm text-gray-600">
-                        {distributorData.current_location?.address || "الموقع غير محدد"}
+                        {distributorData.current_location?.address ||
+                          "الموقع غير محدد"}
                       </span>
                       {/* Location freshness indicator */}
-                      <div className={`w-2 h-2 rounded-full ${
-                        isLocationFresh(distributorData.location_updated_at) ? 'bg-green-400' : 'bg-gray-400'
-                      }`}></div>
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          isLocationFresh(distributorData.location_updated_at)
+                            ? "bg-green-400"
+                            : "bg-gray-400"
+                        }`}
+                      ></div>
                     </div>
                     {distributorData.location_updated_at && (
                       <div className="text-xs text-gray-400 mt-1">
-                                        آخر تحديث للموقع: {formatDateTimeArabic(distributorData.location_updated_at)}
+                        آخر تحديث للموقع:{" "}
+                        {formatDateTimeArabic(
+                          distributorData.location_updated_at
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
-                
+
                 <div className="text-right">
                   <span
                     className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(
@@ -393,7 +452,8 @@ const DistributorDetails = () => {
                   </span>
                   {distributorData.current_route?.current_stop && (
                     <div className="mt-2 text-sm text-blue-600">
-                      المحطة الحالية: {distributorData.current_route.current_stop}
+                      المحطة الحالية:{" "}
+                      {distributorData.current_route.current_stop}
                     </div>
                   )}
                 </div>
@@ -413,7 +473,9 @@ const DistributorDetails = () => {
             <CardHeader className="pb-3">
               <div className="flex items-center space-x-2 space-x-reverse">
                 <Truck className="w-5 h-5 text-blue-600" />
-                <h3 className="text-lg font-semibold text-gray-900">معلومات المركبة</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  معلومات المركبة
+                </h3>
               </div>
             </CardHeader>
             <CardBody className="pt-0">
@@ -472,9 +534,14 @@ const DistributorDetails = () => {
                   <p className="text-2xl font-bold">
                     €{(distributorData.daily_revenue || 0).toFixed(2)}
                   </p>
-                  {distributorData.daily_performance?.total_orders_delivered > 0 && (
+                  {distributorData.daily_performance?.total_orders_delivered >
+                    0 && (
                     <p className="text-xs text-green-200 mt-1">
-                      متوسط الطلب: €{((distributorData.daily_revenue || 0) / distributorData.daily_performance.total_orders_delivered).toFixed(2)}
+                      متوسط الطلب: €
+                      {(
+                        (distributorData.daily_revenue || 0) /
+                        distributorData.daily_performance.total_orders_delivered
+                      ).toFixed(2)}
                     </p>
                   )}
                 </div>
@@ -489,14 +556,16 @@ const DistributorDetails = () => {
                 <div>
                   <p className="text-red-100 text-sm">إجمالي المصاريف</p>
                   <p className="text-2xl font-bold">
-                    €{(
+                    €
+                    {(
                       (distributorData.daily_expenses?.fuel || 0) +
                       (distributorData.daily_expenses?.maintenance || 0) +
                       (distributorData.daily_expenses?.other || 0)
                     ).toFixed(2)}
                   </p>
                   <p className="text-xs text-red-200 mt-1">
-                    وقود: €{(distributorData.daily_expenses?.fuel || 0).toFixed(2)}
+                    وقود: €
+                    {(distributorData.daily_expenses?.fuel || 0).toFixed(2)}
                   </p>
                 </div>
                 <DollarSign className="w-8 h-8 text-red-200" />
@@ -510,19 +579,28 @@ const DistributorDetails = () => {
                 <div>
                   <p className="text-blue-100 text-sm">صافي الربح</p>
                   <p className="text-2xl font-bold">
-                    €{(
-                      (distributorData.daily_revenue || 0) - 
-                      ((distributorData.daily_expenses?.fuel || 0) + 
-                       (distributorData.daily_expenses?.maintenance || 0) + 
-                       (distributorData.daily_expenses?.other || 0))
+                    €
+                    {(
+                      (distributorData.daily_revenue || 0) -
+                      ((distributorData.daily_expenses?.fuel || 0) +
+                        (distributorData.daily_expenses?.maintenance || 0) +
+                        (distributorData.daily_expenses?.other || 0))
                     ).toFixed(2)}
                   </p>
                   <p className="text-xs text-blue-200 mt-1">
-                    هامش الربح: {distributorData.daily_revenue > 0 ? 
-                      (((distributorData.daily_revenue - 
-                        ((distributorData.daily_expenses?.fuel || 0) + 
-                         (distributorData.daily_expenses?.maintenance || 0) + 
-                         (distributorData.daily_expenses?.other || 0))) / distributorData.daily_revenue) * 100).toFixed(1) : 0}%
+                    هامش الربح:{" "}
+                    {distributorData.daily_revenue > 0
+                      ? (
+                          ((distributorData.daily_revenue -
+                            ((distributorData.daily_expenses?.fuel || 0) +
+                              (distributorData.daily_expenses?.maintenance ||
+                                0) +
+                              (distributorData.daily_expenses?.other || 0))) /
+                            distributorData.daily_revenue) *
+                          100
+                        ).toFixed(1)
+                      : 0}
+                    %
                   </p>
                 </div>
                 <TrendingUp className="w-8 h-8 text-blue-200" />
@@ -539,7 +617,9 @@ const DistributorDetails = () => {
                     {distributorData.efficiency_score || 0}%
                   </p>
                   <p className="text-xs text-purple-200 mt-1">
-                    طلبات مسلمة: {distributorData.daily_performance?.total_orders_delivered || 0}
+                    طلبات مسلمة:{" "}
+                    {distributorData.daily_performance
+                      ?.total_orders_delivered || 0}
                   </p>
                 </div>
                 <Award className="w-8 h-8 text-purple-200" />
@@ -559,7 +639,9 @@ const DistributorDetails = () => {
             <CardHeader className="pb-3">
               <div className="flex items-center space-x-2 space-x-reverse">
                 <Clock className="w-5 h-5 text-blue-600" />
-                <h3 className="text-lg font-semibold text-gray-900">ساعات العمل والأداء اليومي</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  ساعات العمل والأداء اليومي
+                </h3>
               </div>
             </CardHeader>
             <CardBody className="pt-0">
@@ -574,19 +656,23 @@ const DistributorDetails = () => {
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">بداية العمل:</span>
                       <span className="font-medium">
-                        {distributorData.daily_performance?.work_started_at || "لم يبدأ"}
+                        {distributorData.daily_performance?.work_started_at ||
+                          "لم يبدأ"}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">نهاية العمل:</span>
                       <span className="font-medium">
-                        {distributorData.daily_performance?.work_ended_at || "لم ينته"}
+                        {distributorData.daily_performance?.work_ended_at ||
+                          "لم ينته"}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm font-bold border-t pt-2">
                       <span className="text-gray-700">إجمالي الساعات:</span>
                       <span className="text-blue-600">
-                        {distributorData.daily_performance?.total_work_hours || 0} ساعة
+                        {distributorData.daily_performance?.total_work_hours ||
+                          0}{" "}
+                        ساعة
                       </span>
                     </div>
                   </div>
@@ -602,26 +688,38 @@ const DistributorDetails = () => {
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">طلبات مُعينة:</span>
                       <span className="font-medium">
-                        {distributorData.daily_performance?.total_orders_assigned || 0}
+                        {distributorData.daily_performance
+                          ?.total_orders_assigned || 0}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">طلبات مُسلمة:</span>
                       <span className="font-medium text-green-600">
-                        {distributorData.daily_performance?.total_orders_delivered || 0}
+                        {distributorData.daily_performance
+                          ?.total_orders_delivered || 0}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">طلبات فاشلة:</span>
                       <span className="font-medium text-red-600">
-                        {distributorData.daily_performance?.total_orders_failed || 0}
+                        {distributorData.daily_performance
+                          ?.total_orders_failed || 0}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm font-bold border-t pt-2">
                       <span className="text-gray-700">نسبة النجاح:</span>
                       <span className="text-green-600">
-                        {distributorData.daily_performance?.total_orders_assigned > 0 ? 
-                          ((distributorData.daily_performance.total_orders_delivered / distributorData.daily_performance.total_orders_assigned) * 100).toFixed(1) : 0}%
+                        {distributorData.daily_performance
+                          ?.total_orders_assigned > 0
+                          ? (
+                              (distributorData.daily_performance
+                                .total_orders_delivered /
+                                distributorData.daily_performance
+                                  .total_orders_assigned) *
+                              100
+                            ).toFixed(1)
+                          : 0}
+                        %
                       </span>
                     </div>
                   </div>
@@ -631,31 +729,39 @@ const DistributorDetails = () => {
                 <div className="bg-orange-50 p-4 rounded-lg">
                   <div className="flex items-center space-x-2 space-x-reverse mb-3">
                     <Route className="w-5 h-5 text-orange-600" />
-                    <h4 className="font-medium text-gray-900">المسافة والمسار</h4>
+                    <h4 className="font-medium text-gray-900">
+                      المسافة والمسار
+                    </h4>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">المسافة المقطوعة:</span>
                       <span className="font-medium">
-                        {distributorData.daily_performance?.total_distance_km || 0} كم
+                        {distributorData.daily_performance?.total_distance_km ||
+                          0}{" "}
+                        كم
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">متوسط وقت التسليم:</span>
                       <span className="font-medium">
-                        {distributorData.daily_performance?.average_delivery_time_minutes || 0} دقيقة
+                        {distributorData.daily_performance
+                          ?.average_delivery_time_minutes || 0}{" "}
+                        دقيقة
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">المحطة الحالية:</span>
                       <span className="font-medium text-orange-600">
-                        {distributorData.current_route?.current_stop || "غير محدد"}
+                        {distributorData.current_route?.current_stop ||
+                          "غير محدد"}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm font-bold border-t pt-2">
                       <span className="text-gray-700">التقدم:</span>
                       <span className="text-orange-600">
-                        {distributorData.current_route?.completed_stops || 0}/{distributorData.current_route?.total_stops || 0}
+                        {distributorData.current_route?.completed_stops || 0}/
+                        {distributorData.current_route?.total_stops || 0}
                       </span>
                     </div>
                   </div>
@@ -714,10 +820,11 @@ const DistributorDetails = () => {
                     <div>
                       <p className="text-sm text-gray-600 mb-2">العنوان</p>
                       <p className="text-gray-900 font-medium">
-                        {distributorData.current_location?.address || "غير محدد"}
+                        {distributorData.current_location?.address ||
+                          "غير محدد"}
                       </p>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-gray-600 mb-1">خط العرض</p>
@@ -732,10 +839,14 @@ const DistributorDetails = () => {
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="border-t pt-4">
                       <p className="text-xs text-gray-500">
-                        آخر تحديث: {formatDateTimeArabic(distributorData.current_location?.last_update || new Date())}
+                        آخر تحديث:{" "}
+                        {formatDateTimeArabic(
+                          distributorData.current_location?.last_update ||
+                            new Date()
+                        )}
                       </p>
                     </div>
                   </div>
@@ -758,7 +869,7 @@ const DistributorDetails = () => {
                         {distributorData.vehicle_info?.type || "مركبة توزيع"}
                       </p>
                     </div>
-                    
+
                     <div>
                       <p className="text-sm text-gray-600 mb-2">الحالة</p>
                       <span
@@ -769,7 +880,7 @@ const DistributorDetails = () => {
                         {getStatusText(distributorData.status)}
                       </span>
                     </div>
-                    
+
                     <div>
                       <p className="text-sm text-gray-600 mb-2">نقاط الكفاءة</p>
                       <div className="flex items-center space-x-2 space-x-reverse">
@@ -777,7 +888,9 @@ const DistributorDetails = () => {
                           <div
                             className="bg-green-500 h-2 rounded-full"
                             style={{
-                              width: `${distributorData.efficiency_score || 0}%`,
+                              width: `${
+                                distributorData.efficiency_score || 0
+                              }%`,
                             }}
                           ></div>
                         </div>
@@ -801,7 +914,8 @@ const DistributorDetails = () => {
                 </h3>
               </CardHeader>
               <CardBody className="p-6">
-                {distributorData.deliveries && distributorData.deliveries.length > 0 ? (
+                {distributorData.deliveries &&
+                distributorData.deliveries.length > 0 ? (
                   <div className="space-y-4">
                     {distributorData.deliveries.map((delivery, index) => (
                       <div
@@ -824,7 +938,7 @@ const DistributorDetails = () => {
                               </p>
                             </div>
                           </div>
-                          
+
                           <span
                             className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getOrderStatusColor(
                               delivery.status
@@ -833,29 +947,32 @@ const DistributorDetails = () => {
                             {getOrderStatusText(delivery.status)}
                           </span>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                           <div>
                             <p className="text-gray-600 mb-1">العنوان</p>
                             <p className="text-gray-900">{delivery.address}</p>
                           </div>
-                          
+
                           <div>
                             <p className="text-gray-600 mb-1">القيمة</p>
                             <p className="text-gray-900 font-medium">
                               €{delivery.amount_eur?.toFixed(2) || "0.00"}
                             </p>
                           </div>
-                          
+
                           <div>
                             <p className="text-gray-600 mb-1">هاتف المتجر</p>
-                            <p className="text-gray-900">{delivery.store_phone || "غير متوفر"}</p>
+                            <p className="text-gray-900">
+                              {delivery.store_phone || "غير متوفر"}
+                            </p>
                           </div>
                         </div>
-                        
+
                         <div className="mt-3 pt-3 border-t border-gray-100">
                           <p className="text-xs text-gray-500">
-                            تاريخ الطلب: {formatDateTimeArabic(delivery.created_at)}
+                            تاريخ الطلب:{" "}
+                            {formatDateTimeArabic(delivery.created_at)}
                           </p>
                         </div>
                       </div>
@@ -889,33 +1006,42 @@ const DistributorDetails = () => {
                         <span className="text-gray-700">وقود</span>
                       </div>
                       <span className="text-lg font-semibold text-red-600">
-                        €{distributorData.daily_expenses?.fuel?.toFixed(2) || "0.00"}
+                        €
+                        {distributorData.daily_expenses?.fuel?.toFixed(2) ||
+                          "0.00"}
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
                       <div className="flex items-center space-x-3 space-x-reverse">
                         <Wrench className="w-5 h-5 text-orange-500" />
                         <span className="text-gray-700">صيانة</span>
                       </div>
                       <span className="text-lg font-semibold text-orange-600">
-                        €{distributorData.daily_expenses?.maintenance?.toFixed(2) || "0.00"}
+                        €
+                        {distributorData.daily_expenses?.maintenance?.toFixed(
+                          2
+                        ) || "0.00"}
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                       <div className="flex items-center space-x-3 space-x-reverse">
                         <FileText className="w-5 h-5 text-purple-500" />
                         <span className="text-gray-700">مصاريف أخرى</span>
                       </div>
                       <span className="text-lg font-semibold text-purple-600">
-                        €{distributorData.daily_expenses?.other?.toFixed(2) || "0.00"}
+                        €
+                        {distributorData.daily_expenses?.other?.toFixed(2) ||
+                          "0.00"}
                       </span>
                     </div>
-                    
+
                     <div className="border-t pt-4">
                       <div className="flex items-center justify-between p-3 bg-gray-100 rounded-lg">
-                        <span className="text-gray-700 font-medium">إجمالي المصاريف</span>
+                        <span className="text-gray-700 font-medium">
+                          إجمالي المصاريف
+                        </span>
                         <span className="text-xl font-bold text-gray-900">
                           €{totalExpenses.toFixed(2)}
                         </span>
@@ -949,7 +1075,7 @@ const DistributorDetails = () => {
                         ></div>
                       </div>
                     </div>
-                    
+
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-gray-600">إجمالي المصاريف</span>
@@ -961,25 +1087,42 @@ const DistributorDetails = () => {
                         <div
                           className="bg-red-500 h-2 rounded-full"
                           style={{
-                            width: `${distributorData.daily_revenue > 0 ? (totalExpenses / distributorData.daily_revenue) * 100 : 0}%`,
+                            width: `${
+                              distributorData.daily_revenue > 0
+                                ? (totalExpenses /
+                                    distributorData.daily_revenue) *
+                                  100
+                                : 0
+                            }%`,
                           }}
                         ></div>
                       </div>
                     </div>
-                    
+
                     <div className="border-t pt-4">
                       <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-                        <span className="text-blue-700 font-medium text-lg">صافي الربح</span>
-                        <span className={`text-2xl font-bold ${
-                          netProfit >= 0 ? "text-green-600" : "text-red-600"
-                        }`}>
+                        <span className="text-blue-700 font-medium text-lg">
+                          صافي الربح
+                        </span>
+                        <span
+                          className={`text-2xl font-bold ${
+                            netProfit >= 0 ? "text-green-600" : "text-red-600"
+                          }`}
+                        >
                           €{netProfit.toFixed(2)}
                         </span>
                       </div>
-                      
+
                       <div className="mt-3 text-center">
                         <span className="text-sm text-gray-600">
-                          هامش الربح: {distributorData.daily_revenue > 0 ? ((netProfit / distributorData.daily_revenue) * 100).toFixed(1) : 0}%
+                          هامش الربح:{" "}
+                          {distributorData.daily_revenue > 0
+                            ? (
+                                (netProfit / distributorData.daily_revenue) *
+                                100
+                              ).toFixed(1)
+                            : 0}
+                          %
                         </span>
                       </div>
                     </div>
@@ -1003,7 +1146,9 @@ const DistributorDetails = () => {
                   <div className="space-y-6">
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-gray-600">نسبة إنجاز الطلبات</span>
+                        <span className="text-gray-600">
+                          نسبة إنجاز الطلبات
+                        </span>
                         <span className="text-lg font-semibold text-blue-600">
                           {distributorData.progress?.percentage || 0}%
                         </span>
@@ -1012,12 +1157,14 @@ const DistributorDetails = () => {
                         <div
                           className="bg-blue-500 h-3 rounded-full"
                           style={{
-                            width: `${distributorData.progress?.percentage || 0}%`,
+                            width: `${
+                              distributorData.progress?.percentage || 0
+                            }%`,
                           }}
                         ></div>
                       </div>
                     </div>
-                    
+
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-gray-600">نقاط الكفاءة</span>
@@ -1034,12 +1181,20 @@ const DistributorDetails = () => {
                         ></div>
                       </div>
                     </div>
-                    
+
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-gray-600">معدل الإيرادات لكل طلب</span>
+                        <span className="text-gray-600">
+                          معدل الإيرادات لكل طلب
+                        </span>
                         <span className="text-lg font-semibold text-purple-600">
-                          €{distributorData.total_orders > 0 ? (distributorData.daily_revenue / distributorData.total_orders).toFixed(2) : "0.00"}
+                          €
+                          {distributorData.total_orders > 0
+                            ? (
+                                distributorData.daily_revenue /
+                                distributorData.total_orders
+                              ).toFixed(2)
+                            : "0.00"}
                         </span>
                       </div>
                     </div>
@@ -1061,38 +1216,45 @@ const DistributorDetails = () => {
                       <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                         <div className="flex items-center">
                           <Star className="w-5 h-5 text-green-500 mr-2" />
-                          <span className="text-green-800 font-medium">أداء ممتاز</span>
+                          <span className="text-green-800 font-medium">
+                            أداء ممتاز
+                          </span>
                         </div>
                         <p className="text-green-700 text-sm mt-1">
                           الموزع يحقق معدل كفاءة عالي جداً
                         </p>
                       </div>
                     )}
-                    
-                    {distributorData.efficiency_score >= 70 && distributorData.efficiency_score < 90 && (
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="flex items-center">
-                          <CheckCircle className="w-5 h-5 text-blue-500 mr-2" />
-                          <span className="text-blue-800 font-medium">أداء جيد</span>
+
+                    {distributorData.efficiency_score >= 70 &&
+                      distributorData.efficiency_score < 90 && (
+                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <div className="flex items-center">
+                            <CheckCircle className="w-5 h-5 text-blue-500 mr-2" />
+                            <span className="text-blue-800 font-medium">
+                              أداء جيد
+                            </span>
+                          </div>
+                          <p className="text-blue-700 text-sm mt-1">
+                            الموزع يحقق معدل كفاءة مقبول
+                          </p>
                         </div>
-                        <p className="text-blue-700 text-sm mt-1">
-                          الموزع يحقق معدل كفاءة مقبول
-                        </p>
-                      </div>
-                    )}
-                    
+                      )}
+
                     {distributorData.efficiency_score < 70 && (
                       <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                         <div className="flex items-center">
                           <AlertCircle className="w-5 h-5 text-yellow-500 mr-2" />
-                          <span className="text-yellow-800 font-medium">يحتاج تحسين</span>
+                          <span className="text-yellow-800 font-medium">
+                            يحتاج تحسين
+                          </span>
                         </div>
                         <p className="text-yellow-700 text-sm mt-1">
                           يمكن تحسين كفاءة الموزع
                         </p>
                       </div>
                     )}
-                    
+
                     <div className="grid grid-cols-2 gap-4 mt-6">
                       <div className="text-center p-3 bg-gray-50 rounded-lg">
                         <div className="text-2xl font-bold text-gray-900 mb-1">
@@ -1100,7 +1262,7 @@ const DistributorDetails = () => {
                         </div>
                         <p className="text-sm text-gray-600">طلبات مكتملة</p>
                       </div>
-                      
+
                       <div className="text-center p-3 bg-gray-50 rounded-lg">
                         <div className="text-2xl font-bold text-gray-900 mb-1">
                           {distributorData.total_orders || 0}
@@ -1119,4 +1281,4 @@ const DistributorDetails = () => {
   );
 };
 
-export default DistributorDetails; 
+export default DistributorDetails;
