@@ -53,6 +53,11 @@ const CreateProductPage = () => {
     image_url: "",
     weight_grams: "",
     shelf_life_days: "",
+    expiry_date: "",
+    production_date: "",
+    dimensions_length: "",
+    dimensions_width: "",
+    dimensions_height: "",
     storage_conditions: "",
     supplier_info: "",
     nutritional_info: "",
@@ -286,6 +291,34 @@ const CreateProductPage = () => {
           formData.image_url && formData.image_url.trim() !== ""
             ? formData.image_url
             : null,
+        // Convert dates
+        expiry_date: formData.expiry_date ? new Date(formData.expiry_date) : null,
+        production_date: formData.production_date ? new Date(formData.production_date) : null,
+        // Convert dimensions to JSON
+        dimensions: formData.dimensions_length || formData.dimensions_width || formData.dimensions_height ? {
+          length: formData.dimensions_length ? parseFloat(formData.dimensions_length) : null,
+          width: formData.dimensions_width ? parseFloat(formData.dimensions_width) : null,
+          height: formData.dimensions_height ? parseFloat(formData.dimensions_height) : null,
+          unit: "cm"
+        } : null,
+        // Convert text fields to JSON
+        supplier_info: formData.supplier_info && formData.supplier_info.trim() !== "" ? {
+          name: formData.supplier_info,
+          contact: "",
+          notes: ""
+        } : null,
+        nutritional_info: formData.nutritional_info && formData.nutritional_info.trim() !== "" ? {
+          description: formData.nutritional_info,
+          calories: null,
+          protein: null,
+          carbs: null,
+          fat: null
+        } : null,
+        allergen_info: formData.allergen_info && formData.allergen_info.trim() !== "" ? {
+          description: formData.allergen_info,
+          contains: [],
+          may_contain: []
+        } : null,
       };
 
       // Log processed product data for debugging
@@ -330,11 +363,13 @@ const CreateProductPage = () => {
 
   // Categories for dropdown
   const categories = [
-    { value: "bread", label: "Bread" },
-    { value: "pastry", label: "Pastry" },
-    { value: "cake", label: "Cake" },
-    { value: "cookies", label: "Cookies" },
-    { value: "other", label: "Other" },
+    { value: "bread", label: "خبز" },
+    { value: "pastry", label: "معجنات" },
+    { value: "cake", label: "كيك" },
+    { value: "drink", label: "مشروبات" },
+    { value: "snack", label: "وجبات خفيفة" },
+    { value: "seasonal", label: "موسمي" },
+    { value: "other", label: "أخرى" },
   ];
 
   // Units for dropdown
@@ -728,7 +763,7 @@ const CreateProductPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Weight (grams)
+                  الوزن (جرام)
                 </label>
                 <Input
                   type="number"
@@ -744,7 +779,7 @@ const CreateProductPage = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Shelf Life (days)
+                  فترة الصلاحية (أيام)
                 </label>
                 <Input
                   type="number"
@@ -758,11 +793,89 @@ const CreateProductPage = () => {
                   icon={<Calendar className="w-4 h-4" />}
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  تاريخ الإنتاج
+                </label>
+                <Input
+                  type="date"
+                  value={formData.production_date}
+                  onChange={(e) => handleChange("production_date", e.target.value)}
+                  error={errors.production_date}
+                  icon={<Calendar className="w-4 h-4" />}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  تاريخ انتهاء الصلاحية
+                </label>
+                <Input
+                  type="date"
+                  value={formData.expiry_date}
+                  onChange={(e) => handleChange("expiry_date", e.target.value)}
+                  error={errors.expiry_date}
+                  icon={<Calendar className="w-4 h-4" />}
+                />
+              </div>
+            </div>
+
+            {/* أبعاد المنتج */}
+            <div>
+              <h3 className="text-md font-medium text-gray-900 mb-3 flex items-center">
+                <Package className="w-4 h-4 mr-2" />
+                أبعاد المنتج (سم)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    الطول
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={formData.dimensions_length}
+                    onChange={(e) => handleChange("dimensions_length", e.target.value)}
+                    placeholder="0.0"
+                    icon={<span className="text-gray-500 text-xs">سم</span>}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    العرض
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={formData.dimensions_width}
+                    onChange={(e) => handleChange("dimensions_width", e.target.value)}
+                    placeholder="0.0"
+                    icon={<span className="text-gray-500 text-xs">سم</span>}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    الارتفاع
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={formData.dimensions_height}
+                    onChange={(e) => handleChange("dimensions_height", e.target.value)}
+                    placeholder="0.0"
+                    icon={<span className="text-gray-500 text-xs">سم</span>}
+                  />
+                </div>
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Storage Conditions
+                شروط التخزين
               </label>
               <textarea
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -771,26 +884,26 @@ const CreateProductPage = () => {
                 onChange={(e) =>
                   handleChange("storage_conditions", e.target.value)
                 }
-                placeholder="Enter storage conditions"
+                placeholder="أدخل شروط التخزين"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Supplier Information
+                معلومات المورد
               </label>
               <textarea
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows={2}
                 value={formData.supplier_info}
                 onChange={(e) => handleChange("supplier_info", e.target.value)}
-                placeholder="Enter supplier information"
+                placeholder="أدخل معلومات المورد"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nutritional Information
+                المعلومات الغذائية
               </label>
               <textarea
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -799,20 +912,20 @@ const CreateProductPage = () => {
                 onChange={(e) =>
                   handleChange("nutritional_info", e.target.value)
                 }
-                placeholder="Enter nutritional information"
+                placeholder="أدخل المعلومات الغذائية"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Allergen Information
+                معلومات الحساسية
               </label>
               <textarea
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows={2}
                 value={formData.allergen_info}
                 onChange={(e) => handleChange("allergen_info", e.target.value)}
-                placeholder="Enter allergen information"
+                placeholder="أدخل معلومات المواد المسببة للحساسية"
               />
             </div>
           </CardBody>

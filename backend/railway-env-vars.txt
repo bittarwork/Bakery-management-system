@@ -1,0 +1,32 @@
+# AI Chat System Configuration for Railway
+# Copy these variables to Railway environment settings
+
+AI_PROVIDER=gemini
+AI_CHAT_ENABLED=true
+GEMINI_API_KEY=AIzaSyBtHQj07zURNqSYp0mt9qxnCQoX3Of2BUY
+GEMINI_MODEL=gemini-1.5-pro-latest
+GEMINI_TEMPERATURE=0.4
+GEMINI_TOP_P=0.95
+GEMINI_TOP_K=40
+GEMINI_MAX_TOKENS=2048
+OPENAI_API_KEY=your_openai_api_key_here_if_needed
+OPENAI_MODEL=gpt-3.5-turbo
+OPENAI_TEMPERATURE=0.4
+OPENAI_MAX_TOKENS=2048
+BOT_NAME=مساعد المخبز الذكي
+BOT_WELCOME_MESSAGE=أهلاً وسهلاً! أنا مساعدك الذكي. يمكنني مساعدتك في الاستفسار عن المبيعات والمخزون والتحليلات. ما الذي تريد معرفته؟
+AI_CACHE_ENABLED=true
+AI_CACHE_TTL=3600
+AI_CACHE_MAX_SIZE=1000
+AI_RATE_LIMIT_REQUESTS=100
+AI_RATE_LIMIT_WINDOW=3600000
+AI_MAX_MESSAGE_LENGTH=1000
+ENABLE_SUGGESTED_QUESTIONS=true
+ENABLE_CONTEXT_MEMORY=true
+ENABLE_ADVANCED_ANALYTICS=true
+
+# Instructions:
+# 1. Go to your Railway project dashboard
+# 2. Go to Variables section
+# 3. Add each of these variables with their values
+# 4. Redeploy the application 

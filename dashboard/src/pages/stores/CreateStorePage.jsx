@@ -17,6 +17,12 @@ import {
   Building,
   Navigation,
   FileText,
+  Clock,
+  ShoppingCart,
+  Target,
+  Percent,
+  Calendar,
+  Users,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
@@ -30,80 +36,106 @@ const CreateStorePage = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
-    region: "",
+    owner_name: "",
     address: "",
-    contact_person: "",
     phone: "",
     email: "",
-    payment_method: "cash",
-    credit_limit: "",
-    notes: "",
+    store_type: "retail",
+    category: "grocery",
+    size_category: "small",
+    credit_limit_eur: "",
+    credit_limit_syp: "",
+    commission_rate: "",
+    payment_terms: "cash",
+    preferred_delivery_time: "",
+    special_instructions: "",
     status: "active",
+    // Opening hours
+    opening_hours: {
+      monday: "08:00-20:00",
+      tuesday: "08:00-20:00",
+      wednesday: "08:00-20:00",
+      thursday: "08:00-20:00",
+      friday: "08:00-20:00",
+      saturday: "08:00-20:00",
+      sunday: "closed",
+    },
   });
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const regions = [
+  const storeTypes = [
     {
-      value: "north",
-      label: "الشمال",
-      description: "المنطقة الشمالية",
-      icon: <Navigation className="w-5 h-5" />,
-      color: "from-blue-500 to-blue-600",
+      value: "retail",
+      label: "تجارة تجزئة",
+      description: "مبيعات للمستهلكين",
+      icon: <ShoppingCart className="w-5 h-5" />,
     },
     {
-      value: "south",
-      label: "الجنوب",
-      description: "المنطقة الجنوبية",
-      icon: <Navigation className="w-5 h-5" />,
-      color: "from-green-500 to-green-600",
+      value: "wholesale",
+      label: "تجارة جملة",
+      description: "مبيعات بالجملة",
+      icon: <Building className="w-5 h-5" />,
     },
     {
-      value: "east",
-      label: "الشرق",
-      description: "المنطقة الشرقية",
-      icon: <Navigation className="w-5 h-5" />,
-      color: "from-yellow-500 to-yellow-600",
-    },
-    {
-      value: "west",
-      label: "الغرب",
-      description: "المنطقة الغربية",
-      icon: <Navigation className="w-5 h-5" />,
-      color: "from-purple-500 to-purple-600",
-    },
-    {
-      value: "central",
-      label: "الوسط",
-      description: "المنطقة الوسطى",
-      icon: <Navigation className="w-5 h-5" />,
-      color: "from-red-500 to-red-600",
+      value: "restaurant",
+      label: "مطعم",
+      description: "خدمات الطعام",
+      icon: <Store className="w-5 h-5" />,
     },
   ];
 
-  const paymentMethods = [
+  const storeCategories = [
+    { value: "supermarket", label: "سوبر ماركت" },
+    { value: "grocery", label: "بقالة" },
+    { value: "cafe", label: "مقهى" },
+    { value: "restaurant", label: "مطعم" },
+    { value: "bakery", label: "مخبز" },
+    { value: "hotel", label: "فندق" },
+    { value: "other", label: "أخرى" },
+  ];
+
+  const sizeCategories = [
+    { value: "small", label: "صغير", description: "أقل من 50 متر مربع" },
+    { value: "medium", label: "متوسط", description: "50-200 متر مربع" },
+    { value: "large", label: "كبير", description: "200-500 متر مربع" },
+    {
+      value: "enterprise",
+      label: "مؤسسة",
+      description: "أكثر من 500 متر مربع",
+    },
+  ];
+
+  const paymentTerms = [
     {
       value: "cash",
       label: "نقداً",
-      description: "الدفع النقدي",
+      description: "الدفع فوري نقداً",
       icon: <Euro className="w-5 h-5" />,
       color: "from-green-500 to-green-600",
     },
     {
-      value: "bank",
-      label: "تحويل بنكي",
-      description: "الدفع عبر البنك",
-      icon: <CreditCard className="w-5 h-5" />,
+      value: "credit_7_days",
+      label: "ائتمان 7 أيام",
+      description: "الدفع خلال أسبوع",
+      icon: <Calendar className="w-5 h-5" />,
       color: "from-blue-500 to-blue-600",
     },
     {
-      value: "mixed",
-      label: "مختلط",
-      description: "نقداً وتحويل بنكي",
-      icon: <Building className="w-5 h-5" />,
-      color: "from-purple-500 to-purple-600",
+      value: "credit_15_days",
+      label: "ائتمان 15 يوم",
+      description: "الدفع خلال أسبوعين",
+      icon: <Calendar className="w-5 h-5" />,
+      color: "from-yellow-500 to-yellow-600",
+    },
+    {
+      value: "credit_30_days",
+      label: "ائتمان 30 يوم",
+      description: "الدفع خلال شهر",
+      icon: <Calendar className="w-5 h-5" />,
+      color: "from-red-500 to-red-600",
     },
   ];
 
@@ -115,6 +147,16 @@ const CreateStorePage = () => {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
+  };
+
+  const handleOpeningHoursChange = (day, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      opening_hours: {
+        ...prev.opening_hours,
+        [day]: value,
+      },
+    }));
   };
 
   const validateForm = () => {
@@ -144,9 +186,34 @@ const CreateStorePage = () => {
       newErrors.email = "البريد الإلكتروني غير صحيح";
     }
 
-    // التحقق من الحد الائتماني
-    if (formData.credit_limit && parseFloat(formData.credit_limit) < 0) {
-      newErrors.credit_limit = "الحد الائتماني يجب أن يكون رقم موجب";
+    // التحقق من الحد الائتماني باليورو
+    if (
+      formData.credit_limit_eur &&
+      (isNaN(formData.credit_limit_eur) ||
+        parseFloat(formData.credit_limit_eur) < 0)
+    ) {
+      newErrors.credit_limit_eur =
+        "الحد الائتماني باليورو يجب أن يكون رقم موجب";
+    }
+
+    // التحقق من الحد الائتماني بالليرة السورية
+    if (
+      formData.credit_limit_syp &&
+      (isNaN(formData.credit_limit_syp) ||
+        parseFloat(formData.credit_limit_syp) < 0)
+    ) {
+      newErrors.credit_limit_syp =
+        "الحد الائتماني بالليرة السورية يجب أن يكون رقم موجب";
+    }
+
+    // التحقق من معدل العمولة
+    if (
+      formData.commission_rate &&
+      (isNaN(formData.commission_rate) ||
+        parseFloat(formData.commission_rate) < 0 ||
+        parseFloat(formData.commission_rate) > 100)
+    ) {
+      newErrors.commission_rate = "معدل العمولة يجب أن يكون بين 0 و 100";
     }
 
     // التحقق من الموقع
@@ -180,8 +247,23 @@ const CreateStorePage = () => {
     try {
       const storeData = {
         ...formData,
-        latitude: selectedLocation?.lat,
-        longitude: selectedLocation?.lng,
+        gps_coordinates: selectedLocation
+          ? {
+              latitude: selectedLocation.lat,
+              longitude: selectedLocation.lng,
+              name: selectedLocation.name || null,
+            }
+          : null,
+        // Convert numeric fields
+        credit_limit_eur: formData.credit_limit_eur
+          ? parseFloat(formData.credit_limit_eur)
+          : 0,
+        credit_limit_syp: formData.credit_limit_syp
+          ? parseFloat(formData.credit_limit_syp)
+          : 0,
+        commission_rate: formData.commission_rate
+          ? parseFloat(formData.commission_rate)
+          : 0,
       };
 
       const response = await storeService.createStore(storeData);
@@ -289,50 +371,14 @@ const CreateStorePage = () => {
                     icon={<Store className="w-4 h-4" />}
                   />
 
-                  {/* المنطقة */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      المنطقة
-                    </label>
-                    <select
-                      name="region"
-                      value={formData.region}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    >
-                      <option value="">اختر المنطقة</option>
-                      {regions.map((region) => (
-                        <option key={region.value} value={region.value}>
-                          {region.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* العنوان */}
-                  <div className="md:col-span-2">
-                    <EnhancedInput
-                      label="عنوان المحل"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleChange}
-                      placeholder="أدخل العنوان الكامل للمحل"
-                      required
-                      error={errors.address}
-                      icon={<MapPin className="w-4 h-4" />}
-                      multiline
-                      rows={3}
-                    />
-                  </div>
-
-                  {/* الشخص المسؤول */}
+                  {/* اسم المالك */}
                   <EnhancedInput
-                    label="الشخص المسؤول"
-                    name="contact_person"
-                    value={formData.contact_person}
+                    label="اسم المالك"
+                    name="owner_name"
+                    value={formData.owner_name}
                     onChange={handleChange}
-                    placeholder="أدخل اسم الشخص المسؤول"
-                    error={errors.contact_person}
+                    placeholder="أدخل اسم مالك المحل"
+                    error={errors.owner_name}
                     icon={<User className="w-4 h-4" />}
                   />
 
@@ -359,29 +405,99 @@ const CreateStorePage = () => {
                     icon={<Mail className="w-4 h-4" />}
                   />
 
-                  {/* الحد الائتماني */}
+                  {/* العنوان */}
+                  <div className="md:col-span-2">
+                    <EnhancedInput
+                      label="عنوان المحل"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      placeholder="أدخل العنوان الكامل للمحل"
+                      required
+                      error={errors.address}
+                      icon={<MapPin className="w-4 h-4" />}
+                      multiline
+                      rows={3}
+                    />
+                  </div>
+
+                  {/* نوع المحل */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      نوع المحل <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="store_type"
+                      value={formData.store_type}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    >
+                      {storeTypes.map((type) => (
+                        <option key={type.value} value={type.value}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* فئة المحل */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      فئة المحل <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="category"
+                      value={formData.category}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    >
+                      {storeCategories.map((category) => (
+                        <option key={category.value} value={category.value}>
+                          {category.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* حجم المحل */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      حجم المحل <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="size_category"
+                      value={formData.size_category}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    >
+                      {sizeCategories.map((size) => (
+                        <option key={size.value} value={size.value}>
+                          {size.label} - {size.description}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* وقت التسليم المفضل */}
                   <EnhancedInput
-                    label="الحد الائتماني (€)"
-                    name="credit_limit"
-                    type="number"
-                    value={formData.credit_limit}
+                    label="وقت التسليم المفضل"
+                    name="preferred_delivery_time"
+                    value={formData.preferred_delivery_time}
                     onChange={handleChange}
-                    placeholder="0.00"
-                    error={errors.credit_limit}
-                    icon={<Euro className="w-4 h-4" />}
-                    min="0"
-                    step="0.01"
+                    placeholder="مثل: صباحاً من 8-10، مساءً من 5-7"
+                    error={errors.preferred_delivery_time}
+                    icon={<Clock className="w-4 h-4" />}
                   />
                 </div>
 
-                {/* الملاحظات */}
+                {/* التعليمات الخاصة */}
                 <div className="mt-6">
                   <EnhancedInput
-                    label="ملاحظات إضافية"
-                    name="notes"
-                    value={formData.notes}
+                    label="تعليمات خاصة"
+                    name="special_instructions"
+                    value={formData.special_instructions}
                     onChange={handleChange}
-                    placeholder="أدخل أي ملاحظات إضافية حول المحل..."
+                    placeholder="أدخل أي تعليمات خاصة للتوصيل أو التعامل مع المحل..."
                     icon={<FileText className="w-4 h-4" />}
                     multiline
                     rows={3}
@@ -391,64 +507,194 @@ const CreateStorePage = () => {
             </Card>
           </motion.div>
 
-          {/* طريقة الدفع */}
+          {/* المعلومات المالية */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
             <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+              <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
                 <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                  <CreditCard className="w-5 h-5 ml-2" />
-                  طريقة الدفع
+                  <Euro className="w-5 h-5 ml-2" />
+                  المعلومات المالية
                 </h2>
               </CardHeader>
               <CardBody className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {paymentMethods.map((method) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* الحد الائتماني باليورو */}
+                  <EnhancedInput
+                    label="الحد الائتماني (€)"
+                    name="credit_limit_eur"
+                    type="number"
+                    value={formData.credit_limit_eur}
+                    onChange={handleChange}
+                    placeholder="0.00"
+                    error={errors.credit_limit_eur}
+                    icon={<Euro className="w-4 h-4" />}
+                    min="0"
+                    step="0.01"
+                  />
+
+                  {/* الحد الائتماني بالليرة السورية */}
+                  <EnhancedInput
+                    label="الحد الائتماني (ل.س)"
+                    name="credit_limit_syp"
+                    type="number"
+                    value={formData.credit_limit_syp}
+                    onChange={handleChange}
+                    placeholder="0.00"
+                    error={errors.credit_limit_syp}
+                    icon={<CreditCard className="w-4 h-4" />}
+                    min="0"
+                    step="0.01"
+                  />
+
+                  {/* معدل العمولة */}
+                  <EnhancedInput
+                    label="معدل العمولة (%)"
+                    name="commission_rate"
+                    type="number"
+                    value={formData.commission_rate}
+                    onChange={handleChange}
+                    placeholder="0.00"
+                    error={errors.commission_rate}
+                    icon={<Percent className="w-4 h-4" />}
+                    min="0"
+                    max="100"
+                    step="0.01"
+                  />
+                </div>
+              </CardBody>
+            </Card>
+          </motion.div>
+
+          {/* ساعات العمل */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+          >
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-green-50 to-white">
+                <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                  <Clock className="w-5 h-5 ml-2" />
+                  ساعات العمل
+                </h2>
+              </CardHeader>
+              <CardBody className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {Object.entries(formData.opening_hours).map(
+                    ([day, hours]) => (
+                      <div key={day} className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          {day === "monday"
+                            ? "الاثنين"
+                            : day === "tuesday"
+                            ? "الثلاثاء"
+                            : day === "wednesday"
+                            ? "الأربعاء"
+                            : day === "thursday"
+                            ? "الخميس"
+                            : day === "friday"
+                            ? "الجمعة"
+                            : day === "saturday"
+                            ? "السبت"
+                            : "الأحد"}
+                        </label>
+                        <select
+                          value={hours}
+                          onChange={(e) =>
+                            handleOpeningHoursChange(day, e.target.value)
+                          }
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        >
+                          <option value="closed">مغلق</option>
+                          <option value="06:00-18:00">
+                            6:00 صباحاً - 6:00 مساءً
+                          </option>
+                          <option value="07:00-19:00">
+                            7:00 صباحاً - 7:00 مساءً
+                          </option>
+                          <option value="08:00-20:00">
+                            8:00 صباحاً - 8:00 مساءً
+                          </option>
+                          <option value="09:00-21:00">
+                            9:00 صباحاً - 9:00 مساءً
+                          </option>
+                          <option value="10:00-22:00">
+                            10:00 صباحاً - 10:00 مساءً
+                          </option>
+                          <option value="24/7">24 ساعة</option>
+                        </select>
+                      </div>
+                    )
+                  )}
+                </div>
+              </CardBody>
+            </Card>
+          </motion.div>
+
+          {/* شروط الدفع */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-yellow-50 to-white">
+                <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                  <CreditCard className="w-5 h-5 ml-2" />
+                  شروط الدفع
+                </h2>
+              </CardHeader>
+              <CardBody className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {paymentTerms.map((term) => (
                     <motion.div
-                      key={method.value}
+                      key={term.value}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
                       <input
                         type="radio"
-                        id={method.value}
-                        name="payment_method"
-                        value={method.value}
-                        checked={formData.payment_method === method.value}
+                        id={term.value}
+                        name="payment_terms"
+                        value={term.value}
+                        checked={formData.payment_terms === term.value}
                         onChange={handleChange}
                         className="sr-only"
                       />
                       <label
-                        htmlFor={method.value}
+                        htmlFor={term.value}
                         className={`block p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
-                          formData.payment_method === method.value
-                            ? `border-blue-500 bg-gradient-to-r ${method.color} text-white shadow-lg`
+                          formData.payment_terms === term.value
+                            ? `border-blue-500 bg-gradient-to-r ${term.color} text-white shadow-lg`
                             : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-md"
                         }`}
                       >
                         <div className="flex items-center gap-3">
                           <div
                             className={`p-2 rounded-lg ${
-                              formData.payment_method === method.value
+                              formData.payment_terms === term.value
                                 ? "bg-white/20"
                                 : "bg-gray-100"
                             }`}
                           >
-                            {method.icon}
+                            {term.icon}
                           </div>
                           <div>
-                            <div className="font-semibold">{method.label}</div>
+                            <div className="font-semibold text-sm">
+                              {term.label}
+                            </div>
                             <div
-                              className={`text-sm ${
-                                formData.payment_method === method.value
+                              className={`text-xs ${
+                                formData.payment_terms === term.value
                                   ? "text-white/80"
                                   : "text-gray-500"
                               }`}
                             >
-                              {method.description}
+                              {term.description}
                             </div>
                           </div>
                         </div>
@@ -464,7 +710,7 @@ const CreateStorePage = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.4 }}
           >
             <Card className="border-0 shadow-lg">
               <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
@@ -535,7 +781,7 @@ const CreateStorePage = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.5 }}
             className="flex gap-4 pt-6"
           >
             <EnhancedButton

@@ -17,6 +17,12 @@ import {
   Truck,
   CreditCard,
   Calculator,
+  MapPin,
+  Calendar,
+  DollarSign,
+  FileText,
+  UserCheck,
+  Car,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
@@ -35,6 +41,18 @@ const CreateUserPage = () => {
     password: "",
     confirmPassword: "",
     role: "distributor",
+    address: "",
+    hired_date: "",
+    salary: "",
+    license_number: "",
+    emergency_contact_name: "",
+    emergency_contact_phone: "",
+    emergency_contact_relation: "",
+    vehicle_type: "",
+    vehicle_model: "",
+    vehicle_plate: "",
+    vehicle_year: "",
+    work_status: "available",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -144,6 +162,52 @@ const CreateUserPage = () => {
       newErrors.role = "الدور مطلوب";
     }
 
+    // التحقق من تاريخ التوظيف
+    if (formData.hired_date && new Date(formData.hired_date) > new Date()) {
+      newErrors.hired_date = "تاريخ التوظيف لا يمكن أن يكون في المستقبل";
+    }
+
+    // التحقق من الراتب
+    if (
+      formData.salary &&
+      (isNaN(formData.salary) || parseFloat(formData.salary) < 0)
+    ) {
+      newErrors.salary = "الراتب يجب أن يكون رقم صحيح";
+    }
+
+    // التحقق من رقم الرخصة للموزعين
+    if (
+      formData.role === "distributor" &&
+      formData.license_number &&
+      formData.license_number.length < 3
+    ) {
+      newErrors.license_number = "رقم الرخصة يجب أن يكون 3 أحرف على الأقل";
+    }
+
+    // التحقق من جهة الاتصال للطوارئ
+    if (
+      formData.emergency_contact_phone &&
+      !/^\+?[\d\s\-\(\)]+$/.test(formData.emergency_contact_phone)
+    ) {
+      newErrors.emergency_contact_phone =
+        "رقم هاتف جهة الاتصال للطوارئ غير صحيح";
+    }
+
+    // التحقق من سنة المركبة للموزعين
+    if (formData.role === "distributor" && formData.vehicle_year) {
+      const currentYear = new Date().getFullYear();
+      const vehicleYear = parseInt(formData.vehicle_year);
+      if (
+        isNaN(vehicleYear) ||
+        vehicleYear < 1990 ||
+        vehicleYear > currentYear + 1
+      ) {
+        newErrors.vehicle_year = `سنة المركبة يجب أن تكون بين 1990 و ${
+          currentYear + 1
+        }`;
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -185,7 +249,41 @@ const CreateUserPage = () => {
     setErrors({});
 
     try {
-      const response = await userService.createUser(formData);
+      // Prepare data for submission
+      const submitData = {
+        ...formData,
+        // Format emergency contact as JSON
+        emergency_contact: formData.emergency_contact_name
+          ? {
+              name: formData.emergency_contact_name,
+              phone: formData.emergency_contact_phone,
+              relation: formData.emergency_contact_relation,
+            }
+          : null,
+        // Format vehicle info as JSON for distributors
+        vehicle_info:
+          formData.role === "distributor"
+            ? {
+                type: formData.vehicle_type,
+                model: formData.vehicle_model,
+                plate: formData.vehicle_plate,
+                year: formData.vehicle_year,
+              }
+            : null,
+        // Convert salary to number
+        salary: formData.salary ? parseFloat(formData.salary) : null,
+        // Remove temporary fields
+        emergency_contact_name: undefined,
+        emergency_contact_phone: undefined,
+        emergency_contact_relation: undefined,
+        vehicle_type: undefined,
+        vehicle_model: undefined,
+        vehicle_plate: undefined,
+        vehicle_year: undefined,
+        confirmPassword: undefined,
+      };
+
+      const response = await userService.createUser(submitData);
 
       if (response.success) {
         setIsSuccess(true);
@@ -322,6 +420,40 @@ const CreateUserPage = () => {
                     icon={<Phone className="w-4 h-4" />}
                   />
 
+                  {/* العنوان */}
+                  <EnhancedInput
+                    label="العنوان"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    placeholder="أدخل العنوان"
+                    error={errors.address}
+                    icon={<MapPin className="w-4 h-4" />}
+                  />
+
+                  {/* تاريخ التوظيف */}
+                  <EnhancedInput
+                    label="تاريخ التوظيف"
+                    name="hired_date"
+                    type="date"
+                    value={formData.hired_date}
+                    onChange={handleChange}
+                    error={errors.hired_date}
+                    icon={<Calendar className="w-4 h-4" />}
+                  />
+
+                  {/* الراتب */}
+                  <EnhancedInput
+                    label="الراتب الشهري (€)"
+                    name="salary"
+                    type="number"
+                    value={formData.salary}
+                    onChange={handleChange}
+                    placeholder="أدخل الراتب الشهري"
+                    error={errors.salary}
+                    icon={<DollarSign className="w-4 h-4" />}
+                  />
+
                   {/* كلمة المرور */}
                   <div className="space-y-2">
                     <EnhancedInput
@@ -396,6 +528,132 @@ const CreateUserPage = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* معلومات جهة الاتصال للطوارئ */}
+                <div className="col-span-2">
+                  <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <UserCheck className="w-5 h-5" />
+                      جهة الاتصال للطوارئ
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <EnhancedInput
+                        label="الاسم"
+                        name="emergency_contact_name"
+                        value={formData.emergency_contact_name}
+                        onChange={handleChange}
+                        placeholder="اسم جهة الاتصال"
+                        error={errors.emergency_contact_name}
+                        icon={<User className="w-4 h-4" />}
+                      />
+                      <EnhancedInput
+                        label="رقم الهاتف"
+                        name="emergency_contact_phone"
+                        value={formData.emergency_contact_phone}
+                        onChange={handleChange}
+                        placeholder="رقم هاتف جهة الاتصال"
+                        error={errors.emergency_contact_phone}
+                        icon={<Phone className="w-4 h-4" />}
+                      />
+                      <EnhancedInput
+                        label="صلة القرابة"
+                        name="emergency_contact_relation"
+                        value={formData.emergency_contact_relation}
+                        onChange={handleChange}
+                        placeholder="مثل: أب، أم، أخ، صديق"
+                        error={errors.emergency_contact_relation}
+                        icon={<Users className="w-4 h-4" />}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* معلومات خاصة بالموزعين */}
+                {formData.role === "distributor" && (
+                  <div className="col-span-2 space-y-6">
+                    {/* رقم الرخصة */}
+                    <div className="bg-blue-50 p-6 rounded-xl border border-blue-200">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <FileText className="w-5 h-5" />
+                        معلومات الترخيص
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <EnhancedInput
+                          label="رقم رخصة القيادة"
+                          name="license_number"
+                          value={formData.license_number}
+                          onChange={handleChange}
+                          placeholder="أدخل رقم رخصة القيادة"
+                          error={errors.license_number}
+                          icon={<FileText className="w-4 h-4" />}
+                        />
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            حالة العمل
+                          </label>
+                          <select
+                            name="work_status"
+                            value={formData.work_status}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="available">متاح</option>
+                            <option value="busy">مشغول</option>
+                            <option value="offline">غير متصل</option>
+                            <option value="break">في استراحة</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* معلومات المركبة */}
+                    <div className="bg-green-50 p-6 rounded-xl border border-green-200">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <Car className="w-5 h-5" />
+                        معلومات المركبة
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <EnhancedInput
+                          label="نوع المركبة"
+                          name="vehicle_type"
+                          value={formData.vehicle_type}
+                          onChange={handleChange}
+                          placeholder="مثل: سيارة، دراجة نارية، شاحنة"
+                          error={errors.vehicle_type}
+                          icon={<Car className="w-4 h-4" />}
+                        />
+                        <EnhancedInput
+                          label="موديل المركبة"
+                          name="vehicle_model"
+                          value={formData.vehicle_model}
+                          onChange={handleChange}
+                          placeholder="مثل: تويوتا كامري، هوندا سيفيك"
+                          error={errors.vehicle_model}
+                          icon={<Car className="w-4 h-4" />}
+                        />
+                        <EnhancedInput
+                          label="رقم اللوحة"
+                          name="vehicle_plate"
+                          value={formData.vehicle_plate}
+                          onChange={handleChange}
+                          placeholder="رقم لوحة المركبة"
+                          error={errors.vehicle_plate}
+                          icon={<FileText className="w-4 h-4" />}
+                        />
+                        <EnhancedInput
+                          label="سنة الصنع"
+                          name="vehicle_year"
+                          type="number"
+                          value={formData.vehicle_year}
+                          onChange={handleChange}
+                          placeholder="مثل: 2020"
+                          error={errors.vehicle_year}
+                          icon={<Calendar className="w-4 h-4" />}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* اختيار الدور */}
                 <div className="space-y-4">

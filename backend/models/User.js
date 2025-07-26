@@ -84,6 +84,32 @@ const User = sequelize.define('User', {
         type: DataTypes.DATE,
         allowNull: true
     },
+    // Additional personal information
+    address: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        comment: 'Employee address'
+    },
+    hired_date: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        comment: 'Date when employee was hired'
+    },
+    salary: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true,
+        comment: 'Employee monthly salary'
+    },
+    license_number: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+        comment: 'Driver license number for distributors'
+    },
+    emergency_contact: {
+        type: DataTypes.JSON,
+        allowNull: true,
+        comment: 'Emergency contact information'
+    },
     // Distributor location tracking fields
     current_location: {
         type: DataTypes.JSON,
@@ -223,13 +249,13 @@ User.prototype.updateLocation = async function (location) {
     if (this.role !== 'distributor') {
         throw new Error('Only distributors can update location');
     }
-    
+
     this.current_location = {
         ...location,
         timestamp: new Date()
     };
     this.location_updated_at = new Date();
-    
+
     await this.save();
     return this;
 };
@@ -238,12 +264,12 @@ User.prototype.updateWorkStatus = async function (workStatus) {
     if (this.role !== 'distributor') {
         throw new Error('Only distributors can update work status');
     }
-    
+
     const validStatuses = ['available', 'busy', 'offline', 'break'];
     if (!validStatuses.includes(workStatus)) {
         throw new Error('Invalid work status');
     }
-    
+
     this.work_status = workStatus;
     await this.save();
     return this;
@@ -253,15 +279,15 @@ User.prototype.updateDailyPerformance = async function (performanceData) {
     if (this.role !== 'distributor') {
         throw new Error('Only distributors can update performance');
     }
-    
+
     const today = new Date().toISOString().split('T')[0];
     const currentPerformance = this.daily_performance || {};
-    
+
     currentPerformance[today] = {
         ...performanceData,
         updated_at: new Date()
     };
-    
+
     this.daily_performance = currentPerformance;
     await this.save();
     return this;

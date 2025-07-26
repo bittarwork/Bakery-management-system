@@ -17,18 +17,24 @@ class AIService {
      */
     async initializeServices() {
         try {
+            logger.info('🔧 Initializing AI services...');
+            
             // Initialize Gemini if API key is provided
-            if (process.env.GEMINI_API_KEY) {
+            if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here') {
                 this.gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-                logger.info('✅ Gemini AI service initialized');
+                logger.info('✅ Gemini AI service initialized with key: ' + process.env.GEMINI_API_KEY.substring(0, 10) + '...');
+            } else {
+                logger.warn('⚠️ Gemini API key not provided or is placeholder');
             }
 
             // Initialize OpenAI as fallback if API key is provided
-            if (process.env.OPENAI_API_KEY) {
+            if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your_openai_api_key_here_if_needed') {
                 this.openai = new OpenAI({
                     apiKey: process.env.OPENAI_API_KEY,
                 });
                 logger.info('✅ OpenAI service initialized as fallback');
+            } else {
+                logger.warn('⚠️ OpenAI API key not provided or is placeholder');
             }
 
             // Initialize database connection for context
@@ -79,12 +85,25 @@ class AIService {
             let response;
             const provider = process.env.AI_PROVIDER || 'gemini';
 
+            // Check if AI services are initialized
+            if (!this.gemini && !this.openai) {
+                throw new Error('No AI services initialized. Check API keys.');
+            }
+
             if (provider === 'gemini' && this.gemini) {
+                logger.info('🤖 Using Gemini AI provider');
                 response = await this.getGeminiResponse(enhancedMessage);
             } else if (provider === 'openai' && this.openai) {
+                logger.info('🤖 Using OpenAI provider');
+                response = await this.getOpenAIResponse(enhancedMessage);
+            } else if (this.gemini) {
+                logger.info('🤖 Fallback to Gemini AI provider');
+                response = await this.getGeminiResponse(enhancedMessage);
+            } else if (this.openai) {
+                logger.info('🤖 Fallback to OpenAI provider');
                 response = await this.getOpenAIResponse(enhancedMessage);
             } else {
-                throw new Error('No AI provider available');
+                throw new Error(`AI provider "${provider}" not available. Available providers: ${this.gemini ? 'Gemini' : ''} ${this.openai ? 'OpenAI' : ''}`);
             }
 
             // Cache the response
@@ -101,10 +120,16 @@ class AIService {
             };
 
         } catch (error) {
-            logger.error('❌ Error getting AI response:', error);
+            logger.error('❌ Error getting AI response:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name,
+                error: error
+            });
             return {
                 response: 'عذراً، حدث خطأ أثناء معالجة طلبك. يرجى المحاولة مرة أخرى.',
                 error: true,
+                errorMessage: error.message,
                 timestamp: new Date()
             };
         }
@@ -115,6 +140,10 @@ class AIService {
      */
     async getGeminiResponse(message) {
         try {
+            if (!this.gemini) {
+                throw new Error('Gemini AI service not initialized');
+            }
+
             const model = this.gemini.getGenerativeModel({
                 model: process.env.GEMINI_MODEL || 'gemini-1.5-pro-latest'
             });
@@ -126,15 +155,23 @@ class AIService {
                 maxOutputTokens: parseInt(process.env.GEMINI_MAX_TOKENS || '2048'),
             };
 
+            logger.info('🤖 Sending request to Gemini API...');
             const result = await model.generateContent({
                 contents: [{ role: 'user', parts: [{ text: message }] }],
                 generationConfig
             });
 
-            return result.response.text();
+            const responseText = result.response.text();
+            logger.info('✅ Gemini API response received successfully');
+            return responseText;
         } catch (error) {
-            logger.error('❌ Gemini API error:', error);
-            throw error;
+            logger.error('❌ Gemini API error:', {
+                message: error.message,
+                status: error.status,
+                statusText: error.statusText,
+                stack: error.stack
+            });
+            throw new Error(`Gemini API Error: ${error.message}`);
         }
     }
 
