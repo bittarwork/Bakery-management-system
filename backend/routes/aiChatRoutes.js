@@ -1,6 +1,6 @@
-const express = require('express');
-const { aiChatController, aiChatRateLimit } = require('../controllers/aiChatController');
-const auth = require('../middleware/auth');
+import express from 'express';
+import { aiChatController, aiChatRateLimit } from '../controllers/aiChatController.js';
+import { protect } from '../middleware/auth.js';
 const router = express.Router();
 
 /**
@@ -12,7 +12,7 @@ const router = express.Router();
 router.use(aiChatRateLimit);
 
 // Apply authentication middleware to all routes
-router.use(auth);
+router.use(protect);
 
 /**
  * @route POST /api/ai-chat/message
@@ -63,4 +63,4 @@ router.get('/cache/stats', aiChatController.getCacheStats);
  */
 router.get('/health', aiChatController.healthCheck);
 
-module.exports = router; 
+export default router; 

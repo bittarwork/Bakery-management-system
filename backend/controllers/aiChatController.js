@@ -1,6 +1,6 @@
-const aiService = require('../services/aiService');
-const logger = require('../config/logger');
-const rateLimit = require('express-rate-limit');
+import aiService from '../services/aiService.js';
+import logger from '../config/logger.js';
+import rateLimit from 'express-rate-limit';
 
 class AIChatController {
     /**
@@ -139,7 +139,7 @@ class AIChatController {
             }
 
             const { reportType = 'general' } = req.query;
-            
+
             const analyticsPrompt = this.generateAnalyticsPrompt(reportType);
             const aiResponse = await aiService.getAIResponse(analyticsPrompt, req.user.id, {
                 userRole: 'admin',
@@ -179,7 +179,7 @@ class AIChatController {
             }
 
             const result = aiService.clearCache();
-            
+
             res.json({
                 success: true,
                 data: result
@@ -208,7 +208,7 @@ class AIChatController {
             }
 
             const stats = aiService.getCacheStats();
-            
+
             res.json({
                 success: true,
                 data: stats
@@ -271,13 +271,13 @@ class AIChatController {
         // Basic filtering - can be enhanced with more sophisticated methods
         const inappropriateWords = ['spam', 'hack', 'malware'];
         const lowerMessage = message.toLowerCase();
-        
+
         return inappropriateWords.some(word => lowerMessage.includes(word));
     }
 }
 
-// Rate limiting for AI chat
-const aiChatRateLimit = rateLimit({
+export const aiChatController = new AIChatController();
+export const aiChatRateLimit = rateLimit({
     windowMs: parseInt(process.env.AI_RATE_LIMIT_WINDOW || '3600000'), // 1 hour
     max: parseInt(process.env.AI_RATE_LIMIT_REQUESTS || '100'), // requests per window
     message: {
@@ -286,9 +286,4 @@ const aiChatRateLimit = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
-});
-
-module.exports = {
-    aiChatController: new AIChatController(),
-    aiChatRateLimit
-}; 
+}); 

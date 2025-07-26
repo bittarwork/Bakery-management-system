@@ -1,7 +1,7 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const OpenAI = require('openai');
-const mysql = require('mysql2/promise');
-const logger = require('../config/logger');
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
+import mysql from 'mysql2/promise';
+import logger from '../config/logger.js';
 
 class AIService {
     constructor() {
@@ -55,8 +55,8 @@ class AIService {
      */
     async getAIResponse(message, userId, context = {}) {
         try {
-            const cacheKey = this.generateCacheKey(message, userId);
-            
+            const cacheKey = await this.generateCacheKey(message, userId);
+
             // Check cache first
             if (process.env.AI_CACHE_ENABLED === 'true' && this.cache.has(cacheKey)) {
                 const cachedResponse = this.cache.get(cacheKey);
@@ -72,7 +72,7 @@ class AIService {
 
             // Get business context from database
             const businessContext = await this.getBusinessContext(userId);
-            
+
             // Prepare the enhanced message with context
             const enhancedMessage = await this.prepareMessageWithContext(message, businessContext, context);
 
@@ -115,7 +115,7 @@ class AIService {
      */
     async getGeminiResponse(message) {
         try {
-            const model = this.gemini.getGenerativeModel({ 
+            const model = this.gemini.getGenerativeModel({
                 model: process.env.GEMINI_MODEL || 'gemini-1.5-pro-latest'
             });
 
@@ -210,9 +210,9 @@ class AIService {
     /**
      * Generate cache key for message
      */
-    generateCacheKey(message, userId) {
-        const crypto = require('crypto');
-        return crypto.createHash('md5').update(`${message}_${userId}`).digest('hex');
+    async generateCacheKey(message, userId) {
+        const crypto = await import('crypto');
+        return crypto.default.createHash('md5').update(`${message}_${userId}`).digest('hex');
     }
 
     /**
@@ -302,4 +302,4 @@ class AIService {
 }
 
 // Export singleton instance
-module.exports = new AIService(); 
+export default new AIService(); 
