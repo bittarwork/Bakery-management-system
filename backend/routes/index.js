@@ -26,6 +26,7 @@ import tempDeliveryRoutes from './tempDeliveryRoutes.js';
 import distributionTripsRoutes from './distributionTrips.js';
 import distributionRoutes from './distributionRoutes.js';
 import systemRoutes from './systemRoutes.js';
+import enhancedDistributorRoutes from './enhancedDistributorRoutes.js';
 
 const router = express.Router();
 
@@ -100,6 +101,9 @@ router.use('/simple-distribution', distributionRoutes);
 
 // Mount system routes
 router.use('/system', systemRoutes);
+
+// Mount enhanced distributor routes
+router.use('/distributors', enhancedDistributorRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {
