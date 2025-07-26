@@ -867,6 +867,101 @@ class DistributionService {
         }
     }
 
+    // ===== DISTRIBUTOR DETAILS & MANAGEMENT =====
+
+    /**
+     * Get detailed distributor information
+     */
+    async getDistributorDetails(distributorId, date = null) {
+        try {
+            const params = {};
+            if (date) params.date = date;
+
+            const response = await apiService.get(`${this.baseEndpoint}/distributor/${distributorId}/details`, params);
+
+            if (response.success) {
+                return response;
+            }
+
+            // Fallback to mock data if API fails
+            return this.getMockDistributorDetails(distributorId, date);
+        } catch (error) {
+            console.error('Error fetching distributor details:', error);
+            return this.getMockDistributorDetails(distributorId, date);
+        }
+    }
+
+    /**
+     * Get distributor performance metrics
+     */
+    async getDistributorPerformance(distributorId, period = 'week') {
+        try {
+            const params = { period };
+            const response = await apiService.get(`${this.baseEndpoint}/distributor/${distributorId}/performance`, params);
+
+            if (response.success) {
+                return response;
+            }
+
+            return this.getMockDistributorPerformance(distributorId);
+        } catch (error) {
+            console.error('Error fetching distributor performance:', error);
+            return this.getMockDistributorPerformance(distributorId);
+        }
+    }
+
+    /**
+     * Get distributor order history
+     */
+    async getDistributorOrderHistory(distributorId, params = {}) {
+        try {
+            const response = await apiService.get(`${this.baseEndpoint}/distributor/${distributorId}/orders`, params);
+
+            if (response.success) {
+                return response;
+            }
+
+            return this.getMockDistributorOrderHistory(distributorId);
+        } catch (error) {
+            console.error('Error fetching distributor order history:', error);
+            return this.getMockDistributorOrderHistory(distributorId);
+        }
+    }
+
+    /**
+     * Get distributor location history
+     */
+    async getDistributorLocationHistory(distributorId, date = null) {
+        try {
+            const params = date ? { date } : {};
+            const response = await apiService.get(`${this.baseEndpoint}/distributor/${distributorId}/location-history`, params);
+
+            if (response.success) {
+                return response;
+            }
+
+            return this.getMockLocationHistory(distributorId);
+        } catch (error) {
+            console.error('Error fetching distributor location history:', error);
+            return this.getMockLocationHistory(distributorId);
+        }
+    }
+
+    /**
+     * Update distributor status
+     */
+    async updateDistributorStatus(distributorId, status) {
+        try {
+            const response = await apiService.patch(`${this.baseEndpoint}/distributor/${distributorId}/status`, {
+                status
+            });
+            return response;
+        } catch (error) {
+            console.error('Error updating distributor status:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     // ===== MOCK DATA METHODS (for backward compatibility and error fallbacks) =====
 
     /**
@@ -1305,6 +1400,205 @@ class DistributionService {
                     customer_retention: 87.3
                 }
             }
+        };
+    }
+
+    /**
+     * Mock distributor details for fallback
+     */
+    getMockDistributorDetails(distributorId, date = null) {
+        const currentDate = date || new Date().toISOString().split('T')[0];
+
+        // Generate different data based on distributorId
+        const distributors = [
+            {
+                id: 1,
+                name: 'أحمد محمد السوري',
+                phone: '+963 12 345 6789',
+                email: 'ahmed@bakery.com',
+                status: 'active',
+                work_status: 'on_delivery',
+                hire_date: '2024-01-15',
+                zone: 'دمشق المركز',
+                vehicle_number: 'Damascus-123',
+                current_location: {
+                    address: 'شارع الحمرا - دمشق',
+                    lat: 33.5138,
+                    lng: 36.2765,
+                    last_update: new Date().toISOString()
+                }
+            },
+            {
+                id: 2,
+                name: 'فاطمة عبدالله',
+                phone: '+963 11 234 5678',
+                email: 'fatima@bakery.com',
+                status: 'active',
+                work_status: 'available',
+                hire_date: '2024-02-20',
+                zone: 'حلب الشرقية',
+                vehicle_number: 'Aleppo-456',
+                current_location: {
+                    address: 'شارع العزيزية - حلب',
+                    lat: 36.2021,
+                    lng: 37.1343,
+                    last_update: new Date().toISOString()
+                }
+            },
+            {
+                id: 3,
+                name: 'محمد حسن',
+                phone: '+963 15 987 6543',
+                email: 'mohamed@bakery.com',
+                status: 'active',
+                work_status: 'resting',
+                hire_date: '2023-12-10',
+                zone: 'حمص الوعر',
+                vehicle_number: 'Homs-789',
+                current_location: {
+                    address: 'حي الوعر - حمص',
+                    lat: 34.7394,
+                    lng: 36.7163,
+                    last_update: new Date().toISOString()
+                }
+            }
+        ];
+
+        const distributor = distributors.find(d => d.id == distributorId) || distributors[0];
+
+        return {
+            success: true,
+            data: {
+                distributor: distributor,
+                daily_performance: {
+                    date: currentDate,
+                    orders_assigned: 12,
+                    orders_completed: 8,
+                    orders_pending: 3,
+                    orders_cancelled: 1,
+                    total_revenue: 1245.75,
+                    total_distance: 85.2,
+                    working_hours: 7.5,
+                    efficiency_rate: 85.2,
+                    customer_rating: 4.3,
+                    on_time_deliveries: 7,
+                    late_deliveries: 1
+                },
+                orders: this.getMockDistributorOrderHistory(distributorId).data,
+                location_history: this.getMockLocationHistory(distributorId).data
+            }
+        };
+    }
+
+    /**
+     * Mock distributor performance
+     */
+    getMockDistributorPerformance(distributorId) {
+        return {
+            success: true,
+            data: {
+                weekly_stats: {
+                    total_orders: 45,
+                    completed_orders: 40,
+                    completion_rate: 88.9,
+                    total_revenue: 5678.90,
+                    average_delivery_time: 32,
+                    customer_satisfaction: 4.5
+                },
+                monthly_stats: {
+                    total_orders: 180,
+                    completed_orders: 165,
+                    completion_rate: 91.7,
+                    total_revenue: 22890.45,
+                    average_delivery_time: 28,
+                    customer_satisfaction: 4.4
+                },
+                trends: {
+                    orders_trend: 'up',
+                    revenue_trend: 'up',
+                    satisfaction_trend: 'stable'
+                }
+            }
+        };
+    }
+
+    /**
+     * Mock distributor order history
+     */
+    getMockDistributorOrderHistory(distributorId) {
+        const orders = [
+            {
+                id: 1,
+                order_number: 'ORD-2025-001',
+                store_name: 'سوبرماركت الأمل',
+                store_address: 'شارع الحمرا - دمشق',
+                status: 'delivered',
+                assigned_at: '2025-01-26T08:30:00Z',
+                completed_at: '2025-01-26T10:15:00Z',
+                total_amount: 125.50,
+                items_count: 8,
+                delivery_notes: 'تم التسليم بنجاح',
+                rating: 5
+            },
+            {
+                id: 2,
+                order_number: 'ORD-2025-002',
+                store_name: 'مقهى الياسمين',
+                store_address: 'شارع النصر - دمشق',
+                status: 'in_progress',
+                assigned_at: '2025-01-26T11:00:00Z',
+                completed_at: null,
+                total_amount: 89.25,
+                items_count: 5,
+                delivery_notes: null,
+                rating: null
+            },
+            {
+                id: 3,
+                order_number: 'ORD-2025-003',
+                store_name: 'متجر البركة',
+                store_address: 'شارع المتنبي - دمشق',
+                status: 'pending',
+                assigned_at: '2025-01-26T13:30:00Z',
+                completed_at: null,
+                total_amount: 210.75,
+                items_count: 12,
+                delivery_notes: null,
+                rating: null
+            }
+        ];
+
+        return {
+            success: true,
+            data: orders
+        };
+    }
+
+    /**
+     * Mock location history
+     */
+    getMockLocationHistory(distributorId) {
+        const now = new Date();
+        const history = [];
+
+        // Generate location history for the day
+        for (let i = 0; i < 10; i++) {
+            const timestamp = new Date(now.getTime() - (i * 30 * 60 * 1000)); // Every 30 minutes
+            history.push({
+                id: i + 1,
+                timestamp: timestamp.toISOString(),
+                latitude: 33.5138 + (Math.random() - 0.5) * 0.1,
+                longitude: 36.2765 + (Math.random() - 0.5) * 0.1,
+                address: `موقع ${i + 1} - دمشق`,
+                activity: i % 3 === 0 ? 'delivery' : (i % 3 === 1 ? 'travel' : 'waiting'),
+                speed: Math.random() * 40, // km/h
+                accuracy: Math.random() * 10 + 5 // meters
+            });
+        }
+
+        return {
+            success: true,
+            data: history.reverse() // Most recent first
         };
     }
 
