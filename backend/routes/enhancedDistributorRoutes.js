@@ -1,13 +1,13 @@
 import express from 'express';
 import { body, param, query } from 'express-validator';
 import EnhancedDistributorController from '../controllers/enhancedDistributorController.js';
-import { authenticate, authorize } from '../middleware/auth.js';
+import { protect, authorize } from '../middleware/auth.js';
 import { validateRequest } from '../middleware/validation.js';
 
 const router = express.Router();
 
 // Apply authentication to all routes
-router.use(authenticate);
+router.use(protect);
 
 /**
  * @route GET /api/distributors/active
