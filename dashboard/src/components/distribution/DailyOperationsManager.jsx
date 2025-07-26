@@ -42,6 +42,12 @@ import EnhancedInput from "../ui/EnhancedInput";
 import LoadingSpinner from "../ui/LoadingSpinner";
 import distributionService from "../../services/distributionService";
 import orderService from "../../services/orderService";
+import {
+  formatDateArabic,
+  formatDateShort,
+  formatTimeArabic,
+  formatDateTimeArabic,
+} from "../../utils/dateFormatter";
 
 /**
  * Daily Operations Manager Component - Enhanced for Today's Orders Only
@@ -324,8 +330,7 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
           </div>
           {order.assigned_at && (
             <div className="text-xs text-blue-700 mt-1">
-              تم التعيين:{" "}
-              {formatDateTimeArabic(order.assigned_at)}
+              تم التعيين: {formatDateTimeArabic(order.assigned_at)}
             </div>
           )}
         </div>
@@ -368,8 +373,7 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
           </div>
           {order.delivery_started_at && (
             <div className="text-xs text-yellow-700">
-              بدأ التوصيل:{" "}
-              {formatTimeArabic(order.delivery_started_at)}
+              بدأ التوصيل: {formatTimeArabic(order.delivery_started_at)}
             </div>
           )}
         </div>
@@ -402,11 +406,11 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
               <span>تم التسليم:</span>
             </div>
             <span className="font-medium">
-              {formatDateTimeArabic(order.delivery_completed_at, { 
-                month: 'short', 
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+              {formatDateTimeArabic(order.delivery_completed_at, {
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
               })}
             </span>
           </div>
@@ -480,11 +484,11 @@ const DailyOperationsManager = ({ selectedDate, onDateChange }) => {
           </h2>
           <p className="text-gray-600 mt-1">
             إدارة ومراقبة الطلبات اليومية لتاريخ{" "}
-                    {formatDateArabic(selectedDate, { 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
-        })}
+            {formatDateArabic(selectedDate, {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
           </p>
         </div>
 

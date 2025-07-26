@@ -61,7 +61,12 @@ class AIService {
             this.initialized = true;
             logger.info('🚀 Gemini AI Service fully initialized');
         } catch (error) {
-            logger.error('❌ Failed to initialize Gemini AI Service:', error);
+            logger.error('❌ Failed to initialize Gemini AI Service:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name,
+                error: error.toString()
+            });
             this.initialized = false;
             throw error;
         }
@@ -124,7 +129,7 @@ class AIService {
                 message: error.message,
                 stack: error.stack,
                 name: error.name,
-                error: error
+                error: error.toString()
             });
             return {
                 response: 'عذراً، حدث خطأ أثناء معالجة طلبك. يرجى المحاولة مرة أخرى.',
@@ -169,7 +174,8 @@ class AIService {
                 message: error.message,
                 status: error.status,
                 statusText: error.statusText,
-                stack: error.stack
+                stack: error.stack,
+                error: error.toString()
             });
             throw new Error(`Gemini API Error: ${error.message}`);
         }
@@ -194,7 +200,12 @@ class AIService {
 
             return rows[0] || {};
         } catch (error) {
-            logger.error('❌ Error fetching business context:', error);
+            logger.error('❌ Error fetching business context:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name,
+                error: error.toString()
+            });
             return {};
         }
     }

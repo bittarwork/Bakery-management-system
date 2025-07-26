@@ -2,7 +2,7 @@ import apiService from './apiService';
 
 class DistributionService {
     constructor() {
-        this.baseEndpoint = '/distributors';
+        this.baseEndpoint = '/distribution';
     }
 
     // ===== DASHBOARD & OVERVIEW =====

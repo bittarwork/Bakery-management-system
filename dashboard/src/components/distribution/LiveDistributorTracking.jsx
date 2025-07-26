@@ -99,7 +99,18 @@ const LiveDistributorTracking = ({ selectedDate }) => {
 
   // Initialize Google Maps - Fixed implementation
   useEffect(() => {
-    initializeGoogleMaps();
+    // Ensure mapRef is available before initializing
+    if (mapRef.current) {
+      initializeGoogleMaps();
+    } else {
+      // Wait for next render cycle if mapRef is not ready
+      const timer = setTimeout(() => {
+        if (mapRef.current) {
+          initializeGoogleMaps();
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   // Update map when data changes
@@ -301,6 +312,12 @@ const LiveDistributorTracking = ({ selectedDate }) => {
   const initializeMap = () => {
     if (!mapRef.current) {
       console.warn("Cannot initialize map: mapRef not available");
+      // Retry after a short delay
+      setTimeout(() => {
+        if (mapRef.current) {
+          initializeMap();
+        }
+      }, 500);
       return;
     }
 

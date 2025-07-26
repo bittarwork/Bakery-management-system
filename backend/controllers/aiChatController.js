@@ -58,11 +58,17 @@ class AIChatController {
             });
 
         } catch (error) {
-            logger.error('❌ Error in sendMessage:', error);
+            logger.error('❌ Error in sendMessage:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name,
+                error: error
+            });
             res.status(500).json({
                 success: false,
                 error: 'Internal server error',
-                message: 'عذراً، حدث خطأ أثناء معالجة طلبك'
+                message: 'عذراً، حدث خطأ أثناء معالجة طلبك',
+                details: error.message
             });
         }
     }
@@ -85,7 +91,12 @@ class AIChatController {
             });
 
         } catch (error) {
-            logger.error('❌ Error getting suggested questions:', error);
+            logger.error('❌ Error getting suggested questions:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name,
+                error: error.toString()
+            });
             res.status(500).json({
                 success: false,
                 error: 'Failed to get suggested questions'
@@ -117,7 +128,12 @@ class AIChatController {
             });
 
         } catch (error) {
-            logger.error('❌ Error getting chat config:', error);
+            logger.error('❌ Error getting chat config:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name,
+                error: error.toString()
+            });
             res.status(500).json({
                 success: false,
                 error: 'Failed to get chat configuration'
@@ -157,7 +173,12 @@ class AIChatController {
             });
 
         } catch (error) {
-            logger.error('❌ Error generating analytics report:', error);
+            logger.error('❌ Error generating analytics report:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name,
+                error: error.toString()
+            });
             res.status(500).json({
                 success: false,
                 error: 'Failed to generate analytics report'
@@ -186,7 +207,12 @@ class AIChatController {
             });
 
         } catch (error) {
-            logger.error('❌ Error clearing cache:', error);
+            logger.error('❌ Error clearing cache:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name,
+                error: error.toString()
+            });
             res.status(500).json({
                 success: false,
                 error: 'Failed to clear cache'
@@ -215,7 +241,12 @@ class AIChatController {
             });
 
         } catch (error) {
-            logger.error('❌ Error getting cache stats:', error);
+            logger.error('❌ Error getting cache stats:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name,
+                error: error.toString()
+            });
             res.status(500).json({
                 success: false,
                 error: 'Failed to get cache statistics'
@@ -241,7 +272,12 @@ class AIChatController {
             });
 
         } catch (error) {
-            logger.error('❌ AI Health check failed:', error);
+            logger.error('❌ AI Health check failed:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name,
+                error: error.toString()
+            });
             res.status(500).json({
                 success: false,
                 error: 'AI service health check failed'
