@@ -55,6 +55,9 @@ import ReportsOverviewPage from "./pages/reports/ReportsOverviewPage";
 import GeneralSettingsPage from "./pages/settings/GeneralSettingsPage";
 import SystemConfigPage from "./pages/settings/SystemConfigPage";
 
+// Pages - AI Chat
+import AIChatPage from "./pages/ai-chat/AIChatPage";
+
 // Components
 import LoadingSpinner from "./components/ui/LoadingSpinner";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
@@ -742,6 +745,28 @@ const App = () => {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <ReportsOverviewPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* AI Chat Routes */}
+            <Route
+              path="/ai-chat"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <AIChatPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>

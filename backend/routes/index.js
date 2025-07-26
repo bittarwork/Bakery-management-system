@@ -28,6 +28,9 @@ import distributionRoutes from './distributionRoutes.js';
 import systemRoutes from './systemRoutes.js';
 import enhancedDistributorRoutes from './enhancedDistributorRoutes.js';
 
+// Import AI Chat routes
+import aiChatRoutes from './aiChatRoutes.js';
+
 const router = express.Router();
 
 // API Documentation endpoint
@@ -63,7 +66,9 @@ router.get('/', (req, res) => {
             refunds: '/api/refunds',
             // Phase 6 Enhanced Order Management
             enhancedPricing: '/api/pricing',
-            distributors: '/api/distributors'
+            distributors: '/api/distributors',
+            // AI Chat System
+            aiChat: '/api/ai-chat'
         },
         documentation: {
             api_docs: '/api/docs',
@@ -104,6 +109,9 @@ router.use('/system', systemRoutes);
 
 // Mount enhanced distributor routes
 router.use('/distributors', enhancedDistributorRoutes);
+
+// Mount AI Chat routes
+router.use('/ai-chat', aiChatRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {
