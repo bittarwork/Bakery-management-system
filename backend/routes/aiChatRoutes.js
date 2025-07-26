@@ -19,48 +19,48 @@ router.use(protect);
  * @desc Send message to AI and get response
  * @access Private (All authenticated users)
  */
-router.post('/message', aiChatController.sendMessage);
+router.post('/message', aiChatController.sendMessage.bind(aiChatController));
 
 /**
  * @route GET /api/ai-chat/suggested-questions
  * @desc Get suggested questions based on user role
  * @access Private (All authenticated users)
  */
-router.get('/suggested-questions', aiChatController.getSuggestedQuestions);
+router.get('/suggested-questions', aiChatController.getSuggestedQuestions.bind(aiChatController));
 
 /**
  * @route GET /api/ai-chat/config
  * @desc Get chat configuration for user
  * @access Private (All authenticated users)
  */
-router.get('/config', aiChatController.getChatConfig);
+router.get('/config', aiChatController.getChatConfig.bind(aiChatController));
 
 /**
  * @route GET /api/ai-chat/analytics
  * @desc Generate analytics report using AI
  * @access Private (Admin only)
  */
-router.get('/analytics', aiChatController.getAnalyticsReport);
+router.get('/analytics', aiChatController.getAnalyticsReport.bind(aiChatController));
 
 /**
  * @route DELETE /api/ai-chat/cache
  * @desc Clear AI response cache
  * @access Private (Admin only)
  */
-router.delete('/cache', aiChatController.clearCache);
+router.delete('/cache', aiChatController.clearCache.bind(aiChatController));
 
 /**
  * @route GET /api/ai-chat/cache/stats
  * @desc Get cache statistics
  * @access Private (Admin only)
  */
-router.get('/cache/stats', aiChatController.getCacheStats);
+router.get('/cache/stats', aiChatController.getCacheStats.bind(aiChatController));
 
 /**
  * @route GET /api/ai-chat/health
  * @desc Health check for AI services
  * @access Private (All authenticated users)
  */
-router.get('/health', aiChatController.healthCheck);
+router.get('/health', aiChatController.healthCheck.bind(aiChatController));
 
 export default router; 
