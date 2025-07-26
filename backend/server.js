@@ -83,6 +83,7 @@ app.use((req, res, next) => {
     next();
 });
 
+// Enhanced CORS configuration
 app.use(cors({
     origin: function (origin, callback) {
         // List of allowed origins for production and development
@@ -108,33 +109,28 @@ app.use(cors({
 
         // Log CORS requests for debugging
         console.log('🌐 CORS Request from origin:', origin);
-        console.log('✅ Allowed origins:', allowedOrigins);
 
-        // Allow requests without origin (like mobile apps)
+        // Allow requests without origin (like mobile apps, Postman, etc.)
         if (!origin) {
             console.log('✅ Allowing request with no origin (mobile/postman)');
+            return callback(null, true);
+        }
+
+        // Always allow localhost origins in any environment for development
+        if (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('0.0.0.0')) {
+            console.log('✅ Allowing localhost origin:', origin);
             return callback(null, true);
         }
 
         // Check if origin is in allowed list
         if (allowedOrigins.indexOf(origin) !== -1) {
             console.log('✅ Origin allowed:', origin);
-            callback(null, true);
-        } else {
-            // In development environment, allow all localhost origins
-            if (process.env.NODE_ENV === 'development' ||
-                origin.includes('localhost') ||
-                origin.includes('127.0.0.1') ||
-                origin.includes('0.0.0.0')) {
-                console.log('🔧 Development mode - allowing localhost origin:', origin);
-                callback(null, true);
-            } else {
-                console.log('❌ Origin not allowed:', origin);
-                // Allow in production for now to debug
-                console.log('⚠️  Allowing for debugging in production...');
-                callback(null, true);
-            }
+            return callback(null, true);
         }
+
+        // For security, log but still allow for now (debug mode)
+        console.log('⚠️  Origin not in whitelist but allowing for debugging:', origin);
+        return callback(null, true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -146,16 +142,55 @@ app.use(cors({
         'Origin',
         'Access-Control-Request-Method',
         'Access-Control-Request-Headers',
-        'X-Request-Time'
+        'X-Request-Time',
+        'Cache-Control',
+        'Pragma'
     ],
-    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range', 'X-Total-Count'],
     maxAge: 86400, // 24 hours
-    optionsSuccessStatus: 200 // For legacy browser support
+    optionsSuccessStatus: 200, // For legacy browser support
+    preflightContinue: false
 }));
+
+// Handle OPTIONS requests explicitly
+app.options('*', (req, res) => {
+    console.log('🔄 Handling OPTIONS request for:', req.path);
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, X-Request-Time, Cache-Control, Pragma');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Max-Age', '86400');
+    res.status(200).end();
+});
+
 app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
+
+// Additional CORS middleware to ensure headers are always present
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    
+    // Always set CORS headers for all responses
+    if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+        res.header('Access-Control-Allow-Origin', origin);
+    } else if (origin) {
+        res.header('Access-Control-Allow-Origin', origin);
+    } else {
+        res.header('Access-Control-Allow-Origin', '*');
+    }
+    
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, X-Request-Time, Cache-Control, Pragma');
+    res.header('Access-Control-Expose-Headers', 'Content-Range, X-Content-Range, X-Total-Count');
+    
+    // Log CORS headers being sent
+    console.log('📤 Setting CORS headers for origin:', origin);
+    
+    next();
+});
 
 // Handle favicon requests to avoid 404 errors
 app.get('/favicon.ico', (req, res) => {
