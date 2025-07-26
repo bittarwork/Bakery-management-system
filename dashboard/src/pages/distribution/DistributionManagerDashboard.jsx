@@ -52,8 +52,8 @@ import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import distributionService from "../../services/distributionService";
 
 /**
- * Distribution Manager Dashboard - Simplified Overview
- * Focused on distributor information and daily performance
+ * Distribution Manager Dashboard - Real Data Display
+ * Shows real distributors with their current locations and daily performance
  */
 const DistributionManagerDashboard = () => {
   const navigate = useNavigate();
@@ -76,8 +76,8 @@ const DistributionManagerDashboard = () => {
   useEffect(() => {
     loadDashboardData();
 
-    // Set up real-time updates
-    const interval = setInterval(loadLiveData, 60000); // Update every minute
+    // Set up real-time updates every 2 minutes for live location tracking
+    const interval = setInterval(loadLiveData, 120000);
     return () => clearInterval(interval);
   }, [selectedDate]);
 
@@ -86,22 +86,95 @@ const DistributionManagerDashboard = () => {
       setIsLoading(true);
       setError("");
 
-      const response = await distributionService.getDashboardData(selectedDate);
+      // Get real distributor data from the enhanced API
+      const response = await distributionService.getActiveDistributors({
+        include_location: true,
+        include_performance: true,
+      });
 
-      if (response.success) {
+      if (response.success && response.data) {
         setDashboardData({
           distributors: response.data.distributors || [],
           statistics: response.data.statistics || {},
           notifications: response.data.notifications || [],
         });
       } else {
-        setDashboardData(getMockDashboardData());
-        toast.error("Error loading data - using mock data");
+        // Fallback to try getting users with distributor role
+        const usersResponse = await fetch(
+          "/api/users?role=distributor&status=active"
+        );
+        if (usersResponse.ok) {
+          const userData = await usersResponse.json();
+          const distributors = userData.data?.users || [];
+
+          // Transform user data to distributor format
+          const transformedDistributors = distributors.map((user) => ({
+            id: user.id,
+            name: user.full_name,
+            phone: user.phone,
+            email: user.email,
+            status: user.status,
+            current_location: user.current_location || {
+              address: "الموقع غير محدد",
+              lat: 33.8938,
+              lng: 35.5018,
+              last_update: new Date().toISOString(),
+            },
+            vehicle_info: user.vehicle_info || {
+              type: "شاحنة توزيع",
+              plate_number: `ABC-${user.id}`,
+              model: "Ford Transit",
+            },
+            current_route: {
+              current_stop: "في انتظار التعيين",
+              completed_stops: 0,
+              total_stops: 0,
+            },
+            progress: {
+              completed: 0,
+              total: 0,
+              percentage: 0,
+            },
+            orders_delivered_today: 0,
+            efficiency_score: 0,
+            daily_revenue: 0,
+            daily_expenses: {
+              fuel: 0,
+              maintenance: 0,
+              other: 0,
+            },
+            work_status: user.work_status || "offline",
+            location_updated_at: user.location_updated_at,
+            daily_performance: user.daily_performance,
+          }));
+
+          setDashboardData({
+            distributors: transformedDistributors,
+            statistics: {
+              total_distributors: transformedDistributors.length,
+              active_distributors: transformedDistributors.filter(
+                (d) => d.status === "active"
+              ).length,
+              total_orders: 0,
+              completed_orders: 0,
+            },
+            notifications: [],
+          });
+        } else {
+          throw new Error("Failed to load distributor data");
+        }
       }
     } catch (error) {
       console.error("Error loading dashboard data:", error);
-      setError("Error loading dashboard data");
-      setDashboardData(getMockDashboardData());
+      setError("حدث خطأ في تحميل البيانات");
+      toast.error("خطأ في تحميل بيانات الموزعين");
+
+      // Set empty state
+      setDashboardData({
+        distributors: [],
+        statistics: {},
+        notifications: [],
+      });
     } finally {
       setIsLoading(false);
     }
@@ -109,7 +182,9 @@ const DistributionManagerDashboard = () => {
 
   const loadLiveData = async () => {
     try {
+      // Refresh live tracking data without loading state
       const response = await distributionService.getLiveTracking(selectedDate);
+
       if (response.success && response.data) {
         setDashboardData((prev) => ({
           ...prev,
@@ -117,85 +192,50 @@ const DistributionManagerDashboard = () => {
         }));
       }
     } catch (error) {
-      console.error("Error updating live data:", error);
+      console.warn("Failed to refresh live data:", error);
     }
   };
 
-  // Get mock data for fallback
-  const getMockDashboardData = () => {
-    return {
-      statistics: {
-        totalOrders: 156,
-        activeDistributors: 8,
-        completedDeliveries: 124,
-        pendingOrders: 32,
-        todayRevenue: 8450.75,
-        averageDeliveryTime: 42,
-        onTimeDeliveryRate: 89,
-      },
-      distributors: [
-        {
-          id: 1,
-          name: "أحمد محمود",
-          phone: "+961 70 123 456",
-          email: "ahmed@bakery.com",
-          status: "active",
-          current_location: {
-            address: "بيروت - الحمرا",
-            lat: 33.8938,
-            lng: 35.5018,
-            last_update: new Date().toISOString(),
-          },
-          current_route: {
-            current_stop: "مخبزة النور",
-            completed_stops: 12,
-            total_stops: 18,
-          },
-          daily_expenses: {
-            fuel: 45.5,
-            maintenance: 12.0,
-            other: 8.75,
-          },
-          daily_revenue: 1250.75,
-          orders_delivered_today: 12,
-          total_orders: 18,
-          efficiency_score: 89,
-        },
-      ],
-      notifications: [],
-    };
-  };
-
-  const navigateToDistributorDetails = (distributorId) => {
-    navigate(`/distribution/distributor/${distributorId}`, {
-      state: { date: selectedDate },
-    });
+  const handleDistributorClick = (distributorId) => {
+    navigate(`/distribution/distributor/${distributorId}`);
   };
 
   const getStatusColor = (status) => {
     switch (status) {
       case "active":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "completed":
-        return "bg-blue-100 text-blue-800 border-blue-200";
+        return "text-green-600 bg-green-100";
+      case "busy":
+        return "text-yellow-600 bg-yellow-100";
       case "offline":
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "text-gray-600 bg-gray-100";
+      case "break":
+        return "text-blue-600 bg-blue-100";
       default:
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+        return "text-gray-600 bg-gray-100";
     }
   };
 
-  const getStatusText = (status) => {
+  const getWorkStatusText = (status) => {
     switch (status) {
       case "active":
         return "نشط";
-      case "completed":
-        return "مكتمل";
+      case "busy":
+        return "مشغول";
       case "offline":
         return "غير متصل";
+      case "break":
+        return "استراحة";
       default:
         return "غير محدد";
     }
+  };
+
+  const isLocationFresh = (locationUpdatedAt) => {
+    if (!locationUpdatedAt) return false;
+    const updateTime = new Date(locationUpdatedAt);
+    const now = new Date();
+    const diffMinutes = (now - updateTime) / (1000 * 60);
+    return diffMinutes <= 15; // Fresh if updated within 15 minutes
   };
 
   if (isLoading) {
@@ -314,106 +354,156 @@ const DistributionManagerDashboard = () => {
           </Card>
         </motion.div>
 
-        {/* Distributors Section */}
+        {/* Distributors Section - Real Data Display */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          className="mb-8"
         >
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-              <Truck className="w-6 h-6 mr-3" />
-              الموزعين ومعلومات التوزيع
-            </h2>
+            <div className="flex items-center space-x-3 space-x-reverse">
+              <Truck className="w-6 h-6 text-blue-600" />
+              <h2 className="text-xl font-semibold text-gray-900">
+                الموزعين النشطين
+              </h2>
+              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                {dashboardData.distributors.length}
+              </span>
+            </div>
 
-            <EnhancedButton
-              onClick={() => navigate("/distribution/daily-operations")}
-              variant="primary"
-              className="flex items-center space-x-2 space-x-reverse"
-            >
-              <Coffee className="w-4 h-4" />
-              <span>العمليات اليومية</span>
-            </EnhancedButton>
+            <div className="flex items-center space-x-2 space-x-reverse text-sm text-gray-500">
+              <div className="flex items-center space-x-1 space-x-reverse">
+                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                <span>موقع حديث</span>
+              </div>
+              <div className="flex items-center space-x-1 space-x-reverse">
+                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                <span>موقع قديم</span>
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {dashboardData.distributors &&
-            dashboardData.distributors.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {dashboardData.distributors.length > 0 ? (
               dashboardData.distributors.map((distributor) => (
                 <motion.div
                   key={distributor.id}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   whileHover={{ scale: 1.02 }}
-                  className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-all duration-300"
+                  className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 cursor-pointer"
+                  onClick={() => handleDistributorClick(distributor.id)}
                 >
-                  {/* Distributor Header */}
-                  <div className="flex items-center justify-between mb-4">
+                  {/* Header with name and status */}
+                  <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center space-x-3 space-x-reverse">
-                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                        <User className="w-6 h-6 text-blue-600" />
+                      <div className="relative">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                          <User className="w-6 h-6 text-white" />
+                        </div>
+                        {/* Work status indicator */}
+                        <div
+                          className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
+                            distributor.work_status === "active"
+                              ? "bg-green-500"
+                              : distributor.work_status === "busy"
+                              ? "bg-yellow-500"
+                              : distributor.work_status === "break"
+                              ? "bg-blue-500"
+                              : "bg-gray-500"
+                          }`}
+                        ></div>
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="font-semibold text-gray-900">
                           {distributor.name}
                         </h3>
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(
-                            distributor.status
-                          )}`}
-                        >
-                          {getStatusText(distributor.status)}
+                        <div className="flex items-center space-x-2 space-x-reverse">
+                          <Phone className="w-3 h-3 text-gray-400" />
+                          <p className="text-sm text-gray-500">
+                            {distributor.phone}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                        distributor.work_status
+                      )}`}
+                    >
+                      {getWorkStatusText(distributor.work_status)}
+                    </span>
+                  </div>
+
+                  {/* Vehicle Information */}
+                  {distributor.vehicle_info && (
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-2 space-x-reverse mb-2">
+                        <Truck className="w-4 h-4 text-gray-600" />
+                        <span className="text-sm font-medium text-gray-700">
+                          المركبة
                         </span>
                       </div>
-                    </div>
-
-                    <EnhancedButton
-                      onClick={() =>
-                        navigateToDistributorDetails(distributor.id)
-                      }
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center space-x-1 space-x-reverse"
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span>التفاصيل</span>
-                    </EnhancedButton>
-                  </div>
-
-                  {/* Contact Information */}
-                  <div className="mb-4 space-y-2">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Phone className="w-4 h-4 mr-2" />
-                      <span>{distributor.phone || "غير محدد"}</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Mail className="w-4 h-4 mr-2" />
-                      <span>{distributor.email || "غير محدد"}</span>
-                    </div>
-                  </div>
-
-                  {/* Current Location */}
-                  <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-start space-x-2 space-x-reverse">
-                      <MapPin className="w-4 h-4 text-red-500 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">
-                          الموقع الحالي
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {distributor.current_location?.address || "غير محدد"}
-                        </p>
-                        {distributor.current_route?.current_stop && (
-                          <p className="text-xs text-blue-600 mt-1">
-                            المحطة الحالية:{" "}
-                            {distributor.current_route.current_stop}
-                          </p>
-                        )}
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <div>
+                          النوع: {distributor.vehicle_info.type || "غير محدد"}
+                        </div>
+                        <div>
+                          رقم اللوحة:{" "}
+                          {distributor.vehicle_info.plate_number || "غير محدد"}
+                        </div>
+                        <div>
+                          الموديل:{" "}
+                          {distributor.vehicle_info.model || "غير محدد"}
+                        </div>
                       </div>
                     </div>
+                  )}
+
+                  {/* Current Location */}
+                  <div className="mb-4">
+                    <div className="flex items-center space-x-2 space-x-reverse mb-2">
+                      <div className="flex items-center space-x-1 space-x-reverse">
+                        <MapPin className="w-4 h-4 text-gray-600" />
+                        <span className="text-sm font-medium text-gray-700">
+                          الموقع الحالي
+                        </span>
+                        {/* Location freshness indicator */}
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            isLocationFresh(distributor.location_updated_at)
+                              ? "bg-green-400"
+                              : "bg-gray-400"
+                          }`}
+                        ></div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      {distributor.current_location?.address ||
+                        "الموقع غير محدد"}
+                    </p>
+                    {distributor.location_updated_at && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        آخر تحديث:{" "}
+                        {new Date(
+                          distributor.location_updated_at
+                        ).toLocaleDateString("ar-SA", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    )}
+                    {distributor.current_route?.current_stop && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        المحطة الحالية: {distributor.current_route.current_stop}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Progress */}
+                  {/* Progress Bar */}
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-gray-600">
@@ -426,7 +516,7 @@ const DistributionManagerDashboard = () => {
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
-                        className="bg-blue-500 h-2 rounded-full"
+                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                         style={{
                           width: `${distributor.progress?.percentage || 0}%`,
                         }}
@@ -453,14 +543,14 @@ const DistributionManagerDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Daily Revenue & Expenses */}
+                  {/* Daily Revenue & Expenses - Enhanced Display */}
                   <div className="border-t pt-4">
                     <div className="grid grid-cols-2 gap-4">
                       {/* Revenue */}
                       <div>
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm text-gray-600 flex items-center">
-                            <Euro className="w-4 h-4 mr-1" />
+                            <Euro className="w-4 h-4 mr-1 text-green-600" />
                             الإيرادات
                           </span>
                           <span className="text-lg font-bold text-green-600">
@@ -469,11 +559,11 @@ const DistributionManagerDashboard = () => {
                         </div>
                       </div>
 
-                      {/* Expenses */}
+                      {/* Expenses - Detailed Breakdown */}
                       <div>
                         <div className="mb-2">
                           <span className="text-sm text-gray-600 flex items-center">
-                            <DollarSign className="w-4 h-4 mr-1" />
+                            <DollarSign className="w-4 h-4 mr-1 text-red-600" />
                             المصاريف
                           </span>
                         </div>
@@ -486,8 +576,9 @@ const DistributionManagerDashboard = () => {
                               </span>
                               <span className="text-red-600">
                                 €
-                                {distributor.daily_expenses.fuel?.toFixed(2) ||
-                                  "0.00"}
+                                {(distributor.daily_expenses.fuel || 0).toFixed(
+                                  2
+                                )}
                               </span>
                             </div>
                             <div className="flex items-center justify-between text-xs">
@@ -497,17 +588,18 @@ const DistributionManagerDashboard = () => {
                               </span>
                               <span className="text-red-600">
                                 €
-                                {distributor.daily_expenses.maintenance?.toFixed(
-                                  2
-                                ) || "0.00"}
+                                {(
+                                  distributor.daily_expenses.maintenance || 0
+                                ).toFixed(2)}
                               </span>
                             </div>
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-gray-500">أخرى</span>
                               <span className="text-red-600">
                                 €
-                                {distributor.daily_expenses.other?.toFixed(2) ||
-                                  "0.00"}
+                                {(
+                                  distributor.daily_expenses.other || 0
+                                ).toFixed(2)}
                               </span>
                             </div>
                             <div className="border-t pt-1 mt-2">
@@ -523,11 +615,56 @@ const DistributionManagerDashboard = () => {
                                   ).toFixed(2)}
                                 </span>
                               </div>
+                              {/* Net profit */}
+                              <div className="flex items-center justify-between text-sm font-bold mt-1 pt-1 border-t">
+                                <span className="text-gray-800">
+                                  صافي الربح
+                                </span>
+                                <span
+                                  className={`${
+                                    (distributor.daily_revenue || 0) -
+                                      ((distributor.daily_expenses?.fuel || 0) +
+                                        (distributor.daily_expenses
+                                          ?.maintenance || 0) +
+                                        (distributor.daily_expenses?.other ||
+                                          0)) >=
+                                    0
+                                      ? "text-green-700"
+                                      : "text-red-700"
+                                  }`}
+                                >
+                                  €
+                                  {(
+                                    (distributor.daily_revenue || 0) -
+                                    ((distributor.daily_expenses?.fuel || 0) +
+                                      (distributor.daily_expenses
+                                        ?.maintenance || 0) +
+                                      (distributor.daily_expenses?.other || 0))
+                                  ).toFixed(2)}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         )}
                       </div>
                     </div>
+                  </div>
+
+                  {/* Action Button */}
+                  <div className="mt-4">
+                    <EnhancedButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDistributorClick(distributor.id);
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="w-full flex items-center justify-center space-x-2 space-x-reverse hover:bg-blue-50"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>عرض التفاصيل</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </EnhancedButton>
                   </div>
                 </motion.div>
               ))
@@ -538,6 +675,14 @@ const DistributionManagerDashboard = () => {
                 <p className="text-gray-400 text-sm">
                   قم بإضافة موزعين من قسم إدارة المستخدمين
                 </p>
+                <EnhancedButton
+                  onClick={() => navigate("/users")}
+                  variant="outline"
+                  className="mt-4"
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  إضافة موزع جديد
+                </EnhancedButton>
               </div>
             )}
           </div>

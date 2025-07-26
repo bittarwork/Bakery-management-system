@@ -31,7 +31,11 @@ import {
   Coffee,
   Store,
   Timer,
-  Award
+  Award,
+  MapIcon,
+  Route,
+  History,
+  Battery
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
@@ -39,8 +43,8 @@ import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import distributionService from "../../services/distributionService";
 
 /**
- * Distributor Details Page - Complete daily work information
- * Shows detailed information about distributor's daily activities
+ * Distributor Details Page - Real Data Display
+ * Shows comprehensive distributor information including daily performance, vehicle info, and real-time location
  */
 const DistributorDetails = () => {
   const { distributorId } = useParams();
@@ -54,6 +58,9 @@ const DistributorDetails = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [distributorData, setDistributorData] = useState(null);
+  const [dailyPerformance, setDailyPerformance] = useState(null);
+  const [orderHistory, setOrderHistory] = useState([]);
+  const [locationHistory, setLocationHistory] = useState([]);
   const [activeTab, setActiveTab] = useState("overview");
 
   // Load distributor data
@@ -66,92 +73,124 @@ const DistributorDetails = () => {
       setIsLoading(true);
       setError("");
 
-      // Fetch distributor details from the distribution service
-      const response = await distributionService.getLiveTracking(selectedDate);
+      // Try to get real distributor data from enhanced API
+      const distributorResponse = await distributionService.getDistributorDetails(distributorId, selectedDate);
       
-      if (response.success && response.data.distributors) {
-        const distributor = response.data.distributors.find(d => d.id == distributorId);
-        
-        if (distributor) {
-          setDistributorData(distributor);
-        } else {
-          setError("Distributor not found");
-          setDistributorData(getMockDistributorData());
-        }
+      if (distributorResponse.success && distributorResponse.data) {
+        setDistributorData(distributorResponse.data.distributor);
+        setDailyPerformance(distributorResponse.data.daily_performance);
+        setOrderHistory(distributorResponse.data.orders || []);
+        setLocationHistory(distributorResponse.data.location_history || []);
       } else {
-        setDistributorData(getMockDistributorData());
-        toast.error("Error loading distributor data - using mock data");
+        // Fallback: Try to get user data
+        const userResponse = await fetch(`/api/users/${distributorId}`);
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          const user = userData.data;
+          
+          // Transform user data to distributor format
+          const transformedData = {
+            id: user.id,
+            name: user.full_name,
+            phone: user.phone,
+            email: user.email,
+            status: user.status || 'active',
+            work_status: user.work_status || 'offline',
+            current_location: user.current_location || {
+              address: "الموقع غير محدد",
+              lat: 33.8938,
+              lng: 35.5018,
+              last_update: new Date().toISOString()
+            },
+            location_updated_at: user.location_updated_at,
+            vehicle_info: user.vehicle_info || {
+              type: "شاحنة توزيع",
+              plate_number: `ABC-${user.id}`,
+              model: "Ford Transit",
+              year: "2020",
+              color: "أبيض"
+            },
+            daily_performance: user.daily_performance || {
+              work_started_at: null,
+              work_ended_at: null,
+              total_work_hours: 0,
+              total_orders_assigned: 0,
+              total_orders_delivered: 0,
+              total_distance_km: 0,
+              efficiency_score: 0
+            },
+            daily_revenue: 0,
+            daily_expenses: {
+              fuel: 0,
+              maintenance: 0,
+              other: 0
+            },
+            orders_delivered_today: 0,
+            current_route: {
+              current_stop: "في انتظار التعيين",
+              completed_stops: 0,
+              total_stops: 0
+            }
+          };
+
+          setDistributorData(transformedData);
+          
+          // Try to get today's orders for this distributor
+          const ordersResponse = await fetch(`/api/orders?distributor_id=${distributorId}&date=${selectedDate}`);
+          if (ordersResponse.ok) {
+            const ordersData = await ordersResponse.json();
+            setOrderHistory(ordersData.data?.orders || []);
+          }
+        } else {
+          throw new Error('Failed to load distributor data');
+        }
       }
     } catch (error) {
       console.error("Error loading distributor data:", error);
-      setError("Error loading distributor data");
-      setDistributorData(getMockDistributorData());
+      setError("حدث خطأ في تحميل بيانات الموزع");
+      toast.error("خطأ في تحميل بيانات الموزع");
+      
+      // Create basic empty state
+      setDistributorData({
+        id: parseInt(distributorId),
+        name: `موزع ${distributorId}`,
+        phone: "غير محدد",
+        email: "غير محدد",
+        status: 'active',
+        work_status: 'offline',
+        current_location: {
+          address: "الموقع غير محدد",
+          lat: 33.8938,
+          lng: 35.5018,
+          last_update: new Date().toISOString()
+        },
+        vehicle_info: {
+          type: "شاحنة توزيع",
+          plate_number: "غير محدد",
+          model: "غير محدد"
+        },
+        daily_revenue: 0,
+        daily_expenses: { fuel: 0, maintenance: 0, other: 0 },
+        efficiency_score: 0,
+        orders_delivered_today: 0
+      });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Mock data for fallback
-  const getMockDistributorData = () => {
-    return {
-      id: distributorId,
-      name: "أحمد محمود",
-      phone: "+961 70 123 456",
-      email: "ahmed@bakery.com",
-      status: "active",
-      current_location: {
-        address: "بيروت - الحمرا",
-        lat: 33.8938,
-        lng: 35.5018,
-        last_update: new Date().toISOString()
-      },
-      current_route: {
-        current_stop: "مخبزة النور",
-        completed_stops: 12,
-        total_stops: 18
-      },
-      daily_expenses: {
-        fuel: 45.50,
-        maintenance: 12.00,
-        other: 8.75
-      },
-      daily_revenue: 1250.75,
-      orders_delivered_today: 12,
-      total_orders: 18,
-      efficiency_score: 89,
-      deliveries: [
-        {
-          order_id: 1,
-          store_name: "مخبزة النور",
-          address: "بيروت - الحمرا",
-          status: "delivered",
-          amount_eur: 125.50,
-          created_at: new Date().toISOString(),
-          store_phone: "+961 1 123 456"
-        },
-        {
-          order_id: 2,
-          store_name: "متجر الصباح",
-          address: "بيروت - وسط البلد",
-          status: "pending",
-          amount_eur: 89.25,
-          created_at: new Date().toISOString(),
-          store_phone: "+961 1 789 012"
-        }
-      ]
-    };
   };
 
   const getStatusColor = (status) => {
     switch (status) {
       case "active":
         return "bg-green-100 text-green-800 border-green-200";
-      case "completed":
-        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "busy":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
       case "offline":
         return "bg-gray-100 text-gray-800 border-gray-200";
+      case "break":
+        return "bg-blue-100 text-blue-800 border-blue-200";
       default:
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
@@ -159,13 +198,23 @@ const DistributorDetails = () => {
     switch (status) {
       case "active":
         return "نشط";
-      case "completed":
-        return "مكتمل";
+      case "busy":
+        return "مشغول";
       case "offline":
         return "غير متصل";
+      case "break":
+        return "استراحة";
       default:
         return "غير محدد";
     }
+  };
+
+  const isLocationFresh = (locationUpdatedAt) => {
+    if (!locationUpdatedAt) return false;
+    const updateTime = new Date(locationUpdatedAt);
+    const now = new Date();
+    const diffMinutes = (now - updateTime) / (1000 * 60);
+    return diffMinutes <= 15; // Fresh if updated within 15 minutes
   };
 
   const getOrderStatusColor = (status) => {
@@ -280,7 +329,7 @@ const DistributorDetails = () => {
           </div>
         </motion.div>
 
-        {/* Distributor Header Card */}
+        {/* Distributor Header Card - Enhanced */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -290,8 +339,16 @@ const DistributorDetails = () => {
             <CardBody className="p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-6 space-x-reverse">
-                  <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
-                    <User className="w-10 h-10 text-white" />
+                  <div className="relative">
+                    <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                      <User className="w-10 h-10 text-white" />
+                    </div>
+                    {/* Work status indicator */}
+                    <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-3 border-white ${
+                      distributorData.work_status === 'active' ? 'bg-green-500' :
+                      distributorData.work_status === 'busy' ? 'bg-yellow-500' :
+                      distributorData.work_status === 'break' ? 'bg-blue-500' : 'bg-gray-500'
+                    }`}></div>
                   </div>
                   
                   <div>
@@ -311,34 +368,106 @@ const DistributorDetails = () => {
                     <div className="flex items-center space-x-2 space-x-reverse mt-2">
                       <MapPin className="w-4 h-4 text-red-500" />
                       <span className="text-sm text-gray-600">
-                        {distributorData.current_location?.address || "غير محدد"}
+                        {distributorData.current_location?.address || "الموقع غير محدد"}
                       </span>
+                      {/* Location freshness indicator */}
+                      <div className={`w-2 h-2 rounded-full ${
+                        isLocationFresh(distributorData.location_updated_at) ? 'bg-green-400' : 'bg-gray-400'
+                      }`}></div>
                     </div>
+                    {distributorData.location_updated_at && (
+                      <div className="text-xs text-gray-400 mt-1">
+                        آخر تحديث للموقع: {new Date(distributorData.location_updated_at).toLocaleDateString('ar-SA', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
                 
                 <div className="text-right">
                   <span
                     className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(
-                      distributorData.status
+                      distributorData.work_status
                     )}`}
                   >
-                    {getStatusText(distributorData.status)}
+                    {getStatusText(distributorData.work_status)}
                   </span>
-                  <div className="mt-2 text-sm text-gray-600">
-                    آخر تحديث: {new Date(distributorData.current_location?.last_update || new Date()).toLocaleTimeString('ar-SA')}
-                  </div>
+                  {distributorData.current_route?.current_stop && (
+                    <div className="mt-2 text-sm text-blue-600">
+                      المحطة الحالية: {distributorData.current_route.current_stop}
+                    </div>
+                  )}
                 </div>
               </div>
             </CardBody>
           </Card>
         </motion.div>
 
-        {/* Quick Stats */}
+        {/* Vehicle Information Card - Enhanced */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
+          className="mb-8"
+        >
+          <Card className="bg-white shadow-lg">
+            <CardHeader className="pb-3">
+              <div className="flex items-center space-x-2 space-x-reverse">
+                <Truck className="w-5 h-5 text-blue-600" />
+                <h3 className="text-lg font-semibold text-gray-900">معلومات المركبة</h3>
+              </div>
+            </CardHeader>
+            <CardBody className="pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-2">نوع المركبة</p>
+                  <p className="text-gray-900 font-medium">
+                    {distributorData.vehicle_info?.type || "غير محدد"}
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-2">رقم اللوحة</p>
+                  <p className="text-gray-900 font-medium">
+                    {distributorData.vehicle_info?.plate_number || "غير محدد"}
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-2">الموديل</p>
+                  <p className="text-gray-900 font-medium">
+                    {distributorData.vehicle_info?.model || "غير محدد"}
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-2">سنة الصنع</p>
+                  <p className="text-gray-900 font-medium">
+                    {distributorData.vehicle_info?.year || "غير محدد"}
+                  </p>
+                </div>
+              </div>
+              {distributorData.vehicle_info?.color && (
+                <div className="mt-4 bg-blue-50 p-3 rounded-lg">
+                  <div className="flex items-center space-x-2 space-x-reverse">
+                    <div className="w-4 h-4 rounded-full bg-gray-400"></div>
+                    <span className="text-sm text-gray-700">
+                      اللون: {distributorData.vehicle_info.color}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        </motion.div>
+
+        {/* Quick Stats - Enhanced */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
           className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"
         >
           <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg">
@@ -347,8 +476,13 @@ const DistributorDetails = () => {
                 <div>
                   <p className="text-green-100 text-sm">الإيرادات اليومية</p>
                   <p className="text-2xl font-bold">
-                    €{distributorData.daily_revenue?.toFixed(2) || "0.00"}
+                    €{(distributorData.daily_revenue || 0).toFixed(2)}
                   </p>
+                  {distributorData.daily_performance?.total_orders_delivered > 0 && (
+                    <p className="text-xs text-green-200 mt-1">
+                      متوسط الطلب: €{((distributorData.daily_revenue || 0) / distributorData.daily_performance.total_orders_delivered).toFixed(2)}
+                    </p>
+                  )}
                 </div>
                 <Euro className="w-8 h-8 text-green-200" />
               </div>
@@ -361,7 +495,14 @@ const DistributorDetails = () => {
                 <div>
                   <p className="text-red-100 text-sm">إجمالي المصاريف</p>
                   <p className="text-2xl font-bold">
-                    €{totalExpenses.toFixed(2)}
+                    €{(
+                      (distributorData.daily_expenses?.fuel || 0) +
+                      (distributorData.daily_expenses?.maintenance || 0) +
+                      (distributorData.daily_expenses?.other || 0)
+                    ).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-red-200 mt-1">
+                    وقود: €{(distributorData.daily_expenses?.fuel || 0).toFixed(2)}
                   </p>
                 </div>
                 <DollarSign className="w-8 h-8 text-red-200" />
@@ -375,7 +516,19 @@ const DistributorDetails = () => {
                 <div>
                   <p className="text-blue-100 text-sm">صافي الربح</p>
                   <p className="text-2xl font-bold">
-                    €{netProfit.toFixed(2)}
+                    €{(
+                      (distributorData.daily_revenue || 0) - 
+                      ((distributorData.daily_expenses?.fuel || 0) + 
+                       (distributorData.daily_expenses?.maintenance || 0) + 
+                       (distributorData.daily_expenses?.other || 0))
+                    ).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-blue-200 mt-1">
+                    هامش الربح: {distributorData.daily_revenue > 0 ? 
+                      (((distributorData.daily_revenue - 
+                        ((distributorData.daily_expenses?.fuel || 0) + 
+                         (distributorData.daily_expenses?.maintenance || 0) + 
+                         (distributorData.daily_expenses?.other || 0))) / distributorData.daily_revenue) * 100).toFixed(1) : 0}%
                   </p>
                 </div>
                 <TrendingUp className="w-8 h-8 text-blue-200" />
@@ -391,6 +544,9 @@ const DistributorDetails = () => {
                   <p className="text-2xl font-bold">
                     {distributorData.efficiency_score || 0}%
                   </p>
+                  <p className="text-xs text-purple-200 mt-1">
+                    طلبات مسلمة: {distributorData.daily_performance?.total_orders_delivered || 0}
+                  </p>
                 </div>
                 <Award className="w-8 h-8 text-purple-200" />
               </div>
@@ -398,64 +554,118 @@ const DistributorDetails = () => {
           </Card>
         </motion.div>
 
-        {/* Progress Overview */}
+        {/* Work Hours & Performance Card - New */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.3 }}
           className="mb-8"
         >
           <Card className="bg-white shadow-lg">
-            <CardHeader className="border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <Navigation className="w-5 h-5 mr-2" />
-                تقدم التوزيع اليومي
-              </h3>
-            </CardHeader>
-            <CardBody className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600 mb-2">
-                    {distributorData.orders_delivered_today || 0}
-                  </div>
-                  <p className="text-sm text-gray-600">طلبات مكتملة</p>
-                </div>
-                
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-yellow-600 mb-2">
-                    {(distributorData.total_orders || 0) - (distributorData.orders_delivered_today || 0)}
-                  </div>
-                  <p className="text-sm text-gray-600">طلبات متبقية</p>
-                </div>
-                
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600 mb-2">
-                    {distributorData.progress?.percentage || 0}%
-                  </div>
-                  <p className="text-sm text-gray-600">نسبة الإنجاز</p>
-                </div>
+            <CardHeader className="pb-3">
+              <div className="flex items-center space-x-2 space-x-reverse">
+                <Clock className="w-5 h-5 text-blue-600" />
+                <h3 className="text-lg font-semibold text-gray-900">ساعات العمل والأداء اليومي</h3>
               </div>
-              
-              <div className="mt-6">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-600">تقدم المسار</span>
-                  <span className="text-sm font-medium text-gray-900">
-                    {distributorData.current_route?.completed_stops || 0} / {distributorData.current_route?.total_stops || 0}
-                  </span>
+            </CardHeader>
+            <CardBody className="pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Trabalho horas */}
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="flex items-center space-x-2 space-x-reverse mb-3">
+                    <Timer className="w-5 h-5 text-blue-600" />
+                    <h4 className="font-medium text-gray-900">ساعات العمل</h4>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">بداية العمل:</span>
+                      <span className="font-medium">
+                        {distributorData.daily_performance?.work_started_at || "لم يبدأ"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">نهاية العمل:</span>
+                      <span className="font-medium">
+                        {distributorData.daily_performance?.work_ended_at || "لم ينته"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm font-bold border-t pt-2">
+                      <span className="text-gray-700">إجمالي الساعات:</span>
+                      <span className="text-blue-600">
+                        {distributorData.daily_performance?.total_work_hours || 0} ساعة
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full"
-                    style={{
-                      width: `${distributorData.progress?.percentage || 0}%`,
-                    }}
-                  ></div>
+
+                {/* Orders Performance */}
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="flex items-center space-x-2 space-x-reverse mb-3">
+                    <Package className="w-5 h-5 text-green-600" />
+                    <h4 className="font-medium text-gray-900">أداء الطلبات</h4>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">طلبات مُعينة:</span>
+                      <span className="font-medium">
+                        {distributorData.daily_performance?.total_orders_assigned || 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">طلبات مُسلمة:</span>
+                      <span className="font-medium text-green-600">
+                        {distributorData.daily_performance?.total_orders_delivered || 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">طلبات فاشلة:</span>
+                      <span className="font-medium text-red-600">
+                        {distributorData.daily_performance?.total_orders_failed || 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm font-bold border-t pt-2">
+                      <span className="text-gray-700">نسبة النجاح:</span>
+                      <span className="text-green-600">
+                        {distributorData.daily_performance?.total_orders_assigned > 0 ? 
+                          ((distributorData.daily_performance.total_orders_delivered / distributorData.daily_performance.total_orders_assigned) * 100).toFixed(1) : 0}%
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                {distributorData.current_route?.current_stop && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    المحطة التالية: {distributorData.current_route.current_stop}
-                  </p>
-                )}
+
+                {/* Distance & Route */}
+                <div className="bg-orange-50 p-4 rounded-lg">
+                  <div className="flex items-center space-x-2 space-x-reverse mb-3">
+                    <Route className="w-5 h-5 text-orange-600" />
+                    <h4 className="font-medium text-gray-900">المسافة والمسار</h4>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">المسافة المقطوعة:</span>
+                      <span className="font-medium">
+                        {distributorData.daily_performance?.total_distance_km || 0} كم
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">متوسط وقت التسليم:</span>
+                      <span className="font-medium">
+                        {distributorData.daily_performance?.average_delivery_time_minutes || 0} دقيقة
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">المحطة الحالية:</span>
+                      <span className="font-medium text-orange-600">
+                        {distributorData.current_route?.current_stop || "غير محدد"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm font-bold border-t pt-2">
+                      <span className="text-gray-700">التقدم:</span>
+                      <span className="text-orange-600">
+                        {distributorData.current_route?.completed_stops || 0}/{distributorData.current_route?.total_stops || 0}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardBody>
           </Card>
@@ -551,7 +761,7 @@ const DistributorDetails = () => {
                     <div>
                       <p className="text-sm text-gray-600 mb-2">نوع المركبة</p>
                       <p className="text-gray-900 font-medium">
-                        {distributorData.vehicle || "مركبة توزيع"}
+                        {distributorData.vehicle_info?.type || "مركبة توزيع"}
                       </p>
                     </div>
                     
