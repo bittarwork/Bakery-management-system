@@ -1,6 +1,6 @@
 import express from 'express';
 import { advancedAnalyticsController } from '../controllers/advancedAnalyticsController.js';
-import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { protect, authorize } from '../middleware/auth.js';
 import rateLimit from 'express-rate-limit';
 
 const router = express.Router();
@@ -18,7 +18,7 @@ const analyticsRateLimit = rateLimit({
 });
 
 // Apply authentication to all routes
-router.use(authenticateToken);
+router.use(protect);
 router.use(analyticsRateLimit);
 
 /**
@@ -341,7 +341,7 @@ router.get('/predictions/insights', async (req, res) => {
  * @desc Get analytics system health status
  * @access Admin only
  */
-router.get('/system-health', requireRole('admin'), async (req, res) => {
+router.get('/system-health', authorize('admin'), async (req, res) => {
     try {
         const health = {
             status: 'healthy',

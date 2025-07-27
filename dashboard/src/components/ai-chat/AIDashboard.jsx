@@ -19,8 +19,8 @@ import {
 } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '../ui/Card';
 import LoadingSpinner from '../ui/LoadingSpinner';
-import { aiChatService } from '../../services/aiChatService';
-import { dashboardService } from '../../services/dashboardService';
+import aiChatService from '../../services/aiChatService';
+import dashboardService from '../../services/dashboardService';
 
 const AIDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);

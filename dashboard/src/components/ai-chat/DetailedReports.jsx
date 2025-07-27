@@ -37,7 +37,7 @@ import {
 import { Card, CardHeader, CardBody } from "../ui/Card";
 import LoadingSpinner from "../ui/LoadingSpinner";
 import EnhancedButton from "../ui/EnhancedButton";
-import { aiChatService } from "../../services/aiChatService";
+import aiChatService from "../../services/aiChatService";
 import { reportsService } from "../../services/reportsService";
 
 const DetailedReports = () => {

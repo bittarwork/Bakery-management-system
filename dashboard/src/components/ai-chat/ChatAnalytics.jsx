@@ -28,7 +28,7 @@ import {
   Zap,
   Users,
 } from "lucide-react";
-import { aiChatService } from "../../services/aiChatService";
+import aiChatService from "../../services/aiChatService";
 
 const ChatAnalytics = () => {
   const [analytics, setAnalytics] = useState(null);
