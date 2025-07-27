@@ -88,16 +88,25 @@ class DashboardService {
             include_details = false
         } = params;
 
-        const queryParams = new URLSearchParams({
-            period,
-            currency,
-            include_details: include_details.toString()
-        });
+        // Try new advanced analytics API first, fallback to old API
+        try {
+            const queryParams = new URLSearchParams({ period });
+            return await apiService.get(`/analytics/dashboard-stats?${queryParams}`);
+        } catch (error) {
+            console.warn('Advanced analytics API not available, using fallback:', error);
 
-        if (dateFrom) queryParams.append('date_from', dateFrom);
-        if (dateTo) queryParams.append('date_to', dateTo);
+            // Fallback to old API
+            const queryParams = new URLSearchParams({
+                period,
+                currency,
+                include_details: include_details.toString()
+            });
 
-        return await apiService.get(`/dashboard/stats?${queryParams}`);
+            if (dateFrom) queryParams.append('date_from', dateFrom);
+            if (dateTo) queryParams.append('date_to', dateTo);
+
+            return await apiService.get(`/dashboard/stats?${queryParams}`);
+        }
     }
 
     /**

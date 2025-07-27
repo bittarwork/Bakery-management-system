@@ -32,6 +32,9 @@ import enhancedDistributorRoutes from './enhancedDistributorRoutes.js';
 import aiChatRoutes from './aiChatRoutes.js';
 import conversationRoutes from './conversationRoutes.js';
 
+// Import Advanced Analytics routes
+import advancedAnalyticsRoutes from './advancedAnalyticsRoutes.js';
+
 const router = express.Router();
 
 // API Documentation endpoint
@@ -69,7 +72,10 @@ router.get('/', (req, res) => {
             enhancedPricing: '/api/pricing',
             distributors: '/api/distributors',
             // AI Chat System
-            aiChat: '/api/ai-chat'
+            aiChat: '/api/ai-chat',
+            // Advanced Analytics System
+            analytics: '/api/analytics',
+            predictions: '/api/predictions'
         },
         documentation: {
             api_docs: '/api/docs',
@@ -117,6 +123,11 @@ router.use('/ai-chat', aiChatRoutes);
 // Mount conversation management routes
 router.use('/conversations', conversationRoutes);
 
+// Mount Advanced Analytics routes
+router.use('/analytics', advancedAnalyticsRoutes);
+router.use('/reports', advancedAnalyticsRoutes);
+router.use('/predictions', advancedAnalyticsRoutes);
+
 // Health check endpoint
 router.get('/health', (req, res) => {
     res.json({
@@ -143,7 +154,10 @@ router.get('/status', async (req, res) => {
                 payments: 'active',
                 reports: 'active',
                 maps: 'active',
-                notifications: 'active'
+                notifications: 'active',
+                aiChat: 'active',
+                analytics: 'active',
+                predictions: 'active'
             },
             timestamp: new Date().toISOString()
         });
