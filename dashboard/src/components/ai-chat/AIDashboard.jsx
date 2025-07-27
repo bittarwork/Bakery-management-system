@@ -95,13 +95,26 @@ const AIDashboard = () => {
     );
   }
 
-  const stats = dashboardData || {};
+  const stats = dashboardData || {
+    totalRevenue: 0,
+    totalOrders: 0,
+    activeProducts: 0,
+    activeStores: 0,
+    averageOrderValue: 0,
+    revenueChange: 0,
+    ordersChange: 0,
+    productsChange: 0,
+    storesChange: 0,
+    topProduct: null,
+    peakHour: null,
+    activeCustomers: 0
+  };
 
   // Main KPI cards
   const kpiCards = [
     {
       title: 'إجمالي الإيرادات',
-      value: `${(stats.totalRevenue || 0).toFixed(2)} €`,
+      value: `${(parseFloat(stats.totalRevenue) || 0).toFixed(2)} €`,
       change: stats.revenueChange || 0,
       icon: DollarSign,
       color: 'bg-green-500',
@@ -110,7 +123,7 @@ const AIDashboard = () => {
     },
     {
       title: 'عدد الطلبات',
-      value: stats.totalOrders || 0,
+      value: parseInt(stats.totalOrders) || 0,
       change: stats.ordersChange || 0,
       icon: ShoppingCart,
       color: 'bg-blue-500',
@@ -119,7 +132,7 @@ const AIDashboard = () => {
     },
     {
       title: 'المنتجات النشطة',
-      value: stats.activeProducts || 0,
+      value: parseInt(stats.activeProducts) || 0,
       change: stats.productsChange || 0,
       icon: Package,
       color: 'bg-purple-500',
@@ -128,7 +141,7 @@ const AIDashboard = () => {
     },
     {
       title: 'المتاجر النشطة',
-      value: stats.activeStores || 0,
+      value: parseInt(stats.activeStores) || 0,
       change: stats.storesChange || 0,
       icon: Store,
       color: 'bg-orange-500',
@@ -155,14 +168,14 @@ const AIDashboard = () => {
     },
     {
       title: 'متوسط الطلب',
-      value: `${(stats.averageOrderValue || 0).toFixed(2)} €`,
+      value: `${(parseFloat(stats.averageOrderValue) || 0).toFixed(2)} €`,
       subtitle: 'لكل طلب',
       icon: BarChart3,
       color: 'text-purple-600'
     },
     {
       title: 'العملاء النشطين',
-      value: stats.activeCustomers || 0,
+      value: parseInt(stats.activeCustomers) || 0,
       subtitle: 'اليوم',
       icon: Users,
       color: 'text-orange-600'

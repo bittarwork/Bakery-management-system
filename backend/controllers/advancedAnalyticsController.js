@@ -202,8 +202,13 @@ class AdvancedAnalyticsController {
      * Get profitability report
      */
     async getProfitabilityReport(dateRange, storeId) {
-        const dateCondition = this.getDateCondition(dateRange);
-        const storeCondition = storeId ? `AND o.store_id = ${storeId}` : '';
+        // Convert dateRange to proper format if it's a string
+        const dateRangeObj = typeof dateRange === 'string' ? this.getDateRange(dateRange) : dateRange;
+        const dateCondition = `AND o.created_at BETWEEN ? AND ?`;
+        const storeCondition = storeId ? `AND o.store_id = ?` : '';
+
+        const queryParams = [dateRangeObj.start, dateRangeObj.end];
+        if (storeId) queryParams.push(storeId);
 
         const [products] = await this.dbPool.execute(`
             SELECT 
@@ -233,7 +238,7 @@ class AdvancedAnalyticsController {
             WHERE p.status = 'active' ${dateCondition} ${storeCondition}
             GROUP BY p.id, p.name, p.price_eur, p.cost_eur
             ORDER BY profit DESC
-        `);
+        `, queryParams);
 
         const summary = {
             totalProfit: products.reduce((sum, p) => sum + parseFloat(p.profit || 0), 0),
@@ -250,8 +255,13 @@ class AdvancedAnalyticsController {
      * Get peak hours report
      */
     async getPeakHoursReport(dateRange, storeId) {
-        const dateCondition = this.getDateCondition(dateRange);
-        const storeCondition = storeId ? `AND store_id = ${storeId}` : '';
+        // Convert dateRange to proper format if it's a string
+        const dateRangeObj = typeof dateRange === 'string' ? this.getDateRange(dateRange) : dateRange;
+        const dateCondition = `AND created_at BETWEEN ? AND ?`;
+        const storeCondition = storeId ? `AND store_id = ?` : '';
+
+        const queryParams = [dateRangeObj.start, dateRangeObj.end];
+        if (storeId) queryParams.push(storeId);
 
         const [hourlyData] = await this.dbPool.execute(`
             SELECT 
@@ -263,7 +273,7 @@ class AdvancedAnalyticsController {
             WHERE status != 'cancelled' ${dateCondition} ${storeCondition}
             GROUP BY HOUR(created_at)
             ORDER BY hour
-        `);
+        `, queryParams);
 
         // Find peak periods
         const sortedByOrders = [...hourlyData].sort((a, b) => b.orders - a.orders);
@@ -282,7 +292,9 @@ class AdvancedAnalyticsController {
      * Get store performance report
      */
     async getStorePerformanceReport(dateRange) {
-        const dateCondition = this.getDateCondition(dateRange);
+        // Convert dateRange to proper format if it's a string
+        const dateRangeObj = typeof dateRange === 'string' ? this.getDateRange(dateRange) : dateRange;
+        const dateCondition = `AND o.created_at BETWEEN ? AND ?`;
 
         const [stores] = await this.dbPool.execute(`
             SELECT 
@@ -305,7 +317,7 @@ class AdvancedAnalyticsController {
             WHERE s.status = 'active'
             GROUP BY s.id, s.name, s.location
             ORDER BY revenue DESC
-        `);
+        `, [dateRangeObj.start, dateRangeObj.end]);
 
         const comparison = {
             topPerformer: stores[0] || null,
@@ -494,8 +506,20 @@ class AdvancedAnalyticsController {
             case 'month':
                 startDate.setMonth(now.getMonth() - 1);
                 break;
+            case 'last7days':
+                startDate.setDate(now.getDate() - 7);
+                break;
+            case 'last30days':
+                startDate.setDate(now.getDate() - 30);
+                break;
+            case 'last90days':
+                startDate.setDate(now.getDate() - 90);
+                break;
+            case 'thisyear':
+                startDate = new Date(now.getFullYear(), 0, 1);
+                break;
             default:
-                startDate.setHours(0, 0, 0, 0);
+                startDate.setDate(now.getDate() - 30); // Default to last 30 days
         }
 
         return { start: startDate, end: now };
