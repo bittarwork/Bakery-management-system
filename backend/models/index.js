@@ -4,6 +4,7 @@ import Store from './Store.js';
 import Product from './Product.js';
 import Order from './Order.js';
 import OrderItem from './OrderItem.js';
+import Vehicle from './Vehicle.js';
 import UserSession from './UserSession.js';
 import Payment from './Payment.js';
 import Notification from './Notification.js';
@@ -86,6 +87,11 @@ const defineAssociations = () => {
     User.hasMany(Order, { foreignKey: 'assigned_distributor_id', as: 'distributedOrders' });
     User.hasMany(UserSession, { foreignKey: 'user_id', as: 'sessions' });
     User.hasMany(Payment, { foreignKey: 'created_by', as: 'payments' });
+    User.hasMany(Vehicle, { foreignKey: 'assigned_distributor_id', as: 'assignedVehicles' });
+
+    // Vehicle associations
+    Vehicle.belongsTo(User, { foreignKey: 'assigned_distributor_id', as: 'assignedDistributor' });
+    Vehicle.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
 
     // Payment associations
     Payment.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
@@ -190,6 +196,7 @@ const initializeModels = async () => {
             Product,
             Order,
             OrderItem,
+            Vehicle,
             UserSession,
             Payment,
             Notification,
@@ -213,6 +220,7 @@ export {
     Product,
     Order,
     OrderItem,
+    Vehicle,
     UserSession,
     Payment,
     Notification,
@@ -234,6 +242,7 @@ export default {
     Product,
     Order,
     OrderItem,
+    Vehicle,
     UserSession,
     Payment,
     Notification,

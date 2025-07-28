@@ -23,6 +23,13 @@ import {
   Truck,
   Heart,
   AlertTriangle,
+  Info,
+  CheckCircle,
+  ShoppingBag,
+  Barcode,
+  Layers,
+  Calculator,
+  Package2,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import Button from "../../components/ui/Button";
@@ -33,14 +40,15 @@ const CreateProductPage = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showCostFields, setShowCostFields] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [showAdvancedFields, setShowAdvancedFields] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    category: "",
-    unit: "",
+    category: "other",
+    unit: "piece",
     price_eur: "",
     price_syp: "",
     cost_eur: "",
@@ -65,6 +73,62 @@ const CreateProductPage = () => {
   });
   const [errors, setErrors] = useState({});
 
+  // Categories with icons and colors
+  const categories = [
+    {
+      value: "bread",
+      label: "Bread & Baked Goods",
+      icon: "🍞",
+      color: "bg-amber-100 text-amber-800",
+    },
+    {
+      value: "pastry",
+      label: "Pastries",
+      icon: "🥐",
+      color: "bg-orange-100 text-orange-800",
+    },
+    {
+      value: "cake",
+      label: "Cakes & Desserts",
+      icon: "🎂",
+      color: "bg-pink-100 text-pink-800",
+    },
+    {
+      value: "drink",
+      label: "Beverages",
+      icon: "☕",
+      color: "bg-blue-100 text-blue-800",
+    },
+    {
+      value: "snack",
+      label: "Snacks",
+      icon: "🥨",
+      color: "bg-green-100 text-green-800",
+    },
+    {
+      value: "seasonal",
+      label: "Seasonal Items",
+      icon: "🎄",
+      color: "bg-purple-100 text-purple-800",
+    },
+    {
+      value: "other",
+      label: "Other",
+      icon: "📦",
+      color: "bg-gray-100 text-gray-800",
+    },
+  ];
+
+  const units = [
+    { value: "piece", label: "Piece", icon: "🔢" },
+    { value: "kg", label: "Kilogram", icon: "⚖️" },
+    { value: "gram", label: "Gram", icon: "📏" },
+    { value: "liter", label: "Liter", icon: "🥤" },
+    { value: "ml", label: "Milliliter", icon: "💧" },
+    { value: "box", label: "Box", icon: "📦" },
+    { value: "pack", label: "Pack", icon: "📦" },
+  ];
+
   // Handle form field changes
   const handleChange = (field, value) => {
     setFormData((prev) => ({
@@ -76,7 +140,7 @@ const CreateProductPage = () => {
     if (errors[field]) {
       setErrors((prev) => ({
         ...prev,
-        [field]: null,
+        [field]: "",
       }));
     }
   };
@@ -292,33 +356,57 @@ const CreateProductPage = () => {
             ? formData.image_url
             : null,
         // Convert dates
-        expiry_date: formData.expiry_date ? new Date(formData.expiry_date) : null,
-        production_date: formData.production_date ? new Date(formData.production_date) : null,
+        expiry_date: formData.expiry_date
+          ? new Date(formData.expiry_date)
+          : null,
+        production_date: formData.production_date
+          ? new Date(formData.production_date)
+          : null,
         // Convert dimensions to JSON
-        dimensions: formData.dimensions_length || formData.dimensions_width || formData.dimensions_height ? {
-          length: formData.dimensions_length ? parseFloat(formData.dimensions_length) : null,
-          width: formData.dimensions_width ? parseFloat(formData.dimensions_width) : null,
-          height: formData.dimensions_height ? parseFloat(formData.dimensions_height) : null,
-          unit: "cm"
-        } : null,
+        dimensions:
+          formData.dimensions_length ||
+          formData.dimensions_width ||
+          formData.dimensions_height
+            ? {
+                length: formData.dimensions_length
+                  ? parseFloat(formData.dimensions_length)
+                  : null,
+                width: formData.dimensions_width
+                  ? parseFloat(formData.dimensions_width)
+                  : null,
+                height: formData.dimensions_height
+                  ? parseFloat(formData.dimensions_height)
+                  : null,
+                unit: "cm",
+              }
+            : null,
         // Convert text fields to JSON
-        supplier_info: formData.supplier_info && formData.supplier_info.trim() !== "" ? {
-          name: formData.supplier_info,
-          contact: "",
-          notes: ""
-        } : null,
-        nutritional_info: formData.nutritional_info && formData.nutritional_info.trim() !== "" ? {
-          description: formData.nutritional_info,
-          calories: null,
-          protein: null,
-          carbs: null,
-          fat: null
-        } : null,
-        allergen_info: formData.allergen_info && formData.allergen_info.trim() !== "" ? {
-          description: formData.allergen_info,
-          contains: [],
-          may_contain: []
-        } : null,
+        supplier_info:
+          formData.supplier_info && formData.supplier_info.trim() !== ""
+            ? {
+                name: formData.supplier_info,
+                contact: "",
+                notes: "",
+              }
+            : null,
+        nutritional_info:
+          formData.nutritional_info && formData.nutritional_info.trim() !== ""
+            ? {
+                description: formData.nutritional_info,
+                calories: null,
+                protein: null,
+                carbs: null,
+                fat: null,
+              }
+            : null,
+        allergen_info:
+          formData.allergen_info && formData.allergen_info.trim() !== ""
+            ? {
+                description: formData.allergen_info,
+                contains: [],
+                may_contain: [],
+              }
+            : null,
       };
 
       // Log processed product data for debugging
@@ -361,597 +449,608 @@ const CreateProductPage = () => {
     }
   };
 
-  // Categories for dropdown
-  const categories = [
-    { value: "bread", label: "خبز" },
-    { value: "pastry", label: "معجنات" },
-    { value: "cake", label: "كيك" },
-    { value: "drink", label: "مشروبات" },
-    { value: "snack", label: "وجبات خفيفة" },
-    { value: "seasonal", label: "موسمي" },
-    { value: "other", label: "أخرى" },
-  ];
-
-  // Units for dropdown
-  const units = [
-    { value: "piece", label: "Piece" },
-    { value: "kg", label: "Kilogram" },
-    { value: "g", label: "Gram" },
-    { value: "loaf", label: "Loaf" },
-    { value: "box", label: "Box" },
-    { value: "pack", label: "Pack" },
-  ];
-
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
-        <div className="flex items-center space-x-4">
-          <Link to="/products" className="text-gray-500 hover:text-gray-700">
-            <ArrowLeft className="w-6 h-6" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Add New Product
-            </h1>
-            <p className="text-gray-600">
-              Create a new product for your bakery
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link
+                to="/products"
+                className="flex items-center justify-center w-10 h-10 rounded-lg bg-white shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
+              </Link>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Create New Product
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  Add a new product to your bakery inventory
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAdvancedFields(!showAdvancedFields)}
+                icon={
+                  showAdvancedFields ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )
+                }
+              >
+                {showAdvancedFields ? "Hide" : "Show"} Advanced Fields
+              </Button>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowCostFields(!showCostFields)}
-            icon={
-              showCostFields ? (
-                <EyeOff className="w-4 h-4" />
-              ) : (
-                <Eye className="w-4 h-4" />
-              )
-            }
+        </motion.div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Information Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
           >
-            {showCostFields ? "Hide" : "Show"} Cost Fields
-          </Button>
-        </div>
-      </motion.div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic Information */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center">
-              <Package className="w-5 h-5 text-blue-600 mr-2" />
-              <h2 className="text-lg font-semibold text-gray-900">
-                Basic Information
-              </h2>
-            </div>
-          </CardHeader>
-          <CardBody className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Product Name *
-                </label>
-                <Input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => handleChange("name", e.target.value)}
-                  placeholder="Enter product name"
-                  error={errors.name}
-                  icon={<Package className="w-4 h-4" />}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Category *
-                </label>
-                <select
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.category ? "border-red-500" : "border-gray-300"
-                  }`}
-                  value={formData.category}
-                  onChange={(e) => handleChange("category", e.target.value)}
-                >
-                  <option value="">Select a category</option>
-                  {categories.map((cat) => (
-                    <option key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.category && (
-                  <p className="mt-1 text-sm text-red-600">{errors.category}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Unit *
-                </label>
-                <select
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.unit ? "border-red-500" : "border-gray-300"
-                  }`}
-                  value={formData.unit}
-                  onChange={(e) => handleChange("unit", e.target.value)}
-                >
-                  <option value="">Select a unit</option>
-                  {units.map((unit) => (
-                    <option key={unit.value} value={unit.value}>
-                      {unit.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.unit && (
-                  <p className="mt-1 text-sm text-red-600">{errors.unit}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Barcode
-                </label>
-                <Input
-                  type="text"
-                  value={formData.barcode}
-                  onChange={(e) => handleChange("barcode", e.target.value)}
-                  placeholder="Enter barcode"
-                  icon={<Tag className="w-4 h-4" />}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description
-              </label>
-              <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                rows={3}
-                value={formData.description}
-                onChange={(e) => handleChange("description", e.target.value)}
-                placeholder="Enter product description"
-              />
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="is_featured"
-                  checked={formData.is_featured}
-                  onChange={(e) =>
-                    handleChange("is_featured", e.target.checked)
-                  }
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <label
-                  htmlFor="is_featured"
-                  className="ml-2 text-sm text-gray-700 flex items-center"
-                >
-                  <Star className="w-4 h-4 mr-1" />
-                  Featured Product
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <select
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={formData.status}
-                  onChange={(e) => handleChange("status", e.target.value)}
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        {/* Pricing */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center">
-              <DollarSign className="w-5 h-5 text-green-600 mr-2" />
-              <h2 className="text-lg font-semibold text-gray-900">Pricing</h2>
-            </div>
-          </CardHeader>
-          <CardBody className="space-y-4">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Price (EUR) *
-                </label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.price_eur}
-                  onChange={(e) => handleChange("price_eur", e.target.value)}
-                  placeholder="0.00"
-                  error={errors.price_eur}
-                  icon={<span className="text-green-600 font-medium">€</span>}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Primary pricing in EUR (Euro) - Required
-                </p>
-              </div>
-
-              <div className="pt-4 border-t border-gray-200">
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-medium text-gray-600">
-                    Alternative Price (SYP)
-                  </label>
-                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                    Optional
-                  </span>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <Package className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Basic Information
+                    </h2>
+                    <p className="text-sm text-gray-600">
+                      Essential product details
+                    </p>
+                  </div>
                 </div>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.price_syp}
-                  onChange={(e) => handleChange("price_syp", e.target.value)}
-                  placeholder="0.00"
-                  error={errors.price_syp}
-                  icon={<span className="text-gray-400">ل.س</span>}
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  Alternative pricing in Syrian Pound (optional)
-                </p>
-              </div>
-            </div>
-
-            {showCostFields && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cost (EUR)
-                  </label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.cost_eur}
-                    onChange={(e) => handleChange("cost_eur", e.target.value)}
-                    placeholder="0.00"
-                    icon={<span className="text-gray-500">€</span>}
-                  />
+              </CardHeader>
+              <CardBody className="space-y-6">
+                {/* Product Name & Description */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="lg:col-span-1">
+                    <Input
+                      label="Product Name *"
+                      name="name"
+                      value={formData.name}
+                      onChange={(e) => handleChange("name", e.target.value)}
+                      error={errors.name}
+                      placeholder="e.g., Chocolate Croissant"
+                      icon={<ShoppingBag className="w-4 h-4" />}
+                    />
+                  </div>
+                  <div className="lg:col-span-1">
+                    <Input
+                      label="Barcode (Optional)"
+                      name="barcode"
+                      value={formData.barcode}
+                      onChange={(e) => handleChange("barcode", e.target.value)}
+                      error={errors.barcode}
+                      placeholder="e.g., 1234567890123"
+                      icon={<Barcode className="w-4 h-4" />}
+                    />
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cost (SYP)
+                    Description
                   </label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.cost_syp}
-                    onChange={(e) => handleChange("cost_syp", e.target.value)}
-                    placeholder="0.00"
-                    icon={<span className="text-gray-500">₺</span>}
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={(e) =>
+                      handleChange("description", e.target.value)
+                    }
+                    error={errors.description}
+                    placeholder="Describe your product..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   />
+                  {errors.description && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.description}
+                    </p>
+                  )}
                 </div>
-              </div>
-            )}
-          </CardBody>
-        </Card>
 
-        {/* Inventory */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center">
-              <Package className="w-5 h-5 text-purple-600 mr-2" />
-              <h2 className="text-lg font-semibold text-gray-900">Inventory</h2>
-            </div>
-          </CardHeader>
-          <CardBody className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Initial Stock Quantity
-                </label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={formData.stock_quantity}
-                  onChange={(e) =>
-                    handleChange("stock_quantity", e.target.value)
-                  }
-                  placeholder="0"
-                  error={errors.stock_quantity}
-                  icon={<Package className="w-4 h-4" />}
-                />
-              </div>
+                {/* Category & Unit */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Category *
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {categories.map((category) => (
+                        <button
+                          key={category.value}
+                          type="button"
+                          onClick={() =>
+                            handleChange("category", category.value)
+                          }
+                          className={`p-3 rounded-lg border-2 transition-all ${
+                            formData.category === category.value
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          <div className="text-center">
+                            <span className="text-2xl mb-1 block">
+                              {category.icon}
+                            </span>
+                            <span className="text-xs font-medium text-gray-700">
+                              {category.label}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    {errors.category && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.category}
+                      </p>
+                    )}
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Minimum Stock Level
-                </label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={formData.minimum_stock}
-                  onChange={(e) =>
-                    handleChange("minimum_stock", e.target.value)
-                  }
-                  placeholder="0"
-                  error={errors.minimum_stock}
-                  icon={<AlertTriangle className="w-4 h-4" />}
-                />
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        {/* Product Image */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center">
-              <Image className="w-5 h-5 text-indigo-600 mr-2" />
-              <h2 className="text-lg font-semibold text-gray-900">
-                Product Image
-              </h2>
-            </div>
-          </CardHeader>
-          <CardBody>
-            <div className="space-y-4">
-              {!imagePreview ? (
-                <div
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">Click to upload product image</p>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Supports: JPG, PNG, GIF (Max 5MB)
-                  </p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Unit *
+                    </label>
+                    <div className="space-y-2">
+                      {units.map((unit) => (
+                        <button
+                          key={unit.value}
+                          type="button"
+                          onClick={() => handleChange("unit", unit.value)}
+                          className={`w-full p-3 rounded-lg border-2 transition-all flex items-center gap-3 ${
+                            formData.unit === unit.value
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          <span className="text-lg">{unit.icon}</span>
+                          <span className="text-sm font-medium text-gray-700">
+                            {unit.label}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                    {errors.unit && (
+                      <p className="text-red-500 text-xs mt-1">{errors.unit}</p>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <div className="relative">
-                  <img
-                    src={imagePreview}
-                    alt="Product preview"
-                    className="w-full h-64 object-cover rounded-lg border"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute top-2 right-2 bg-white shadow-md"
-                    onClick={handleRemoveImage}
-                    icon={<X className="w-4 h-4" />}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              )}
+              </CardBody>
+            </Card>
+          </motion.div>
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-            </div>
-          </CardBody>
-        </Card>
-
-        {/* Additional Details */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center">
-              <FileText className="w-5 h-5 text-orange-600 mr-2" />
-              <h2 className="text-lg font-semibold text-gray-900">
-                Additional Details
-              </h2>
-            </div>
-          </CardHeader>
-          <CardBody className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  الوزن (جرام)
-                </label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={formData.weight_grams}
-                  onChange={(e) => handleChange("weight_grams", e.target.value)}
-                  placeholder="0"
-                  error={errors.weight_grams}
-                  icon={<Scale className="w-4 h-4" />}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  فترة الصلاحية (أيام)
-                </label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={formData.shelf_life_days}
-                  onChange={(e) =>
-                    handleChange("shelf_life_days", e.target.value)
-                  }
-                  placeholder="0"
-                  error={errors.shelf_life_days}
-                  icon={<Calendar className="w-4 h-4" />}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  تاريخ الإنتاج
-                </label>
-                <Input
-                  type="date"
-                  value={formData.production_date}
-                  onChange={(e) => handleChange("production_date", e.target.value)}
-                  error={errors.production_date}
-                  icon={<Calendar className="w-4 h-4" />}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  تاريخ انتهاء الصلاحية
-                </label>
-                <Input
-                  type="date"
-                  value={formData.expiry_date}
-                  onChange={(e) => handleChange("expiry_date", e.target.value)}
-                  error={errors.expiry_date}
-                  icon={<Calendar className="w-4 h-4" />}
-                />
-              </div>
-            </div>
-
-            {/* أبعاد المنتج */}
-            <div>
-              <h3 className="text-md font-medium text-gray-900 mb-3 flex items-center">
-                <Package className="w-4 h-4 mr-2" />
-                أبعاد المنتج (سم)
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    الطول
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    value={formData.dimensions_length}
-                    onChange={(e) => handleChange("dimensions_length", e.target.value)}
-                    placeholder="0.0"
-                    icon={<span className="text-gray-500 text-xs">سم</span>}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    العرض
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    value={formData.dimensions_width}
-                    onChange={(e) => handleChange("dimensions_width", e.target.value)}
-                    placeholder="0.0"
-                    icon={<span className="text-gray-500 text-xs">سم</span>}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    الارتفاع
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    value={formData.dimensions_height}
-                    onChange={(e) => handleChange("dimensions_height", e.target.value)}
-                    placeholder="0.0"
-                    icon={<span className="text-gray-500 text-xs">سم</span>}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                شروط التخزين
-              </label>
-              <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                rows={2}
-                value={formData.storage_conditions}
-                onChange={(e) =>
-                  handleChange("storage_conditions", e.target.value)
-                }
-                placeholder="أدخل شروط التخزين"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                معلومات المورد
-              </label>
-              <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                rows={2}
-                value={formData.supplier_info}
-                onChange={(e) => handleChange("supplier_info", e.target.value)}
-                placeholder="أدخل معلومات المورد"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                المعلومات الغذائية
-              </label>
-              <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                rows={3}
-                value={formData.nutritional_info}
-                onChange={(e) =>
-                  handleChange("nutritional_info", e.target.value)
-                }
-                placeholder="أدخل المعلومات الغذائية"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                معلومات الحساسية
-              </label>
-              <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                rows={2}
-                value={formData.allergen_info}
-                onChange={(e) => handleChange("allergen_info", e.target.value)}
-                placeholder="أدخل معلومات المواد المسببة للحساسية"
-              />
-            </div>
-          </CardBody>
-        </Card>
-
-        {/* Action Buttons */}
-        <div className="flex justify-end space-x-3">
-          <Link to="/products">
-            <Button variant="outline">Cancel</Button>
-          </Link>
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={isSubmitting}
-            icon={
-              isSubmitting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )
-            }
+          {/* Pricing & Inventory Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
           >
-            {isSubmitting ? "Creating..." : "Create Product"}
-          </Button>
-        </div>
-      </form>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                    <DollarSign className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Pricing & Inventory
+                    </h2>
+                    <p className="text-sm text-gray-600">
+                      Set prices and manage stock
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardBody className="space-y-6">
+                {/* Pricing */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <DollarSign className="w-5 h-5 text-green-600" />
+                      <span className="font-medium text-gray-900">
+                        Selling Prices
+                      </span>
+                    </div>
+                    <Input
+                      label="Price in EUR *"
+                      name="price_eur"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={formData.price_eur}
+                      onChange={(e) =>
+                        handleChange("price_eur", e.target.value)
+                      }
+                      error={errors.price_eur}
+                      placeholder="0.00"
+                      icon={<span className="text-gray-500">€</span>}
+                    />
+                    <Input
+                      label="Price in SYP (Optional)"
+                      name="price_syp"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.price_syp}
+                      onChange={(e) =>
+                        handleChange("price_syp", e.target.value)
+                      }
+                      error={errors.price_syp}
+                      placeholder="0.00"
+                      icon={<span className="text-gray-500">₽</span>}
+                    />
+                  </div>
+
+                  {showAdvancedFields && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Calculator className="w-5 h-5 text-blue-600" />
+                        <span className="font-medium text-gray-900">
+                          Cost Prices
+                        </span>
+                      </div>
+                      <Input
+                        label="Cost in EUR (Optional)"
+                        name="cost_eur"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.cost_eur}
+                        onChange={(e) =>
+                          handleChange("cost_eur", e.target.value)
+                        }
+                        error={errors.cost_eur}
+                        placeholder="0.00"
+                        icon={<span className="text-gray-500">€</span>}
+                      />
+                      <Input
+                        label="Cost in SYP (Optional)"
+                        name="cost_syp"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.cost_syp}
+                        onChange={(e) =>
+                          handleChange("cost_syp", e.target.value)
+                        }
+                        error={errors.cost_syp}
+                        placeholder="0.00"
+                        icon={<span className="text-gray-500">₽</span>}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Stock Management */}
+                <div className="pt-4 border-t border-gray-200">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Package2 className="w-5 h-5 text-purple-600" />
+                    <span className="font-medium text-gray-900">
+                      Stock Management
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Input
+                      label="Current Stock"
+                      name="stock_quantity"
+                      type="number"
+                      min="0"
+                      value={formData.stock_quantity}
+                      onChange={(e) =>
+                        handleChange("stock_quantity", e.target.value)
+                      }
+                      error={errors.stock_quantity}
+                      placeholder="0"
+                      icon={<Package className="w-4 h-4" />}
+                    />
+                    <Input
+                      label="Minimum Stock Alert"
+                      name="minimum_stock"
+                      type="number"
+                      min="0"
+                      value={formData.minimum_stock}
+                      onChange={(e) =>
+                        handleChange("minimum_stock", e.target.value)
+                      }
+                      error={errors.minimum_stock}
+                      placeholder="0"
+                      icon={<AlertTriangle className="w-4 h-4" />}
+                    />
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          </motion.div>
+
+          {/* Product Image Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                    <Image className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Product Image
+                    </h2>
+                    <p className="text-sm text-gray-600">
+                      Upload an image for your product
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardBody>
+                <div className="flex flex-col items-center justify-center">
+                  {imagePreview ? (
+                    <div className="relative">
+                      <img
+                        src={imagePreview}
+                        alt="Product preview"
+                        className="w-48 h-48 object-cover rounded-lg border border-gray-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors flex items-center justify-center"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-48 h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 transition-colors"
+                    >
+                      <Upload className="w-12 h-12 text-gray-400 mb-4" />
+                      <span className="text-sm font-medium text-gray-600">
+                        Upload Image
+                      </span>
+                      <span className="text-xs text-gray-500 mt-1">
+                        PNG, JPG up to 5MB
+                      </span>
+                    </div>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </div>
+              </CardBody>
+            </Card>
+          </motion.div>
+
+          {/* Advanced Fields */}
+          {showAdvancedFields && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                      <Layers className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        Advanced Details
+                      </h2>
+                      <p className="text-sm text-gray-600">
+                        Additional product information
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardBody className="space-y-6">
+                  {/* Physical Properties */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Input
+                      label="Weight (grams)"
+                      name="weight_grams"
+                      type="number"
+                      min="0"
+                      value={formData.weight_grams}
+                      onChange={(e) =>
+                        handleChange("weight_grams", e.target.value)
+                      }
+                      error={errors.weight_grams}
+                      placeholder="0"
+                      icon={<Scale className="w-4 h-4" />}
+                    />
+                    <Input
+                      label="Shelf Life (days)"
+                      name="shelf_life_days"
+                      type="number"
+                      min="1"
+                      value={formData.shelf_life_days}
+                      onChange={(e) =>
+                        handleChange("shelf_life_days", e.target.value)
+                      }
+                      error={errors.shelf_life_days}
+                      placeholder="7"
+                      icon={<Calendar className="w-4 h-4" />}
+                    />
+                  </div>
+
+                  {/* Dates */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Input
+                      label="Production Date"
+                      name="production_date"
+                      type="date"
+                      value={formData.production_date}
+                      onChange={(e) =>
+                        handleChange("production_date", e.target.value)
+                      }
+                      error={errors.production_date}
+                      icon={<Calendar className="w-4 h-4" />}
+                    />
+                    <Input
+                      label="Expiry Date"
+                      name="expiry_date"
+                      type="date"
+                      value={formData.expiry_date}
+                      onChange={(e) =>
+                        handleChange("expiry_date", e.target.value)
+                      }
+                      error={errors.expiry_date}
+                      icon={<Calendar className="w-4 h-4" />}
+                    />
+                  </div>
+
+                  {/* Additional Information */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Storage Conditions
+                      </label>
+                      <textarea
+                        name="storage_conditions"
+                        value={formData.storage_conditions}
+                        onChange={(e) =>
+                          handleChange("storage_conditions", e.target.value)
+                        }
+                        placeholder="e.g., Store in cool, dry place"
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Supplier Information
+                      </label>
+                      <textarea
+                        name="supplier_info"
+                        value={formData.supplier_info}
+                        onChange={(e) =>
+                          handleChange("supplier_info", e.target.value)
+                        }
+                        placeholder="Supplier name and contact details"
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nutritional Information
+                      </label>
+                      <textarea
+                        name="nutritional_info"
+                        value={formData.nutritional_info}
+                        onChange={(e) =>
+                          handleChange("nutritional_info", e.target.value)
+                        }
+                        placeholder="Calories, ingredients, etc."
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Allergen Information
+                      </label>
+                      <textarea
+                        name="allergen_info"
+                        value={formData.allergen_info}
+                        onChange={(e) =>
+                          handleChange("allergen_info", e.target.value)
+                        }
+                        placeholder="Contains nuts, gluten, etc."
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      />
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Status & Actions */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <Card>
+              <CardBody>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={formData.is_featured}
+                        onChange={(e) =>
+                          handleChange("is_featured", e.target.checked)
+                        }
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                      />
+                      <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                        <Star className="w-4 h-4 text-yellow-500" />
+                        Featured Product
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => navigate("/products")}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      disabled={isSubmitting}
+                      icon={
+                        isSubmitting ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4" />
+                        )
+                      }
+                    >
+                      {isSubmitting ? "Creating..." : "Create Product"}
+                    </Button>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          </motion.div>
+        </form>
+      </div>
     </div>
   );
 };
