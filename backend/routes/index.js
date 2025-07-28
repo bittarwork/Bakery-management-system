@@ -11,7 +11,6 @@ import userRoutes from './userRoutes.js';
 import vehicleRoutes from './vehicleRoutes.js';
 
 // Import new comprehensive routes
-import comprehensiveDistributionRoutes from './comprehensiveDistribution.js';
 import dashboardRoutes from './dashboard.js';
 import notificationRoutes from './notificationRoutes.js';
 
@@ -25,7 +24,7 @@ import enhancedPricingRoutes from './enhancedPricingRoutes.js';
 import distributorRoutes from './distributorRoutes.js';
 import tempDeliveryRoutes from './tempDeliveryRoutes.js';
 import distributionTripsRoutes from './distributionTrips.js';
-import distributionRoutes from './distributionRoutes.js';
+
 import systemRoutes from './systemRoutes.js';
 import enhancedDistributorRoutes from './enhancedDistributorRoutes.js';
 
@@ -101,7 +100,6 @@ router.use('/users', userRoutes);
 router.use('/vehicles', vehicleRoutes);
 
 // Mount new comprehensive routes
-router.use('/distribution', comprehensiveDistributionRoutes);
 router.use('/distribution/trips', distributionTripsRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/notifications', notificationRoutes);
@@ -115,7 +113,7 @@ router.use('/refunds', refundRoutes);
 router.use('/pricing', enhancedPricingRoutes);
 router.use('/distributors', distributorRoutes);
 router.use('/delivery', tempDeliveryRoutes);
-router.use('/simple-distribution', distributionRoutes);
+
 
 // Mount system routes
 router.use('/system', systemRoutes);

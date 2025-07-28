@@ -1,4 +1,4 @@
-import { User, Order, LocationHistory, DistributorDailyPerformance, Store } from '../models/index.js';
+import { User, Order, Store } from '../models/index.js';
 import { Op } from 'sequelize';
 import logger from '../config/logger.js';
 
@@ -34,16 +34,9 @@ class EnhancedDistributorController {
                 distributors.map(async (distributor) => {
                     const distributorData = distributor.toJSON();
 
-                    // Get today's performance if requested
+                    // Get today's performance if requested (simplified)
                     if (include_performance === 'true') {
-                        const today = new Date().toISOString().split('T')[0];
-                        const performance = await DistributorDailyPerformance.findOne({
-                            where: {
-                                distributor_id: distributorData.id,
-                                date: today
-                            }
-                        });
-                        distributorData.today_performance = performance;
+                        distributorData.today_performance = null; // Simplified - no performance tracking
                     }
 
                     // Get assigned orders count for today
@@ -312,7 +305,7 @@ class EnhancedDistributorController {
             let workingHours = 0;
             if (performance && performance.work_started_at) {
                 const startTime = new Date(`${date} ${performance.work_started_at}`);
-                const endTime = performance.work_ended_at 
+                const endTime = performance.work_ended_at
                     ? new Date(`${date} ${performance.work_ended_at}`)
                     : new Date();
                 workingHours = (endTime - startTime) / (1000 * 60 * 60); // Convert to hours
@@ -410,7 +403,7 @@ class EnhancedDistributorController {
                             completion_percentage: totalOrders > 0 ? Math.round((completedOrders / totalOrders) * 100) : 0
                         },
                         performance: performance ? performance.toJSON() : null,
-                        location_freshness: distributorData.location_updated_at 
+                        location_freshness: distributorData.location_updated_at
                             ? Math.floor((new Date() - new Date(distributorData.location_updated_at)) / (1000 * 60))
                             : null
                     };
@@ -559,7 +552,7 @@ class EnhancedDistributorController {
             if (performance) {
                 const endTime = new Date().toTimeString().split(' ')[0];
                 performance.work_ended_at = endTime;
-                
+
                 // Calculate total work hours
                 if (performance.work_started_at) {
                     const startTime = new Date(`${today} ${performance.work_started_at}`);
@@ -574,7 +567,7 @@ class EnhancedDistributorController {
 
                 // Calculate efficiency score
                 performance.efficiency_score = performance.calculateEfficiencyScore();
-                
+
                 await performance.save();
             }
 

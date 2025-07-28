@@ -46,6 +46,9 @@ const OrdersPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState([]);
 
+  // Calculate total pages
+  const totalPages = Math.ceil(totalOrders / filters.limit);
+
   // Load data on component mount and filter changes
   useEffect(() => {
     loadOrders();
