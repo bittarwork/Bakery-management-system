@@ -542,8 +542,7 @@ const EditUserPage = () => {
                       <option value="">اختر مركبة</option>
                       {availableVehicles.map((vehicle) => (
                         <option key={vehicle.id} value={vehicle.id}>
-                          {vehicle.plate_number} - {vehicle.model} (
-                          {vehicle.type})
+                          {vehicle.vehicle_plate} - {vehicle.vehicle_model} ({vehicle.vehicle_type})
                         </option>
                       ))}
                     </select>
