@@ -4,7 +4,6 @@ import { Order, OrderItem, Store, Product, User, getSequelizeConnection } from '
 import { ORDER_STATUS, PAYMENT_STATUS } from '../constants/index.js';
 import { CreateOrderRequest } from '../dto/request/CreateOrderRequest.js';
 import { OrderResponse, OrdersListResponse } from '../dto/response/OrderResponse.js';
-import SimpleDistributionService from '../services/simpleDistributionService.js';
 import logger from '../config/logger.js';
 
 // Helper function to check if status update is allowed
@@ -14,11 +13,11 @@ const isStatusUpdateAllowed = (currentStatus, newStatus) => {
         [ORDER_STATUS.DRAFT]: [ORDER_STATUS.CONFIRMED, ORDER_STATUS.CANCELLED],
         [ORDER_STATUS.CONFIRMED]: [ORDER_STATUS.IN_PROGRESS, ORDER_STATUS.CANCELLED],
         [ORDER_STATUS.IN_PROGRESS]: [ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED],
-        [ORDER_STATUS.DELIVERED]: [], // Final state - no transitions allowed
-        [ORDER_STATUS.CANCELLED]: [] // Final state - no transitions allowed
+        [ORDER_STATUS.DELIVERED]: [], // Final state
+        [ORDER_STATUS.CANCELLED]: [] // Final state
     };
 
-    // Allow keeping the same status (for updates that don't change status)
+    // Allow keeping the same status
     if (currentStatus === newStatus) {
         return true;
     }
@@ -27,7 +26,7 @@ const isStatusUpdateAllowed = (currentStatus, newStatus) => {
     return allowedTransitions[currentStatus]?.includes(newStatus) || false;
 };
 
-// @desc    الحصول على جميع الطلبات مع التصفية
+// @desc    Get all orders with filtering
 // @route   GET /api/orders
 // @access  Private
 export const getOrders = async (req, res) => {
@@ -69,11 +68,6 @@ export const getOrders = async (req, res) => {
             }
         }
 
-        if (req.query.priority) {
-            whereClause.priority = req.query.priority;
-            filters.priority = req.query.priority;
-        }
-
         if (req.query.distributor_id) {
             const distributorId = parseInt(req.query.distributor_id);
             if (!isNaN(distributorId) && distributorId > 0) {
@@ -96,7 +90,13 @@ export const getOrders = async (req, res) => {
 
         // Add user-based filtering
         if (req.user.role !== 'admin' && req.user.role !== 'manager') {
-            whereClause.created_by = req.user.id;
+            if (req.user.role === 'distributor') {
+                // Distributors can only see their assigned orders
+                whereClause.assigned_distributor_id = req.user.id;
+            } else {
+                // Other users can only see orders they created
+                whereClause.created_by = req.user.id;
+            }
         }
 
         const { count, rows } = await Order.findAndCountAll({
@@ -104,6 +104,12 @@ export const getOrders = async (req, res) => {
             include: [
                 { model: Store, as: 'store' },
                 { model: User, as: 'creator', attributes: ['id', 'full_name', 'username'] },
+                {
+                    model: User,
+                    as: 'assignedDistributor',
+                    attributes: ['id', 'full_name', 'username', 'phone'],
+                    required: false
+                },
                 {
                     model: OrderItem,
                     as: 'items',
@@ -132,24 +138,23 @@ export const getOrders = async (req, res) => {
         console.error('[ORDERS] Failed to fetch orders:', error.message);
         res.status(500).json({
             success: false,
-            message: 'خطأ في جلب الطلبات',
+            message: 'Error fetching orders',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
 
-// @desc    الحصول على طلب واحد
+// @desc    Get single order
 // @route   GET /api/orders/:id
 // @access  Private
 export const getOrder = async (req, res) => {
     try {
         const orderId = parseInt(req.params.id);
 
-        // التحقق من صحة orderId
         if (isNaN(orderId) || orderId <= 0) {
             return res.status(400).json({
                 success: false,
-                message: 'معرف الطلب غير صحيح'
+                message: 'Invalid order ID'
             });
         }
 
@@ -174,16 +179,23 @@ export const getOrder = async (req, res) => {
         if (!order) {
             return res.status(404).json({
                 success: false,
-                message: 'الطلب غير موجود'
+                message: 'Order not found'
             });
         }
 
         // Check permissions
-        if (req.user.role !== 'admin' && req.user.role !== 'manager' && order.created_by !== req.user.id) {
-            return res.status(403).json({
-                success: false,
-                message: 'غير مصرح لك بعرض هذا الطلب'
-            });
+        if (req.user.role !== 'admin' && req.user.role !== 'manager') {
+            if (req.user.role === 'distributor' && order.assigned_distributor_id !== req.user.id) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Not authorized to view this order'
+                });
+            } else if (req.user.role !== 'distributor' && order.created_by !== req.user.id) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Not authorized to view this order'
+                });
+            }
         }
 
         const orderResponse = new OrderResponse(order, true, true, true, true);
@@ -197,20 +209,20 @@ export const getOrder = async (req, res) => {
         console.error('[ORDERS] Failed to fetch order:', error.message);
         res.status(500).json({
             success: false,
-            message: 'خطأ في جلب الطلب',
+            message: 'Error fetching order',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
 
-// @desc    إنشاء طلب جديد
+// @desc    Create new order
 // @route   POST /api/orders
 // @access  Private
 export const createOrder = async (req, res) => {
     const sequelize = await getSequelizeConnection();
     const transaction = await sequelize.transaction({
         isolationLevel: sequelize.Transaction.ISOLATION_LEVELS.READ_COMMITTED,
-        timeout: 30000 // 30 seconds timeout
+        timeout: 30000
     });
 
     try {
@@ -222,12 +234,12 @@ export const createOrder = async (req, res) => {
             await transaction.rollback();
             return res.status(400).json({
                 success: false,
-                message: 'بيانات غير صحيحة',
+                message: 'Invalid data',
                 errors: validation.errors
             });
         }
 
-        const { store_id, items, notes, priority = 'medium', scheduled_delivery_date, currency = 'EUR' } = req.body;
+        const { store_id, items, notes, delivery_date, currency = 'EUR' } = req.body;
 
         // Verify store exists
         const store = await Store.findByPk(store_id);
@@ -235,7 +247,7 @@ export const createOrder = async (req, res) => {
             await transaction.rollback();
             return res.status(404).json({
                 success: false,
-                message: 'المحل غير موجود'
+                message: 'Store not found'
             });
         }
 
@@ -245,8 +257,6 @@ export const createOrder = async (req, res) => {
         // Calculate totals
         let totalAmountEur = 0;
         let totalAmountSyp = 0;
-        let totalCostEur = 0;
-        let totalCostSyp = 0;
 
         // Validate items and calculate totals
         const validatedItems = [];
@@ -256,7 +266,7 @@ export const createOrder = async (req, res) => {
                 await transaction.rollback();
                 return res.status(404).json({
                     success: false,
-                    message: `المنتج ${item.product_id} غير موجود`
+                    message: `Product ${item.product_id} not found`
                 });
             }
 
@@ -265,7 +275,7 @@ export const createOrder = async (req, res) => {
                 await transaction.rollback();
                 return res.status(400).json({
                     success: false,
-                    message: `المنتج ${product.name} غير متاح حالياً`
+                    message: `Product ${product.name} is not available`
                 });
             }
 
@@ -274,43 +284,28 @@ export const createOrder = async (req, res) => {
                 await transaction.rollback();
                 return res.status(400).json({
                     success: false,
-                    message: `الكمية يجب أن تكون أكبر من صفر للمنتج ${product.name}`
+                    message: `Quantity must be greater than zero for product ${product.name}`
                 });
             }
 
-            // Check stock availability
+            // Check stock availability if stock tracking is enabled
             if (product.stock_quantity !== null && product.stock_quantity < quantity) {
                 await transaction.rollback();
                 return res.status(400).json({
                     success: false,
-                    message: `الكمية المطلوبة (${quantity}) غير متوفرة للمنتج ${product.name}. الكمية المتاحة: ${product.stock_quantity}`
+                    message: `Required quantity (${quantity}) not available for product ${product.name}. Available: ${product.stock_quantity}`
                 });
             }
 
-            // Parse discount and gift data from frontend
-            const discountAmountEur = parseFloat(item.discount_amount) || 0.00;
-            const discountAmountSyp = parseFloat(item.discount_amount_syp) || 0.00;
-            const giftQuantity = parseInt(item.gift_quantity) || 0;
-            const giftReason = item.gift_reason || null;
-            const itemNotes = item.notes || null;
-
-            // Calculate prices
-            const unitPriceEur = parseFloat(item.unit_price) || product.price_eur;
-            const unitPriceSyp = product.price_syp;
+            // Calculate prices - simple pricing
+            const unitPriceEur = parseFloat(product.price_eur) || 0;
+            const unitPriceSyp = parseFloat(product.price_syp) || 0;
 
             const itemTotalEur = unitPriceEur * quantity;
             const itemTotalSyp = unitPriceSyp * quantity;
-            const itemCostEur = (product.cost_eur || 0) * quantity;
-            const itemCostSyp = (product.cost_syp || 0) * quantity;
 
-            // Apply discounts
-            const finalPriceEur = Math.max(0, itemTotalEur - discountAmountEur);
-            const finalPriceSyp = Math.max(0, itemTotalSyp - discountAmountSyp);
-
-            totalAmountEur += finalPriceEur;
-            totalAmountSyp += finalPriceSyp;
-            totalCostEur += itemCostEur;
-            totalCostSyp += itemCostSyp;
+            totalAmountEur += itemTotalEur;
+            totalAmountSyp += itemTotalSyp;
 
             validatedItems.push({
                 product_id: item.product_id,
@@ -319,62 +314,20 @@ export const createOrder = async (req, res) => {
                 unit_price_syp: unitPriceSyp,
                 total_price_eur: itemTotalEur,
                 total_price_syp: itemTotalSyp,
-                discount_amount_eur: discountAmountEur,
-                discount_amount_syp: discountAmountSyp,
-                final_price_eur: finalPriceEur,
-                final_price_syp: finalPriceSyp,
-                // Legacy columns for backward compatibility
-                unit_price: unitPriceEur,
-                total_price: itemTotalEur,
-                discount_amount: discountAmountEur,
-                final_price: finalPriceEur,
-                // Product details
                 product_name: product.name,
                 product_unit: product.unit || 'piece',
-                product_barcode: product.barcode || null,
-                product_sku: product.sku || null,
-                product_description: product.description || null,
-                product_category: product.category || null,
-                supplier_id: product.supplier_id || null,
-                supplier_name: product.supplier_name || null,
-                unit: product.unit || 'piece',
-                // Delivery fields with defaults
-                delivered_quantity: 0,
-                returned_quantity: 0,
-                damaged_quantity: 0,
-                delivery_date: null,
-                delivery_status: 'pending',
-                delivery_notes: null,
-                delivery_confirmed_by: null,
-                delivery_confirmed_at: null,
-                tracking_number: null,
-                delivery_method: 'delivery',
-                estimated_delivery_date: null,
-                actual_delivery_date: null,
-                // Gift fields - now properly handled
-                gift_quantity: giftQuantity,
-                gift_reason: giftReason,
-                // Notes - now properly handled
-                notes: itemNotes
+                notes: item.notes || null
             });
         }
 
-        // Calculate final amounts based on selected currency
+        // Set final amounts based on currency
         let finalAmountEur = 0;
         let finalAmountSyp = 0;
-        let exchangeRate = null;
 
         if (currency === 'EUR') {
             finalAmountEur = totalAmountEur;
-            finalAmountSyp = 0;
-        } else if (currency === 'SYP') {
-            finalAmountEur = 0;
+        } else {
             finalAmountSyp = totalAmountSyp;
-        } else if (currency === 'MIXED') {
-            finalAmountEur = totalAmountEur;
-            finalAmountSyp = totalAmountSyp;
-            // Get current exchange rate (you may want to get this from a service)
-            exchangeRate = 1800; // Default rate, should be fetched from exchange service
         }
 
         // Create order
@@ -386,16 +339,10 @@ export const createOrder = async (req, res) => {
             total_amount_syp: totalAmountSyp,
             final_amount_eur: finalAmountEur,
             final_amount_syp: finalAmountSyp,
-            total_cost_eur: totalCostEur,
-            total_cost_syp: totalCostSyp,
-            commission_eur: (totalAmountEur - totalCostEur) * 0.1, // 10% commission
-            commission_syp: (totalAmountSyp - totalCostSyp) * 0.1,
-            currency: currency,
-            exchange_rate: exchangeRate,
+            currency,
             status: ORDER_STATUS.DRAFT,
             payment_status: PAYMENT_STATUS.PENDING,
-            priority: priority === 'medium' ? 'normal' : priority, // Map 'medium' to 'normal' for existing enum
-            scheduled_delivery_date: scheduled_delivery_date || null,
+            delivery_date: delivery_date || null,
             notes,
             created_by: req.user.id,
             created_by_name: req.user.full_name || req.user.username
@@ -407,42 +354,6 @@ export const createOrder = async (req, res) => {
                 order_id: order.id,
                 ...item
             }, { transaction });
-        }
-
-        // Auto-assign distributor - Simple and direct
-        const autoDistributionEnabled = process.env.AUTO_DISTRIBUTION_ENABLED !== 'false'; // Default enabled
-        if (autoDistributionEnabled) {
-            try {
-                logger.info(`Auto-assigning distributor for order ${order.order_number}`);
-
-                // Assign distributor using simple service
-                const assignmentResult = await SimpleDistributionService.assignOrderToDistributor(
-                    {
-                        id: order.id,
-                        order_number: order.order_number,
-                        store_id: order.store_id,
-                        total_amount_eur: order.total_amount_eur,
-                        priority: priority
-                    },
-                    req.user.id,
-                    transaction
-                );
-
-                if (assignmentResult.success) {
-                    // Update order with assigned distributor within the transaction
-                    await order.update({
-                        assigned_distributor_id: assignmentResult.assigned_distributor.id,
-                        status: ORDER_STATUS.CONFIRMED // Move to confirmed status
-                    }, { transaction });
-
-                    logger.info(`Order ${order.order_number} assigned to distributor: ${assignmentResult.assigned_distributor.full_name}`);
-                } else {
-                    logger.warn(`Failed to assign distributor for order ${order.order_number}: ${assignmentResult.message}`);
-                }
-            } catch (assignmentError) {
-                // Don't fail the order creation if assignment fails
-                logger.error(`Error assigning distributor for order ${order.order_number}:`, assignmentError);
-            }
         }
 
         // Commit transaction
@@ -463,37 +374,10 @@ export const createOrder = async (req, res) => {
 
         const orderResponse = new OrderResponse(completeOrder, true, true, true);
 
-        // Get assignment info for response
-        let assignmentInfo = null;
-        let assignmentMessage = '';
-
-        if (completeOrder.assigned_distributor_id) {
-            try {
-                const assignedDistributor = await User.findByPk(completeOrder.assigned_distributor_id, {
-                    attributes: ['id', 'full_name', 'phone']
-                });
-
-                if (assignedDistributor) {
-                    assignmentInfo = {
-                        distributor_id: assignedDistributor.id,
-                        distributor_name: assignedDistributor.full_name,
-                        distributor_phone: assignedDistributor.phone,
-                        assignment_method: 'automatic'
-                    };
-                    assignmentMessage = ` • تم تعيين الموزع: ${assignedDistributor.full_name}`;
-                }
-            } catch (error) {
-                logger.error(`Error getting distributor info for order ${orderNumber}:`, error);
-            }
-        }
-
         res.status(201).json({
             success: true,
-            data: {
-                order: orderResponse,
-                assignment: assignmentInfo
-            },
-            message: `تم إنشاء الطلب بنجاح${assignmentMessage}`
+            data: orderResponse,
+            message: 'Order created successfully'
         });
 
     } catch (error) {
@@ -505,19 +389,10 @@ export const createOrder = async (req, res) => {
 
         console.error('[ORDERS] Failed to create order:', error.message);
 
-        // Handle specific database errors
-        if (error.original && error.original.code === 'ER_LOCK_WAIT_TIMEOUT') {
-            return res.status(409).json({
-                success: false,
-                message: 'تم تجاوز مهلة انتظار القفل. يرجى المحاولة مرة أخرى.',
-                error: 'Lock wait timeout exceeded'
-            });
-        }
-
         if (error.name === 'SequelizeValidationError') {
             return res.status(400).json({
                 success: false,
-                message: 'بيانات غير صحيحة',
+                message: 'Invalid data',
                 errors: error.errors.map(e => ({
                     field: e.path,
                     message: e.message
@@ -527,13 +402,13 @@ export const createOrder = async (req, res) => {
 
         res.status(500).json({
             success: false,
-            message: 'خطأ في إنشاء الطلب',
+            message: 'Error creating order',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
 
-// @desc    تحديث طلب
+// @desc    Update order
 // @route   PUT /api/orders/:id
 // @access  Private
 export const updateOrder = async (req, res) => {
@@ -542,19 +417,17 @@ export const updateOrder = async (req, res) => {
 
     try {
         const orderId = parseInt(req.params.id);
-        const { items, notes, priority, scheduled_delivery_date } = req.body;
+        const { items, notes, delivery_date } = req.body;
 
         const order = await Order.findByPk(orderId, {
-            include: [
-                { model: OrderItem, as: 'items' }
-            ]
+            include: [{ model: OrderItem, as: 'items' }]
         });
 
         if (!order) {
             await transaction.rollback();
             return res.status(404).json({
                 success: false,
-                message: 'الطلب غير موجود'
+                message: 'Order not found'
             });
         }
 
@@ -563,16 +436,16 @@ export const updateOrder = async (req, res) => {
             await transaction.rollback();
             return res.status(403).json({
                 success: false,
-                message: 'غير مصرح لك بتحديث هذا الطلب'
+                message: 'Not authorized to update this order'
             });
         }
 
         // Can only update draft orders
-        if (order.status !== ORDER_STATUS.DRAFT) {
+        if (!order.canEdit()) {
             await transaction.rollback();
             return res.status(400).json({
                 success: false,
-                message: 'لا يمكن تحديث الطلب بعد تأكيده'
+                message: 'Cannot update order after confirmation'
             });
         }
 
@@ -587,8 +460,6 @@ export const updateOrder = async (req, res) => {
             // Calculate new totals
             let totalAmountEur = 0;
             let totalAmountSyp = 0;
-            let totalCostEur = 0;
-            let totalCostSyp = 0;
 
             // Validate and create new items
             for (const item of items) {
@@ -597,7 +468,7 @@ export const updateOrder = async (req, res) => {
                     await transaction.rollback();
                     return res.status(404).json({
                         success: false,
-                        message: `المنتج ${item.product_id} غير موجود`
+                        message: `Product ${item.product_id} not found`
                     });
                 }
 
@@ -606,19 +477,15 @@ export const updateOrder = async (req, res) => {
                     await transaction.rollback();
                     return res.status(400).json({
                         success: false,
-                        message: `الكمية يجب أن تكون أكبر من صفر للمنتج ${product.name}`
+                        message: `Quantity must be greater than zero for product ${product.name}`
                     });
                 }
 
                 const itemTotalEur = product.price_eur * quantity;
                 const itemTotalSyp = product.price_syp * quantity;
-                const itemCostEur = product.cost_eur * quantity;
-                const itemCostSyp = product.cost_syp * quantity;
 
                 totalAmountEur += itemTotalEur;
                 totalAmountSyp += itemTotalSyp;
-                totalCostEur += itemCostEur;
-                totalCostSyp += itemCostSyp;
 
                 await OrderItem.create({
                     order_id: orderId,
@@ -629,26 +496,27 @@ export const updateOrder = async (req, res) => {
                     total_price_eur: itemTotalEur,
                     total_price_syp: itemTotalSyp,
                     product_name: product.name,
-                    product_unit: product.unit
+                    product_unit: product.unit,
+                    notes: item.notes || null
                 }, { transaction });
             }
 
             // Update order totals
+            const finalAmountEur = order.currency === 'EUR' ? totalAmountEur : 0;
+            const finalAmountSyp = order.currency === 'SYP' ? totalAmountSyp : 0;
+
             await order.update({
                 total_amount_eur: totalAmountEur,
                 total_amount_syp: totalAmountSyp,
-                total_cost_eur: totalCostEur,
-                total_cost_syp: totalCostSyp,
-                commission_eur: (totalAmountEur - totalCostEur) * 0.1,
-                commission_syp: (totalAmountSyp - totalCostSyp) * 0.1
+                final_amount_eur: finalAmountEur,
+                final_amount_syp: finalAmountSyp
             }, { transaction });
         }
 
         // Update other order fields
         const updateData = {};
         if (notes !== undefined) updateData.notes = notes;
-        if (priority !== undefined) updateData.priority = priority;
-        if (scheduled_delivery_date !== undefined) updateData.scheduled_delivery_date = scheduled_delivery_date;
+        if (delivery_date !== undefined) updateData.delivery_date = delivery_date;
 
         if (Object.keys(updateData).length > 0) {
             await order.update(updateData, { transaction });
@@ -674,7 +542,7 @@ export const updateOrder = async (req, res) => {
         res.json({
             success: true,
             data: orderResponse,
-            message: 'تم تحديث الطلب بنجاح'
+            message: 'Order updated successfully'
         });
 
     } catch (error) {
@@ -682,13 +550,13 @@ export const updateOrder = async (req, res) => {
         console.error('[ORDERS] Failed to update order:', error.message);
         res.status(500).json({
             success: false,
-            message: 'خطأ في تحديث الطلب',
+            message: 'Error updating order',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
 
-// @desc    حذف طلب
+// @desc    Delete order
 // @route   DELETE /api/orders/:id
 // @access  Private
 export const deleteOrder = async (req, res) => {
@@ -704,7 +572,7 @@ export const deleteOrder = async (req, res) => {
             await transaction.rollback();
             return res.status(404).json({
                 success: false,
-                message: 'الطلب غير موجود'
+                message: 'Order not found'
             });
         }
 
@@ -713,16 +581,16 @@ export const deleteOrder = async (req, res) => {
             await transaction.rollback();
             return res.status(403).json({
                 success: false,
-                message: 'غير مصرح لك بحذف هذا الطلب'
+                message: 'Not authorized to delete this order'
             });
         }
 
         // Can only delete draft orders
-        if (order.status !== ORDER_STATUS.DRAFT) {
+        if (!order.canEdit()) {
             await transaction.rollback();
             return res.status(400).json({
                 success: false,
-                message: 'لا يمكن حذف الطلب بعد تأكيده'
+                message: 'Cannot delete order after confirmation'
             });
         }
 
@@ -739,7 +607,7 @@ export const deleteOrder = async (req, res) => {
 
         res.json({
             success: true,
-            message: 'تم حذف الطلب بنجاح'
+            message: 'Order deleted successfully'
         });
 
     } catch (error) {
@@ -747,13 +615,13 @@ export const deleteOrder = async (req, res) => {
         console.error('[ORDERS] Failed to delete order:', error.message);
         res.status(500).json({
             success: false,
-            message: 'خطأ في حذف الطلب',
+            message: 'Error deleting order',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
 
-// @desc    تحديث حالة الطلب
+// @desc    Update order status
 // @route   PATCH /api/orders/:id/status
 // @access  Private
 export const updateOrderStatus = async (req, res) => {
@@ -764,7 +632,7 @@ export const updateOrderStatus = async (req, res) => {
         if (!status || !Object.values(ORDER_STATUS).includes(status)) {
             return res.status(400).json({
                 success: false,
-                message: 'حالة الطلب غير صحيحة'
+                message: 'Invalid order status'
             });
         }
 
@@ -773,15 +641,19 @@ export const updateOrderStatus = async (req, res) => {
         if (!order) {
             return res.status(404).json({
                 success: false,
-                message: 'الطلب غير موجود'
+                message: 'Order not found'
             });
         }
 
         // Check permissions
-        if (req.user.role !== 'admin' && req.user.role !== 'manager') {
+        const canUpdate = req.user.role === 'admin' || 
+                         req.user.role === 'manager' || 
+                         (req.user.role === 'distributor' && order.assigned_distributor_id === req.user.id);
+
+        if (!canUpdate) {
             return res.status(403).json({
                 success: false,
-                message: 'غير مصرح لك بتحديث حالة الطلب'
+                message: 'Not authorized to update order status'
             });
         }
 
@@ -789,30 +661,30 @@ export const updateOrderStatus = async (req, res) => {
         if (!isStatusUpdateAllowed(order.status, status)) {
             return res.status(400).json({
                 success: false,
-                message: `لا يمكن تغيير حالة الطلب من ${order.status} إلى ${status}`
+                message: `Cannot change order status from ${order.status} to ${status}`
             });
         }
 
         // Update order status
-        await order.update({ status });
+        await order.updateStatus(status);
 
         res.json({
             success: true,
             data: { order_id: orderId, status },
-            message: 'تم تحديث حالة الطلب بنجاح'
+            message: 'Order status updated successfully'
         });
 
     } catch (error) {
         console.error('[ORDERS] Failed to update order status:', error.message);
         res.status(500).json({
             success: false,
-            message: 'خطأ في تحديث حالة الطلب',
+            message: 'Error updating order status',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
 
-// @desc    تحديث حالة الدفع
+// @desc    Update payment status
 // @route   PATCH /api/orders/:id/payment-status
 // @access  Private
 export const updatePaymentStatus = async (req, res) => {
@@ -823,7 +695,7 @@ export const updatePaymentStatus = async (req, res) => {
         if (!payment_status || !Object.values(PAYMENT_STATUS).includes(payment_status)) {
             return res.status(400).json({
                 success: false,
-                message: 'حالة الدفع غير صحيحة'
+                message: 'Invalid payment status'
             });
         }
 
@@ -832,38 +704,215 @@ export const updatePaymentStatus = async (req, res) => {
         if (!order) {
             return res.status(404).json({
                 success: false,
-                message: 'الطلب غير موجود'
+                message: 'Order not found'
             });
         }
 
-        // Check permissions
-        if (req.user.role !== 'admin' && req.user.role !== 'manager') {
+        // Check permissions - only admin, manager, or assigned distributor can update payment status
+        const canUpdate = req.user.role === 'admin' || 
+                         req.user.role === 'manager' || 
+                         (req.user.role === 'distributor' && order.assigned_distributor_id === req.user.id);
+
+        if (!canUpdate) {
             return res.status(403).json({
                 success: false,
-                message: 'غير مصرح لك بتحديث حالة الدفع'
+                message: 'Not authorized to update payment status'
             });
         }
 
         // Update payment status
-        await order.update({ payment_status });
+        await order.updatePaymentStatus(payment_status);
 
         res.json({
             success: true,
             data: { order_id: orderId, payment_status },
-            message: 'تم تحديث حالة الدفع بنجاح'
+            message: 'Payment status updated successfully'
         });
 
     } catch (error) {
         console.error('[ORDERS] Failed to update payment status:', error.message);
         res.status(500).json({
             success: false,
-            message: 'خطأ في تحديث حالة الدفع',
+            message: 'Error updating payment status',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
 
-// @desc    الحصول على طلبات اليوم
+// @desc    Assign distributor to order (Manual assignment)
+// @route   POST /api/orders/:id/assign-distributor
+// @access  Private (Admin/Manager only)
+export const assignDistributor = async (req, res) => {
+    try {
+        const orderId = parseInt(req.params.id);
+        const { distributor_id } = req.body;
+
+        // Check permissions - only admin and manager can assign distributors
+        if (req.user.role !== 'admin' && req.user.role !== 'manager') {
+            return res.status(403).json({
+                success: false,
+                message: 'Not authorized to assign distributors'
+            });
+        }
+
+        const order = await Order.findByPk(orderId);
+
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: 'Order not found'
+            });
+        }
+
+        // Verify distributor exists and has distributor role
+        const distributor = await User.findByPk(distributor_id);
+        if (!distributor || distributor.role !== 'distributor') {
+            return res.status(404).json({
+                success: false,
+                message: 'Distributor not found'
+            });
+        }
+
+        // Check if distributor is active
+        if (distributor.status !== 'active') {
+            return res.status(400).json({
+                success: false,
+                message: 'Distributor is not active'
+            });
+        }
+
+        // Assign distributor
+        await order.assignDistributor(distributor_id);
+
+        // If order is still draft, move it to confirmed
+        if (order.status === ORDER_STATUS.DRAFT) {
+            await order.updateStatus(ORDER_STATUS.CONFIRMED);
+        }
+
+        res.json({
+            success: true,
+            data: {
+                order_id: orderId,
+                distributor_id,
+                distributor_name: distributor.full_name,
+                order_status: order.status
+            },
+            message: 'Distributor assigned successfully'
+        });
+
+    } catch (error) {
+        console.error('[ORDERS] Failed to assign distributor:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Error assigning distributor',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// @desc    Unassign distributor from order
+// @route   DELETE /api/orders/:id/assign-distributor
+// @access  Private (Admin/Manager only)
+export const unassignDistributor = async (req, res) => {
+    try {
+        const orderId = parseInt(req.params.id);
+
+        // Check permissions
+        if (req.user.role !== 'admin' && req.user.role !== 'manager') {
+            return res.status(403).json({
+                success: false,
+                message: 'Not authorized to unassign distributors'
+            });
+        }
+
+        const order = await Order.findByPk(orderId);
+
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: 'Order not found'
+            });
+        }
+
+        if (!order.assigned_distributor_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Order has no assigned distributor'
+            });
+        }
+
+        // Cannot unassign if order is already in progress or delivered
+        if (order.status === ORDER_STATUS.IN_PROGRESS || order.status === ORDER_STATUS.DELIVERED) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot unassign distributor from order in progress or delivered'
+            });
+        }
+
+        // Unassign distributor
+        await order.unassignDistributor();
+
+        // Move order back to draft if it was confirmed
+        if (order.status === ORDER_STATUS.CONFIRMED) {
+            await order.updateStatus(ORDER_STATUS.DRAFT);
+        }
+
+        res.json({
+            success: true,
+            data: { order_id: orderId },
+            message: 'Distributor unassigned successfully'
+        });
+
+    } catch (error) {
+        console.error('[ORDERS] Failed to unassign distributor:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Error unassigning distributor',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// @desc    Get orders assigned to distributor
+// @route   GET /api/orders/distributor/:distributorId
+// @access  Private
+export const getDistributorOrders = async (req, res) => {
+    try {
+        const distributorId = parseInt(req.params.distributorId);
+        const status = req.query.status;
+
+        // Check permissions
+        if (req.user.role !== 'admin' && req.user.role !== 'manager' && req.user.id !== distributorId) {
+            return res.status(403).json({
+                success: false,
+                message: 'Not authorized to view these orders'
+            });
+        }
+
+        const options = { status };
+        if (req.query.limit) {
+            options.limit = parseInt(req.query.limit);
+        }
+
+        const orders = await Order.findByDistributor(distributorId, options);
+
+        res.json({
+            success: true,
+            data: orders.map(order => new OrderResponse(order, true, false, false)),
+            message: 'Distributor orders fetched successfully'
+        });
+
+    } catch (error) {
+        console.error('[ORDERS] Failed to fetch distributor orders:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching distributor orders',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// @desc    Get today's orders
 // @route   GET /api/orders/today
 // @access  Private
 export const getTodayOrders = async (req, res) => {
@@ -872,12 +921,23 @@ export const getTodayOrders = async (req, res) => {
         const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
 
+        const whereClause = {
+            created_at: {
+                [Op.between]: [startOfDay, endOfDay]
+            }
+        };
+
+        // Add user-based filtering
+        if (req.user.role !== 'admin' && req.user.role !== 'manager') {
+            if (req.user.role === 'distributor') {
+                whereClause.assigned_distributor_id = req.user.id;
+            } else {
+                whereClause.created_by = req.user.id;
+            }
+        }
+
         const orders = await Order.findAll({
-            where: {
-                created_at: {
-                    [Op.between]: [startOfDay, endOfDay]
-                }
-            },
+            where: whereClause,
             include: [
                 { model: Store, as: 'store' },
                 { model: User, as: 'creator', attributes: ['id', 'full_name', 'username'] },
@@ -892,8 +952,8 @@ export const getTodayOrders = async (req, res) => {
 
         const stats = {
             total_orders: orders.length,
-            total_amount_eur: orders.reduce((sum, order) => sum + parseFloat(order.total_amount_eur || 0), 0),
-            total_amount_syp: orders.reduce((sum, order) => sum + parseFloat(order.total_amount_syp || 0), 0),
+            total_amount_eur: orders.reduce((sum, order) => sum + parseFloat(order.final_amount_eur || 0), 0),
+            total_amount_syp: orders.reduce((sum, order) => sum + parseFloat(order.final_amount_syp || 0), 0),
             by_status: {}
         };
 
@@ -917,43 +977,55 @@ export const getTodayOrders = async (req, res) => {
         console.error('[ORDERS] Failed to fetch today orders:', error.message);
         res.status(500).json({
             success: false,
-            message: 'خطأ في جلب طلبات اليوم',
+            message: 'Error fetching today orders',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
 
-// @desc    الحصول على إحصائيات الطلبات
+// @desc    Get order statistics
 // @route   GET /api/orders/statistics
 // @access  Private
 export const getOrderStatistics = async (req, res) => {
     try {
-        const stats = await Order.getOrderStatistics();
+        const stats = await Order.getStatistics();
 
         res.json({
             success: true,
             data: stats,
-            message: 'تم جلب الإحصائيات بنجاح'
+            message: 'Statistics fetched successfully'
         });
 
     } catch (error) {
         console.error('[ORDERS] Failed to fetch order statistics:', error.message);
         res.status(500).json({
             success: false,
-            message: 'خطأ في جلب إحصائيات الطلبات',
+            message: 'Error fetching order statistics',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
 
-// @desc    تصدير الطلبات
+// @desc    Export orders
 // @route   GET /api/orders/export
 // @access  Private
 export const exportOrders = async (req, res) => {
     try {
         const { format = 'csv' } = req.query;
 
+        const whereClause = {};
+
+        // Add user-based filtering
+        if (req.user.role !== 'admin' && req.user.role !== 'manager') {
+            if (req.user.role === 'distributor') {
+                whereClause.assigned_distributor_id = req.user.id;
+            } else {
+                whereClause.created_by = req.user.id;
+            }
+        }
+
         const orders = await Order.findAll({
+            where: whereClause,
             include: [
                 { model: Store, as: 'store' },
                 { model: User, as: 'creator', attributes: ['id', 'full_name', 'username'] },
@@ -971,8 +1043,9 @@ export const exportOrders = async (req, res) => {
             const csvContent = orders.map(order => ({
                 order_number: order.order_number,
                 store_name: order.store?.name || '',
-                total_amount_eur: order.total_amount_eur,
-                total_amount_syp: order.total_amount_syp,
+                total_amount_eur: order.final_amount_eur,
+                total_amount_syp: order.final_amount_syp,
+                currency: order.currency,
                 status: order.status,
                 payment_status: order.payment_status,
                 created_at: order.created_at,
@@ -998,7 +1071,7 @@ export const exportOrders = async (req, res) => {
         console.error('[ORDERS] Failed to export orders:', error.message);
         res.status(500).json({
             success: false,
-            message: 'خطأ في تصدير الطلبات',
+            message: 'Error exporting orders',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }

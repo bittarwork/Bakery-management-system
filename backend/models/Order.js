@@ -39,16 +39,6 @@ const Order = sequelize.define('Order', {
         allowNull: false,
         defaultValue: 0.00
     },
-    discount_amount_eur: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        defaultValue: 0.00
-    },
-    discount_amount_syp: {
-        type: DataTypes.DECIMAL(15, 2),
-        allowNull: false,
-        defaultValue: 0.00
-    },
     final_amount_eur: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
@@ -59,57 +49,20 @@ const Order = sequelize.define('Order', {
         allowNull: false,
         defaultValue: 0.00
     },
-    total_cost_eur: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        defaultValue: 0.00
-    },
-    total_cost_syp: {
-        type: DataTypes.DECIMAL(15, 2),
-        allowNull: false,
-        defaultValue: 0.00
-    },
-    commission_eur: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        defaultValue: 0.00
-    },
-    commission_syp: {
-        type: DataTypes.DECIMAL(15, 2),
-        allowNull: false,
-        defaultValue: 0.00
-    },
-    priority: {
-        type: DataTypes.ENUM('low', 'normal', 'high', 'urgent'),
-        allowNull: false,
-        defaultValue: 'normal'
-    },
-    scheduled_delivery_date: {
-        type: DataTypes.DATEONLY,
-        allowNull: true
-    },
     currency: {
-        type: DataTypes.ENUM('EUR', 'SYP', 'MIXED'),
+        type: DataTypes.ENUM('EUR', 'SYP'),
         allowNull: false,
         defaultValue: 'EUR'
     },
-    exchange_rate: {
-        type: DataTypes.DECIMAL(10, 4),
-        allowNull: true
-    },
     status: {
-        type: DataTypes.ENUM('draft', 'pending', 'confirmed', 'prepared', 'delivered', 'cancelled'),
+        type: DataTypes.ENUM('draft', 'confirmed', 'in_progress', 'delivered', 'cancelled'),
         allowNull: false,
         defaultValue: 'draft'
     },
     payment_status: {
-        type: DataTypes.ENUM('pending', 'partial', 'paid', 'overdue'),
+        type: DataTypes.ENUM('pending', 'paid'),
         allowNull: false,
         defaultValue: 'pending'
-    },
-    gift_applied: {
-        type: DataTypes.JSON,
-        allowNull: true
     },
     notes: {
         type: DataTypes.TEXT,
@@ -123,7 +76,7 @@ const Order = sequelize.define('Order', {
         type: DataTypes.STRING(100),
         allowNull: true
     },
-    // Distributor assignment fields
+    // Simple distributor assignment
     assigned_distributor_id: {
         type: DataTypes.INTEGER,
         allowNull: true,
@@ -131,26 +84,6 @@ const Order = sequelize.define('Order', {
             model: 'users',
             key: 'id'
         }
-    },
-    assigned_at: {
-        type: DataTypes.DATE,
-        allowNull: true,
-        comment: 'When the order was assigned to distributor'
-    },
-    delivery_started_at: {
-        type: DataTypes.DATE,
-        allowNull: true,
-        comment: 'When distributor started delivery'
-    },
-    delivery_completed_at: {
-        type: DataTypes.DATE,
-        allowNull: true,
-        comment: 'When delivery was completed'
-    },
-    delivery_notes: {
-        type: DataTypes.TEXT,
-        allowNull: true,
-        comment: 'Delivery notes from distributor'
     }
 }, {
     tableName: 'orders',
@@ -174,17 +107,20 @@ const Order = sequelize.define('Order', {
             fields: ['created_by']
         },
         {
+            fields: ['assigned_distributor_id']
+        },
+        {
             fields: ['order_number'],
             unique: true
         }
     ]
 });
 
-// Instance methods
+// Simple instance methods
 Order.prototype.updateStatus = async function (newStatus, transaction = null) {
-    const validStatuses = ['draft', 'pending', 'confirmed', 'prepared', 'delivered', 'cancelled'];
+    const validStatuses = ['draft', 'confirmed', 'in_progress', 'delivered', 'cancelled'];
     if (!validStatuses.includes(newStatus)) {
-        throw new Error('حالة الطلب غير صحيحة');
+        throw new Error('Order status is invalid');
     }
 
     const options = transaction ? { transaction } : {};
@@ -195,9 +131,9 @@ Order.prototype.updateStatus = async function (newStatus, transaction = null) {
 };
 
 Order.prototype.updatePaymentStatus = async function (newStatus, transaction = null) {
-    const validStatuses = ['pending', 'partial', 'paid', 'overdue'];
+    const validStatuses = ['pending', 'paid'];
     if (!validStatuses.includes(newStatus)) {
-        throw new Error('حالة الدفع غير صحيحة');
+        throw new Error('Payment status is invalid');
     }
 
     const options = transaction ? { transaction } : {};
@@ -207,14 +143,29 @@ Order.prototype.updatePaymentStatus = async function (newStatus, transaction = n
     return this;
 };
 
+Order.prototype.assignDistributor = async function (distributorId, transaction = null) {
+    const options = transaction ? { transaction } : {};
+    this.assigned_distributor_id = distributorId;
+    await this.save(options);
+
+    return this;
+};
+
+Order.prototype.unassignDistributor = async function (transaction = null) {
+    const options = transaction ? { transaction } : {};
+    this.assigned_distributor_id = null;
+    await this.save(options);
+
+    return this;
+};
+
 Order.prototype.getStatusInfo = function () {
     const statusMap = {
-        draft: { label: 'مسودة', color: 'gray', icon: '📝' },
-        pending: { label: 'معلق', color: 'yellow', icon: '⏳' },
-        confirmed: { label: 'مؤكد', color: 'blue', icon: '✅' },
-        prepared: { label: 'جاهز', color: 'orange', icon: '📦' },
-        delivered: { label: 'تم التسليم', color: 'green', icon: '🚚' },
-        cancelled: { label: 'ملغى', color: 'red', icon: '❌' }
+        draft: { label: 'Draft', color: 'gray', icon: '📝' },
+        confirmed: { label: 'Confirmed', color: 'blue', icon: '✅' },
+        in_progress: { label: 'In Progress', color: 'orange', icon: '🚛' },
+        delivered: { label: 'Delivered', color: 'green', icon: '📦' },
+        cancelled: { label: 'Cancelled', color: 'red', icon: '❌' }
     };
 
     return statusMap[this.status] || { label: this.status, color: 'gray', icon: '❓' };
@@ -222,33 +173,19 @@ Order.prototype.getStatusInfo = function () {
 
 Order.prototype.getPaymentStatusInfo = function () {
     const statusMap = {
-        pending: { label: 'معلق', color: 'gray', icon: '⏳' },
-        partial: { label: 'جزئي', color: 'yellow', icon: '💰' },
-        paid: { label: 'مدفوع', color: 'green', icon: '✅' },
-        overdue: { label: 'متأخر', color: 'red', icon: '⚠️' }
+        pending: { label: 'Pending', color: 'orange', icon: '⏳' },
+        paid: { label: 'Paid', color: 'green', icon: '✅' }
     };
 
     return statusMap[this.payment_status] || { label: this.payment_status, color: 'gray', icon: '❓' };
 };
 
 Order.prototype.getTotalAmount = function () {
-    const amountEur = parseFloat(this.final_amount_eur) || 0;
-    const amountSyp = parseFloat(this.final_amount_syp) || 0;
-    const exchangeRate = parseFloat(this.exchange_rate) || 1800;
-
-    return amountEur + (amountSyp / exchangeRate);
-};
-
-Order.prototype.calculateDiscount = function () {
-    const totalEur = parseFloat(this.total_amount_eur) || 0;
-    const totalSyp = parseFloat(this.total_amount_syp) || 0;
-    const discountEur = parseFloat(this.discount_amount_eur) || 0;
-    const discountSyp = parseFloat(this.discount_amount_syp) || 0;
-
-    return {
-        discount_percentage_eur: totalEur > 0 ? (discountEur / totalEur) * 100 : 0,
-        discount_percentage_syp: totalSyp > 0 ? (discountSyp / totalSyp) * 100 : 0
-    };
+    if (this.currency === 'EUR') {
+        return parseFloat(this.final_amount_eur) || 0;
+    } else {
+        return parseFloat(this.final_amount_syp) || 0;
+    }
 };
 
 Order.prototype.isDelivered = function () {
@@ -261,6 +198,10 @@ Order.prototype.isPaid = function () {
 
 Order.prototype.canCancel = function () {
     return !['delivered', 'cancelled'].includes(this.status);
+};
+
+Order.prototype.canEdit = function () {
+    return this.status === 'draft';
 };
 
 // Static methods
@@ -289,6 +230,20 @@ Order.findByStatus = async function (status, options = {}) {
 
     if (options.storeId) {
         whereClause.store_id = options.storeId;
+    }
+
+    return await this.findAll({
+        where: whereClause,
+        order: [['order_date', 'DESC']],
+        limit: options.limit || 100
+    });
+};
+
+Order.findByDistributor = async function (distributorId, options = {}) {
+    const whereClause = { assigned_distributor_id: distributorId };
+
+    if (options.status) {
+        whereClause.status = options.status;
     }
 
     return await this.findAll({
@@ -334,47 +289,38 @@ Order.getStatistics = async function (dateFrom = null, dateTo = null) {
     const [
         totalOrders,
         draftOrders,
-        pendingOrders,
         confirmedOrders,
-        preparedOrders,
+        inProgressOrders,
         deliveredOrders,
         cancelledOrders,
         totalAmountEur,
         totalAmountSyp,
         pendingPayments,
-        partialPayments,
-        paidPayments,
-        overduePayments
+        paidPayments
     ] = await Promise.all([
         this.count({ where: whereClause }),
         this.count({ where: { ...whereClause, status: 'draft' } }),
-        this.count({ where: { ...whereClause, status: 'pending' } }),
         this.count({ where: { ...whereClause, status: 'confirmed' } }),
-        this.count({ where: { ...whereClause, status: 'prepared' } }),
+        this.count({ where: { ...whereClause, status: 'in_progress' } }),
         this.count({ where: { ...whereClause, status: 'delivered' } }),
         this.count({ where: { ...whereClause, status: 'cancelled' } }),
         this.sum('final_amount_eur', { where: whereClause }),
         this.sum('final_amount_syp', { where: whereClause }),
         this.count({ where: { ...whereClause, payment_status: 'pending' } }),
-        this.count({ where: { ...whereClause, payment_status: 'partial' } }),
-        this.count({ where: { ...whereClause, payment_status: 'paid' } }),
-        this.count({ where: { ...whereClause, payment_status: 'overdue' } })
+        this.count({ where: { ...whereClause, payment_status: 'paid' } })
     ]);
 
     return {
         total_orders: totalOrders,
         draft_orders: draftOrders,
-        pending_orders: pendingOrders,
         confirmed_orders: confirmedOrders,
-        prepared_orders: preparedOrders,
+        in_progress_orders: inProgressOrders,
         delivered_orders: deliveredOrders,
         cancelled_orders: cancelledOrders,
         total_amount_eur: totalAmountEur || 0,
         total_amount_syp: totalAmountSyp || 0,
         pending_payments: pendingPayments,
-        partial_payments: partialPayments,
         paid_payments: paidPayments,
-        overdue_payments: overduePayments,
         average_order_value_eur: totalOrders > 0 ? (totalAmountEur || 0) / totalOrders : 0,
         average_order_value_syp: totalOrders > 0 ? (totalAmountSyp || 0) / totalOrders : 0
     };

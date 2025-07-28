@@ -868,6 +868,270 @@ const CreateUserPage = () => {
     </div>
   );
 
+  const renderAdditionalInformation = () => (
+    <div className="space-y-6">
+      {/* Education & Skills */}
+      <div className="bg-blue-50 p-6 rounded-xl border border-blue-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <Briefcase className="w-5 h-5" />
+          التعليم والمهارات
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              المستوى التعليمي
+            </label>
+            <select
+              name="education_level"
+              value={formData.education_level}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">اختر المستوى التعليمي</option>
+              {educationLevels.map((level) => (
+                <option key={level.value} value={level.value}>
+                  {level.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <EnhancedInput
+            label="اللغات المحكية"
+            name="languages"
+            value={formData.languages}
+            onChange={handleChange}
+            placeholder="مثل: العربية، الإنجليزية، الفرنسية"
+            error={errors.languages}
+            icon={<Globe className="w-4 h-4" />}
+          />
+
+          <EnhancedInput
+            label="الشهادات والمؤهلات"
+            name="certifications"
+            value={formData.certifications}
+            onChange={handleChange}
+            placeholder="أدخل الشهادات المهنية"
+            error={errors.certifications}
+            icon={<FileText className="w-4 h-4" />}
+          />
+
+          <EnhancedInput
+            label="المزايا الإضافية"
+            name="benefits"
+            value={formData.benefits}
+            onChange={handleChange}
+            placeholder="التأمين الصحي، بدل الانتقال، إلخ"
+            error={errors.benefits}
+            icon={<Star className="w-4 h-4" />}
+          />
+        </div>
+      </div>
+
+      {/* Emergency Contact */}
+      <div className="bg-orange-50 p-6 rounded-xl border border-orange-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <UserCheck className="w-5 h-5" />
+          جهة الاتصال للطوارئ
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <EnhancedInput
+            label="الاسم"
+            name="emergency_contact_name"
+            value={formData.emergency_contact_name}
+            onChange={handleChange}
+            placeholder="اسم جهة الاتصال"
+            error={errors.emergency_contact_name}
+            icon={<User className="w-4 h-4" />}
+          />
+          <EnhancedInput
+            label="رقم الهاتف"
+            name="emergency_contact_phone"
+            value={formData.emergency_contact_phone}
+            onChange={handleChange}
+            placeholder="رقم هاتف جهة الاتصال"
+            error={errors.emergency_contact_phone}
+            icon={<Phone className="w-4 h-4" />}
+          />
+          <EnhancedInput
+            label="صلة القرابة"
+            name="emergency_contact_relation"
+            value={formData.emergency_contact_relation}
+            onChange={handleChange}
+            placeholder="مثل: أب، أم، أخ، صديق"
+            error={errors.emergency_contact_relation}
+            icon={<Users className="w-4 h-4" />}
+          />
+        </div>
+      </div>
+
+      {/* Additional Notes */}
+      <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <FileText className="w-5 h-5" />
+          ملاحظات إضافية
+        </h3>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              ملاحظات عامة
+            </label>
+            <textarea
+              name="notes"
+              value={formData.notes}
+              onChange={handleChange}
+              rows={3}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              placeholder="أدخل أي ملاحظات إضافية حول الموظف"
+            />
+          </div>
+
+          {['admin', 'manager'].includes(formData.role) && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                ملاحظات الإدارة (سرية)
+              </label>
+              <textarea
+                name="admin_notes"
+                value={formData.admin_notes}
+                onChange={handleChange}
+                rows={2}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                placeholder="ملاحظات داخلية للإدارة فقط"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderSystemSettings = () => (
+    <div className="space-y-6">
+      {/* Language & Timezone */}
+      <div className="bg-green-50 p-6 rounded-xl border border-green-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <Settings className="w-5 h-5" />
+          تفضيلات النظام
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              لغة الواجهة
+            </label>
+            <select
+              name="preferred_language"
+              value={formData.preferred_language}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="ar">العربية</option>
+              <option value="en">English</option>
+              <option value="fr">Français</option>
+              <option value="nl">Nederlands</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              المنطقة الزمنية
+            </label>
+            <select
+              name="timezone"
+              value={formData.timezone}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="Europe/Brussels">Brussels (UTC+1/+2)</option>
+              <option value="Europe/Paris">Paris (UTC+1/+2)</option>
+              <option value="UTC">UTC (UTC+0)</option>
+              <option value="Asia/Damascus">Damascus (UTC+2/+3)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Notification Preferences */}
+      <div className="bg-purple-50 p-6 rounded-xl border border-purple-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <Clock className="w-5 h-5" />
+          تفضيلات الإشعارات
+        </h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+            <div>
+              <h4 className="font-medium text-gray-900">إشعارات البريد الإلكتروني</h4>
+              <p className="text-sm text-gray-600">تلقي الإشعارات عبر البريد الإلكتروني</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.notification_preferences.email}
+                onChange={(e) => handleNotificationChange('email', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+            <div>
+              <h4 className="font-medium text-gray-900">إشعارات الرسائل النصية</h4>
+              <p className="text-sm text-gray-600">تلقي الإشعارات عبر الرسائل النصية</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.notification_preferences.sms}
+                onChange={(e) => handleNotificationChange('sms', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+            <div>
+              <h4 className="font-medium text-gray-900">الإشعارات الفورية</h4>
+              <p className="text-sm text-gray-600">تلقي الإشعارات الفورية في التطبيق</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.notification_preferences.push}
+                onChange={(e) => handleNotificationChange('push', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Review Summary */}
+      <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <CheckCircle className="w-5 h-5" />
+          ملخص البيانات
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="space-y-2">
+            <div><span className="font-medium">الاسم الكامل:</span> {formData.full_name || '-'}</div>
+            <div><span className="font-medium">البريد الإلكتروني:</span> {formData.email || '-'}</div>
+            <div><span className="font-medium">اسم المستخدم:</span> {formData.username || '-'}</div>
+            <div><span className="font-medium">الهاتف:</span> {formData.phone || '-'}</div>
+          </div>
+          <div className="space-y-2">
+            <div><span className="font-medium">الدور:</span> {roles.find(r => r.value === formData.role)?.label || '-'}</div>
+            <div><span className="font-medium">الراتب:</span> {formData.salary ? `€${formData.salary}` : '-'}</div>
+            <div><span className="font-medium">تاريخ التوظيف:</span> {formData.hired_date || '-'}</div>
+            <div><span className="font-medium">نوع العقد:</span> {contractTypes.find(c => c.value === formData.contract_type)?.label || '-'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
       <div className="max-w-4xl mx-auto">
@@ -943,30 +1207,52 @@ const CreateUserPage = () => {
                 <div className="space-y-6">
                   {currentStep === 1 && renderBasicInformation()}
                   {currentStep === 2 && renderJobInformation()}
-                  {/* Add more steps here as needed */}
+                  {currentStep === 3 && renderAdditionalInformation()}
+                  {currentStep === 4 && renderSystemSettings()}
                 </div>
 
-                {/* أزرار الإجراءات */}
-                <div className="flex gap-4 pt-6 border-t border-gray-200">
-                  <EnhancedButton
-                    type="submit"
-                    variant="primary"
-                    size="lg"
-                    loading={isLoading}
-                    icon={<Save className="w-5 h-5" />}
-                    fullWidth
-                  >
-                    {isLoading ? "جاري الإنشاء..." : "إنشاء الموظف"}
-                  </EnhancedButton>
-                  <EnhancedButton
-                    type="button"
-                    variant="secondary"
-                    size="lg"
-                    onClick={() => navigate("/users")}
-                    fullWidth
-                  >
-                    إلغاء
-                  </EnhancedButton>
+                {/* Navigation Buttons */}
+                <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+                  <div>
+                    {currentStep > 1 && (
+                      <EnhancedButton
+                        type="button"
+                        variant="outline"
+                        onClick={() => setCurrentStep(currentStep - 1)}
+                        className="flex items-center gap-2"
+                      >
+                        السابق
+                      </EnhancedButton>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    {currentStep < steps.length ? (
+                      <EnhancedButton
+                        type="button"
+                        variant="primary"
+                        onClick={() => {
+                          if (validateCurrentStep()) {
+                            setCurrentStep(currentStep + 1);
+                          }
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        التالي
+                      </EnhancedButton>
+                    ) : (
+                      <EnhancedButton
+                        type="submit"
+                        variant="primary"
+                        loading={isLoading}
+                        disabled={isLoading}
+                        icon={isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        className="px-8"
+                      >
+                        {isLoading ? "جاري الحفظ..." : "حفظ الموظف"}
+                      </EnhancedButton>
+                    )}
+                  </div>
                 </div>
               </form>
             </CardBody>

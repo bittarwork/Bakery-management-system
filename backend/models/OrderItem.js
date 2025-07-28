@@ -25,35 +25,12 @@ const OrderItem = sequelize.define('OrderItem', {
     },
     product_name: {
         type: DataTypes.STRING(100),
-        allowNull: true
+        allowNull: false
     },
-    product_barcode: {
-        type: DataTypes.STRING(100),
-        allowNull: true
-    },
-    product_sku: {
-        type: DataTypes.STRING(100),
-        allowNull: true
-    },
-    product_description: {
-        type: DataTypes.TEXT,
-        allowNull: true
-    },
-    supplier_id: {
-        type: DataTypes.INTEGER,
-        allowNull: true
-    },
-    supplier_name: {
-        type: DataTypes.STRING(100),
-        allowNull: true
-    },
-    unit: {
+    product_unit: {
         type: DataTypes.STRING(50),
-        allowNull: true
-    },
-    product_category: {
-        type: DataTypes.STRING(50),
-        allowNull: true
+        allowNull: true,
+        defaultValue: 'piece'
     },
     quantity: {
         type: DataTypes.INTEGER,
@@ -61,62 +38,9 @@ const OrderItem = sequelize.define('OrderItem', {
         validate: {
             min: {
                 args: 1,
-                msg: 'الكمية يجب أن تكون أكبر من صفر'
+                msg: 'Quantity must be greater than zero'
             }
         }
-    },
-    delivered_quantity: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        defaultValue: 0
-    },
-    returned_quantity: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        defaultValue: 0
-    },
-    damaged_quantity: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        defaultValue: 0
-    },
-    delivery_date: {
-        type: DataTypes.DATE,
-        allowNull: true
-    },
-    delivery_status: {
-        type: DataTypes.ENUM('pending', 'in_transit', 'delivered', 'returned', 'cancelled'),
-        allowNull: true,
-        defaultValue: 'pending'
-    },
-    delivery_notes: {
-        type: DataTypes.TEXT,
-        allowNull: true
-    },
-    delivery_confirmed_by: {
-        type: DataTypes.INTEGER,
-        allowNull: true
-    },
-    delivery_confirmed_at: {
-        type: DataTypes.DATE,
-        allowNull: true
-    },
-    tracking_number: {
-        type: DataTypes.STRING(100),
-        allowNull: true
-    },
-    delivery_method: {
-        type: DataTypes.ENUM('pickup', 'delivery', 'shipping'),
-        allowNull: true,
-        defaultValue: 'delivery'
-    },
-    estimated_delivery_date: {
-        type: DataTypes.DATE,
-        allowNull: true
-    },
-    actual_delivery_date: {
-        type: DataTypes.DATE,
-        allowNull: true
     },
     unit_price_eur: {
         type: DataTypes.DECIMAL(10, 2),
@@ -138,34 +62,9 @@ const OrderItem = sequelize.define('OrderItem', {
         allowNull: false,
         defaultValue: 0.00
     },
-    discount_amount_eur: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: true,
-        defaultValue: 0.00
-    },
-    discount_amount_syp: {
-        type: DataTypes.DECIMAL(15, 2),
-        allowNull: true,
-        defaultValue: 0.00
-    },
-    final_price_eur: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        defaultValue: 0.00
-    },
-    final_price_syp: {
-        type: DataTypes.DECIMAL(15, 2),
-        allowNull: false,
-        defaultValue: 0.00
-    },
     notes: {
         type: DataTypes.TEXT,
         allowNull: true
-    },
-    return_reason: {
-        type: DataTypes.STRING(255),
-        allowNull: true,
-        comment: 'سبب الإرجاع'
     }
 }, {
     tableName: 'order_items',
@@ -178,9 +77,6 @@ const OrderItem = sequelize.define('OrderItem', {
         },
         {
             fields: ['product_id']
-        },
-        {
-            fields: ['delivery_status']
         }
     ]
 });

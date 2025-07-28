@@ -8,15 +8,6 @@ import Vehicle from './Vehicle.js';
 import UserSession from './UserSession.js';
 import Payment from './Payment.js';
 import Notification from './Notification.js';
-import Distributor from './Distributor.js';
-import DistributionTrip from './DistributionTrip.js';
-import StoreVisit from './StoreVisit.js';
-import TempDeliverySchedule from './TempDeliverySchedule.js';
-import DeliverySchedule from './DeliverySchedule.js';
-import DeliveryCapacity from './DeliveryCapacity.js';
-import DeliveryTracking from './DeliveryTracking.js';
-import LocationHistory from './LocationHistory.js';
-import DistributorDailyPerformance from './DistributorDailyPerformance.js';
 
 // Database connection factory
 let sequelize = null;
@@ -62,9 +53,9 @@ const getSequelizeConnection = async () => {
     return sequelize;
 };
 
-// Define associations here
+// Define simple associations
 const defineAssociations = () => {
-    // Order associations
+    // Order associations - Core system
     Order.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
     Order.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
     Order.belongsTo(User, { foreignKey: 'assigned_distributor_id', as: 'assignedDistributor' });
@@ -82,12 +73,13 @@ const defineAssociations = () => {
     // Product associations
     Product.hasMany(OrderItem, { foreignKey: 'product_id', as: 'orderItems' });
 
-    // User associations
+    // User associations - Essential only
     User.hasMany(Order, { foreignKey: 'created_by', as: 'orders' });
     User.hasMany(Order, { foreignKey: 'assigned_distributor_id', as: 'distributedOrders' });
     User.hasMany(UserSession, { foreignKey: 'user_id', as: 'sessions' });
     User.hasMany(Payment, { foreignKey: 'created_by', as: 'payments' });
     User.hasMany(Vehicle, { foreignKey: 'assigned_distributor_id', as: 'assignedVehicles' });
+    User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications' });
 
     // Vehicle associations
     Vehicle.belongsTo(User, { foreignKey: 'assigned_distributor_id', as: 'assignedDistributor' });
@@ -108,61 +100,8 @@ const defineAssociations = () => {
     Notification.belongsTo(Product, { foreignKey: 'related_product_id', as: 'relatedProduct' });
     Notification.belongsTo(Payment, { foreignKey: 'related_payment_id', as: 'relatedPayment' });
 
-    // User has many notifications
-    User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications' });
-
-    // Distributor associations
-    Distributor.hasMany(DistributionTrip, { foreignKey: 'distributor_id', as: 'trips' });
-
-    // DistributionTrip associations
-    DistributionTrip.belongsTo(Distributor, { foreignKey: 'distributor_id', as: 'distributor' });
-    DistributionTrip.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
-    DistributionTrip.hasMany(StoreVisit, { foreignKey: 'trip_id', as: 'visits' });
-
-    // StoreVisit associations
-    StoreVisit.belongsTo(DistributionTrip, { foreignKey: 'trip_id', as: 'trip' });
-    StoreVisit.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
-    StoreVisit.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
-
-    // Store additional associations
-    Store.hasMany(StoreVisit, { foreignKey: 'store_id', as: 'visits' });
-
-    // User additional associations  
-    User.hasMany(DistributionTrip, { foreignKey: 'created_by', as: 'createdTrips' });
-
-    // Payment additional associations
-    Payment.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
-    Payment.belongsTo(StoreVisit, { foreignKey: 'visit_id', as: 'visit' });
-
-    // ===============================
-    // Delivery Scheduling Associations
-    // ===============================
-
-    // DeliverySchedule associations
-    DeliverySchedule.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
-    DeliverySchedule.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
-    DeliverySchedule.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
-    DeliverySchedule.belongsTo(User, { foreignKey: 'updated_by', as: 'updater' });
-    DeliverySchedule.belongsTo(DeliverySchedule, { foreignKey: 'rescheduled_from', as: 'rescheduled_from_schedule' });
-    DeliverySchedule.hasMany(DeliverySchedule, { foreignKey: 'rescheduled_from', as: 'rescheduled_to_schedules' });
-    DeliverySchedule.hasOne(DeliveryTracking, { foreignKey: 'delivery_schedule_id', as: 'tracking' });
-
-    // Order has delivery schedules
-    Order.hasMany(DeliverySchedule, { foreignKey: 'order_id', as: 'delivery_schedules' });
-
-    // User delivery scheduling associations
-    User.hasMany(DeliverySchedule, { foreignKey: 'distributor_id', as: 'assigned_schedules' });
-    User.hasMany(DeliverySchedule, { foreignKey: 'created_by', as: 'created_schedules' });
-
-    // DeliveryTracking associations
-    DeliveryTracking.belongsTo(DeliverySchedule, { foreignKey: 'delivery_schedule_id', as: 'schedule' });
-    DeliveryTracking.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
-
-    // User tracking associations
-    User.hasMany(DeliveryTracking, { foreignKey: 'distributor_id', as: 'delivery_trackings' });
-
     if (process.env.NODE_ENV !== 'test') {
-        console.log('✅ Model associations defined');
+        console.log('✅ Simple model associations defined');
     }
 };
 
@@ -175,18 +114,10 @@ const initializeModels = async () => {
         // Get database connection when needed
         const db = await getSequelizeConnection();
 
-        // Sync models with database - DISABLED FOR NEW DATABASE STRUCTURE
-        // if (process.env.NODE_ENV === 'development') {
-        //     await db.sync({ alter: true });
-        //     if (process.env.NODE_ENV !== 'test') {
-        //         console.log('✅ Models synchronized with database');
-        //     }
-        // }
-
-        // Database should be created manually using database/create_complete_database.sql
+        // Database should be created manually using migrations
         if (process.env.NODE_ENV !== 'test') {
-            console.log('⚠️  Database sync disabled - please create database manually');
-            console.log('📋 Run: mysql -u root -p < database/create_complete_database.sql');
+            console.log('⚠️  Database sync disabled - using manual database structure');
+            console.log('📋 Simple order system initialized successfully');
         }
 
         return {
@@ -199,13 +130,7 @@ const initializeModels = async () => {
             Vehicle,
             UserSession,
             Payment,
-            Notification,
-            Distributor,
-            DistributionTrip,
-            StoreVisit,
-            DeliverySchedule,
-            DeliveryCapacity,
-            DeliveryTracking
+            Notification
         };
     } catch (error) {
         console.error('❌ Error initializing models:', error);
@@ -224,14 +149,6 @@ export {
     UserSession,
     Payment,
     Notification,
-    Distributor,
-    DistributionTrip,
-    StoreVisit,
-    DeliverySchedule,
-    DeliveryCapacity,
-    DeliveryTracking,
-    LocationHistory,
-    DistributorDailyPerformance,
     initializeModels
 };
 
@@ -246,14 +163,5 @@ export default {
     UserSession,
     Payment,
     Notification,
-    Distributor,
-    DistributionTrip,
-    StoreVisit,
-    TempDeliverySchedule,
-    DeliverySchedule,
-    DeliveryCapacity,
-    DeliveryTracking,
-    LocationHistory,
-    DistributorDailyPerformance,
     initializeModels
 }; 

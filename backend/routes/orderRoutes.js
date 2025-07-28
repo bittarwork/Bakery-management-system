@@ -7,7 +7,12 @@ import {
     updateOrderStatus,
     updatePaymentStatus,
     deleteOrder,
-    exportOrders
+    exportOrders,
+    assignDistributor,
+    unassignDistributor,
+    getDistributorOrders,
+    getTodayOrders,
+    getOrderStatistics
 } from '../controllers/orderController.js';
 import { protect } from '../middleware/auth.js';
 import {
@@ -28,6 +33,21 @@ router.use(protect);
 // @access  Private
 router.get('/export', validateGetOrders, exportOrders);
 
+// @route   GET /api/orders/today
+// @desc    Get today's orders
+// @access  Private
+router.get('/today', getTodayOrders);
+
+// @route   GET /api/orders/statistics
+// @desc    Get order statistics
+// @access  Private
+router.get('/statistics', getOrderStatistics);
+
+// @route   GET /api/orders/distributor/:distributorId
+// @desc    Get orders assigned to specific distributor
+// @access  Private
+router.get('/distributor/:distributorId', getDistributorOrders);
+
 // @route   GET /api/orders
 // @desc    Get all orders with pagination and filters
 // @access  Private
@@ -43,6 +63,11 @@ router.get('/:id', validateOrderId, getOrder);
 // @access  Private
 router.post('/', validateCreateOrder, createOrder);
 
+// @route   POST /api/orders/:id/assign-distributor
+// @desc    Assign distributor to order (Manual assignment)
+// @access  Private (Admin/Manager only)
+router.post('/:id/assign-distributor', validateOrderId, assignDistributor);
+
 // @route   PUT /api/orders/:id
 // @desc    Update order
 // @access  Private
@@ -55,8 +80,13 @@ router.patch('/:id/status', validateUpdateOrderStatus, updateOrderStatus);
 
 // @route   PATCH /api/orders/:id/payment-status
 // @desc    Update payment status
-// @access  Private (Admin/Manager only)
+// @access  Private (Admin/Manager/Distributor)
 router.patch('/:id/payment-status', validateUpdatePaymentStatus, updatePaymentStatus);
+
+// @route   DELETE /api/orders/:id/assign-distributor
+// @desc    Unassign distributor from order
+// @access  Private (Admin/Manager only)
+router.delete('/:id/assign-distributor', validateOrderId, unassignDistributor);
 
 // @route   DELETE /api/orders/:id
 // @desc    Delete order

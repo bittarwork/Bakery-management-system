@@ -1,5 +1,5 @@
 /**
- * ثوابت حالات الطلبات
+ * Order status constants
  */
 
 export const ORDER_STATUS = {
@@ -11,34 +11,33 @@ export const ORDER_STATUS = {
 };
 
 export const ORDER_STATUS_LABELS = {
-    [ORDER_STATUS.DRAFT]: 'مسودة',
-    [ORDER_STATUS.CONFIRMED]: 'مؤكد',
-    [ORDER_STATUS.IN_PROGRESS]: 'قيد التنفيذ',
-    [ORDER_STATUS.DELIVERED]: 'مُسلم',
-    [ORDER_STATUS.CANCELLED]: 'ملغي'
+    [ORDER_STATUS.DRAFT]: 'Draft',
+    [ORDER_STATUS.CONFIRMED]: 'Confirmed',
+    [ORDER_STATUS.IN_PROGRESS]: 'In Progress',
+    [ORDER_STATUS.DELIVERED]: 'Delivered',
+    [ORDER_STATUS.CANCELLED]: 'Cancelled'
 };
 
 export const ORDER_STATUS_COLORS = {
     [ORDER_STATUS.DRAFT]: 'gray',
     [ORDER_STATUS.CONFIRMED]: 'blue',
-    [ORDER_STATUS.IN_PROGRESS]: 'yellow',
+    [ORDER_STATUS.IN_PROGRESS]: 'orange',
     [ORDER_STATUS.DELIVERED]: 'green',
     [ORDER_STATUS.CANCELLED]: 'red'
 };
 
-// حالات يمكن تعديلها
+// Statuses that can be edited
 export const EDITABLE_ORDER_STATUSES = [
-    ORDER_STATUS.DRAFT,
-    ORDER_STATUS.CONFIRMED
+    ORDER_STATUS.DRAFT
 ];
 
-// حالات يمكن إلغاؤها
+// Statuses that can be cancelled
 export const CANCELLABLE_ORDER_STATUSES = [
     ORDER_STATUS.DRAFT,
     ORDER_STATUS.CONFIRMED
 ];
 
-// حالات يمكن حذفها
+// Statuses that can be deleted
 export const DELETABLE_ORDER_STATUSES = [
     ORDER_STATUS.DRAFT
 ];
