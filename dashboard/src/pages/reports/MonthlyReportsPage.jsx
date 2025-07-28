@@ -1,192 +1,78 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React from "react";
+import { motion } from "framer-motion";
+import { Calendar, Construction, Clock } from "lucide-react";
+import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 
 const MonthlyReportsPage = () => {
-  const [selectedMonth, setSelectedMonth] = useState(
-    new Date().toISOString().slice(0, 7)
-  );
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Link to="/reports" className="text-gray-500 hover:text-gray-700">
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-          </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Monthly Reports</h1>
-        </div>
-        <div className="flex space-x-2">
-          <input
-            type="month"
-            className="input"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-          />
-          <button className="btn btn-outline">Filter</button>
-          <button className="btn btn-primary">Export</button>
-        </div>
-      </div>
-
-      {/* Monthly Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="card">
-          <div className="card-body">
-            <h3 className="text-lg font-medium text-gray-900">Total Revenue</h3>
-            <p className="mt-2 text-3xl font-bold text-success-600">$0.00</p>
-            <p className="mt-1 text-sm text-gray-500">This month</p>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-body">
-            <h3 className="text-lg font-medium text-gray-900">Total Orders</h3>
-            <p className="mt-2 text-3xl font-bold text-primary-600">0</p>
-            <p className="mt-1 text-sm text-gray-500">This month</p>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-body">
-            <h3 className="text-lg font-medium text-gray-900">
-              Average Daily Revenue
-            </h3>
-            <p className="mt-2 text-3xl font-bold text-gray-900">$0.00</p>
-            <p className="mt-1 text-sm text-gray-500">Per day</p>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-body">
-            <h3 className="text-lg font-medium text-gray-900">Growth Rate</h3>
-            <p className="mt-2 text-3xl font-bold text-info-600">0%</p>
-            <p className="mt-1 text-sm text-gray-500">vs last month</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Revenue Trend */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="text-lg font-medium text-gray-900">Revenue Trend</h2>
-        </div>
-        <div className="card-body">
-          <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-            Chart will be integrated here
-          </div>
-        </div>
-      </div>
-
-      {/* Category & Store Analysis */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="card">
-          <div className="card-header">
-            <h2 className="text-lg font-medium text-gray-900">
-              Category Analysis
-            </h2>
-          </div>
-          <div className="card-body">
-            <div className="text-center text-gray-600 py-8">
-              No data available
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white shadow-lg border-b border-gray-200"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+                <Calendar className="w-7 h-7 text-rose-600 ml-3" />
+                التقارير الشهرية
+              </h1>
+              <p className="text-gray-600 mt-1">
+                تقارير شاملة شهرية مع تحليلات معمقة
+              </p>
             </div>
           </div>
         </div>
+      </motion.div>
 
-        <div className="card">
-          <div className="card-header">
-            <h2 className="text-lg font-medium text-gray-900">
-              Store Analysis
-            </h2>
-          </div>
-          <div className="card-body">
-            <div className="text-center text-gray-600 py-8">
-              No data available
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Monthly Insights */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="text-lg font-medium text-gray-900">
-            Monthly Insights
-          </h2>
-        </div>
-        <div className="card-body">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-600">
-                Best Performing Week
-              </h3>
-              <p className="mt-2 text-2xl font-bold text-gray-900">N/A</p>
-            </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-600">
-                Best Performing Store
-              </h3>
-              <p className="mt-2 text-2xl font-bold text-gray-900">N/A</p>
-            </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-600">
-                Most Popular Category
-              </h3>
-              <p className="mt-2 text-2xl font-bold text-gray-900">N/A</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Detailed Analysis */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="text-lg font-medium text-gray-900">
-            Detailed Analysis
-          </h2>
-        </div>
-        <div className="card-body">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Week
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Orders
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Revenue
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Avg Order Value
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Growth
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                <tr>
-                  <td className="px-6 py-4 text-center" colSpan="5">
-                    <div className="text-gray-600">No data available</div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+      {/* Development Banner */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="bg-gradient-to-r from-rose-50 to-pink-50 border-rose-200">
+            <CardBody className="text-center py-16">
+              <div className="flex justify-center mb-6">
+                <div className="relative">
+                  <Calendar className="w-24 h-24 text-rose-500" />
+                  <div className="absolute -top-2 -right-2">
+                    <Clock className="w-8 h-8 text-pink-600 animate-pulse" />
+                  </div>
+                </div>
+              </div>
+              
+              <h2 className="text-3xl font-bold text-gray-800 mb-4">
+                نظام التقارير الشهرية
+              </h2>
+              
+              <div className="bg-rose-100 rounded-lg p-6 max-w-2xl mx-auto">
+                <h3 className="text-xl font-semibold text-rose-800 mb-3">
+                  📈 جاري التطوير 📈
+                </h3>
+                <p className="text-gray-700 text-lg leading-relaxed">
+                  قريباً: تقارير شهرية مفصلة مع رؤى استراتيجية
+                </p>
+              </div>
+              
+              <div className="mt-8 text-gray-600">
+                <p className="text-lg">
+                  تقارير شهرية شاملة مع تحليل الأداء الاستراتيجي
+                </p>
+                <div className="flex justify-center items-center mt-4 text-sm">
+                  <Clock className="w-4 h-4 ml-2" />
+                  <span>متوقع الإنتهاء: قريباً جداً</span>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </motion.div>
       </div>
     </div>
   );
 };
 
-export default MonthlyReportsPage;
+export default MonthlyReportsPage; 

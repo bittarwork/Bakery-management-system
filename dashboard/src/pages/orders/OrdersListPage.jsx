@@ -92,7 +92,6 @@ const OrdersListPage = () => {
     payment_status: "",
     store_id: "",
     distributor_id: "",
-    priority: "",
     date_from: "",
     date_to: "",
   });
@@ -224,7 +223,7 @@ const OrdersListPage = () => {
         .length,
       cancelledOrders: ordersData.filter((o) => o.status === "cancelled")
         .length,
-      urgentOrders: ordersData.filter((o) => o.priority === "urgent").length,
+
       todayOrders: ordersData.filter((o) => o.order_date === today).length,
       monthlyGrowth: 15.2, // Mock data - replace with real calculation
       averageOrderValue:
@@ -279,7 +278,6 @@ const OrdersListPage = () => {
       payment_status: "",
       store_id: "",
       distributor_id: "",
-      priority: "",
       date_from: "",
       date_to: "",
     });

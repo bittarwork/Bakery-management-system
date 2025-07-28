@@ -1,5 +1,5 @@
 import { validationResult } from 'express-validator';
-import { Op } from 'sequelize';
+import { Op, Transaction } from 'sequelize';
 import { Order, OrderItem, Store, Product, User, getSequelizeConnection } from '../models/index.js';
 import { ORDER_STATUS, PAYMENT_STATUS } from '../constants/index.js';
 import { CreateOrderRequest } from '../dto/request/CreateOrderRequest.js';
@@ -262,7 +262,7 @@ export const getOrder = async (req, res) => {
 export const createOrder = async (req, res) => {
     const sequelize = await getSequelizeConnection();
     const transaction = await sequelize.transaction({
-        isolationLevel: sequelize.Transaction.ISOLATION_LEVELS.READ_COMMITTED,
+        isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED,
         timeout: 30000
     });
 

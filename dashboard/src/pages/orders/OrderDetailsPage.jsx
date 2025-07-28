@@ -28,7 +28,6 @@ import {
   Zap,
   RefreshCw,
   Copy,
-  Print,
   Calculator,
 } from "lucide-react";
 import { toast } from "react-hot-toast";

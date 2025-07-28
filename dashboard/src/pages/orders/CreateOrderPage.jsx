@@ -42,9 +42,6 @@ const CreateOrderPage = () => {
     distributor_id: "",
     currency: "EUR", // Always EUR
     delivery_date: "",
-    priority: "normal",
-    payment_status: "pending",
-    payment_method: "",
     notes: "",
     special_instructions: "",
     items: [],
@@ -222,9 +219,6 @@ const CreateOrderPage = () => {
         distributor_id: formData.distributor_id ? parseInt(formData.distributor_id) : null,
         currency: "EUR",
         delivery_date: formData.delivery_date || null,
-        priority: formData.priority,
-        payment_status: formData.payment_status,
-        payment_method: formData.payment_method || null,
         notes: formData.notes,
         special_instructions: formData.special_instructions,
         items: formData.items.map((item) => ({
@@ -363,66 +357,16 @@ const CreateOrderPage = () => {
                   </h2>
                 </CardHeader>
                 <CardBody>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        تاريخ التسليم
-                      </label>
-                      <EnhancedInput
-                        type="date"
-                        value={formData.delivery_date}
-                        onChange={(e) => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))}
-                        icon={<Calendar className="w-4 h-4" />}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        الأولوية
-                      </label>
-                      <select
-                        value={formData.priority}
-                        onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value }))}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="low">منخفضة</option>
-                        <option value="normal">عادية</option>
-                        <option value="high">عالية</option>
-                        <option value="urgent">عاجلة</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        حالة الدفع
-                      </label>
-                      <select
-                        value={formData.payment_status}
-                        onChange={(e) => setFormData(prev => ({ ...prev, payment_status: e.target.value }))}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="pending">معلق</option>
-                        <option value="paid">مدفوع</option>
-                        <option value="partial">دفع جزئي</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        طريقة الدفع
-                      </label>
-                      <select
-                        value={formData.payment_method}
-                        onChange={(e) => setFormData(prev => ({ ...prev, payment_method: e.target.value }))}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">اختر طريقة الدفع</option>
-                        <option value="cash">نقداً</option>
-                        <option value="credit">آجل</option>
-                        <option value="bank_transfer">تحويل بنكي</option>
-                        <option value="check">شيك</option>
-                      </select>
-                    </div>
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      تاريخ التسليم
+                    </label>
+                    <EnhancedInput
+                      type="date"
+                      value={formData.delivery_date}
+                      onChange={(e) => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))}
+                      icon={<Calendar className="w-4 h-4" />}
+                    />
                   </div>
 
                   <div className="mt-6">
@@ -475,7 +419,7 @@ const CreateOrderPage = () => {
                       <option value="">اختر الموزع (اختياري)</option>
                       {distributors.map((distributor) => (
                         <option key={distributor.id} value={distributor.id}>
-                          {distributor.name} - {distributor.phone}
+                          {distributor.name}
                         </option>
                       ))}
                     </select>
@@ -688,33 +632,7 @@ const CreateOrderPage = () => {
                         {/* Order Status */}
                         <div className="pt-3 border-t border-gray-200">
                           <div className="space-y-2">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-600">الأولوية:</span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                formData.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                                formData.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                                formData.priority === 'normal' ? 'bg-blue-100 text-blue-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
-                                {formData.priority === 'urgent' && 'عاجلة'}
-                                {formData.priority === 'high' && 'عالية'}
-                                {formData.priority === 'normal' && 'عادية'}
-                                {formData.priority === 'low' && 'منخفضة'}
-                              </span>
-                            </div>
-                            
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-600">حالة الدفع:</span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                formData.payment_status === 'paid' ? 'bg-green-100 text-green-800' :
-                                formData.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
-                                {formData.payment_status === 'paid' && 'مدفوع'}
-                                {formData.payment_status === 'partial' && 'جزئي'}
-                                {formData.payment_status === 'pending' && 'معلق'}
-                              </span>
-                            </div>
+
 
                             {formData.delivery_date && (
                               <div className="flex justify-between items-center">

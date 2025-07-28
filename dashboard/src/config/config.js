@@ -44,7 +44,7 @@ const config = {
         lat: 33.8938, // Beirut, Lebanon
         lng: 35.5018
     },
-    
+
     // Google Maps API configuration
     GOOGLE_MAPS_API_KEY: 'AIzaSyDhnQwiZuURSLApdQAR_86POf0a_f9n2IE',
     GOOGLE_MAPS_SETTINGS: {
@@ -76,7 +76,7 @@ export const getApiUrl = () => {
         console.log('Production environment detected, using Railway API');
         return config.API_BASE_URL;
     }
-    
+
     // For localhost, try to detect if local server is available
     // Default to Railway API unless explicitly running on localhost with local server
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -85,11 +85,11 @@ export const getApiUrl = () => {
             console.log('Local development using Railway API');
             return config.API_BASE_URL;
         }
-        
+
         console.log('Local development detected, using local server');
         return config.LOCAL_API_URL;
     }
-    
+
     // Default fallback to Railway API  
     return config.API_BASE_URL;
 };

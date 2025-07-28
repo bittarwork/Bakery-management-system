@@ -6,7 +6,6 @@ import orderRoutes from './orderRoutes.js';
 import storeRoutes from './stores.js';
 import productRoutes from './products.js';
 import paymentRoutes from './payments.js';
-import reportRoutes from './reports.js';
 import userRoutes from './userRoutes.js';
 import vehicleRoutes from './vehicleRoutes.js';
 
@@ -31,9 +30,6 @@ import enhancedDistributorRoutes from './enhancedDistributorRoutes.js';
 // Import AI Chat routes
 import aiChatRoutes from './aiChatRoutes.js';
 import conversationRoutes from './conversationRoutes.js';
-
-// Import Advanced Analytics routes
-import advancedAnalyticsRoutes from './advancedAnalyticsRoutes.js';
 
 // Import Mobile App routes
 import mobileDistributorRoutes from './mobileDistributorRoutes.js';
@@ -95,7 +91,6 @@ router.use('/orders', orderRoutes);
 router.use('/stores', storeRoutes);
 router.use('/products', productRoutes);
 router.use('/payments', paymentRoutes);
-router.use('/reports', reportRoutes);
 router.use('/users', userRoutes);
 router.use('/vehicles', vehicleRoutes);
 
@@ -126,11 +121,6 @@ router.use('/ai-chat', aiChatRoutes);
 
 // Mount conversation management routes
 router.use('/conversations', conversationRoutes);
-
-// Mount Advanced Analytics routes
-router.use('/analytics', advancedAnalyticsRoutes);
-router.use('/reports', advancedAnalyticsRoutes);
-router.use('/predictions', advancedAnalyticsRoutes);
 
 // Mount Mobile App routes
 router.use('/mobile', mobileDistributorRoutes);

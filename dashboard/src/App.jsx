@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "./stores/authStore";
 import { useSystemStore } from "./stores/systemStore";
-import { toast } from "react-hot-toast";
+import { toast, Toaster } from "react-hot-toast";
 
 // Layout Components
 import AuthLayout from "./components/layout/AuthLayout";
@@ -190,6 +190,37 @@ const App = () => {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50">
+        {/* Toast Notifications */}
+        <Toaster
+          position="top-right"
+          reverseOrder={false}
+          gutter={8}
+          containerClassName=""
+          containerStyle={{}}
+          toastOptions={{
+            className: '',
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+              direction: 'rtl',
+              fontSize: '14px',
+              borderRadius: '8px',
+              padding: '12px 16px'
+            },
+            success: {
+              style: {
+                background: '#10B981',
+              },
+            },
+            error: {
+              style: {
+                background: '#EF4444',
+              },
+            },
+          }}
+        />
+        
         {/* Network Status Indicator */}
         {!isOnline && (
           <div className="fixed top-0 left-0 right-0 bg-red-500 text-white text-center py-2 z-50">

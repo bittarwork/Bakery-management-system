@@ -86,7 +86,9 @@ app.use(cors({
         // Only allow these specific origins
         const allowedOrigins = [
             'http://localhost:3000',
-            'https://www.al-bittar.com'
+            'http://localhost:3001',
+            'https://www.al-bittar.com',
+            'https://bakery-management-system-production.up.railway.app'
         ];
 
         // Allow requests without origin (mobile apps, Postman)
