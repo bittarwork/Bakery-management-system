@@ -1,622 +1,237 @@
 import apiService from './apiService.js';
 
-/**
- * Order Service
- * Manages order-related API operations for Phase 6 features
- */
-class OrderService {
-    constructor() {
-        this.baseEndpoint = '/orders';
+const orderService = {
+  // Get all orders with filtering
+  async getOrders(params = {}) {
+    try {
+      const queryParams = new URLSearchParams();
+      
+      if (params.page) queryParams.append('page', params.page);
+      if (params.limit) queryParams.append('limit', params.limit);
+      if (params.search) queryParams.append('search', params.search);
+      if (params.status) queryParams.append('status', params.status);
+      if (params.payment_status) queryParams.append('payment_status', params.payment_status);
+      if (params.store_id) queryParams.append('store_id', params.store_id);
+      if (params.distributor_id) queryParams.append('distributor_id', params.distributor_id);
+      if (params.date_from) queryParams.append('date_from', params.date_from);
+      if (params.date_to) queryParams.append('date_to', params.date_to);
+
+      const queryString = queryParams.toString();
+      const endpoint = queryString ? `/orders?${queryString}` : '/orders';
+      
+      const response = await apiService.get(endpoint);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      throw error;
     }
+  },
 
-    /**
-     * Get all orders with enhanced filtering and pagination
-     * @param {Object} params - Query parameters
-     * @returns {Promise} API response
-     */
-    async getOrders(params = {}) {
-        try {
-            const queryParams = {
-                page: params.page || 1,
-                limit: params.limit || 10,
-                status: params.status || null,
-                payment_status: params.payment_status || null,
-                store_id: params.store_id || null,
-                distributor_id: params.distributor_id || null,
-                priority: params.priority || null,
-                date_from: params.date_from || null,
-                date_to: params.date_to || null,
-                delivery_date_from: params.delivery_date_from || null,
-                delivery_date_to: params.delivery_date_to || null,
-                amount_min: params.amount_min || null,
-                amount_max: params.amount_max || null,
-                search: params.search || '',
-                sortBy: params.sortBy || 'created_at',
-                sortOrder: params.sortOrder || 'DESC',
-                currency: params.currency || null,
-            };
-
-            // Remove null/empty values
-            Object.keys(queryParams).forEach(key => {
-                if (queryParams[key] === null || queryParams[key] === '') {
-                    delete queryParams[key];
-                }
-            });
-
-            const response = await apiService.get(this.baseEndpoint, queryParams);
-
-            // Enhanced data processing
-            if (response.success && response.data) {
-                // Ensure customer data is properly formatted
-                if (response.data.orders) {
-                    response.data.orders = response.data.orders.map(order => ({
-                        ...order,
-                        // Enhanced customer data
-                        customer_name: order.customer_name || order.customer?.name || order.store?.contact_person || null,
-                        customer_phone: order.customer_phone || order.customer?.phone || order.store?.phone || null,
-                        customer_email: order.customer_email || order.customer?.email || order.store?.email || null,
-                        // Enhanced amount handling
-                        display_amount: this.formatOrderAmount(order),
-                        // Enhanced status info
-                        status_label: this.getStatusLabel(order.status),
-                        payment_status_label: this.getPaymentStatusLabel(order.payment_status),
-                        priority_label: this.getPriorityLabel(order.priority),
-                    }));
-                }
-            }
-
-            return response;
-        } catch (error) {
-            console.error('Error fetching orders:', error);
-            return {
-                success: false,
-                message: error.message || 'خطأ في جلب الطلبات',
-                data: null
-            };
-        }
+  // Get single order
+  async getOrder(id) {
+    try {
+      const response = await apiService.get(`/orders/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching order:', error);
+      throw error;
     }
+  },
 
-    /**
-     * Get single order by ID with enhanced details
-     * @param {number} id - Order ID
-     * @returns {Promise} API response
-     */
-    async getOrder(id) {
-        try {
-            const response = await apiService.get(`${this.baseEndpoint}/${id}`);
-
-            if (response.success && response.data) {
-                // Enhanced order data processing
-                response.data = {
-                    ...response.data,
-                    customer_name: response.data.customer_name || response.data.customer?.name || response.data.store?.contact_person || null,
-                    customer_phone: response.data.customer_phone || response.data.customer?.phone || response.data.store?.phone || null,
-                    customer_email: response.data.customer_email || response.data.customer?.email || response.data.store?.email || null,
-                    display_amount: this.formatOrderAmount(response.data),
-                    status_label: this.getStatusLabel(response.data.status),
-                    payment_status_label: this.getPaymentStatusLabel(response.data.payment_status),
-                    priority_label: this.getPriorityLabel(response.data.priority),
-                };
-            }
-
-            return response;
-        } catch (error) {
-            console.error('Error fetching order:', error);
-            return {
-                success: false,
-                message: error.message || 'خطأ في جلب تفاصيل الطلب',
-                data: null
-            };
-        }
+  // Create new order
+  async createOrder(orderData) {
+    try {
+      const response = await apiService.post('/orders', orderData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating order:', error);
+      throw error;
     }
+  },
 
-    /**
-     * Create new order with customer data
-     * @param {Object} orderData - Order data including customer info
-     * @returns {Promise} API response
-     */
-    async createOrder(orderData) {
-        try {
-            // Enhanced order data validation and formatting
-            const formattedData = {
-                ...orderData,
-                // Ensure customer data is included
-                customer_name: orderData.customer_name || orderData.customer?.name || null,
-                customer_phone: orderData.customer_phone || orderData.customer?.phone || null,
-                customer_email: orderData.customer_email || orderData.customer?.email || null,
-                // Enhanced currency handling
-                currency: orderData.currency || 'EUR',
-                // Default values
-                priority: orderData.priority || 'normal',
-                status: orderData.status || 'draft',
-                payment_status: orderData.payment_status || 'pending',
-            };
-
-            const response = await apiService.post(this.baseEndpoint, formattedData);
-            return response;
-        } catch (error) {
-            console.error('Error creating order:', error);
-            return {
-                success: false,
-                message: error.response?.data?.message || error.message || 'خطأ في إنشاء الطلب',
-                data: null
-            };
-        }
+  // Update order (draft only)
+  async updateOrder(id, orderData) {
+    try {
+      const response = await apiService.put(`/orders/${id}`, orderData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating order:', error);
+      throw error;
     }
+  },
 
-    /**
-     * Update order with enhanced customer data
-     * @param {number} id - Order ID
-     * @param {Object} orderData - Updated order data
-     * @returns {Promise} API response
-     */
-    async updateOrder(id, orderData) {
-        try {
-            const response = await apiService.put(`${this.baseEndpoint}/${id}`, orderData);
-            return response;
-        } catch (error) {
-            console.error('Error updating order:', error);
-            return {
-                success: false,
-                message: error.message || 'خطأ في تحديث الطلب',
-                data: null
-            };
-        }
+  // Delete order (draft only)
+  async deleteOrder(id) {
+    try {
+      const response = await apiService.delete(`/orders/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      throw error;
     }
+  },
 
-    /**
-     * Delete order (only draft orders can be deleted)
-     * @param {number} id - Order ID
-     * @returns {Promise} API response
-     */
-    async deleteOrder(id) {
-        try {
-            // First check the order status to provide better error messages
-            const orderResponse = await this.getOrder(id);
-
-            if (orderResponse.success && orderResponse.data) {
-                const order = orderResponse.data;
-
-                // Check if order can be deleted (only draft orders)
-                if (order.status !== 'draft') {
-                    return {
-                        success: false,
-                        message: 'لا يمكن حذف الطلب بعد تأكيده. يمكن حذف الطلبات المسودة فقط.',
-                        data: null
-                    };
-                }
-            }
-
-            const response = await apiService.delete(`${this.baseEndpoint}/${id}`);
-            return response;
-        } catch (error) {
-            console.error('Error deleting order:', error);
-
-            // Handle specific error codes
-            if (error.response?.status === 400) {
-                return {
-                    success: false,
-                    message: 'لا يمكن حذف الطلب بعد تأكيده. يمكن حذف الطلبات المسودة فقط.',
-                    data: null
-                };
-            } else if (error.response?.status === 404) {
-                return {
-                    success: false,
-                    message: 'الطلب غير موجود',
-                    data: null
-                };
-            } else if (error.response?.status === 403) {
-                return {
-                    success: false,
-                    message: 'غير مصرح لك بحذف هذا الطلب',
-                    data: null
-                };
-            }
-
-            return {
-                success: false,
-                message: error.response?.data?.message || error.message || 'خطأ في حذف الطلب',
-                data: null
-            };
-        }
+  // Update order status
+  async updateOrderStatus(id, status) {
+    try {
+      const response = await apiService.patch(`/orders/${id}/status`, { status });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      throw error;
     }
+  },
 
-    /**
-     * Bulk operations for orders (Phase 6 feature)
-     * @param {Array} orderIds - Array of order IDs
-     * @param {string} action - Action to perform (update_status, assign_distributor, update_priority, delete)
-     * @param {Object} actionData - Data for the action
-     * @returns {Promise} API response
-     */
-    async bulkOrderOperation(orderIds, action, actionData = {}) {
-        try {
-            const response = await apiService.post(`${this.baseEndpoint}/bulk`, {
-                order_ids: orderIds,
-                action: action,
-                data: actionData
-            });
-            return response;
-        } catch (error) {
-            console.error('Error performing bulk operation:', error);
-            return {
-                success: false,
-                message: error.message || 'خطأ في تنفيذ العملية المجمعة',
-                data: null
-            };
-        }
+  // Update payment status
+  async updatePaymentStatus(id, payment_status) {
+    try {
+      const response = await apiService.patch(`/orders/${id}/payment-status`, { payment_status });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      throw error;
     }
+  },
 
-    /**
-     * Update multiple order statuses
-     * @param {Array} orderIds - Array of order IDs
-     * @param {string} status - New status
-     * @returns {Promise} API response
-     */
-    async bulkUpdateStatus(orderIds, status) {
-        return this.bulkOrderOperation(orderIds, 'update_status', { status });
+  // Assign distributor manually
+  async assignDistributor(orderId, distributorId) {
+    try {
+      const response = await apiService.post(`/orders/${orderId}/assign-distributor`, {
+        distributor_id: distributorId
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error assigning distributor:', error);
+      throw error;
     }
+  },
 
-    /**
-     * Assign distributor to multiple orders
-     * @param {Array} orderIds - Array of order IDs
-     * @param {number} distributorId - Distributor ID
-     * @returns {Promise} API response
-     */
-    async bulkAssignDistributor(orderIds, distributorId) {
-        return this.bulkOrderOperation(orderIds, 'assign_distributor', { distributor_id: distributorId });
+  // Unassign distributor
+  async unassignDistributor(orderId) {
+    try {
+      const response = await apiService.delete(`/orders/${orderId}/assign-distributor`);
+      return response.data;
+    } catch (error) {
+      console.error('Error unassigning distributor:', error);
+      throw error;
     }
+  },
 
-    /**
-     * Update multiple order priorities
-     * @param {Array} orderIds - Array of order IDs
-     * @param {string} priority - New priority
-     * @returns {Promise} API response
-     */
-    async bulkUpdatePriority(orderIds, priority) {
-        return this.bulkOrderOperation(orderIds, 'update_priority', { priority });
+  // Get distributor orders
+  async getDistributorOrders(distributorId, status = null) {
+    try {
+      const queryParams = status ? `?status=${status}` : '';
+      const response = await apiService.get(`/orders/distributor/${distributorId}${queryParams}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching distributor orders:', error);
+      throw error;
     }
+  },
 
-    /**
-     * Delete multiple orders
-     * @param {Array} orderIds - Array of order IDs
-     * @returns {Promise} API response
-     */
-    async bulkDeleteOrders(orderIds) {
-        return this.bulkOrderOperation(orderIds, 'delete');
+  // Get today's orders
+  async getTodayOrders() {
+    try {
+      const response = await apiService.get('/orders/today');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching today orders:', error);
+      throw error;
     }
+  },
 
-    /**
-     * Get order statistics with enhanced metrics
-     * @param {Object} params - Query parameters
-     * @returns {Promise} API response
-     */
-    async getOrderStatistics(params = {}) {
-        try {
-            const queryParams = {
-                date_from: params.date_from || null,
-                date_to: params.date_to || null,
-                store_id: params.store_id || null,
-                currency: params.currency || null,
-            };
-
-            // Remove null values
-            Object.keys(queryParams).forEach(key => {
-                if (queryParams[key] === null) {
-                    delete queryParams[key];
-                }
-            });
-
-            const response = await apiService.get(`${this.baseEndpoint}/statistics`, queryParams);
-            return response;
-        } catch (error) {
-            console.error('Error fetching order statistics:', error);
-            return {
-                success: false,
-                message: error.message || 'خطأ في جلب إحصائيات الطلبات',
-                data: null
-            };
-        }
+  // Get order statistics
+  async getOrderStatistics() {
+    try {
+      const response = await apiService.get('/orders/statistics');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching order statistics:', error);
+      throw error;
     }
+  },
 
-    /**
-     * Export orders data (Phase 6 feature)
-     * @param {Object} filters - Export filters
-     * @param {string} format - Export format (json, csv, excel)
-     * @returns {Promise} API response
-     */
-    async exportOrders(filters = {}, format = 'json') {
-        try {
-            const response = await apiService.get(`${this.baseEndpoint}/export`, {
-                ...filters,
-                format: format
-            });
-            return response;
-        } catch (error) {
-            console.error('Error exporting orders:', error);
-            return {
-                success: false,
-                message: error.message || 'خطأ في تصدير الطلبات',
-                data: null
-            };
-        }
+  // Export orders
+  async exportOrders(format = 'csv') {
+    try {
+      const response = await apiService.get(`/orders/export?format=${format}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error exporting orders:', error);
+      throw error;
     }
+  },
 
-    /**
-     * Get exchange rates for multi-currency support (Phase 6 feature)
-     * @returns {Promise} API response
-     */
-    async getExchangeRates() {
-        try {
-            const response = await apiService.get('/exchange-rates');
-            return response;
-        } catch (error) {
-            console.error('Error fetching exchange rates:', error);
-            return {
-                success: false,
-                message: error.message || 'خطأ في جلب أسعار الصرف',
-                data: { EUR_to_SYP: 15000, SYP_to_EUR: 0.0000667 } // Fallback rates
-            };
-        }
+  // Helper functions for order management
+  getStatusOptions() {
+    return [
+      { value: 'draft', label: 'Draft', color: 'gray' },
+      { value: 'confirmed', label: 'Confirmed', color: 'blue' },
+      { value: 'in_progress', label: 'In Progress', color: 'orange' },
+      { value: 'delivered', label: 'Delivered', color: 'green' },
+      { value: 'cancelled', label: 'Cancelled', color: 'red' }
+    ];
+  },
+
+  getPaymentStatusOptions() {
+    return [
+      { value: 'pending', label: 'Pending', color: 'orange' },
+      { value: 'paid', label: 'Paid', color: 'green' }
+    ];
+  },
+
+  getCurrencyOptions() {
+    return [
+      { value: 'EUR', label: 'Euro (€)' },
+      { value: 'SYP', label: 'Syrian Pound (£S)' }
+    ];
+  },
+
+  // Check if order can be edited
+  canEditOrder(order) {
+    return order.status === 'draft';
+  },
+
+  // Check if order can be cancelled
+  canCancelOrder(order) {
+    return ['draft', 'confirmed'].includes(order.status);
+  },
+
+  // Check if order can be deleted
+  canDeleteOrder(order) {
+    return order.status === 'draft';
+  },
+
+  // Get status color class
+  getStatusColor(status) {
+    const statusColors = {
+      draft: 'bg-gray-100 text-gray-800',
+      confirmed: 'bg-blue-100 text-blue-800',
+      in_progress: 'bg-orange-100 text-orange-800',
+      delivered: 'bg-green-100 text-green-800',
+      cancelled: 'bg-red-100 text-red-800'
+    };
+    return statusColors[status] || 'bg-gray-100 text-gray-800';
+  },
+
+  // Get payment status color class
+  getPaymentStatusColor(paymentStatus) {
+    const statusColors = {
+      pending: 'bg-orange-100 text-orange-800',
+      paid: 'bg-green-100 text-green-800'
+    };
+    return statusColors[paymentStatus] || 'bg-gray-100 text-gray-800';
+  },
+
+  // Format currency amount
+  formatAmount(amount, currency) {
+    const numAmount = parseFloat(amount) || 0;
+    if (currency === 'EUR') {
+      return `€${numAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+    } else {
+      return `£S${numAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
     }
+  }
+};
 
-    /**
-     * Calculate dynamic pricing (Phase 6 feature)
-     * @param {Object} pricingData - Pricing calculation data
-     * @returns {Promise} API response
-     */
-    async calculateDynamicPricing(pricingData) {
-        try {
-            const response = await apiService.post('/pricing/calculate', pricingData);
-            return response;
-        } catch (error) {
-            console.error('Error calculating dynamic pricing:', error);
-            return {
-                success: false,
-                message: error.message || 'خطأ في حساب التسعير الديناميكي',
-                data: null
-            };
-        }
-    }
-
-    /**
-     * Manage customer data (Phase 6 feature)
-     * @param {Object} customerData - Customer information
-     * @returns {Promise} API response
-     */
-    async saveCustomerData(customerData) {
-        try {
-            const response = await apiService.post('/customers', customerData);
-            return response;
-        } catch (error) {
-            console.error('Error saving customer data:', error);
-            return {
-                success: false,
-                message: error.message || 'خطأ في حفظ بيانات العميل',
-                data: null
-            };
-        }
-    }
-
-    /**
-     * Get customer suggestions based on input
-     * @param {string} query - Search query
-     * @returns {Promise} API response
-     */
-    async searchCustomers(query) {
-        try {
-            const response = await apiService.get('/customers/search', { q: query });
-            return response;
-        } catch (error) {
-            console.error('Error searching customers:', error);
-            return {
-                success: false,
-                message: error.message || 'خطأ في البحث عن العملاء',
-                data: []
-            };
-        }
-    }
-
-    // Helper methods for data formatting
-    formatOrderAmount(order) {
-        const amountEur = parseFloat(order.final_amount_eur || order.total_amount_eur || 0);
-        const amountSyp = parseFloat(order.final_amount_syp || order.total_amount_syp || 0);
-        const currency = order.currency || 'EUR';
-
-        if (currency === 'MIXED' && amountEur > 0 && amountSyp > 0) {
-            return `€${amountEur.toFixed(2)} + ${amountSyp.toLocaleString()} ل.س`;
-        }
-
-        if (currency === 'EUR' || amountEur > 0) {
-            return `€${amountEur.toLocaleString()}`;
-        } else {
-            return `${amountSyp.toLocaleString()} ل.س`;
-        }
-    }
-
-    getStatusLabel(status) {
-        const labels = {
-            draft: 'مسودة',
-            pending: 'معلق',
-            confirmed: 'مؤكد',
-            processing: 'قيد التحضير',
-            ready: 'جاهز',
-            delivered: 'مُسلم',
-            cancelled: 'ملغي',
-            returned: 'مرتد',
-        };
-        return labels[status] || status;
-    }
-
-    getPaymentStatusLabel(status) {
-        const labels = {
-            pending: 'معلق',
-            paid: 'مدفوع',
-            partial: 'جزئي',
-            failed: 'فاشل',
-            overdue: 'متأخر',
-            refunded: 'مرتد',
-        };
-        return labels[status] || status;
-    }
-
-    getPriorityLabel(priority) {
-        const labels = {
-            low: 'منخفض',
-            normal: 'متوسط',
-            high: 'عالي',
-            urgent: 'عاجل',
-        };
-        return labels[priority] || priority;
-    }
-
-    /**
-     * Get orders summary for dashboard
-     * @param {Array} orders - Orders array
-     * @returns {Object} Summary statistics
-     */
-    getOrdersSummary(orders) {
-        const summary = {
-            total: orders.length,
-            totalAmount: 0,
-            byStatus: {},
-            byPaymentStatus: {},
-            byPriority: {},
-            avgOrderValue: 0,
-        };
-
-        orders.forEach(order => {
-            // Total amount (prioritize EUR, fallback to SYP converted)
-            const amountEur = parseFloat(order.final_amount_eur || order.total_amount_eur || 0);
-            const amountSyp = parseFloat(order.final_amount_syp || order.total_amount_syp || 0);
-            summary.totalAmount += amountEur > 0 ? amountEur : (amountSyp / 15000); // Simple conversion
-
-            // By status
-            summary.byStatus[order.status] = (summary.byStatus[order.status] || 0) + 1;
-
-            // By payment status
-            summary.byPaymentStatus[order.payment_status] = (summary.byPaymentStatus[order.payment_status] || 0) + 1;
-
-            // By priority
-            summary.byPriority[order.priority] = (summary.byPriority[order.priority] || 0) + 1;
-        });
-
-        // Calculate average order value
-        summary.avgOrderValue = summary.total > 0 ? summary.totalAmount / summary.total : 0;
-
-        return summary;
-    }
-
-    // Helper methods for UI components (needed by OrderDetailsPage)
-
-    /**
-     * Get order status options
-     * @returns {Array} Status options
-     */
-    getStatusOptions() {
-        return [
-            { value: 'draft', label: 'مسودة', color: 'gray' },
-            { value: 'pending', label: 'معلق', color: 'yellow' },
-            { value: 'confirmed', label: 'مؤكد', color: 'blue' },
-            { value: 'processing', label: 'قيد التحضير', color: 'purple' },
-            { value: 'ready', label: 'جاهز', color: 'indigo' },
-            { value: 'delivered', label: 'مُسلم', color: 'green' },
-            { value: 'cancelled', label: 'ملغي', color: 'red' },
-        ];
-    }
-
-    /**
-     * Get payment status options
-     * @returns {Array} Payment status options
-     */
-    getPaymentStatusOptions() {
-        return [
-            { value: 'pending', label: 'معلق', color: 'gray' },
-            { value: 'paid', label: 'مدفوع', color: 'green' },
-            { value: 'partial', label: 'جزئي', color: 'yellow' },
-            { value: 'failed', label: 'فاشل', color: 'red' },
-            { value: 'overdue', label: 'متأخر', color: 'orange' },
-        ];
-    }
-
-    /**
-     * Get priority options
-     * @returns {Array} Priority options
-     */
-    getPriorityOptions() {
-        return [
-            { value: 'low', label: 'منخفض', color: 'green' },
-            { value: 'normal', label: 'متوسط', color: 'blue' },
-            { value: 'high', label: 'عالي', color: 'orange' },
-            { value: 'urgent', label: 'عاجل', color: 'red' },
-        ];
-    }
-
-    /**
-     * Get status badge color
-     * @param {string} status - Order status
-     * @returns {string} Badge color
-     */
-    getStatusBadgeColor(status) {
-        const statusOptions = this.getStatusOptions();
-        const statusOption = statusOptions.find(option => option.value === status);
-        return statusOption ? statusOption.color : 'gray';
-    }
-
-    /**
-     * Get payment status badge color
-     * @param {string} paymentStatus - Payment status
-     * @returns {string} Badge color
-     */
-    getPaymentStatusBadgeColor(paymentStatus) {
-        const paymentStatusOptions = this.getPaymentStatusOptions();
-        const paymentStatusOption = paymentStatusOptions.find(option => option.value === paymentStatus);
-        return paymentStatusOption ? paymentStatusOption.color : 'gray';
-    }
-
-    /**
-     * Get priority badge color
-     * @param {string} priority - Priority
-     * @returns {string} Badge color
-     */
-    getPriorityBadgeColor(priority) {
-        const priorityOptions = this.getPriorityOptions();
-        const priorityOption = priorityOptions.find(option => option.value === priority);
-        return priorityOption ? priorityOption.color : 'gray';
-    }
-
-    // Additional methods needed by OrderDetailsPage
-
-    /**
-     * Update order status (legacy compatibility)
-     * @param {number} id - Order ID
-     * @param {string} status - New status
-     * @returns {Promise} API response
-     */
-    async updateOrderStatus(id, status) {
-        return this.updateOrder(id, { status });
-    }
-
-    /**
-     * Update payment status (legacy compatibility)
-     * @param {number} id - Order ID
-     * @param {string} payment_status - New payment status
-     * @returns {Promise} API response
-     */
-    async updatePaymentStatus(id, payment_status) {
-        return this.updateOrder(id, { payment_status });
-    }
-
-    /**
-     * Update order priority (legacy compatibility)
-     * @param {number} id - Order ID
-     * @param {string} priority - New priority
-     * @returns {Promise} API response
-     */
-    async updateOrderPriority(id, priority) {
-        return this.updateOrder(id, { priority });
-    }
-}
-
-// Export singleton instance
-const orderService = new OrderService();
 export default orderService; 

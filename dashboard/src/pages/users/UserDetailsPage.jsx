@@ -51,7 +51,7 @@ import {
   Database,
   Users,
   Eye,
-  IdCard,
+
   Languages,
   GraduationCap,
   Heart,
@@ -442,7 +442,7 @@ const UserDetailsPage = () => {
               {user.license_number && (
                 <div className="flex items-center gap-4 p-4 bg-yellow-50 rounded-xl">
                   <div className="p-3 bg-yellow-100 rounded-lg">
-                    <IdCard className="w-5 h-5 text-yellow-600" />
+                    <CreditCard className="w-5 h-5 text-yellow-600" />
                   </div>
                   <div>
                     <p className="text-sm text-gray-500 font-medium">رقم رخصة القيادة</p>
@@ -546,6 +546,296 @@ const UserDetailsPage = () => {
           </div>
         </CardBody>
       </Card>
+    );
+  };
+
+  const renderOverviewTab = () => {
+    return (
+      <div className="space-y-6">
+        {/* معلومات الاتصال */}
+        <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+          <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-2xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Mail className="w-5 h-5 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900">معلومات الاتصال</h3>
+            </div>
+          </CardHeader>
+          <CardBody className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                <div className="p-3 bg-blue-100 rounded-lg">
+                  <Mail className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">البريد الإلكتروني</p>
+                  <p className="font-semibold text-gray-900">{user.email || "غير محدد"}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                <div className="p-3 bg-green-100 rounded-lg">
+                  <Phone className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">رقم الهاتف</p>
+                  <p className="font-semibold text-gray-900">{user.phone || "غير محدد"}</p>
+                </div>
+              </div>
+              {user.address && (
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl md:col-span-2">
+                  <div className="p-3 bg-purple-100 rounded-lg">
+                    <MapPin className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 font-medium">العنوان</p>
+                    <p className="font-semibold text-gray-900">{user.address}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* معلومات العمل */}
+        <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+          <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-2xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Briefcase className="w-5 h-5 text-green-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900">معلومات العمل</h3>
+            </div>
+          </CardHeader>
+          <CardBody className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                <div className="p-3 bg-purple-100 rounded-lg">
+                  <User className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">اسم المستخدم</p>
+                  <p className="font-semibold text-gray-900">{user.username || "غير محدد"}</p>
+                </div>
+              </div>
+              {user.hired_date && (
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                  <div className="p-3 bg-emerald-100 rounded-lg">
+                    <Calendar className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 font-medium">تاريخ التوظيف</p>
+                    <p className="font-semibold text-gray-900">{formatDate(user.hired_date)}</p>
+                  </div>
+                </div>
+              )}
+              {user.salary && (
+                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                  <div className="p-3 bg-green-100 rounded-lg">
+                    <Euro className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 font-medium">الراتب الشهري</p>
+                    <p className="font-semibold text-green-700 text-lg">€{user.salary}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* معلومات النظام */}
+        <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+          <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-t-2xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-indigo-100 rounded-lg">
+                <Settings className="w-5 h-5 text-indigo-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900">معلومات النظام</h3>
+            </div>
+          </CardHeader>
+          <CardBody className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                <div className="p-3 bg-emerald-100 rounded-lg">
+                  <Calendar className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">تاريخ الإنشاء</p>
+                  <p className="font-semibold text-gray-900">{formatDate(user.created_at)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                <div className="p-3 bg-blue-100 rounded-lg">
+                  <RefreshCw className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">تاريخ آخر تحديث</p>
+                  <p className="font-semibold text-gray-900">{formatDate(user.updated_at)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl md:col-span-2">
+                <div className="p-3 bg-orange-100 rounded-lg">
+                  <Clock className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">آخر تسجيل دخول</p>
+                  <p className="font-semibold text-gray-900">
+                    {user.last_login ? formatDateTime(user.last_login) : "لم يسجل دخول"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  };
+
+  const renderDetailsTab = () => {
+    return (
+      <div className="space-y-6">
+        {/* Personal Information */}
+        <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+          <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-amber-50 to-orange-50 rounded-t-2xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-amber-100 rounded-lg">
+                <CreditCard className="w-5 h-5 text-amber-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900">المعلومات الشخصية</h3>
+            </div>
+          </CardHeader>
+          <CardBody className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {user.employee_id && (
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                  <div className="p-3 bg-blue-100 rounded-lg">
+                    <Hash className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 font-medium">رقم الموظف</p>
+                    <p className="font-semibold text-gray-900">{user.employee_id}</p>
+                  </div>
+                </div>
+              )}
+              {user.nationality && (
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                  <div className="p-3 bg-green-100 rounded-lg">
+                    <Globe className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 font-medium">الجنسية</p>
+                    <p className="font-semibold text-gray-900">{user.nationality}</p>
+                  </div>
+                </div>
+              )}
+              {user.date_of_birth && (
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                  <div className="p-3 bg-purple-100 rounded-lg">
+                    <Calendar className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 font-medium">تاريخ الميلاد</p>
+                    <p className="font-semibold text-gray-900">{formatDate(user.date_of_birth)}</p>
+                  </div>
+                </div>
+              )}
+              {user.education_level && (
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                  <div className="p-3 bg-indigo-100 rounded-lg">
+                    <GraduationCap className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 font-medium">المستوى التعليمي</p>
+                    <p className="font-semibold text-gray-900">{user.education_level}</p>
+                  </div>
+                </div>
+              )}
+              {user.languages && (
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                  <div className="p-3 bg-rose-100 rounded-lg">
+                    <Languages className="w-5 h-5 text-rose-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 font-medium">اللغات</p>
+                    <p className="font-semibold text-gray-900">{user.languages}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* Emergency Contact */}
+        {user.emergency_contact && (
+          <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+            <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-red-50 to-rose-50 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <Heart className="w-5 h-5 text-red-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">جهة الاتصال للطوارئ</h3>
+              </div>
+            </CardHeader>
+            <CardBody className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {user.emergency_contact.name && (
+                  <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                    <div className="p-3 bg-blue-100 rounded-lg">
+                      <User className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 font-medium">الاسم</p>
+                      <p className="font-semibold text-gray-900">{user.emergency_contact.name}</p>
+                    </div>
+                  </div>
+                )}
+                {user.emergency_contact.phone && (
+                  <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                    <div className="p-3 bg-green-100 rounded-lg">
+                      <Phone className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 font-medium">رقم الهاتف</p>
+                      <p className="font-semibold text-gray-900">{user.emergency_contact.phone}</p>
+                    </div>
+                  </div>
+                )}
+                {user.emergency_contact.relation && (
+                  <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                    <div className="p-3 bg-purple-100 rounded-lg">
+                      <Users className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 font-medium">صلة القرابة</p>
+                      <p className="font-semibold text-gray-900">{user.emergency_contact.relation}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardBody>
+          </Card>
+        )}
+
+        {/* Additional Notes */}
+        {user.notes && (
+          <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+            <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-gray-50 to-slate-50 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <FileText className="w-5 h-5 text-gray-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">ملاحظات إضافية</h3>
+              </div>
+            </CardHeader>
+            <CardBody className="p-6">
+              <div className="p-4 bg-gray-50 rounded-xl">
+                <p className="text-gray-700 leading-relaxed">{user.notes}</p>
+              </div>
+            </CardBody>
+          </Card>
+        )}
+      </div>
     );
   };
 

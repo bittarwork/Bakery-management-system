@@ -26,7 +26,6 @@ import {
   AlertTriangle,
   Briefcase,
   Building,
-  IdCard,
   Clock,
   Settings,
   Star,
@@ -529,7 +528,7 @@ const CreateUserPage = () => {
           onChange={handleChange}
           placeholder="أدخل رقم الموظف"
           error={errors.employee_id}
-          icon={<IdCard className="w-4 h-4" />}
+                      icon={<CreditCard className="w-4 h-4" />}
         />
 
         {/* Date of Birth */}

@@ -30,7 +30,6 @@ import {
   RefreshCw,
   MoreVertical,
   ArrowLeft,
-  IdCard,
   Building,
   Globe,
   Zap,
@@ -40,6 +39,7 @@ import {
   Award,
   Key,
   Fingerprint,
+  CreditCard,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
@@ -351,7 +351,7 @@ const UserDetailPage = () => {
                         </span>
                       </div>
                       <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-2 shadow-lg">
-                        <IdCard className="w-6 h-6 text-blue-600" />
+                        <CreditCard className="w-6 h-6 text-blue-600" />
                       </div>
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">
