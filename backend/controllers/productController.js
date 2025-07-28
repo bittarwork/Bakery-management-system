@@ -213,20 +213,24 @@ export const createProduct = async (req, res) => {
             category: category || 'other',
             unit: unit || 'piece',
             price_eur: Math.max(parseNumber(price_eur, 0.01), 0.01), // Required field with minimum 0.01
-            price_syp: parseNumber(price_syp, null), // Optional field
-            cost_eur: parseNumber(cost_eur, null), // Optional field
-            cost_syp: parseNumber(cost_syp, null), // Optional field
-            stock_quantity: parseInteger(stock_quantity, null), // Optional field
-            minimum_stock: parseInteger(minimum_stock, null), // Optional field
+            price_syp: parseNumber(price_syp, 0), // Set to 0 if not provided, cannot be null
+            cost_eur: parseNumber(cost_eur, 0), // Set to 0 if not provided
+            cost_syp: parseNumber(cost_syp, 0), // Set to 0 if not provided
+            stock_quantity: parseInteger(stock_quantity, 0), // Set to 0 if not provided
+            minimum_stock: parseInteger(minimum_stock, 0), // Set to 0 if not provided
             barcode: barcode?.trim() || null,
             is_featured: Boolean(is_featured),
             status: ['active', 'inactive', 'discontinued'].includes(status) ? status : 'active',
             image_url: image_url?.trim() || null,
-            weight_grams: parseInteger(weight_grams, null), // Optional field
-            shelf_life_days: parseInteger(shelf_life_days, null), // Optional field
+            weight_grams: parseInteger(weight_grams, 0), // Set to 0 if not provided
+            shelf_life_days: parseInteger(shelf_life_days, 0), // Set to 0 if not provided
             storage_conditions: storage_conditions?.trim() || null,
             created_by: req.userId || 1,
-            created_by_name: created_by_name?.trim() || 'System'
+            created_by_name: created_by_name?.trim() || 'System',
+            // Initialize tracking fields with default values
+            total_sold: 0,
+            total_revenue_eur: 0.00,
+            total_revenue_syp: 0.00
         };
 
         // Handle JSON fields properly
@@ -418,17 +422,17 @@ export const updateProduct = async (req, res) => {
         if (category !== undefined) updateData.category = category || 'other';
         if (unit !== undefined) updateData.unit = unit || 'piece';
         if (price_eur !== undefined) updateData.price_eur = Math.max(parseNumber(price_eur, 0.01), 0.01);
-        if (price_syp !== undefined) updateData.price_syp = parseNumber(price_syp, null);
-        if (cost_eur !== undefined) updateData.cost_eur = parseNumber(cost_eur, null);
-        if (cost_syp !== undefined) updateData.cost_syp = parseNumber(cost_syp, null);
-        if (stock_quantity !== undefined) updateData.stock_quantity = parseInteger(stock_quantity, null);
-        if (minimum_stock !== undefined) updateData.minimum_stock = parseInteger(minimum_stock, null);
+        if (price_syp !== undefined) updateData.price_syp = parseNumber(price_syp, 0);
+        if (cost_eur !== undefined) updateData.cost_eur = parseNumber(cost_eur, 0);
+        if (cost_syp !== undefined) updateData.cost_syp = parseNumber(cost_syp, 0);
+        if (stock_quantity !== undefined) updateData.stock_quantity = parseInteger(stock_quantity, 0);
+        if (minimum_stock !== undefined) updateData.minimum_stock = parseInteger(minimum_stock, 0);
         if (barcode !== undefined) updateData.barcode = barcode?.trim() || null;
         if (is_featured !== undefined) updateData.is_featured = Boolean(is_featured);
         if (status !== undefined) updateData.status = ['active', 'inactive', 'discontinued'].includes(status) ? status : 'active';
         if (image_url !== undefined) updateData.image_url = image_url?.trim() || null;
-        if (weight_grams !== undefined) updateData.weight_grams = parseInteger(weight_grams, null);
-        if (shelf_life_days !== undefined) updateData.shelf_life_days = parseInteger(shelf_life_days, null);
+        if (weight_grams !== undefined) updateData.weight_grams = parseInteger(weight_grams, 0);
+        if (shelf_life_days !== undefined) updateData.shelf_life_days = parseInteger(shelf_life_days, 0);
         if (storage_conditions !== undefined) updateData.storage_conditions = storage_conditions?.trim() || null;
 
         // Handle JSON fields properly

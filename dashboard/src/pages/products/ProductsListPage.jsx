@@ -228,6 +228,16 @@ const ProductsListPage = () => {
     setCurrentPage(1);
   };
 
+  // Count active filters
+  const getActiveFiltersCount = () => {
+    let count = 0;
+    if (filters.search) count++;
+    if (filters.category) count++;
+    if (filters.status) count++;
+    if (filters.is_featured) count++;
+    return count;
+  };
+
   // Handle product selection
   const handleProductSelection = (productId) => {
     setSelectedProducts((prev) =>
@@ -528,15 +538,17 @@ const ProductsListPage = () => {
               <div className="relative">
                 <EnhancedButton
                   onClick={() => setShowFilters(!showFilters)}
-                  variant={filters.search || filters.category || filters.status || filters.is_featured ? "primary" : "outline"}
+                  variant={getActiveFiltersCount() > 0 ? "primary" : "outline"}
                   size="sm"
                   icon={<Sliders className="w-4 h-4" />}
                 >
                   {showFilters ? "Hide Filters" : "Filters"}
+                  {getActiveFiltersCount() > 0 && (
+                    <span className="ml-1 text-xs bg-white text-blue-600 px-1.5 py-0.5 rounded-full">
+                      {getActiveFiltersCount()}
+                    </span>
+                  )}
                 </EnhancedButton>
-                {(filters.search || filters.category || filters.status || filters.is_featured) && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
-                )}
               </div>
 
               <EnhancedButton
@@ -695,9 +707,12 @@ const ProductsListPage = () => {
                     placeholder="Search products by name, description, or barcode..."
                     value={filters.search}
                     onChange={(e) => handleSearchChange(e.target.value)}
-                    icon={isFiltering && filters.search ? 
-                      <Loader2 className="w-4 h-4 animate-spin" /> : 
-                      <Search className="w-4 h-4" />
+                    icon={
+                      isFiltering && filters.search ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Search className="w-4 h-4" />
+                      )
                     }
                   />
                 </div>
@@ -710,7 +725,9 @@ const ProductsListPage = () => {
                         handleFilterChange("category", e.target.value)
                       }
                       className={`px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        filters.category ? 'border-blue-300 bg-blue-50' : 'border-gray-300'
+                        filters.category
+                          ? "border-blue-300 bg-blue-50"
+                          : "border-gray-300"
                       }`}
                     >
                       {categories.map((cat) => (
@@ -731,7 +748,9 @@ const ProductsListPage = () => {
                         handleFilterChange("status", e.target.value)
                       }
                       className={`px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        filters.status ? 'border-blue-300 bg-blue-50' : 'border-gray-300'
+                        filters.status
+                          ? "border-blue-300 bg-blue-50"
+                          : "border-gray-300"
                       }`}
                     >
                       <option value="">All Status</option>
@@ -750,7 +769,9 @@ const ProductsListPage = () => {
                         handleFilterChange("is_featured", e.target.value)
                       }
                       className={`px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        filters.is_featured ? 'border-blue-300 bg-blue-50' : 'border-gray-300'
+                        filters.is_featured
+                          ? "border-blue-300 bg-blue-50"
+                          : "border-gray-300"
                       }`}
                     >
                       <option value="">All Products</option>
@@ -782,51 +803,63 @@ const ProductsListPage = () => {
         </motion.div>
 
         {/* Filter Results Info */}
-        {!isLoading && !error && (filters.search || filters.category || filters.status || filters.is_featured) && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
-          >
-            <Card className="border-blue-200 bg-blue-50">
-              <CardBody>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <FilterIcon className="w-5 h-5 text-blue-600" />
-                    <span className="text-blue-900 font-medium">
-                      Filters applied - Found {totalProducts} product{totalProducts !== 1 ? 's' : ''}
-                    </span>
-                    {isFiltering && (
-                      <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
-                    )}
+        {!isLoading &&
+          !error &&
+          (filters.search ||
+            filters.category ||
+            filters.status ||
+            filters.is_featured) && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6"
+            >
+              <Card className="border-blue-200 bg-blue-50">
+                <CardBody>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <FilterIcon className="w-5 h-5 text-blue-600" />
+                      <span className="text-blue-900 font-medium">
+                        Filters applied - Found {totalProducts} product
+                        {totalProducts !== 1 ? "s" : ""}
+                      </span>
+                      {isFiltering && (
+                        <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-blue-700">
+                      {filters.search && (
+                        <span className="px-2 py-1 bg-blue-200 rounded-full">
+                          Search: "{filters.search}"
+                        </span>
+                      )}
+                      {filters.category && (
+                        <span className="px-2 py-1 bg-blue-200 rounded-full">
+                          Category:{" "}
+                          {
+                            categories.find((c) => c.value === filters.category)
+                              ?.label
+                          }
+                        </span>
+                      )}
+                      {filters.status && (
+                        <span className="px-2 py-1 bg-blue-200 rounded-full">
+                          Status: {filters.status}
+                        </span>
+                      )}
+                      {filters.is_featured && (
+                        <span className="px-2 py-1 bg-blue-200 rounded-full">
+                          {filters.is_featured === "true"
+                            ? "Featured Only"
+                            : "Non-Featured"}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-blue-700">
-                    {filters.search && (
-                      <span className="px-2 py-1 bg-blue-200 rounded-full">
-                        Search: "{filters.search}"
-                      </span>
-                    )}
-                    {filters.category && (
-                      <span className="px-2 py-1 bg-blue-200 rounded-full">
-                        Category: {categories.find(c => c.value === filters.category)?.label}
-                      </span>
-                    )}
-                    {filters.status && (
-                      <span className="px-2 py-1 bg-blue-200 rounded-full">
-                        Status: {filters.status}
-                      </span>
-                    )}
-                    {filters.is_featured && (
-                      <span className="px-2 py-1 bg-blue-200 rounded-full">
-                        {filters.is_featured === 'true' ? 'Featured Only' : 'Non-Featured'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-          </motion.div>
-        )}
+                </CardBody>
+              </Card>
+            </motion.div>
+          )}
 
         {/* Bulk Actions */}
         {selectedProducts.length > 0 && (
@@ -904,12 +937,14 @@ const ProductsListPage = () => {
                     No Products Found
                   </h3>
                   <p className="text-gray-600 mb-6">
-                    {filters.search || filters.category || filters.status
-                      ? "No products match your current filters."
+                    {getActiveFiltersCount() > 0
+                      ? `No products match your current filters (${getActiveFiltersCount()} active filter${
+                          getActiveFiltersCount() > 1 ? "s" : ""
+                        }).`
                       : "Get started by adding your first product."}
                   </p>
                   <div className="flex items-center justify-center gap-3">
-                    {(filters.search || filters.category || filters.status) && (
+                    {getActiveFiltersCount() > 0 && (
                       <EnhancedButton
                         onClick={clearAllFilters}
                         variant="outline"
