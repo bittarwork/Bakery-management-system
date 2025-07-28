@@ -12,20 +12,24 @@ const API_CONFIG = {
     maxRetryDelay: 10000 // Maximum delay cap
 };
 
-// Fallback API Client for local development
+// Fallback API Client for local development  
 let fallbackClient = null;
 const createFallbackClient = () => {
-    if (!fallbackClient) {
-        fallbackClient = axios.create({
-            baseURL: 'http://localhost:5001/api',
-            timeout: 10000,
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        });
+    // Only create fallback client if we're actually running on localhost
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        if (!fallbackClient) {
+            fallbackClient = axios.create({
+                baseURL: 'http://localhost:5001/api',
+                timeout: 10000,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+        }
+        return fallbackClient;
     }
-    return fallbackClient;
+    return null;
 };
 
 // Create axios instance
@@ -40,14 +44,18 @@ const apiClient = axios.create({
 
 // Fallback client for offline mode
 const createOfflineClient = () => {
-    return axios.create({
-        baseURL: 'http://localhost:5001/api',
-        timeout: 5000,
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        }
-    });
+    // Only create offline client if we're actually running on localhost
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return axios.create({
+            baseURL: 'http://localhost:5001/api',
+            timeout: 5000,
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+    }
+    return null;
 };
 
 // Request interceptor
@@ -59,8 +67,8 @@ apiClient.interceptors.request.use(
             config.headers.Authorization = `Bearer ${token}`;
         }
 
-        // Add timestamp for cache busting
-        config.headers['X-Request-Time'] = Date.now();
+        // Add timestamp for cache busting (convert to string to avoid CORS issues)
+        config.headers['X-Request-Time'] = Date.now().toString();
 
         // Add request start time for performance tracking
         config.metadata = { startTime: new Date() };

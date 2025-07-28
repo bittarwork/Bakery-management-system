@@ -10,7 +10,8 @@ const config = {
     IS_DEVELOPMENT: import.meta.env.DEV || window.location.hostname === 'localhost',
 
     // Enable local fallback for better development experience
-    USE_LOCAL_FALLBACK: true,
+    // Set to false to always use Railway API, even on localhost
+    USE_LOCAL_FALLBACK: false,
 
     // API endpoints
     ENDPOINTS: {
@@ -70,19 +71,26 @@ const config = {
 
 // Get the appropriate API URL based on environment
 export const getApiUrl = () => {
-    // Check if we're online
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        console.warn('Offline mode detected, using local fallback');
+    // Always use Railway API for production
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        console.log('Production environment detected, using Railway API');
+        return config.API_BASE_URL;
+    }
+    
+    // For localhost, try to detect if local server is available
+    // Default to Railway API unless explicitly running on localhost with local server
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        // Check if we should force Railway API usage
+        if (window.location.search.includes('use-railway') || !config.USE_LOCAL_FALLBACK) {
+            console.log('Local development using Railway API');
+            return config.API_BASE_URL;
+        }
+        
+        console.log('Local development detected, using local server');
         return config.LOCAL_API_URL;
     }
     
-    // Use local server in development mode
-    if (config.IS_DEVELOPMENT && config.USE_LOCAL_FALLBACK) {
-        console.log('Development mode detected, using local server');
-        return config.LOCAL_API_URL;
-    }
-    
-    // Use production server
+    // Default fallback to Railway API  
     return config.API_BASE_URL;
 };
 
