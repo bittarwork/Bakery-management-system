@@ -686,7 +686,7 @@ export const exportVehiclesCSV = async (req, res) => {
         // Create CSV content
         const csvContent = [
             csvHeaders.join(','),
-            ...csvData.map(row => 
+            ...csvData.map(row =>
                 row.map(field => {
                     // Escape fields containing commas, quotes, or newlines
                     if (typeof field === 'string' && (field.includes(',') || field.includes('"') || field.includes('\n'))) {
@@ -716,6 +716,214 @@ export const exportVehiclesCSV = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'خطأ في تصدير البيانات',
+            error: error.message
+        });
+    }
+};
+
+// @desc    Get vehicle expenses
+// @route   GET /api/vehicles/:id/expenses
+// @access  Private (Admin, Manager)
+export const getVehicleExpenses = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Verify vehicle exists
+        const vehicle = await Vehicle.findByPk(id);
+        if (!vehicle) {
+            return res.status(404).json({
+                success: false,
+                message: 'المركبة غير موجودة'
+            });
+        }
+
+        // For now, return mock data since we don't have expenses table yet
+        // TODO: Replace with actual expenses from database when available
+        const mockExpenses = [
+            {
+                id: 1,
+                type: 'fuel',
+                description: 'تعبئة وقود',
+                amount: 50.00,
+                date: new Date().toISOString(),
+                km: vehicle.current_km
+            },
+            {
+                id: 2,
+                type: 'maintenance',
+                description: 'تغيير زيت',
+                amount: 75.00,
+                date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+                km: vehicle.current_km - 100
+            }
+        ];
+
+        res.status(200).json({
+            success: true,
+            data: {
+                expenses: mockExpenses
+            }
+        });
+
+        logger.info(`Vehicle expenses retrieved for vehicle ${id} by ${req.user.full_name}`);
+
+    } catch (error) {
+        logger.error('Get vehicle expenses error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في تحميل نفقات المركبة',
+            error: error.message
+        });
+    }
+};
+
+// @desc    Get vehicle statistics by ID
+// @route   GET /api/vehicles/:id/statistics
+// @access  Private (Admin, Manager)
+export const getVehicleStatisticsById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Verify vehicle exists
+        const vehicle = await Vehicle.findByPk(id);
+        if (!vehicle) {
+            return res.status(404).json({
+                success: false,
+                message: 'المركبة غير موجودة'
+            });
+        }
+
+        // Calculate basic statistics
+        const statistics = {
+            totalExpenses: 125.00, // Mock data - replace with actual calculation
+            totalTrips: 15, // Mock data - replace with actual count
+            averageFuelConsumption: vehicle.fuel_consumption || 0,
+            totalKm: vehicle.current_km || 0,
+            maintenanceStatus: vehicle.next_maintenance_km && vehicle.current_km
+                ? (vehicle.current_km >= vehicle.next_maintenance_km ? 'due' : 'upcoming')
+                : 'unknown'
+        };
+
+        res.status(200).json({
+            success: true,
+            data: statistics
+        });
+
+        logger.info(`Vehicle statistics retrieved for vehicle ${id} by ${req.user.full_name}`);
+
+    } catch (error) {
+        logger.error('Get vehicle statistics error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في تحميل إحصائيات المركبة',
+            error: error.message
+        });
+    }
+};
+
+// @desc    Export vehicle data to CSV
+// @route   GET /api/vehicles/:id/export
+// @access  Private (Admin, Manager)
+export const exportVehicleData = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Get vehicle with all related data
+        const vehicle = await Vehicle.findByPk(id, {
+            include: [
+                {
+                    model: User,
+                    as: 'assignedDistributor',
+                    attributes: ['id', 'full_name', 'phone', 'email'],
+                    required: false
+                },
+                {
+                    model: User,
+                    as: 'creator',
+                    attributes: ['id', 'full_name'],
+                    required: false
+                }
+            ]
+        });
+
+        if (!vehicle) {
+            return res.status(404).json({
+                success: false,
+                message: 'المركبة غير موجودة'
+            });
+        }
+
+        // CSV Headers for vehicle details
+        const vehicleHeaders = [
+            'Field',
+            'Value'
+        ];
+
+        // Vehicle data rows
+        const vehicleData = [
+            ['ID', vehicle.id],
+            ['Vehicle Type', vehicle.vehicle_type],
+            ['Model', vehicle.vehicle_model],
+            ['License Plate', vehicle.vehicle_plate],
+            ['Year', vehicle.vehicle_year],
+            ['Color', vehicle.color || ''],
+            ['Status', vehicle.status],
+            ['Fuel Type', vehicle.fuel_type],
+            ['Transmission Type', vehicle.transmission_type],
+            ['Engine Capacity', vehicle.engine_capacity || ''],
+            ['Current KM', vehicle.current_km || '0'],
+            ['Fuel Consumption', vehicle.fuel_consumption || '0'],
+            ['Assigned Distributor', vehicle.assignedDistributor ? vehicle.assignedDistributor.full_name : 'None'],
+            ['Distributor Phone', vehicle.assignedDistributor ? vehicle.assignedDistributor.phone : ''],
+            ['Distributor Email', vehicle.assignedDistributor ? vehicle.assignedDistributor.email : ''],
+            ['Last Maintenance Date', vehicle.last_maintenance_date ? new Date(vehicle.last_maintenance_date).toLocaleDateString('en-US') : ''],
+            ['Last Maintenance KM', vehicle.last_maintenance_km || '0'],
+            ['Next Maintenance KM', vehicle.next_maintenance_km || '0'],
+            ['Purchase Date', vehicle.purchase_date ? new Date(vehicle.purchase_date).toLocaleDateString('en-US') : ''],
+            ['Purchase Price (EUR)', vehicle.purchase_price_eur || '0.00'],
+            ['Purchase Price (SYP)', vehicle.purchase_price_syp || '0.00'],
+            ['Insurance Company', vehicle.insurance_company || ''],
+            ['Insurance Expiry Date', vehicle.insurance_expiry_date ? new Date(vehicle.insurance_expiry_date).toLocaleDateString('en-US') : ''],
+            ['Registration Expiry Date', vehicle.registration_expiry_date ? new Date(vehicle.registration_expiry_date).toLocaleDateString('en-US') : ''],
+            ['Created By', vehicle.creator ? vehicle.creator.full_name : ''],
+            ['Created At', new Date(vehicle.created_at).toLocaleString('en-US')],
+            ['Updated At', new Date(vehicle.updated_at).toLocaleString('en-US')],
+            ['Notes', vehicle.notes || '']
+        ];
+
+        // Create CSV content
+        const csvContent = [
+            vehicleHeaders.join(','),
+            ...vehicleData.map(row =>
+                row.map(field => {
+                    // Escape fields containing commas, quotes, or newlines
+                    if (typeof field === 'string' && (field.includes(',') || field.includes('"') || field.includes('\n'))) {
+                        return `"${field.replace(/"/g, '""')}"`;
+                    }
+                    return field;
+                }).join(',')
+            )
+        ].join('\n');
+
+        // Set headers for CSV download
+        const timestamp = new Date().toISOString().split('T')[0];
+        const filename = `vehicle_${vehicle.vehicle_plate}_${timestamp}.csv`;
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Length', Buffer.byteLength(csvContent, 'utf8'));
+
+        // Add BOM for Excel compatibility
+        res.write('\uFEFF');
+        res.end(csvContent);
+
+        logger.info(`Vehicle data exported for vehicle ${id} by ${req.user.full_name}`);
+
+    } catch (error) {
+        logger.error('Export vehicle data error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في تصدير بيانات المركبة',
             error: error.message
         });
     }

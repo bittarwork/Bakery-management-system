@@ -9,7 +9,7 @@ class VehicleService {
     async getAllVehicles(filters = {}) {
         try {
             const params = new URLSearchParams();
-            
+
             // Add filters to params
             if (filters.page) params.append('page', filters.page);
             if (filters.limit) params.append('limit', filters.limit);
@@ -20,7 +20,7 @@ class VehicleService {
 
             const queryString = params.toString();
             const endpoint = queryString ? `${this.baseEndpoint}?${queryString}` : this.baseEndpoint;
-            
+
             const response = await apiService.get(endpoint);
             return response;
         } catch (error) {
@@ -163,35 +163,35 @@ class VehicleService {
     // Helper methods for vehicle info
     getVehicleTypeInfo(vehicleType) {
         const vehicleTypes = {
-            car: { 
-                label: 'سيارة', 
-                icon: '🚗', 
+            car: {
+                label: 'سيارة',
+                icon: '🚗',
                 capacity: 'صغيرة',
                 description: 'مناسبة للتوزيع السريع والمساحات الضيقة'
             },
-            van: { 
-                label: 'فان', 
-                icon: '🚐', 
+            van: {
+                label: 'فان',
+                icon: '🚐',
                 capacity: 'متوسطة',
                 description: 'الخيار الأمثل لتوزيع المخبوزات'
             },
-            truck: { 
-                label: 'شاحنة', 
-                icon: '🚛', 
+            truck: {
+                label: 'شاحنة',
+                icon: '🚛',
                 capacity: 'كبيرة',
                 description: 'للطلبات الكبيرة والمسافات الطويلة'
             },
-            motorcycle: { 
-                label: 'دراجة نارية', 
-                icon: '🏍️', 
+            motorcycle: {
+                label: 'دراجة نارية',
+                icon: '🏍️',
                 capacity: 'محدودة جداً',
                 description: 'للتوصيل السريع والطرق الضيقة'
             }
         };
 
-        return vehicleTypes[vehicleType] || { 
-            label: vehicleType, 
-            icon: '🚐', 
+        return vehicleTypes[vehicleType] || {
+            label: vehicleType,
+            icon: '🚐',
             capacity: 'غير محدد',
             description: 'نوع مركبة غير معروف'
         };
@@ -199,35 +199,35 @@ class VehicleService {
 
     getStatusInfo(status) {
         const statusMap = {
-            active: { 
-                label: 'نشطة', 
-                color: 'green', 
+            active: {
+                label: 'نشطة',
+                color: 'green',
                 icon: '✅',
                 description: 'جاهزة للعمل'
             },
-            maintenance: { 
-                label: 'صيانة', 
-                color: 'yellow', 
+            maintenance: {
+                label: 'صيانة',
+                color: 'yellow',
                 icon: '🔧',
                 description: 'تحت الصيانة'
             },
-            inactive: { 
-                label: 'غير نشطة', 
-                color: 'gray', 
+            inactive: {
+                label: 'غير نشطة',
+                color: 'gray',
                 icon: '⏸️',
                 description: 'متوقفة مؤقتاً'
             },
-            retired: { 
-                label: 'متقاعدة', 
-                color: 'red', 
+            retired: {
+                label: 'متقاعدة',
+                color: 'red',
                 icon: '🚫',
                 description: 'خارج الخدمة نهائياً'
             }
         };
 
-        return statusMap[status] || { 
-            label: status, 
-            color: 'gray', 
+        return statusMap[status] || {
+            label: status,
+            color: 'gray',
             icon: '❓',
             description: 'حالة غير معروفة'
         };
@@ -235,35 +235,35 @@ class VehicleService {
 
     getFuelTypeInfo(fuelType) {
         const fuelTypes = {
-            gasoline: { 
-                label: 'بنزين', 
-                icon: '⛽', 
+            gasoline: {
+                label: 'بنزين',
+                icon: '⛽',
                 color: 'blue',
                 avgConsumption: '8-12 لتر/100كم'
             },
-            diesel: { 
-                label: 'ديزل', 
-                icon: '🛢️', 
+            diesel: {
+                label: 'ديزل',
+                icon: '🛢️',
                 color: 'orange',
                 avgConsumption: '6-9 لتر/100كم'
             },
-            electric: { 
-                label: 'كهربائي', 
-                icon: '🔋', 
+            electric: {
+                label: 'كهربائي',
+                icon: '🔋',
                 color: 'green',
                 avgConsumption: '15-25 كيلوواط/100كم'
             },
-            hybrid: { 
-                label: 'هجين', 
-                icon: '⚡', 
+            hybrid: {
+                label: 'هجين',
+                icon: '⚡',
                 color: 'purple',
                 avgConsumption: '4-7 لتر/100كم'
             }
         };
 
-        return fuelTypes[fuelType] || { 
-            label: fuelType, 
-            icon: '⛽', 
+        return fuelTypes[fuelType] || {
+            label: fuelType,
+            icon: '⛽',
             color: 'gray',
             avgConsumption: 'غير محدد'
         };
@@ -286,7 +286,7 @@ class VehicleService {
 
             // Get the filename from the response headers
             const contentDisposition = response.headers.get('Content-Disposition');
-            const filename = contentDisposition 
+            const filename = contentDisposition
                 ? contentDisposition.split('filename=')[1].replace(/"/g, '')
                 : `vehicles_export_${new Date().toISOString().split('T')[0]}.csv`;
 
@@ -304,6 +304,67 @@ class VehicleService {
             return { success: true };
         } catch (error) {
             console.error('Error exporting vehicles CSV:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // Get vehicle expenses
+    async getVehicleExpenses(vehicleId) {
+        try {
+            const response = await apiService.get(`${this.baseEndpoint}/${vehicleId}/expenses`);
+            return response;
+        } catch (error) {
+            console.error('Error fetching vehicle expenses:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // Get vehicle-specific statistics
+    async getVehicleStatistics(vehicleId) {
+        try {
+            const response = await apiService.get(`${this.baseEndpoint}/${vehicleId}/statistics`);
+            return response;
+        } catch (error) {
+            console.error('Error fetching vehicle statistics:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // Export vehicle data (specific vehicle)
+    async exportVehicleData(vehicleId) {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${this.baseEndpoint}/${vehicleId}/export`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Export failed');
+            }
+
+            // Get the filename from the response headers
+            const contentDisposition = response.headers.get('Content-Disposition');
+            const filename = contentDisposition
+                ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+                : `vehicle_${vehicleId}_export_${new Date().toISOString().split('T')[0]}.csv`;
+
+            // Create blob and download
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            return { success: true };
+        } catch (error) {
+            console.error('Error exporting vehicle data:', error);
             return { success: false, error: error.message };
         }
     }

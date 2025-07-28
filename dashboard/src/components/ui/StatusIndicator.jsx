@@ -31,7 +31,8 @@ const StatusIndicator = () => {
     const healthCheck = setInterval(() => {
       // Random status for demo - in real app, this would be actual health checks
       const statuses = ["healthy", "healthy", "healthy", "warning", "healthy"];
-      const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+      const randomStatus =
+        statuses[Math.floor(Math.random() * statuses.length)];
       setSystemStatus(randomStatus);
     }, 30000);
 
@@ -90,7 +91,7 @@ const StatusIndicator = () => {
       {/* System Status */}
       <motion.div
         whileHover={{ scale: 1.05 }}
-        className={`flex items-center px-2 py-1 rounded-lg border text-xs font-medium transition-all duration-200 ${getStatusColor()}`}
+        className={`flex items-center px-3 py-2 rounded-xl border text-sm font-medium transition-all duration-200 ${getStatusColor()}`}
         title={`حالة النظام: ${
           systemStatus === "healthy"
             ? "ممتاز"
@@ -100,7 +101,7 @@ const StatusIndicator = () => {
         }`}
       >
         {getStatusIcon()}
-        <span className="mr-1">
+        <span className="mr-2">
           {systemStatus === "healthy"
             ? "ممتاز"
             : systemStatus === "warning"
@@ -112,7 +113,7 @@ const StatusIndicator = () => {
       {/* Connection Status */}
       <motion.div
         whileHover={{ scale: 1.05 }}
-        className={`flex items-center px-2 py-1 rounded-lg border text-xs font-medium transition-all duration-200 ${
+        className={`flex items-center px-3 py-2 rounded-xl border text-sm font-medium transition-all duration-200 ${
           isOnline
             ? "text-green-600 bg-green-50 border-green-200"
             : "text-red-600 bg-red-50 border-red-200"
@@ -120,27 +121,14 @@ const StatusIndicator = () => {
         title={isOnline ? "متصل بالإنترنت" : "غير متصل بالإنترنت"}
       >
         {isOnline ? (
-          <Wifi className="h-3 w-3" />
+          <Wifi className="h-4 w-4" />
         ) : (
-          <WifiOff className="h-3 w-3" />
+          <WifiOff className="h-4 w-4" />
         )}
-        <span className="mr-1">{isOnline ? "متصل" : "منقطع"}</span>
-      </motion.div>
-
-      {/* Current Time */}
-      <motion.div
-        whileHover={{ scale: 1.05 }}
-        className="flex items-center px-2 py-1 rounded-lg border border-blue-200 bg-blue-50 text-blue-600 text-xs font-medium transition-all duration-200"
-        title="الوقت الحالي"
-      >
-        <Clock className="h-3 w-3" />
-        <div className="mr-1 flex flex-col items-end">
-          <span className="font-mono">{formatTime(currentTime)}</span>
-          <span className="text-xs opacity-75">{formatDate(currentTime)}</span>
-        </div>
+        <span className="mr-2">{isOnline ? "متصل" : "منقطع"}</span>
       </motion.div>
     </div>
   );
 };
 
-export default StatusIndicator; 
+export default StatusIndicator;

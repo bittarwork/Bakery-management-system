@@ -84,6 +84,7 @@ const ProductsListPage = () => {
   const [viewMode, setViewMode] = useState("grid");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState([]);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -133,6 +134,17 @@ const ProductsListPage = () => {
   // Load products
   const loadProducts = async () => {
     try {
+      console.log('[PRODUCTS LIST] Loading products with params:', {
+        page: currentPage,
+        limit: itemsPerPage,
+        search: filters.search,
+        category: filters.category,
+        status: filters.status,
+        is_featured: filters.is_featured,
+        sortBy: filters.sortBy,
+        sortOrder: filters.sortOrder,
+      });
+
       // Show different loading states for initial load vs filtering
       if (products.length === 0) {
         setIsLoading(true);
@@ -153,15 +165,18 @@ const ProductsListPage = () => {
       };
 
       const response = await productService.getProducts(params);
+      console.log('[PRODUCTS LIST] API response:', response);
 
       if (response.success) {
-        setProducts(response.data.products || []);
-        setTotalPages(response.data.totalPages || 1);
-        setTotalProducts(response.data.total || 0);
+        const productsData = response.data.products || [];
+        console.log('[PRODUCTS LIST] Setting products:', productsData.length, 'products');
+        setProducts(productsData);
+        setTotalPages(response.data.pagination?.pages || 1);
+        setTotalProducts(response.data.pagination?.total || 0);
 
         // Mock statistics for now - you can implement this in your API
         setStatistics({
-          total: response.data.total || 0,
+          total: response.data.pagination?.total || 0,
           active:
             response.data.products?.filter((p) => p.status === "active")
               .length || 0,
@@ -191,8 +206,17 @@ const ProductsListPage = () => {
     }
   };
 
-  // Debounced search effect
+  // Initial load on component mount
   useEffect(() => {
+    loadProducts().finally(() => {
+      setIsInitialLoad(false);
+    });
+  }, []);
+
+  // Debounced search effect - skip on initial load to avoid double loading
+  useEffect(() => {
+    if (isInitialLoad) return;
+    
     const timeoutId = setTimeout(
       () => {
         loadProducts();
@@ -201,7 +225,7 @@ const ProductsListPage = () => {
     ); // Add delay only for search
 
     return () => clearTimeout(timeoutId);
-  }, [currentPage, filters]);
+  }, [currentPage, filters, isInitialLoad]);
 
   // Handle search input with immediate state update but debounced API call
   const handleSearchChange = (value) => {

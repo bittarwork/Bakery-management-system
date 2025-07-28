@@ -10,6 +10,9 @@ import {
     getAvailableVehicles,
     getVehiclesByDistributor,
     getVehicleStatistics,
+    getVehicleExpenses,
+    getVehicleStatisticsById,
+    exportVehicleData,
     updateVehicleStatus,
     exportVehiclesCSV
 } from '../controllers/vehicleController.js';
@@ -27,6 +30,9 @@ router.get('/export/csv', authorize('admin', 'manager'), exportVehiclesCSV);
 router.get('/available', getAvailableVehicles);
 router.get('/distributor/:distributorId', getVehiclesByDistributor);
 router.get('/:id', getVehicleById);
+router.get('/:id/expenses', authorize('admin', 'manager'), getVehicleExpenses);
+router.get('/:id/statistics', authorize('admin', 'manager'), getVehicleStatisticsById);
+router.get('/:id/export', authorize('admin', 'manager'), exportVehicleData);
 
 // POST routes
 router.post('/', authorize('admin', 'manager'), createVehicle);

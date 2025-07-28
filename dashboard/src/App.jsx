@@ -50,6 +50,7 @@ import UserProfilePage from "./pages/users/UserProfilePage";
 
 // Pages - Vehicles
 import VehicleManagementPage from "./pages/vehicles/VehicleManagementPage";
+import VehicleDetailsPage from "./pages/vehicles/VehicleDetailsPage";
 import AddVehiclePage from "./pages/vehicles/AddVehiclePage";
 import EditVehiclePage from "./pages/vehicles/EditVehiclePage";
 import VehicleExpensesPage from "./pages/vehicles/VehicleExpensesPage";
@@ -751,6 +752,27 @@ const App = () => {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <VehicleManagementPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/vehicles/details/:id"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <VehicleDetailsPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>

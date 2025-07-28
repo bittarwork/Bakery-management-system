@@ -69,7 +69,7 @@ const QuickActions = () => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl smooth-transition btn-enhanced"
+        className="flex items-center px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl smooth-transition btn-enhanced"
       >
         <Zap className="h-4 w-4 ml-2" />
         <span className="text-sm font-medium">إجراءات سريعة</span>

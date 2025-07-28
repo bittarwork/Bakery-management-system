@@ -31,6 +31,8 @@ import {
   Cog,
   Car,
   Receipt,
+  Clock,
+  Bell,
 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import Logo from "../ui/Logo";
@@ -46,8 +48,38 @@ const DashboardLayout = ({ children }) => {
     reports: false,
   });
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentTime, setCurrentTime] = useState(new Date());
   const location = useLocation();
   const { user, logout } = useAuthStore();
+
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Format time for display
+  const formatTime = (date) => {
+    return date.toLocaleTimeString("en-US", {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
+
+  // Format date for display
+  const formatDate = (date) => {
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
 
   // Enhanced navigation structure with better organization and user-friendly descriptions
   const navigationSections = [
@@ -539,38 +571,117 @@ const DashboardLayout = ({ children }) => {
 
       {/* Enhanced Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Enhanced Top Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200 py-4 flex items-center justify-between px-6">
-          <div className="flex items-center space-x-6 space-x-reverse">
-            <h2 className="text-xl font-bold text-gray-900">
-              {(() => {
-                const currentPath = location.pathname;
-                for (const section of navigationSections) {
-                  for (const item of section.items) {
-                    if (isActiveLink(item.path)) {
-                      return item.name;
-                    }
-                  }
-                }
-                return "لوحة التحكم";
-              })()}
-            </h2>
-            <StatusIndicator />
-          </div>
-          <div className="flex items-center space-x-4 space-x-reverse">
-            <QuickActions />
+        {/* Enhanced Modern Top Header */}
+        <header className="bg-white shadow-lg border-b border-gray-100 py-6 px-8 relative overflow-hidden">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-50/30 to-indigo-50/30"></div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-100/20 to-indigo-100/20 rounded-full -translate-y-16 translate-x-16"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-indigo-100/20 to-blue-100/20 rounded-full translate-y-12 -translate-x-12"></div>
 
-            {/* User Avatar and Logout */}
-            <div className="flex items-center space-x-3 space-x-reverse">
-              <div className="flex items-center">
-                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
-                  <User className="h-4 w-4 text-white" />
+          <div className="relative flex items-center justify-between">
+            {/* Left Section - Page Title and Status */}
+            <div className="flex items-center space-x-8 space-x-reverse">
+              <div className="flex items-center space-x-4 space-x-reverse">
+                <motion.div
+                  whileHover={{ scale: 1.05, rotate: 5 }}
+                  className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg"
+                >
+                  <Coffee className="h-6 w-6 text-white" />
+                </motion.div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {(() => {
+                      const currentPath = location.pathname;
+                      for (const section of navigationSections) {
+                        for (const item of section.items) {
+                          if (isActiveLink(item.path)) {
+                            return item.name;
+                          }
+                        }
+                      }
+                      return "لوحة التحكم";
+                    })()}
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    نظام إدارة المخبز المتطور
+                  </p>
                 </div>
-                <div className="mr-3">
-                  <div className="text-sm font-medium text-gray-900">
+              </div>
+              <StatusIndicator />
+            </div>
+
+            {/* Center Section - Clock and Date */}
+            <div className="flex items-center space-x-6 space-x-reverse">
+              {/* Modern Clock Display */}
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                className="flex items-center space-x-4 space-x-reverse bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl px-6 py-4 border border-blue-100 shadow-lg"
+              >
+                <div className="flex items-center space-x-3 space-x-reverse">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 60,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                    className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md"
+                  >
+                    <Clock className="h-5 w-5 text-white" />
+                  </motion.div>
+                  <div className="text-right">
+                    <motion.div
+                      key={formatTime(currentTime)}
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-2xl font-bold text-gray-900 font-mono"
+                    >
+                      {formatTime(currentTime)}
+                    </motion.div>
+                    <div className="text-sm text-gray-600">
+                      {formatDate(currentTime)}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Quick Actions */}
+              <QuickActions />
+            </div>
+
+            {/* Right Section - User Info and Actions */}
+            <div className="flex items-center space-x-4 space-x-reverse">
+              {/* Notifications */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="relative p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-all duration-200 border border-gray-200 shadow-md"
+                title="الإشعارات"
+              >
+                <Bell className="h-5 w-5 text-gray-600" />
+                <motion.span
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"
+                ></motion.span>
+              </motion.button>
+
+              {/* User Profile */}
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                className="flex items-center space-x-4 space-x-reverse bg-gradient-to-r from-gray-50 to-blue-25 rounded-2xl px-4 py-3 border border-gray-200 shadow-md"
+              >
+                <motion.div
+                  whileHover={{ scale: 1.1 }}
+                  className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md"
+                >
+                  <User className="h-5 w-5 text-white" />
+                </motion.div>
+                <div className="text-right">
+                  <div className="text-sm font-bold text-gray-900">
                     {user?.name || "مستخدم"}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-600">
                     {user?.role === "admin"
                       ? "مدير النظام"
                       : user?.role === "manager"
@@ -580,13 +691,14 @@ const DashboardLayout = ({ children }) => {
                       : "مستخدم"}
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
+              {/* Logout Button */}
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleLogout}
-                className="flex items-center px-3 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 border border-red-200 smooth-transition enhanced-focus"
+                className="flex items-center px-4 py-3 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all duration-200 border border-red-200 smooth-transition enhanced-focus shadow-md"
                 title="تسجيل الخروج من النظام"
               >
                 <LogOut className="h-4 w-4 ml-2" />
