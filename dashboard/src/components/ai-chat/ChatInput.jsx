@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Mic, Paperclip, Smile } from 'lucide-react';
-import EnhancedButton from '../ui/EnhancedButton';
+import { Send, Smile, Loader2 } from 'lucide-react';
 
 const ChatInput = ({ 
     onSendMessage, 
@@ -9,8 +8,6 @@ const ChatInput = ({
     placeholder = "اكتب رسالتك هنا...",
     maxLength = 1000,
     showCharacterCount = true,
-    allowAttachments = false,
-    allowVoice = false 
 }) => {
     const [message, setMessage] = useState('');
     const [isFocused, setIsFocused] = useState(false);
@@ -20,7 +17,7 @@ const ChatInput = ({
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
-            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
         }
     }, [message]);
 
@@ -50,14 +47,26 @@ const ChatInput = ({
     const isNearLimit = remainingChars < 100;
 
     return (
-        <div className="border-t border-gray-200 bg-white p-4">
+        <div className="p-4">
             <form onSubmit={handleSubmit} className="space-y-3">
-                {/* Input Container */}
-                <div className={`relative rounded-2xl border-2 transition-all duration-200 ${
+                {/* Main Input Container */}
+                <div className={`relative flex items-end gap-3 p-3 rounded-2xl border-2 transition-all duration-200 ${
                     isFocused 
-                        ? 'border-blue-500 shadow-lg shadow-blue-500/20' 
-                        : 'border-gray-200 hover:border-gray-300'
-                }`}>
+                        ? 'border-blue-500 bg-blue-50/30 shadow-lg shadow-blue-500/10' 
+                        : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md'
+                } ${disabled ? 'opacity-60' : ''}`}>
+                    
+                    {/* Emoji Button */}
+                    <motion.button
+                        type="button"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex-shrink-0 p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-100 rounded-xl transition-all duration-200"
+                        disabled={disabled}
+                    >
+                        <Smile className="w-5 h-5" />
+                    </motion.button>
+
                     {/* Textarea */}
                     <textarea
                         ref={textareaRef}
@@ -66,113 +75,99 @@ const ChatInput = ({
                         onKeyPress={handleKeyPress}
                         onFocus={() => setIsFocused(true)}
                         onBlur={() => setIsFocused(false)}
-                        placeholder={placeholder}
+                        placeholder={disabled ? "المساعد يفكر..." : placeholder}
                         disabled={disabled}
                         maxLength={maxLength}
                         rows={1}
-                        className="w-full px-4 py-3 pr-20 bg-transparent border-0 resize-none focus:outline-none text-gray-900 placeholder-gray-500 text-sm leading-relaxed max-h-32 overflow-y-auto"
+                        className="flex-1 bg-transparent border-0 resize-none focus:outline-none text-gray-900 placeholder-gray-500 text-sm leading-relaxed min-h-[40px] max-h-[120px] py-2"
                         style={{ 
-                            minHeight: '44px',
                             direction: 'rtl',
                             fontFamily: 'Cairo, system-ui, sans-serif'
                         }}
                     />
 
-                    {/* Action Buttons */}
-                    <div className="absolute left-2 bottom-2 flex items-center gap-1">
-                        {/* Voice Input (if enabled) */}
-                        {allowVoice && (
-                            <motion.button
-                                type="button"
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="p-2 text-gray-400 hover:text-blue-500 transition-colors rounded-lg hover:bg-gray-100"
-                                disabled={disabled}
-                            >
-                                <Mic className="h-4 w-4" />
-                            </motion.button>
+                    {/* Send Button */}
+                    <motion.button
+                        type="submit"
+                        disabled={!isMessageValid || disabled}
+                        whileHover={{ scale: isMessageValid && !disabled ? 1.05 : 1 }}
+                        whileTap={{ scale: isMessageValid && !disabled ? 0.95 : 1 }}
+                        className={`flex-shrink-0 p-2.5 rounded-xl transition-all duration-200 ${
+                            isMessageValid && !disabled
+                                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 shadow-lg'
+                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        }`}
+                    >
+                        {disabled ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                            <Send className="w-5 h-5" />
                         )}
-
-                        {/* Attachments (if enabled) */}
-                        {allowAttachments && (
-                            <motion.button
-                                type="button"
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="p-2 text-gray-400 hover:text-blue-500 transition-colors rounded-lg hover:bg-gray-100"
-                                disabled={disabled}
-                            >
-                                <Paperclip className="h-4 w-4" />
-                            </motion.button>
-                        )}
-
-                        {/* Emoji Picker */}
-                        <motion.button
-                            type="button"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="p-2 text-gray-400 hover:text-blue-500 transition-colors rounded-lg hover:bg-gray-100"
-                            disabled={disabled}
-                        >
-                            <Smile className="h-4 w-4" />
-                        </motion.button>
-
-                        {/* Send Button */}
-                        <motion.button
-                            type="submit"
-                            disabled={!isMessageValid || disabled}
-                            whileHover={{ scale: isMessageValid ? 1.05 : 1 }}
-                            whileTap={{ scale: isMessageValid ? 0.95 : 1 }}
-                            className={`p-2 rounded-lg transition-all duration-200 ${
-                                isMessageValid && !disabled
-                                    ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-md'
-                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            }`}
-                        >
-                            <Send className="h-4 w-4" />
-                        </motion.button>
-                    </div>
+                    </motion.button>
                 </div>
 
-                {/* Footer Info */}
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                    <div className="flex items-center gap-4">
-                        {/* Keyboard Shortcut */}
-                        <span>اضغط Enter للإرسال، Shift+Enter لسطر جديد</span>
+                {/* Footer */}
+                <div className="flex items-center justify-between px-2">
+                    {/* Shortcuts hint */}
+                    <div className="text-xs text-gray-500">
+                        {disabled ? (
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                المساعد يعمل على الرد...
+                            </div>
+                        ) : (
+                            "Enter للإرسال • Shift+Enter للسطر الجديد"
+                        )}
                     </div>
 
-                    {/* Character Count */}
-                    {showCharacterCount && (
-                        <div className={`transition-colors ${
-                            isNearLimit ? 'text-orange-500' : 
-                            remainingChars < 0 ? 'text-red-500' : 
+                    {/* Character count */}
+                    {showCharacterCount && !disabled && (
+                        <div className={`text-xs transition-colors ${
+                            isNearLimit ? 'text-orange-500 font-medium' : 
+                            remainingChars < 0 ? 'text-red-500 font-medium' : 
                             'text-gray-400'
                         }`}>
-                            {remainingChars} حرف متبقي
+                            {remainingChars < 0 && "⚠️ "}
+                            {Math.abs(remainingChars)} {remainingChars < 0 ? "حرف زائد" : "حرف متبقي"}
                         </div>
                     )}
                 </div>
 
-                {/* Error Message */}
+                {/* Error message for exceeded limit */}
                 {message.length > maxLength && (
                     <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="text-sm text-red-500 flex items-center gap-1"
+                        className="flex items-center gap-2 px-2 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600"
                     >
-                        ⚠️ الرسالة طويلة جداً. الحد الأقصى {maxLength} حرف.
+                        <span className="text-red-500">⚠️</span>
+                        الرسالة طويلة جداً. يُسمح بحد أقصى {maxLength.toLocaleString()} حرف.
                     </motion.div>
                 )}
 
-                {/* Disabled Message */}
-                {disabled && (
+                {/* Quick suggestions when empty */}
+                {!message.trim() && !disabled && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="text-sm text-gray-500 text-center flex items-center justify-center gap-2"
+                        className="flex flex-wrap gap-2 px-2"
                     >
-                        <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full"></div>
-                        المساعد الذكي يعمل على إعداد الرد...
+                        {[
+                            "ما هي أحدث الطلبات؟",
+                            "كيف أضيف منتج جديد؟",
+                            "عرض المبيعات اليوم",
+                        ].map((suggestion, index) => (
+                            <motion.button
+                                key={index}
+                                type="button"
+                                onClick={() => setMessage(suggestion)}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className="px-3 py-1.5 text-xs bg-gray-50 hover:bg-gray-100 text-gray-600 hover:text-gray-800 rounded-full transition-all duration-200 border border-gray-200 hover:border-gray-300"
+                            >
+                                {suggestion}
+                            </motion.button>
+                        ))}
                     </motion.div>
                 )}
             </form>

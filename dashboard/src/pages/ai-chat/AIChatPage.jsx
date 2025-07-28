@@ -4,18 +4,13 @@ import {
   Bot,
   MessageCircle,
   Trash2,
-  Download,
-  Settings,
   RefreshCw,
   Zap,
-  BarChart3,
   AlertCircle,
-  CheckCircle,
-  Brain,
-  TrendingUp,
-  FileText,
-  Target,
   Plus,
+  Menu,
+  X,
+  Sparkles,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
@@ -23,9 +18,7 @@ import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import ChatMessage from "../../components/ai-chat/ChatMessage";
 import ChatInput from "../../components/ai-chat/ChatInput";
 import SuggestedQuestions from "../../components/ai-chat/SuggestedQuestions";
-import ChatManager from "../../components/ai-chat/ChatManager";
-import EnhancedAIDashboard from "../../components/ai-chat/EnhancedAIDashboard";
-import EnhancedPredictionSystem from "../../components/ai-chat/EnhancedPredictionSystem";
+import ImprovedChatManager from "../../components/ai-chat/ImprovedChatManager";
 import aiChatService from "../../services/aiChatService";
 import { useAuthStore } from "../../stores/authStore";
 import { toast } from "react-hot-toast";
@@ -39,7 +32,6 @@ const AIChatPage = () => {
   const [chatConfig, setChatConfig] = useState(null);
   const [error, setError] = useState("");
   const [isConfigLoading, setIsConfigLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("chat");
 
   // Multi-chat state
   const [chats, setChats] = useState([]);
@@ -52,28 +44,6 @@ const AIChatPage = () => {
 
   // Auth
   const { user } = useAuthStore();
-
-  // Tab configuration
-  const tabs = [
-    {
-      id: "chat",
-      label: "المحادثة",
-      icon: MessageCircle,
-      description: "تحدث مع المساعد الذكي",
-    },
-    {
-      id: "dashboard",
-      label: "لوحة التحكم الذكية",
-      icon: Brain,
-      description: "نظرة شاملة ومتطورة على أداء المخبز",
-    },
-    {
-      id: "predictions",
-      label: "التنبؤات الذكية",
-      icon: Target,
-      description: "توقعات مستقبلية مدعومة بالذكاء الاصطناعي",
-    },
-  ];
 
   // Load initial data
   useEffect(() => {
@@ -215,7 +185,7 @@ const AIChatPage = () => {
 
     if (
       window.confirm(
-        `هل أنت متأكد من أنك تريد مسح سجل المحادثة "${activeChat.title}"؟`
+        `هل تريد مسح جميع الرسائل في "${activeChat.title}"؟`
       )
     ) {
       aiChatService.clearChatHistory();
@@ -239,6 +209,7 @@ const AIChatPage = () => {
       // Update chats list
       const updatedChats = aiChatService.getAllChats();
       setChats(updatedChats);
+      toast.success("تم مسح المحادثة");
     }
   };
 
@@ -304,6 +275,11 @@ const AIChatPage = () => {
     aiChatService.renameChat(chatId, newTitle);
     const updatedChats = aiChatService.getAllChats();
     setChats(updatedChats);
+    
+    // Update active chat if it's the one being renamed
+    if (activeChat && activeChat.id === chatId) {
+      setActiveChat(prev => ({ ...prev, title: newTitle }));
+    }
   };
 
   const handleArchiveChat = (chatId, archived) => {
@@ -312,44 +288,64 @@ const AIChatPage = () => {
     setChats(updatedChats);
   };
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "chat":
-        return renderChatContent();
-      case "dashboard":
-        return <EnhancedAIDashboard />;
-      case "predictions":
-        return <EnhancedPredictionSystem />;
-      default:
-        return renderChatContent();
-    }
-  };
-
-  const renderChatContent = () => {
-    if (showChatManager) {
-      return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-          <div className="lg:col-span-1">
-            <ChatManager
-              chats={chats}
-              activeChat={activeChat}
-              onSelectChat={handleSelectChat}
-              onCreateChat={handleCreateNewChat}
-              onDeleteChat={handleDeleteChat}
-              onRenameChat={handleRenameChat}
-              onArchiveChat={handleArchiveChat}
-            />
-          </div>
-          <div className="lg:col-span-2">{renderMainChatArea()}</div>
-        </div>
-      );
-    }
-
-    return renderMainChatArea();
-  };
-
   const renderMainChatArea = () => (
-    <Card className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-lg overflow-hidden">
+      {/* Chat Header */}
+      <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+              <Bot className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">
+                {activeChat?.title || "مساعد المخبز الذكي"}
+              </h2>
+              <p className="text-sm text-gray-600 flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                مساعدك الذكي لإدارة المخبز
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Message Stats */}
+            <div className="hidden md:flex items-center gap-4 text-xs text-gray-500 mr-4">
+              <div className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg">
+                <MessageCircle className="w-3 h-3" />
+                <span>{getMessageStats().total}</span>
+              </div>
+              {getMessageStats().cachedResponses > 0 && (
+                <div className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-1 rounded-lg">
+                  <Zap className="w-3 h-3" />
+                  <span>{getMessageStats().cacheHitRate}%</span>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <EnhancedButton
+              variant="outline"
+              size="sm"
+              onClick={handleRefreshSuggestions}
+              className="text-blue-600 border-blue-200 hover:bg-blue-50"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </EnhancedButton>
+
+            <EnhancedButton
+              variant="outline"
+              size="sm"
+              onClick={handleClearChat}
+              className="text-red-600 border-red-200 hover:bg-red-50"
+              disabled={!activeChat || messages.length === 0}
+            >
+              <Trash2 className="w-4 h-4" />
+            </EnhancedButton>
+          </div>
+        </div>
+      </div>
+
       {/* Suggested Questions */}
       {suggestedQuestions.length > 0 && (
         <SuggestedQuestions
@@ -364,9 +360,9 @@ const AIChatPage = () => {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 bg-red-50 border-b border-red-200 flex items-center gap-2 text-red-700"
+          className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700"
         >
-          <AlertCircle className="h-4 w-4" />
+          <AlertCircle className="w-4 h-4" />
           <span>{error}</span>
         </motion.div>
       )}
@@ -375,7 +371,7 @@ const AIChatPage = () => {
       <div
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto p-4 space-y-4"
-        style={{ maxHeight: "calc(100vh - 400px)" }}
+        style={{ maxHeight: "calc(100vh - 300px)" }}
       >
         <AnimatePresence>
           {messages.map((message) => (
@@ -388,21 +384,23 @@ const AIChatPage = () => {
 
         {/* Empty State */}
         {messages.length === 0 && !isTyping && (
-          <div className="text-center py-12">
-            <Bot className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-600 mb-2">
-              مرحباً بك في المساعد الذكي المطور!
+          <div className="text-center py-16">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-r from-blue-100 to-purple-100 flex items-center justify-center mx-auto mb-4">
+              <Bot className="w-10 h-10 text-blue-600" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              مرحباً بك! 
             </h3>
-            <p className="text-gray-500 mb-4">
-              ابدأ محادثة بكتابة سؤالك أو اختر أحد الاقتراحات أعلاه
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              أنا مساعدك الذكي لإدارة المخبز. اسألني عن أي شيء تريد معرفته!
             </p>
             {chats.length === 0 && (
               <EnhancedButton
                 onClick={() => handleCreateNewChat()}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
               >
-                <MessageCircle className="w-4 h-4 mr-2" />
-                إنشاء دردشة جديدة
+                <Plus className="w-4 h-4 mr-2" />
+                ابدأ محادثة جديدة
               </EnhancedButton>
             )}
           </div>
@@ -412,152 +410,122 @@ const AIChatPage = () => {
       </div>
 
       {/* Chat Input */}
-      <ChatInput
-        onSendMessage={handleSendMessage}
-        disabled={isLoading}
-        maxLength={chatConfig?.maxMessageLength || 1000}
-        placeholder={
-          activeChat ? "اكتب رسالتك هنا..." : "إنشاء دردشة جديدة للبدء..."
-        }
-      />
-    </Card>
+      <div className="border-t border-gray-200 bg-gray-50">
+        <ChatInput
+          onSendMessage={handleSendMessage}
+          disabled={isLoading}
+          maxLength={chatConfig?.maxMessageLength || 1000}
+          placeholder={
+            activeChat 
+              ? "اكتب رسالتك هنا..." 
+              : "ابدأ محادثة جديدة..."
+          }
+        />
+      </div>
+    </div>
   );
 
   // Loading state
   if (isConfigLoading) {
     return (
-      <Card className="h-full">
-        <CardBody className="flex items-center justify-center h-96">
-          <div className="text-center">
-            <LoadingSpinner className="mx-auto mb-4" />
-            <p className="text-gray-600">جارٍ تحميل المساعد الذكي...</p>
-          </div>
-        </CardBody>
-      </Card>
+      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
+        <div className="text-center">
+          <LoadingSpinner className="mx-auto mb-4" />
+          <p className="text-gray-600">جاري تحميل المساعد الذكي...</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-gray-50">
-      {/* Header */}
-      <Card className="mb-4">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-                <Bot className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">
-                  {chatConfig?.botName || "المساعد الذكي المطور"}
-                </h1>
-                <p className="text-sm text-gray-600">
-                  مساعدك الشخصي المتطور لنظام إدارة المخبز مع تحليلات وتنبؤات
-                  ذكية
-                </p>
-              </div>
+    <div className="h-screen flex bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Mobile Chat Manager Overlay */}
+      <AnimatePresence>
+        {showChatManager && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 lg:hidden"
+            onClick={() => setShowChatManager(false)}
+          >
+            <motion.div
+              initial={{ x: -320 }}
+              animate={{ x: 0 }}
+              exit={{ x: -320 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="w-80 h-full bg-white shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ImprovedChatManager
+                chats={chats}
+                activeChat={activeChat}
+                onSelectChat={handleSelectChat}
+                onCreateChat={handleCreateNewChat}
+                onDeleteChat={handleDeleteChat}
+                onRenameChat={handleRenameChat}
+                onArchiveChat={handleArchiveChat}
+                onClose={() => setShowChatManager(false)}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop Sidebar */}
+      <div className={`hidden lg:flex transition-all duration-300 ${showChatManager ? 'w-80' : 'w-16'}`}>
+        <div className="w-full bg-white shadow-lg">
+          {showChatManager ? (
+            <ImprovedChatManager
+              chats={chats}
+              activeChat={activeChat}
+              onSelectChat={handleSelectChat}
+              onCreateChat={handleCreateNewChat}
+              onDeleteChat={handleDeleteChat}
+              onRenameChat={handleRenameChat}
+              onArchiveChat={handleArchiveChat}
+            />
+          ) : (
+            <div className="p-4 h-full flex flex-col items-center">
+              <button
+                onClick={() => setShowChatManager(true)}
+                className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white flex items-center justify-center hover:shadow-lg transition-all mb-4"
+              >
+                <Menu className="w-4 h-4" />
+              </button>
+              
+              <button
+                onClick={() => handleCreateNewChat()}
+                className="w-8 h-8 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
             </div>
+          )}
+        </div>
+      </div>
 
-            {/* Header Actions */}
-            <div className="flex items-center gap-2">
-              {/* Message Stats (Only for Chat tab) */}
-              {activeTab === "chat" && (
-                <div className="hidden md:flex items-center gap-4 text-xs text-gray-500 mr-4">
-                  <div className="flex items-center gap-1">
-                    <MessageCircle className="h-3 w-3" />
-                    <span>{getMessageStats().total} رسالة</span>
-                  </div>
-                  {getMessageStats().cachedResponses > 0 && (
-                    <div className="flex items-center gap-1 text-green-600">
-                      <Zap className="h-3 w-3" />
-                      <span>{getMessageStats().cacheHitRate}% مخزن مؤقتاً</span>
-                    </div>
-                  )}
-                </div>
-              )}
+      {/* Main Chat Area */}
+      <div className="flex-1 p-4 flex flex-col">
+        {/* Mobile Header */}
+        <div className="flex lg:hidden items-center justify-between mb-4">
+          <button
+            onClick={() => setShowChatManager(true)}
+            className="p-2 rounded-lg bg-white shadow-md text-gray-600 hover:text-gray-900"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          
+          <button
+            onClick={() => handleCreateNewChat()}
+            className="p-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
 
-              {/* Action Buttons */}
-              {activeTab === "chat" && (
-                <>
-                  <EnhancedButton
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowChatManager(!showChatManager)}
-                    className={`${
-                      showChatManager
-                        ? "bg-blue-50 text-blue-700 border-blue-300"
-                        : "text-blue-600 border-blue-200 hover:bg-blue-50"
-                    }`}
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                  </EnhancedButton>
-
-                  <EnhancedButton
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCreateNewChat()}
-                    className="text-green-600 border-green-200 hover:bg-green-50"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </EnhancedButton>
-
-                  <EnhancedButton
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRefreshSuggestions}
-                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                  </EnhancedButton>
-
-                  <EnhancedButton
-                    variant="outline"
-                    size="sm"
-                    onClick={handleClearChat}
-                    className="text-red-600 border-red-200 hover:bg-red-50"
-                    disabled={!activeChat}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </EnhancedButton>
-                </>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* Tabs Navigation */}
-      <Card className="mb-4">
-        <CardBody className="p-0">
-          <div className="flex overflow-x-auto">
-            {tabs.map((tab) => {
-              const IconComponent = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-3 px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? "border-blue-500 text-blue-600 bg-blue-50"
-                      : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                  }`}
-                >
-                  <IconComponent className="w-4 h-4" />
-                  <div className="text-right">
-                    <div className="font-medium">{tab.label}</div>
-                    <div className="text-xs text-gray-500 hidden sm:block">
-                      {tab.description}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </CardBody>
-      </Card>
-
-      {/* Tab Content */}
-      <div className="flex-1">{renderTabContent()}</div>
+        {renderMainChatArea()}
+      </div>
     </div>
   );
 };

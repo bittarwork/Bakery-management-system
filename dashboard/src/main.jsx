@@ -6,6 +6,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "react-hot-toast";
 import App from "./App";
 import "./styles/index.css";
+import "./styles/enhanced-ui.css";
 
 // Create a client for React Query
 const queryClient = new QueryClient({

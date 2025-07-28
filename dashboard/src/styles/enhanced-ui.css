@@ -1,0 +1,197 @@
+/* Enhanced UI Styles for Better User Experience */
+
+/* Custom background colors for improved visual hierarchy */
+.hover\:bg-blue-25:hover {
+  background-color: rgb(239 246 255 / 0.5);
+}
+
+.hover\:bg-green-25:hover {
+  background-color: rgb(240 253 244 / 0.5);
+}
+
+.hover\:bg-orange-25:hover {
+  background-color: rgb(255 247 237 / 0.5);
+}
+
+.hover\:bg-purple-25:hover {
+  background-color: rgb(250 245 255 / 0.5);
+}
+
+.hover\:bg-indigo-25:hover {
+  background-color: rgb(238 242 255 / 0.5);
+}
+
+.to-blue-25 {
+  --tw-gradient-to: rgb(239 246 255 / 0.3);
+}
+
+/* Enhanced sidebar scrollbar styling */
+.enhanced-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.enhanced-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.enhanced-scrollbar::-webkit-scrollbar-thumb {
+  background: rgb(203 213 225);
+  border-radius: 3px;
+}
+
+.enhanced-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgb(148 163 184);
+}
+
+/* Smooth transitions for all interactive elements */
+.smooth-transition {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced focus states for accessibility */
+.enhanced-focus:focus {
+  outline: 2px solid rgb(59 130 246);
+  outline-offset: 2px;
+}
+
+/* Custom badge animations */
+.pulse-badge {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .7;
+  }
+}
+
+/* Enhanced shadow for elevated elements */
+.enhanced-shadow {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.enhanced-shadow-lg {
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+/* Improved text readability */
+.text-enhanced-gray {
+  color: rgb(55 65 81);
+}
+
+.text-enhanced-gray-light {
+  color: rgb(107 114 128);
+}
+
+/* Custom gradient backgrounds for sections */
+.gradient-blue {
+  background: linear-gradient(135deg, rgb(239 246 255) 0%, rgb(219 234 254) 100%);
+}
+
+.gradient-green {
+  background: linear-gradient(135deg, rgb(240 253 244) 0%, rgb(220 252 231) 100%);
+}
+
+.gradient-orange {
+  background: linear-gradient(135deg, rgb(255 247 237) 0%, rgb(254 235 200) 100%);
+}
+
+.gradient-purple {
+  background: linear-gradient(135deg, rgb(250 245 255) 0%, rgb(243 232 255) 100%);
+}
+
+.gradient-indigo {
+  background: linear-gradient(135deg, rgb(238 242 255) 0%, rgb(224 231 255) 100%);
+}
+
+/* Enhanced button hover effects */
+.btn-enhanced {
+  transform: translateY(0);
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-enhanced:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+}
+
+.btn-enhanced:active {
+  transform: translateY(0);
+}
+
+/* Responsive design improvements */
+@media (max-width: 768px) {
+  .mobile-friendly {
+    padding: 0.75rem;
+  }
+  
+  .mobile-text {
+    font-size: 0.875rem;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .enhanced-contrast {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Dark mode preparation (for future use) */
+@media (prefers-color-scheme: dark) {
+  .dark-mode-ready {
+    background-color: rgb(17 24 39);
+    color: rgb(243 244 246);
+  }
+}
+
+/* Loading states */
+.loading-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Enhanced notification styles */
+.notification-enter {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+.notification-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms ease-in-out, transform 300ms ease-in-out;
+}
+
+.notification-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.notification-exit-active {
+  opacity: 0;
+  transform: translateX(100%);
+  transition: opacity 300ms ease-in-out, transform 300ms ease-in-out;
+} 

@@ -4,29 +4,21 @@ import {
   Bot,
   User,
   Clock,
-  Zap,
-  Star,
   Copy,
-  Share,
-  MoreVertical,
-  ThumbsUp,
-  ThumbsDown,
+  CheckCircle,
+  Sparkles,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
+import { toast } from "react-hot-toast";
 
 const ChatMessage = ({
   message,
   isTyping = false,
-  onRate,
-  onCopy,
-  onShare,
 }) => {
-  const isUser = message.sender === "user";
-  const isAI = message.sender === "ai";
-  const [showActions, setShowActions] = useState(false);
-  const [rating, setRating] = useState(message.rating || 0);
-  const [isRating, setIsRating] = useState(false);
+  const isUser = message?.sender === "user";
+  const isAI = message?.sender === "ai";
+  const [copied, setCopied] = useState(false);
 
   // Animation variants
   const messageVariants = {
@@ -35,13 +27,15 @@ const ChatMessage = ({
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: { duration: 0.3 },
+      transition: { 
+        duration: 0.3,
+        ease: "easeOut"
+      },
     },
   };
 
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return "";
-
     try {
       const date = new Date(timestamp);
       return formatDistanceToNow(date, {
@@ -49,15 +43,12 @@ const ChatMessage = ({
         locale: ar,
       });
     } catch (error) {
-      console.warn("Invalid timestamp:", timestamp);
       return "";
     }
   };
 
   const formatMessage = (text) => {
     if (!text) return "";
-
-    // Convert line breaks to JSX
     return text.split("\n").map((line, index) => (
       <React.Fragment key={index}>
         {line}
@@ -66,288 +57,161 @@ const ChatMessage = ({
     ));
   };
 
-  const handleRate = async (newRating) => {
-    if (!onRate || isRating) return;
-
-    setIsRating(true);
+  const handleCopy = async () => {
+    if (!message?.message) return;
+    
     try {
-      await onRate(message.id, newRating);
-      setRating(newRating);
+      await navigator.clipboard.writeText(message.message);
+      setCopied(true);
+      toast.success("تم نسخ النص");
+      setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      console.error("Error rating message:", error);
-    } finally {
-      setIsRating(false);
+      toast.error("فشل في نسخ النص");
     }
   };
 
-  const handleCopy = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(message.message);
-      if (onCopy) onCopy(message.message);
-    }
-  };
-
-  const getSentimentEmoji = (sentiment) => {
-    switch (sentiment) {
-      case "positive":
-        return "😊";
-      case "negative":
-        return "😟";
-      case "neutral":
-        return "😐";
-      default:
-        return "";
-    }
-  };
-
-  const getIntentBadge = (intent) => {
-    const intentColors = {
-      question: "bg-blue-100 text-blue-800",
-      request: "bg-green-100 text-green-800",
-      complaint: "bg-red-100 text-red-800",
-      compliment: "bg-purple-100 text-purple-800",
-      report_request: "bg-yellow-100 text-yellow-800",
-      sales_inquiry: "bg-indigo-100 text-indigo-800",
-      inventory_inquiry: "bg-orange-100 text-orange-800",
-      store_inquiry: "bg-teal-100 text-teal-800",
-      greeting: "bg-pink-100 text-pink-800",
-      goodbye: "bg-gray-100 text-gray-800",
-    };
-
-    const intentLabels = {
-      question: "سؤال",
-      request: "طلب",
-      complaint: "شكوى",
-      compliment: "مجاملة",
-      report_request: "طلب تقرير",
-      sales_inquiry: "استفسار مبيعات",
-      inventory_inquiry: "استفسار مخزون",
-      store_inquiry: "استفسار متجر",
-      greeting: "تحية",
-      goodbye: "وداع",
-    };
-
-    if (!intent || intent === "unknown") return null;
-
+  // Typing indicator component
+  if (isTyping) {
     return (
-      <span
-        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-          intentColors[intent] || "bg-gray-100 text-gray-800"
-        }`}
+      <motion.div
+        variants={messageVariants}
+        initial="hidden"
+        animate="visible"
+        className="flex items-start gap-3 mb-6"
       >
-        {intentLabels[intent] || intent}
-      </span>
+        {/* AI Avatar */}
+        <div className="flex-shrink-0">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+            <Bot className="w-4 h-4 text-white" />
+          </div>
+        </div>
+
+        {/* Typing bubble */}
+        <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm max-w-xs">
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1">
+              {[0, 1, 2].map((dot) => (
+                <motion.div
+                  key={dot}
+                  className="w-2 h-2 bg-blue-500 rounded-full"
+                  animate={{
+                    scale: [1, 1.3, 1],
+                    opacity: [0.4, 1, 0.4],
+                  }}
+                  transition={{
+                    duration: 1.2,
+                    repeat: Infinity,
+                    delay: dot * 0.15,
+                  }}
+                />
+              ))}
+            </div>
+            <span className="text-sm text-gray-600">يكتب...</span>
+          </div>
+        </div>
+      </motion.div>
     );
-  };
+  }
 
   return (
     <motion.div
       variants={messageVariants}
       initial="hidden"
       animate="visible"
-      className={`flex gap-3 mb-6 ${
-        isUser ? "justify-end" : "justify-start"
-      } group`}
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
+      className={`flex items-start gap-3 mb-6 group ${
+        isUser ? "flex-row-reverse" : ""
+      }`}
     >
-      {/* Avatar - shown for AI messages or at start of user messages */}
-      {isAI && (
-        <div className="flex-shrink-0">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-            <Bot className="h-5 w-5 text-white" />
+      {/* Avatar */}
+      <div className="flex-shrink-0">
+        {isUser ? (
+          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-gray-600 to-gray-700 flex items-center justify-center shadow-lg">
+            <User className="w-4 h-4 text-white" />
           </div>
-        </div>
-      )}
-
-      {/* Message Content */}
-      <div className={`max-w-[70%] ${isUser ? "order-first" : ""}`}>
-        {/* Message Bubble */}
-        <div
-          className={`px-4 py-3 rounded-2xl shadow-sm ${
-            isUser
-              ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-md"
-              : "bg-white border border-gray-200 text-gray-800 rounded-bl-md"
-          }`}
-        >
-          {/* Typing indicator */}
-          {isTyping ? (
-            <div className="flex items-center gap-1">
-              <div className="flex gap-1">
-                {[0, 1, 2].map((dot) => (
-                  <motion.div
-                    key={dot}
-                    className="w-2 h-2 bg-gray-400 rounded-full"
-                    animate={{
-                      scale: [1, 1.2, 1],
-                      opacity: [0.5, 1, 0.5],
-                    }}
-                    transition={{
-                      duration: 1,
-                      repeat: Infinity,
-                      delay: dot * 0.2,
-                    }}
-                  />
-                ))}
-              </div>
-              <span className="text-sm text-gray-500 mr-2">
-                {import.meta.env.VITE_BOT_NAME || "المساعد الذكي"} يكتب...
-              </span>
-            </div>
-          ) : (
-            <div className="text-sm leading-relaxed">
-              {formatMessage(message.message)}
-            </div>
-          )}
-        </div>
-
-        {/* Message Metadata */}
-        {!isTyping && (
-          <div
-            className={`flex items-center gap-2 mt-1 text-xs text-gray-500 ${
-              isUser ? "justify-end" : "justify-start"
-            }`}
-          >
-            {/* Timestamp */}
-            {message.timestamp && (
-              <div className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                <span>{formatTimestamp(message.timestamp)}</span>
-              </div>
-            )}
-
-            {/* AI-specific metadata */}
-            {isAI && (
-              <>
-                {/* Cached indicator */}
-                {message.cached && (
-                  <div className="flex items-center gap-1 text-green-600">
-                    <Zap className="h-3 w-3" />
-                    <span>مخزن مؤقتاً</span>
-                  </div>
-                )}
-
-                {/* Response time */}
-                {message.responseTime && (
-                  <span>• {message.responseTime}ms</span>
-                )}
-
-                {/* Sentiment indicator */}
-                {message.analysis?.sentiment?.sentiment && (
-                  <span>
-                    • {getSentimentEmoji(message.analysis.sentiment.sentiment)}
-                  </span>
-                )}
-
-                {/* Provider indicator */}
-                {message.provider && (
-                  <div className="px-2 py-1 bg-gray-100 rounded text-xs">
-                    {message.provider === "gemini"
-                      ? "Gemini"
-                      : message.provider === "openai"
-                      ? "OpenAI"
-                      : message.provider}
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* User message sentiment and intent */}
-            {isUser && message.analysis && (
-              <>
-                {message.analysis.sentiment?.sentiment && (
-                  <span>
-                    • {getSentimentEmoji(message.analysis.sentiment.sentiment)}
-                  </span>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Intent Badge (for user messages) */}
-        {isUser && message.analysis?.intent?.intent && (
-          <div className="mt-2">
-            {getIntentBadge(message.analysis.intent.intent)}
-          </div>
-        )}
-
-        {/* Rating Section (for AI messages only) */}
-        {isAI && !isTyping && onRate && (
-          <div className="mt-3 flex items-center gap-2">
-            <span className="text-xs text-gray-500">تقييم الإجابة:</span>
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  onClick={() => handleRate(star)}
-                  disabled={isRating}
-                  className={`p-1 rounded transition-colors ${
-                    star <= rating
-                      ? "text-yellow-500 hover:text-yellow-600"
-                      : "text-gray-300 hover:text-yellow-400"
-                  } ${
-                    isRating
-                      ? "opacity-50 cursor-not-allowed"
-                      : "cursor-pointer"
-                  }`}
-                >
-                  <Star
-                    size={12}
-                    fill={star <= rating ? "currentColor" : "none"}
-                  />
-                </button>
-              ))}
-            </div>
-            {rating > 0 && (
-              <span className="text-xs text-gray-500">({rating}/5)</span>
-            )}
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        {!isTyping && showActions && (
-          <div
-            className={`flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity ${
-              isUser ? "justify-end" : "justify-start"
-            }`}
-          >
-            <button
-              onClick={handleCopy}
-              className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-              title="نسخ النص"
-            >
-              <Copy size={14} />
-            </button>
-
-            {onShare && (
-              <button
-                onClick={() => onShare(message)}
-                className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-                title="مشاركة"
-              >
-                <Share size={14} />
-              </button>
-            )}
-
-            <button
-              className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-              title="المزيد"
-            >
-              <MoreVertical size={14} />
-            </button>
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+            <Bot className="w-4 h-4 text-white" />
           </div>
         )}
       </div>
 
-      {/* User Avatar */}
-      {isUser && (
-        <div className="flex-shrink-0">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-gray-500 to-gray-600 flex items-center justify-center">
-            <User className="h-5 w-5 text-white" />
+      {/* Message Content */}
+      <div className={`max-w-[75%] ${isUser ? "items-end" : "items-start"} flex flex-col`}>
+        {/* Message Bubble */}
+        <div
+          className={`px-4 py-3 rounded-2xl shadow-sm relative group ${
+            isUser
+              ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-br-md"
+              : "bg-white border border-gray-200 text-gray-800 rounded-bl-md hover:shadow-md transition-shadow"
+          }`}
+        >
+          {/* Special indicators */}
+          {isAI && message?.isWelcome && (
+            <div className="flex items-center gap-1 mb-2 text-blue-600">
+              <Sparkles className="w-3 h-3" />
+              <span className="text-xs font-medium">رسالة ترحيب</span>
+            </div>
+          )}
+
+          {/* Message text */}
+          <div className={`text-sm leading-relaxed ${isUser ? 'text-white' : 'text-gray-800'}`}>
+            {formatMessage(message?.message)}
           </div>
+
+          {/* Copy button for AI messages */}
+          {isAI && (
+            <button
+              onClick={handleCopy}
+              className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-all duration-200"
+              title="نسخ النص"
+            >
+              {copied ? (
+                <CheckCircle className="w-3 h-3 text-green-600" />
+              ) : (
+                <Copy className="w-3 h-3" />
+              )}
+            </button>
+          )}
         </div>
-      )}
+
+        {/* Message metadata */}
+        <div
+          className={`flex items-center gap-2 mt-1 text-xs text-gray-500 ${
+            isUser ? "flex-row-reverse" : ""
+          }`}
+        >
+          {/* Timestamp */}
+          {message?.timestamp && (
+            <div className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              <span>{formatTimestamp(message.timestamp)}</span>
+            </div>
+          )}
+
+          {/* AI-specific indicators */}
+          {isAI && (
+            <>
+              {message?.cached && (
+                <div className="flex items-center gap-1 text-green-600">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span>سريع</span>
+                </div>
+              )}
+
+              {message?.provider && (
+                <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs">
+                  {message.provider}
+                </span>
+              )}
+            </>
+          )}
+
+          {/* Error indicator */}
+          {message?.isError && (
+            <span className="text-red-500 text-xs">خطأ في الإرسال</span>
+          )}
+        </div>
+      </div>
     </motion.div>
   );
 };
