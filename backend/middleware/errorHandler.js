@@ -3,8 +3,10 @@ export const errorHandler = (err, req, res, next) => {
     let error = { ...err };
     error.message = err.message;
 
-    // Log error
-    console.error(err);
+    // Only log errors in development or for critical errors
+    if (process.env.NODE_ENV === 'development' || error.statusCode >= 500) {
+        console.error('Error:', err.message);
+    }
 
     // Mongoose bad ObjectId
     if (err.name === 'CastError') {
@@ -47,11 +49,18 @@ export const errorHandler = (err, req, res, next) => {
         error = { message, statusCode: 401 };
     }
 
-    res.status(error.statusCode || 500).json({
+    // Send error response
+    const response = {
         success: false,
-        error: error.message || 'Server Error',
-        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-    });
+        error: error.message || 'Server Error'
+    };
+
+    // Only include stack trace in development
+    if (process.env.NODE_ENV === 'development') {
+        response.stack = err.stack;
+    }
+
+    res.status(error.statusCode || 500).json(response);
 };
 
 import { validationResult } from 'express-validator';

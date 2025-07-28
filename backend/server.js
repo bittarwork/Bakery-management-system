@@ -28,109 +28,71 @@ import { initializeEnhancedSystem, healthCheck } from './utils/enhancedSystemSet
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
-import { requestLogger, errorLogger } from './middleware/logger.js';
+import { simpleLogger } from './middleware/logger.js';
 import { updateSessionActivity, checkSessionExpiry, detectDevice } from './middleware/sessionMiddleware.js';
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Rate limiting - temporarily increased for development
+// Rate limiting
 const limiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minute
-    max: process.env.MOBILE_RATE_LIMIT ? parseInt(process.env.MOBILE_RATE_LIMIT) : 200, // limit each IP to requests per minute
+    max: process.env.MOBILE_RATE_LIMIT ? parseInt(process.env.MOBILE_RATE_LIMIT) : 200,
     message: 'Too many requests from this IP, please try again later.',
     standardHeaders: true,
     legacyHeaders: false,
     skip: (req) => {
-        // Skip rate limiting for health check and static files
         return req.path === '/api/health' || req.path.startsWith('/static/');
     },
     keyGenerator: (req) => {
-        // Use user ID if available, otherwise use IP
         return req.user ? req.user.id.toString() : req.ip;
     }
 });
 
 // Middleware
-app.use(helmet());
-
-// Add enhanced CORS preflight handling
-app.use((req, res, next) => {
-    // Set CORS headers
-    const origin = req.headers.origin;
-
-    // Allow localhost origins in all environments
-    if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('0.0.0.0'))) {
-        res.header('Access-Control-Allow-Origin', origin);
-    } else if (origin === 'https://bakery-management-system-nine.vercel.app') {
-        res.header('Access-Control-Allow-Origin', origin);
-    } else {
-        res.header('Access-Control-Allow-Origin', '*');
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'"],
+            imgSrc: ["'self'", "data:", "https:"],
+            connectSrc: ["'self'"],
+            fontSrc: ["'self'"],
+            objectSrc: ["'none'"],
+            mediaSrc: ["'self'"],
+            frameSrc: ["'none'"],
+        },
+    },
+    crossOriginEmbedderPolicy: false,
+    hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true
     }
+}));
 
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Request-Time, Cache-Control, Pragma');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Max-Age', '86400');
-
-    // Handle preflight requests
-    if (req.method === 'OPTIONS') {
-        console.log(`🔧 Handling OPTIONS preflight for ${req.path} from origin: ${origin}`);
-        res.status(200).end();
-        return;
-    }
-
-    next();
-});
-
-// Enhanced CORS configuration
+// Simplified CORS configuration with restricted origins
 app.use(cors({
     origin: function (origin, callback) {
-        // List of allowed origins for production and development
+        // Only allow these specific origins
         const allowedOrigins = [
-            process.env.FRONTEND_URL || 'http://localhost:3000',
-            'http://localhost:3000', // React development server
-            'http://localhost:5173', // Vite default port
-            'http://localhost:4173', // Vite preview port
-            'http://127.0.0.1:3000',
-            'http://127.0.0.1:5173',
-            'http://127.0.0.1:4173',
-            // Production frontend domain
-            'https://bakery-management-system-nine.vercel.app',
-            // Flutter development origins
-            'http://localhost:8080', // Flutter web development
-            'http://127.0.0.1:8080',
-            // Mobile app origins (for development)
-            'capacitor://localhost',
-            'ionic://localhost',
-            // Allow requests with no origin (like mobile apps)
-            null
+            'http://localhost:3000',
+            'https://www.al-bittar.com'
         ];
 
-        // Log CORS requests for debugging
-        console.log('🌐 CORS Request from origin:', origin);
-
-        // Allow requests without origin (like mobile apps, Postman, etc.)
+        // Allow requests without origin (mobile apps, Postman)
         if (!origin) {
-            console.log('✅ Allowing request with no origin (mobile/postman)');
             return callback(null, true);
         }
 
-        // Always allow localhost origins in any environment for development
-        if (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('0.0.0.0')) {
-            console.log('✅ Allowing localhost origin:', origin);
+        // Check if origin is allowed
+        if (allowedOrigins.includes(origin)) {
             return callback(null, true);
         }
 
-        // Check if origin is in allowed list
-        if (allowedOrigins.indexOf(origin) !== -1) {
-            console.log('✅ Origin allowed:', origin);
-            return callback(null, true);
-        }
-
-        // For security, log but still allow for now (debug mode)
-        console.log('⚠️  Origin not in whitelist but allowing for debugging:', origin);
-        return callback(null, true);
+        // Reject all other origins
+        return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -140,24 +102,20 @@ app.use(cors({
         'X-Requested-With',
         'Accept',
         'Origin',
-        'Access-Control-Request-Method',
-        'Access-Control-Request-Headers',
-        'X-Request-Time',
         'Cache-Control',
         'Pragma'
     ],
     exposedHeaders: ['Content-Range', 'X-Content-Range', 'X-Total-Count'],
-    maxAge: 86400, // 24 hours
-    optionsSuccessStatus: 200, // For legacy browser support
+    maxAge: 86400,
+    optionsSuccessStatus: 200,
     preflightContinue: false
 }));
 
-// Handle OPTIONS requests explicitly
+// Handle OPTIONS requests
 app.options('*', (req, res) => {
-    console.log('🔄 Handling OPTIONS request for:', req.path);
     res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, X-Request-Time, Cache-Control, Pragma');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma');
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Max-Age', '86400');
     res.status(200).end();
@@ -168,61 +126,32 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
-// Additional CORS middleware to ensure headers are always present
-app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    
-    // Always set CORS headers for all responses
-    if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
-        res.header('Access-Control-Allow-Origin', origin);
-    } else if (origin) {
-        res.header('Access-Control-Allow-Origin', origin);
-    } else {
-        res.header('Access-Control-Allow-Origin', '*');
-    }
-    
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, X-Request-Time, Cache-Control, Pragma');
-    res.header('Access-Control-Expose-Headers', 'Content-Range, X-Content-Range, X-Total-Count');
-    
-    // Log CORS headers being sent
-    console.log('📤 Setting CORS headers for origin:', origin);
-    
-    next();
-});
-
-// Handle favicon requests to avoid 404 errors
+// Handle favicon requests
 app.get('/favicon.ico', (req, res) => {
-    res.status(204).end(); // No Content
+    res.status(204).end();
 });
 
-// Serve static files (uploaded images) with CORS headers
+// Serve static files with CORS headers
 app.use('/uploads', (req, res, next) => {
-    // Add comprehensive CORS headers for static files
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Range');
     res.header('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.header('Cross-Origin-Embedder-Policy', 'unsafe-none');
-    res.header('Referrer-Policy', 'no-referrer-when-downgrade');
 
-    // Handle preflight requests
     if (req.method === 'OPTIONS') {
         return res.sendStatus(200);
     }
 
     next();
 }, express.static(path.join(__dirname, 'storage/uploads'), {
-    // Express static options for better performance
-    maxAge: '1d', // Cache for 1 day
+    maxAge: '1d',
     etag: true,
     lastModified: true
 }));
 
-// Request logging middleware
-if (process.env.NODE_ENV !== 'test') {
-    app.use(requestLogger);
+// Simple request logging for essential requests only
+if (process.env.NODE_ENV === 'development') {
+    app.use(simpleLogger);
 }
 
 // Session middleware
@@ -233,7 +162,7 @@ app.use(checkSessionExpiry);
 // Mount all API routes
 app.use('/api', apiRoutes);
 
-// Health check with enhanced system status
+// Health check endpoint
 app.get('/api/health', async (req, res) => {
     try {
         const enhancedHealth = await healthCheck();
@@ -269,46 +198,28 @@ app.get('/api/enhanced/health', async (req, res) => {
 
 // Error handling middleware
 app.use(notFound);
-app.use(errorLogger);
 app.use(errorHandler);
 
 // Start server
 const startServer = async () => {
     try {
-        console.log('🍞 Bakery Management System - Enhanced Edition');
-        console.log('═'.repeat(50));
-
-        // Initialize original models and database first
-        console.log('🔧 Initializing original system...');
+        // Initialize original models and database
         await initializeModels();
 
         // Initialize enhanced system
-        console.log('🚀 Initializing enhanced system...');
         await initializeEnhancedSystem();
 
         app.listen(PORT, () => {
             if (process.env.NODE_ENV !== 'test') {
-                console.log('\n🎉 Enhanced Bakery Management System API');
-                console.log('═'.repeat(50));
-                console.log(`🚀 Server: http://localhost:${PORT}`);
-                console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
-                console.log(`🔗 API: http://localhost:${PORT}/api`);
-                console.log(`📊 Health: http://localhost:${PORT}/api/health`);
-                console.log(`🌟 Enhanced Health: http://localhost:${PORT}/api/enhanced/health`);
-                console.log('');
-                console.log('📋 Enhanced Endpoints:');
-                console.log(`   • Distribution: http://localhost:${PORT}/api/enhanced/distribution`);
-                console.log(`   • Stores: http://localhost:${PORT}/api/enhanced/stores`);
-                console.log(`   • Payments: http://localhost:${PORT}/api/enhanced/payments`);
-                console.log('');
-                console.log('💰 Currency Support: EUR (primary), SYP (secondary)');
-                console.log('🗓️ Date Format: Gregorian Calendar');
-                console.log('═'.repeat(50));
-                console.log('✅ Enhanced system ready to accept requests!\n');
+                console.log('🍞 Bakery Management System API');
+                console.log(`🚀 Server running on: http://localhost:${PORT}`);
+                console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+                console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+                console.log('✅ System ready');
             }
         });
     } catch (error) {
-        console.error('❌ Failed to start enhanced server:', error);
+        console.error('❌ Failed to start server:', error);
         process.exit(1);
     }
 };
