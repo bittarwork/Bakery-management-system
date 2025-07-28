@@ -268,6 +268,45 @@ class VehicleService {
             avgConsumption: 'غير محدد'
         };
     }
+
+    // Export vehicles to CSV
+    async exportVehiclesCSV() {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${this.baseEndpoint}/export/csv`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Export failed');
+            }
+
+            // Get the filename from the response headers
+            const contentDisposition = response.headers.get('Content-Disposition');
+            const filename = contentDisposition 
+                ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+                : `vehicles_export_${new Date().toISOString().split('T')[0]}.csv`;
+
+            // Create blob and download
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            return { success: true };
+        } catch (error) {
+            console.error('Error exporting vehicles CSV:', error);
+            return { success: false, error: error.message };
+        }
+    }
 }
 
 const vehicleService = new VehicleService();

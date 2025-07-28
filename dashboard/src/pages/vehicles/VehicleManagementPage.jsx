@@ -223,6 +223,25 @@ const VehicleManagementPage = () => {
     navigate("/vehicles/add");
   };
 
+  // Export vehicles to CSV
+  const handleExportCSV = async () => {
+    try {
+      setActionLoading(true);
+      const response = await vehicleService.exportVehiclesCSV();
+      
+      if (response.success) {
+        toast.success('تم تصدير البيانات بنجاح');
+      } else {
+        toast.error('خطأ في تصدير البيانات');
+      }
+    } catch (error) {
+      toast.error('خطأ في تصدير البيانات');
+      console.error('Export error:', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -252,6 +271,14 @@ const VehicleManagementPage = () => {
             }
           >
             تحديث
+          </Button>
+          <Button
+            onClick={handleExportCSV}
+            variant="secondary"
+            disabled={actionLoading}
+            icon={<Download className="w-4 h-4" />}
+          >
+            تصدير CSV
           </Button>
           <Button
             onClick={handleAddVehicle}

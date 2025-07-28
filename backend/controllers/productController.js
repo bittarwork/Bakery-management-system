@@ -206,18 +206,28 @@ export const createProduct = async (req, res) => {
             return isNaN(parsed) ? defaultValue : parsed;
         };
 
-        // Helper function for positive numbers only
-        const parsePositiveNumber = (value) => {
-            const parsed = parseNumber(value, null);
-            return parsed && parsed > 0 ? parsed : null;
+        // Helper function for positive numbers with database-safe defaults
+        const parsePositiveNumberOrDefault = (value, fallbackDefault = 0) => {
+            if (value === null || value === undefined || value === '') {
+                return fallbackDefault;
+            }
+            const parsed = parseFloat(value);
+            if (isNaN(parsed) || parsed <= 0) {
+                return fallbackDefault;
+            }
+            return parsed;
         };
 
-        const parsePositiveInteger = (value) => {
-            const parsed = parseInteger(value, null);
-            return parsed && parsed > 0 ? parsed : null;
+        const parsePositiveIntegerOrDefault = (value, fallbackDefault = 0) => {
+            if (value === null || value === undefined || value === '') {
+                return fallbackDefault;
+            }
+            const parsed = parseInt(value);
+            if (isNaN(parsed) || parsed <= 0) {
+                return fallbackDefault;
+            }
+            return parsed;
         };
-
-
 
         // Prepare clean product data
         const productData = {
@@ -226,7 +236,7 @@ export const createProduct = async (req, res) => {
             category: category || 'other',
             unit: unit || 'piece',
             price_eur: Math.max(parseNumber(price_eur, 0.01), 0.01), // Required field with minimum 0.01
-            price_syp: parsePositiveNumber(price_syp), // Must be positive or null (not 0!)
+            price_syp: parsePositiveNumberOrDefault(price_syp, 0), // Use 0 as database-safe default
             cost_eur: parseNumber(cost_eur, null), // Can be 0 or null
             cost_syp: parseNumber(cost_syp, null), // Can be 0 or null
             stock_quantity: parseInteger(stock_quantity, null), // Can be 0 or null
@@ -235,8 +245,8 @@ export const createProduct = async (req, res) => {
             is_featured: Boolean(is_featured),
             status: ['active', 'inactive', 'discontinued'].includes(status) ? status : 'active',
             image_url: image_url?.trim() || null,
-            weight_grams: parsePositiveInteger(weight_grams), // Must be positive or null (not 0!)
-            shelf_life_days: parsePositiveInteger(shelf_life_days), // Must be positive or null (not 0!)
+            weight_grams: parsePositiveIntegerOrDefault(weight_grams, 0), // Use 0 as database-safe default
+            shelf_life_days: parsePositiveIntegerOrDefault(shelf_life_days, 0), // Use 0 as database-safe default
             storage_conditions: storage_conditions?.trim() || null,
             created_by: req.userId || 1,
             created_by_name: created_by_name?.trim() || 'System',
@@ -427,15 +437,27 @@ export const updateProduct = async (req, res) => {
             return isNaN(parsed) ? defaultValue : parsed;
         };
 
-        // Helper function for positive numbers only
-        const parsePositiveNumber = (value) => {
-            const parsed = parseNumber(value, null);
-            return parsed && parsed > 0 ? parsed : null;
+        // Helper function for positive numbers with database-safe defaults
+        const parsePositiveNumberOrDefault = (value, fallbackDefault = 0) => {
+            if (value === null || value === undefined || value === '') {
+                return fallbackDefault;
+            }
+            const parsed = parseFloat(value);
+            if (isNaN(parsed) || parsed <= 0) {
+                return fallbackDefault;
+            }
+            return parsed;
         };
 
-        const parsePositiveInteger = (value) => {
-            const parsed = parseInteger(value, null);
-            return parsed && parsed > 0 ? parsed : null;
+        const parsePositiveIntegerOrDefault = (value, fallbackDefault = 0) => {
+            if (value === null || value === undefined || value === '') {
+                return fallbackDefault;
+            }
+            const parsed = parseInt(value);
+            if (isNaN(parsed) || parsed <= 0) {
+                return fallbackDefault;
+            }
+            return parsed;
         };
 
         // Prepare update data
@@ -446,7 +468,7 @@ export const updateProduct = async (req, res) => {
         if (category !== undefined) updateData.category = category || 'other';
         if (unit !== undefined) updateData.unit = unit || 'piece';
         if (price_eur !== undefined) updateData.price_eur = Math.max(parseNumber(price_eur, 0.01), 0.01);
-        if (price_syp !== undefined) updateData.price_syp = parsePositiveNumber(price_syp);
+        if (price_syp !== undefined) updateData.price_syp = parsePositiveNumberOrDefault(price_syp, 0);
         if (cost_eur !== undefined) updateData.cost_eur = parseNumber(cost_eur, null);
         if (cost_syp !== undefined) updateData.cost_syp = parseNumber(cost_syp, null);
         if (stock_quantity !== undefined) updateData.stock_quantity = parseInteger(stock_quantity, null);
@@ -455,8 +477,8 @@ export const updateProduct = async (req, res) => {
         if (is_featured !== undefined) updateData.is_featured = Boolean(is_featured);
         if (status !== undefined) updateData.status = ['active', 'inactive', 'discontinued'].includes(status) ? status : 'active';
         if (image_url !== undefined) updateData.image_url = image_url?.trim() || null;
-        if (weight_grams !== undefined) updateData.weight_grams = parsePositiveInteger(weight_grams);
-        if (shelf_life_days !== undefined) updateData.shelf_life_days = parsePositiveInteger(shelf_life_days);
+        if (weight_grams !== undefined) updateData.weight_grams = parsePositiveIntegerOrDefault(weight_grams, 0);
+        if (shelf_life_days !== undefined) updateData.shelf_life_days = parsePositiveIntegerOrDefault(shelf_life_days, 0);
         if (storage_conditions !== undefined) updateData.storage_conditions = storage_conditions?.trim() || null;
 
         // Handle JSON fields properly

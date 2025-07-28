@@ -90,11 +90,11 @@ const parsePositiveInteger = (value) => {
 
 async function runTests() {
     const createdProducts = [];
-    
+
     for (const testCase of testCases) {
         try {
             console.log(`\n🔄 Running ${testCase.name}...`);
-            
+
             // Process data the same way as controller
             const processedData = {
                 ...testCase.data,
@@ -106,19 +106,19 @@ async function runTests() {
                 stock_quantity: parseInteger(testCase.data.stock_quantity, null),
                 minimum_stock: parseInteger(testCase.data.minimum_stock, null),
             };
-            
+
             console.log('📊 Processed data:');
             console.log('  price_syp:', processedData.price_syp);
             console.log('  weight_grams:', processedData.weight_grams);
             console.log('  shelf_life_days:', processedData.shelf_life_days);
-            
+
             const product = await Product.create(processedData);
             createdProducts.push(product);
-            
+
             console.log(`✅ ${testCase.name} PASSED!`);
             console.log(`   Product ID: ${product.id}`);
             console.log(`   Product Name: ${product.name}`);
-            
+
         } catch (error) {
             console.log(`❌ ${testCase.name} FAILED!`);
             console.log(`   Error: ${error.message}`);
@@ -131,7 +131,7 @@ async function runTests() {
             }
         }
     }
-    
+
     // Cleanup
     for (const product of createdProducts) {
         try {
