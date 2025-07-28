@@ -765,11 +765,16 @@ const StoreDetailsPage = () => {
                             height="250px"
                             showControls={true}
                             interactive={true}
+                            enableCurrentLocation={true}
                             center={
-                              userLocation || {
+                              userLocation || 
+                              (store.gps_coordinates ? {
+                                lat: parseFloat(store.gps_coordinates.latitude),
+                                lng: parseFloat(store.gps_coordinates.longitude),
+                              } : store.latitude && store.longitude ? {
                                 lat: parseFloat(store.latitude),
                                 lng: parseFloat(store.longitude),
-                              }
+                              } : null)
                             }
                             zoom={15}
                           />

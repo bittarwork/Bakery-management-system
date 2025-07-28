@@ -12,7 +12,9 @@ import {
     getStoreOrders,
     getStorePayments,
     getStoreSpecificStatistics,
-    updateStoreStatus
+    updateStoreStatus,
+    quickCreateStoreFromLocation,
+    getStoresByProximity
 } from '../controllers/storeController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -35,6 +37,30 @@ router.get('/statistics', getStoreStatistics);
 // @route   GET /api/stores/nearby
 // @access  Private
 router.get('/nearby', getNearbyStores);
+
+// @desc    الحصول على المحلات بحسب القرب من موقع محدد
+// @route   GET /api/stores/proximity
+// @access  Private
+router.get('/proximity', getStoresByProximity);
+
+// @desc    إنشاء محل جديد من الموقع الحالي (سريع)
+// @route   POST /api/stores/quick-create
+// @access  Private (Distributor/Manager/Admin)
+router.post('/quick-create', [
+    body('name').notEmpty().withMessage('اسم المحل مطلوب'),
+    body('current_location.latitude').isFloat({ min: -90, max: 90 }).withMessage('خط العرض غير صحيح'),
+    body('current_location.longitude').isFloat({ min: -180, max: 180 }).withMessage('خط الطول غير صحيح'),
+    body('owner_name').optional().trim(),
+    body('phone').optional().custom((value) => {
+        if (!value || value === '') return true;
+        if (!/^\+?[0-9\s\-\(\)]{7,20}$/.test(value)) {
+            throw new Error('رقم الهاتف غير صحيح');
+        }
+        return true;
+    }),
+    body('category').optional().isIn(['supermarket', 'grocery', 'cafe', 'restaurant', 'bakery', 'hotel', 'other']).withMessage('فئة المحل غير صحيحة'),
+    body('store_type').optional().isIn(['retail', 'wholesale', 'restaurant']).withMessage('نوع المحل غير صحيح')
+], quickCreateStoreFromLocation);
 
 // @desc    الحصول على جميع المحلات
 // @route   GET /api/stores

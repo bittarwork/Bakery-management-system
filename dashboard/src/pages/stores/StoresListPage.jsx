@@ -847,6 +847,7 @@ const StoresListPage = () => {
                     height="100%"
                     showControls={true}
                     interactive={true}
+                    enableCurrentLocation={true}
                   />
                 </div>
               </CardBody>

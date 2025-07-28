@@ -292,6 +292,7 @@ export const createStore = async (req, res) => {
             tax_number,
             business_license,
             notes,
+            special_instructions,
             status = 'active'
         } = req.body;
 
@@ -364,8 +365,10 @@ export const createStore = async (req, res) => {
             tax_number,
             business_license,
             notes,
+            special_instructions,
             status,
-            created_by: req.userId
+            created_by: req.userId,
+            created_by_name: req.user.full_name
         });
 
         res.status(201).json({
@@ -379,6 +382,99 @@ export const createStore = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'خطأ في إنشاء المحل',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// @desc    إنشاء محل جديد من الموقع الحالي للموزع
+// @route   POST /api/stores/quick-create
+// @access  Private (Distributor/Manager/Admin)
+export const quickCreateStoreFromLocation = async (req, res) => {
+    try {
+        // Check permissions - allow distributors, managers, and admins
+        if (!['admin', 'manager', 'distributor'].includes(req.user.role)) {
+            return res.status(403).json({
+                success: false,
+                message: 'غير مصرح لك بإنشاء محلات'
+            });
+        }
+
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                message: 'بيانات غير صحيحة',
+                errors: errors.array()
+            });
+        }
+
+        const {
+            name,
+            current_location,
+            // Optional fields that can be added quickly
+            owner_name,
+            phone,
+            category = 'grocery',
+            store_type = 'retail',
+            address_details, // Additional address details for navigation help
+            special_instructions
+        } = req.body;
+
+        // Validate required fields
+        if (!name || !name.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: 'اسم المحل مطلوب'
+            });
+        }
+
+        if (!current_location || !current_location.latitude || !current_location.longitude) {
+            return res.status(400).json({
+                success: false,
+                message: 'الموقع الحالي مطلوب - يجب السماح بالوصول للموقع'
+            });
+        }
+
+        // Check for duplicate store name
+        const existingStore = await Store.findOne({
+            where: { name: name.trim() }
+        });
+
+        if (existingStore) {
+            return res.status(409).json({
+                success: false,
+                message: 'يوجد محل بهذا الاسم مسبقاً'
+            });
+        }
+
+        // Prepare store data for quick creation
+        const storeData = {
+            name: name.trim(),
+            owner_name: owner_name?.trim() || null,
+            phone: phone?.trim() || null,
+            category,
+            store_type,
+            address: address_details?.trim() || 'تم إضافة الموقع من الخريطة',
+            special_instructions: special_instructions?.trim() || null,
+            assigned_distributor_id: req.user.role === 'distributor' ? req.user.id : null,
+            created_by: req.user.id
+        };
+
+        // Create store using the new method
+        const store = await Store.createFromDistributorLocation(storeData, current_location);
+
+        res.status(201).json({
+            success: true,
+            data: store,
+            message: 'تم إنشاء المحل بنجاح من الموقع الحالي'
+        });
+
+    } catch (error) {
+        console.error('[STORES] Failed to quick create store:', error.message);
+        res.status(500).json({
+            success: false,
+            message: error.message.includes('مطلوب') ? error.message : 'خطأ في إنشاء المحل',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
@@ -652,6 +748,55 @@ export const getNearbyStores = async (req, res) => {
 
     } catch (error) {
         console.error('[STORES] Failed to fetch nearby stores:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في جلب المحلات القريبة',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// @desc    الحصول على المحلات القريبة من موقع محدد
+// @route   GET /api/stores/proximity
+// @access  Private
+export const getStoresByProximity = async (req, res) => {
+    try {
+        const { lat, lng, radius = 5, limit = 20 } = req.query;
+
+        if (!lat || !lng) {
+            return res.status(400).json({
+                success: false,
+                message: 'يجب تحديد خط العرض وخط الطول'
+            });
+        }
+
+        const latitude = parseFloat(lat);
+        const longitude = parseFloat(lng);
+        const radiusKm = parseFloat(radius);
+        const limitNum = parseInt(limit);
+
+        // Validate coordinates
+        if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+            return res.status(400).json({
+                success: false,
+                message: 'إحداثيات غير صحيحة'
+            });
+        }
+
+        const stores = await Store.getStoresByProximity(latitude, longitude, radiusKm, limitNum);
+
+        res.json({
+            success: true,
+            data: {
+                stores,
+                center: { lat: latitude, lng: longitude },
+                radius: radiusKm,
+                total: stores.length
+            }
+        });
+
+    } catch (error) {
+        console.error('[STORES] Failed to fetch stores by proximity:', error.message);
         res.status(500).json({
             success: false,
             message: 'خطأ في جلب المحلات القريبة',

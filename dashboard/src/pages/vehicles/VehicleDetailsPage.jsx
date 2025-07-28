@@ -46,14 +46,28 @@ const VehicleDetailsPage = () => {
   
   // Load data
   useEffect(() => {
-    if (id) {
+    console.log('Vehicle ID from params:', id);
+    if (id && id !== 'undefined') {
       loadVehicleDetails();
+    } else {
+      console.error('Invalid vehicle ID:', id);
+      setLoading(false);
+      toast.error('معرف المركبة غير صحيح');
+      navigate('/vehicles');
     }
   }, [id]);
 
   const loadVehicleDetails = async () => {
+    if (!id || id === 'undefined' || id === 'null') {
+      console.error('Cannot load vehicle details: Invalid ID -', id);
+      toast.error('معرف المركبة غير صحيح');
+      navigate('/vehicles');
+      return;
+    }
+
     try {
       setLoading(true);
+      console.log('Loading vehicle details for ID:', id);
       
       const [vehicleResponse, expensesResponse, statsResponse] = await Promise.all([
         vehicleService.getVehicleById(id),
@@ -63,7 +77,9 @@ const VehicleDetailsPage = () => {
 
       if (vehicleResponse.success) {
         setVehicle(vehicleResponse.data.vehicle);
+        console.log('Vehicle loaded successfully:', vehicleResponse.data.vehicle);
       } else {
+        console.error('Failed to load vehicle:', vehicleResponse);
         toast.error('خطأ في تحميل بيانات المركبة');
         navigate('/vehicles');
         return;
@@ -88,10 +104,19 @@ const VehicleDetailsPage = () => {
 
   // Handle actions
   const handleEdit = () => {
+    if (!id || id === 'undefined') {
+      toast.error('معرف المركبة غير صحيح');
+      return;
+    }
     navigate(`/vehicles/edit/${id}`);
   };
 
   const handleDelete = async () => {
+    if (!id || id === 'undefined') {
+      toast.error('معرف المركبة غير صحيح');
+      return;
+    }
+
     if (!window.confirm('هل أنت متأكد من حذف هذه المركبة؟ سيتم حذف جميع البيانات المرتبطة بها.')) {
       return;
     }
@@ -115,6 +140,11 @@ const VehicleDetailsPage = () => {
   };
 
   const handleExportVehicleData = async () => {
+    if (!id || id === 'undefined') {
+      toast.error('معرف المركبة غير صحيح');
+      return;
+    }
+
     try {
       setActionLoading(true);
       const response = await vehicleService.exportVehicleData(id);

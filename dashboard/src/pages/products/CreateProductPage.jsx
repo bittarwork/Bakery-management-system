@@ -324,120 +324,133 @@ const CreateProductPage = () => {
         JSON.stringify(formData, null, 2)
       );
 
-      // Prepare form data with database-compatible values (no nulls for numeric fields)
+      // Helper function to safely parse JSON text fields
+      const parseJsonField = (fieldValue, fieldType = 'basic') => {
+        if (!fieldValue || fieldValue.trim() === '') {
+          return null;
+        }
+        
+        const trimmedValue = fieldValue.trim();
+        
+        // Try to parse as JSON first (in case user pasted JSON)
+        try {
+          const parsed = JSON.parse(trimmedValue);
+          if (typeof parsed === 'object' && parsed !== null) {
+            return parsed;
+          }
+        } catch (e) {
+          // Not JSON, treat as plain text
+        }
+        
+        // Convert plain text to appropriate JSON structure
+        switch (fieldType) {
+          case 'supplier':
+            return {
+              name: trimmedValue,
+              contact: "",
+              notes: ""
+            };
+          case 'nutritional':
+            return {
+              description: trimmedValue,
+              calories: null,
+              protein: null,
+              carbs: null,
+              fat: null
+            };
+          case 'allergen':
+            return {
+              description: trimmedValue,
+              contains: [],
+              may_contain: []
+            };
+          default:
+            return { description: trimmedValue };
+        }
+      };
+
+      // Prepare form data with proper data types and null handling
       const productData = {
-        ...formData,
-        price_eur:
-          formData.price_eur &&
-          formData.price_eur !== "" &&
-          !isNaN(parseFloat(formData.price_eur)) &&
-          parseFloat(formData.price_eur) > 0
-            ? parseFloat(formData.price_eur)
-            : 0.01, // EUR price is required with minimum of 0.01
-        price_syp:
-          formData.price_syp &&
-          formData.price_syp !== "" &&
-          !isNaN(parseFloat(formData.price_syp)) &&
-          parseFloat(formData.price_syp) > 0
-            ? parseFloat(formData.price_syp)
-            : null, // SYP price is optional, send null if not provided
-        cost_eur:
-          formData.cost_eur &&
-          formData.cost_eur !== "" &&
-          !isNaN(parseFloat(formData.cost_eur)) &&
-          parseFloat(formData.cost_eur) >= 0
-            ? parseFloat(formData.cost_eur)
-            : null, // Cost is optional, send null if not provided
-        cost_syp:
-          formData.cost_syp &&
-          formData.cost_syp !== "" &&
-          !isNaN(parseFloat(formData.cost_syp)) &&
-          parseFloat(formData.cost_syp) >= 0
-            ? parseFloat(formData.cost_syp)
-            : null, // Cost is optional, send null if not provided
-        stock_quantity:
-          formData.stock_quantity &&
-          formData.stock_quantity !== "" &&
-          !isNaN(parseInt(formData.stock_quantity)) &&
-          parseInt(formData.stock_quantity) >= 0
-            ? parseInt(formData.stock_quantity)
-            : null, // Stock quantity is optional, send null if not provided
-        minimum_stock:
-          formData.minimum_stock &&
-          formData.minimum_stock !== "" &&
-          !isNaN(parseInt(formData.minimum_stock)) &&
-          parseInt(formData.minimum_stock) >= 0
-            ? parseInt(formData.minimum_stock)
-            : null, // Minimum stock is optional, send null if not provided
-        weight_grams:
-          formData.weight_grams &&
-          !isNaN(parseFloat(formData.weight_grams)) &&
-          parseFloat(formData.weight_grams) > 0
-            ? parseFloat(formData.weight_grams)
-            : null, // Weight is optional, send null if not provided
-        shelf_life_days:
-          formData.shelf_life_days &&
-          !isNaN(parseInt(formData.shelf_life_days)) &&
-          parseInt(formData.shelf_life_days) > 0
-            ? parseInt(formData.shelf_life_days)
-            : null, // Shelf life is optional, send null if not provided
-        is_featured: formData.is_featured,
-        image_url:
-          formData.image_url && formData.image_url.trim() !== ""
-            ? formData.image_url
-            : null,
-        // Convert dates
-        expiry_date: formData.expiry_date
-          ? new Date(formData.expiry_date)
-          : null,
-        production_date: formData.production_date
-          ? new Date(formData.production_date)
-          : null,
-        // Convert dimensions to JSON
-        dimensions:
-          formData.dimensions_length ||
-          formData.dimensions_width ||
-          formData.dimensions_height
-            ? {
-                length: formData.dimensions_length
-                  ? parseFloat(formData.dimensions_length)
-                  : null,
-                width: formData.dimensions_width
-                  ? parseFloat(formData.dimensions_width)
-                  : null,
-                height: formData.dimensions_height
-                  ? parseFloat(formData.dimensions_height)
-                  : null,
-                unit: "cm",
-              }
-            : null,
-        // Convert text fields to JSON
-        supplier_info:
-          formData.supplier_info && formData.supplier_info.trim() !== ""
-            ? {
-                name: formData.supplier_info,
-                contact: "",
-                notes: "",
-              }
-            : null,
-        nutritional_info:
-          formData.nutritional_info && formData.nutritional_info.trim() !== ""
-            ? {
-                description: formData.nutritional_info,
-                calories: null,
-                protein: null,
-                carbs: null,
-                fat: null,
-              }
-            : null,
-        allergen_info:
-          formData.allergen_info && formData.allergen_info.trim() !== ""
-            ? {
-                description: formData.allergen_info,
-                contains: [],
-                may_contain: [],
-              }
-            : null,
+        name: formData.name.trim(),
+        description: formData.description?.trim() || null,
+        category: formData.category || 'other',
+        unit: formData.unit || 'piece',
+        barcode: formData.barcode?.trim() || null,
+        is_featured: Boolean(formData.is_featured),
+        status: formData.status || 'active',
+        
+        // Required price in EUR (minimum 0.01)
+        price_eur: formData.price_eur && 
+                   !isNaN(parseFloat(formData.price_eur)) &&
+                   parseFloat(formData.price_eur) > 0
+                     ? parseFloat(formData.price_eur)
+                     : 0.01,
+        
+        // Optional price in SYP
+        price_syp: formData.price_syp && 
+                   !isNaN(parseFloat(formData.price_syp)) &&
+                   parseFloat(formData.price_syp) > 0
+                     ? parseFloat(formData.price_syp)
+                     : null,
+        
+        // Optional cost prices
+        cost_eur: formData.cost_eur && 
+                  !isNaN(parseFloat(formData.cost_eur)) &&
+                  parseFloat(formData.cost_eur) >= 0
+                    ? parseFloat(formData.cost_eur)
+                    : null,
+        
+        cost_syp: formData.cost_syp && 
+                  !isNaN(parseFloat(formData.cost_syp)) &&
+                  parseFloat(formData.cost_syp) >= 0
+                    ? parseFloat(formData.cost_syp)
+                    : null,
+        
+        // Optional stock quantities
+        stock_quantity: formData.stock_quantity && 
+                        !isNaN(parseInt(formData.stock_quantity)) &&
+                        parseInt(formData.stock_quantity) >= 0
+                          ? parseInt(formData.stock_quantity)
+                          : null,
+        
+        minimum_stock: formData.minimum_stock && 
+                       !isNaN(parseInt(formData.minimum_stock)) &&
+                       parseInt(formData.minimum_stock) >= 0
+                         ? parseInt(formData.minimum_stock)
+                         : null,
+        
+        // Optional physical properties
+        weight_grams: formData.weight_grams && 
+                      !isNaN(parseFloat(formData.weight_grams)) &&
+                      parseFloat(formData.weight_grams) > 0
+                        ? parseFloat(formData.weight_grams)
+                        : null,
+        
+        shelf_life_days: formData.shelf_life_days && 
+                         !isNaN(parseInt(formData.shelf_life_days)) &&
+                         parseInt(formData.shelf_life_days) > 0
+                           ? parseInt(formData.shelf_life_days)
+                           : null,
+        
+        // Optional dates
+        expiry_date: formData.expiry_date ? formData.expiry_date : null,
+        production_date: formData.production_date ? formData.production_date : null,
+        
+        // Optional text fields
+        storage_conditions: formData.storage_conditions?.trim() || null,
+        
+        // JSON fields - properly structured
+        supplier_info: parseJsonField(formData.supplier_info, 'supplier'),
+        nutritional_info: parseJsonField(formData.nutritional_info, 'nutritional'),
+        allergen_info: parseJsonField(formData.allergen_info, 'allergen'),
+        
+        // Dimensions as JSON
+        dimensions: (formData.dimensions_length || formData.dimensions_width || formData.dimensions_height) ? {
+          length: formData.dimensions_length ? parseFloat(formData.dimensions_length) : null,
+          width: formData.dimensions_width ? parseFloat(formData.dimensions_width) : null,
+          height: formData.dimensions_height ? parseFloat(formData.dimensions_height) : null,
+          unit: "cm"
+        } : null
       };
 
       // Log processed product data for debugging
@@ -450,31 +463,54 @@ const CreateProductPage = () => {
       const response = await productService.createProduct(productData);
 
       if (response.success) {
+        const productId = response.data.id;
+        console.log("[FRONTEND] Product created with ID:", productId);
+        
         // Upload image if selected
-        if (selectedImage && response.data.id) {
+        if (selectedImage && productId) {
           try {
-            await productService.uploadProductImage(
-              selectedImage,
-              response.data.id
-            );
-            toast.success("Product created successfully with image");
+            console.log("[FRONTEND] Starting image upload for product:", productId);
+            const imageResponse = await productService.uploadProductImage(selectedImage, productId);
+            
+            if (imageResponse.success) {
+              console.log("[FRONTEND] Image uploaded successfully:", imageResponse.data.image_url);
+              toast.success("Product created successfully with image!");
+            } else {
+              console.error("[FRONTEND] Image upload failed:", imageResponse.message);
+              toast.success("Product created successfully, but image upload failed");
+            }
           } catch (imageError) {
-            toast.success(
-              "Product created successfully, but image upload failed"
-            );
+            console.error("[FRONTEND] Image upload error:", imageError);
+            toast.success("Product created successfully, but image upload failed");
           }
         } else {
-          toast.success("Product created successfully");
+          toast.success("Product created successfully!");
         }
 
-        // Navigate to product list
-        navigate("/products");
+        // Navigate to product list after a short delay to ensure all operations complete
+        setTimeout(() => {
+          navigate("/products");
+        }, 1000);
+        
       } else {
         throw new Error(response.message || "Failed to create product");
       }
     } catch (error) {
-      console.error("Error creating product:", error);
-      toast.error(error.message || "Failed to create product");
+      console.error("[FRONTEND] Error creating product:", error);
+      
+      // More specific error messages
+      let errorMessage = "Failed to create product";
+      if (error.message.includes("already exists")) {
+        errorMessage = "A product with this name or barcode already exists";
+      } else if (error.message.includes("validation")) {
+        errorMessage = "Please check your input data and try again";
+      } else if (error.message.includes("network")) {
+        errorMessage = "Network error - please check your connection";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

@@ -22,7 +22,7 @@ const Store = sequelize.define('Store', {
     },
     owner_name: {
         type: DataTypes.STRING(100),
-        allowNull: true,
+        allowNull: true,  // Make owner name optional
         validate: {
             len: {
                 args: [0, 100],
@@ -54,12 +54,32 @@ const Store = sequelize.define('Store', {
     },
     address: {
         type: DataTypes.TEXT,
-        allowNull: true
+        allowNull: true,
+        comment: 'عنوان المحل النصي - يمكن إضافته للمساعدة في الوصول'
     },
     gps_coordinates: {
         type: DataTypes.JSON,
         allowNull: true,
-        comment: 'إحداثيات GPS للمحل'
+        comment: 'إحداثيات GPS للمحل - يتم الحصول عليها من الموقع الحالي للموزع',
+        validate: {
+            isValidGPS(value) {
+                if (value) {
+                    if (!value.latitude || !value.longitude) {
+                        throw new Error('إحداثيات GPS غير صحيحة - يجب تضمين خط العرض والطول');
+                    }
+                    const lat = parseFloat(value.latitude);
+                    const lng = parseFloat(value.longitude);
+
+                    if (lat < -90 || lat > 90) {
+                        throw new Error('خط العرض يجب أن يكون بين -90 و 90');
+                    }
+
+                    if (lng < -180 || lng > 180) {
+                        throw new Error('خط الطول يجب أن يكون بين -180 و 180');
+                    }
+                }
+            }
+        }
     },
     store_type: {
         type: DataTypes.ENUM('retail', 'wholesale', 'restaurant'),
@@ -490,6 +510,87 @@ Store.searchStores = async function (searchTerm, filters = {}) {
         where: whereClause,
         order: [['name', 'ASC']]
     });
+};
+
+// Static method to create store from distributor's current location
+Store.createFromDistributorLocation = async function (storeData, locationData, transaction = null) {
+    const options = transaction ? { transaction } : {};
+
+    // Validate required fields for quick creation
+    if (!storeData.name || !storeData.name.trim()) {
+        throw new Error('اسم المحل مطلوب');
+    }
+
+    if (!locationData || !locationData.latitude || !locationData.longitude) {
+        throw new Error('موقع المحل مطلوب - يجب تحديد الموقع على الخريطة');
+    }
+
+    // Prepare GPS coordinates from current location
+    const gpsCoordinates = {
+        latitude: parseFloat(locationData.latitude),
+        longitude: parseFloat(locationData.longitude),
+        accuracy: locationData.accuracy || null,
+        timestamp: locationData.timestamp || new Date().toISOString(),
+        source: 'distributor_current_location'
+    };
+
+    // Prepare minimal store data for quick creation
+    const storeCreateData = {
+        name: storeData.name.trim(),
+        gps_coordinates: gpsCoordinates,
+        // Optional fields - can be added later
+        owner_name: storeData.owner_name?.trim() || null,
+        phone: storeData.phone?.trim() || null,
+        email: storeData.email?.trim() || null,
+        address: storeData.address?.trim() || null,
+        category: storeData.category || 'grocery',
+        store_type: storeData.store_type || 'retail',
+        size_category: storeData.size_category || 'small',
+        payment_terms: storeData.payment_terms || 'cash',
+        credit_limit_eur: storeData.credit_limit_eur ? parseFloat(storeData.credit_limit_eur) : 0.00,
+        credit_limit_syp: storeData.credit_limit_syp ? parseFloat(storeData.credit_limit_syp) : 0.00,
+        opening_hours: storeData.opening_hours || {
+            monday: "08:00-20:00",
+            tuesday: "08:00-20:00",
+            wednesday: "08:00-20:00",
+            thursday: "08:00-20:00",
+            friday: "08:00-20:00",
+            saturday: "08:00-20:00",
+            sunday: "closed"
+        },
+        special_instructions: storeData.special_instructions?.trim() || null,
+        assigned_distributor_id: storeData.assigned_distributor_id || null,
+        created_by: storeData.created_by || null,
+        status: 'active'
+    };
+
+    return await Store.create(storeCreateData, options);
+};
+
+// Static method to get stores by proximity to a location
+Store.getStoresByProximity = async function (lat, lng, radiusKm = 5, limit = 50) {
+    const stores = await Store.findAll({
+        where: {
+            status: 'active',
+            gps_coordinates: { [sequelize.Sequelize.Op.not]: null }
+        },
+        limit: limit * 2 // Get more to filter by distance
+    });
+
+    // Calculate distances and filter
+    const storesWithDistance = stores
+        .map(store => {
+            const distance = store.getDistance(lat, lng);
+            return {
+                ...store.toJSON(),
+                distance
+            };
+        })
+        .filter(store => store.distance !== null && store.distance <= radiusKm)
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, limit);
+
+    return storesWithDistance;
 };
 
 export default Store; 

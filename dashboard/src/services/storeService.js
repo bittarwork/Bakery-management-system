@@ -31,6 +31,11 @@ class StoreService {
         return this.apiService.post('/stores', storeData);
     }
 
+    // Quick create new store from current location
+    async quickCreateStore(quickData) {
+        return this.apiService.post('/stores/quick-create', quickData);
+    }
+
     // Update store
     async updateStore(id, storeData) {
         return this.apiService.put(`/stores/${id}`, storeData);

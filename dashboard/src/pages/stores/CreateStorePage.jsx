@@ -23,6 +23,8 @@ import {
   Percent,
   Calendar,
   Users,
+  Zap,
+  Settings,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
@@ -34,6 +36,12 @@ import { AnimatePresence } from "framer-motion";
 
 const CreateStorePage = () => {
   const navigate = useNavigate();
+  
+  // Add creation mode state
+  const [creationMode, setCreationMode] = useState("quick"); // "quick" or "detailed"
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  
   const [formData, setFormData] = useState({
     name: "",
     owner_name: "",
@@ -49,6 +57,7 @@ const CreateStorePage = () => {
     payment_terms: "cash",
     preferred_delivery_time: "",
     special_instructions: "",
+    address_details: "", // Additional details for navigation help
     status: "active",
     // Opening hours
     opening_hours: {
@@ -65,6 +74,56 @@ const CreateStorePage = () => {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Get current location
+  const getCurrentLocation = async () => {
+    setLocationLoading(true);
+    try {
+      if (!navigator.geolocation) {
+        throw new Error('المتصفح لا يدعم تحديد الموقع');
+      }
+
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000, // 5 minutes
+          }
+        );
+      });
+
+      const location = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        timestamp: new Date().toISOString()
+      };
+
+      setCurrentLocation(location);
+      setSelectedLocation({
+        lat: location.latitude,
+        lng: location.longitude,
+        name: "الموقع الحالي"
+      });
+
+      // Clear location error if it exists
+      setErrors(prev => ({ ...prev, location: "" }));
+
+    } catch (error) {
+      console.error('Error getting location:', error);
+      setErrors(prev => ({ 
+        ...prev, 
+        location: error.message.includes('denied') 
+          ? 'تم رفض الوصول للموقع. يرجى السماح بالوصول للموقع من إعدادات المتصفح' 
+          : 'خطأ في تحديد الموقع الحالي'
+      }));
+    } finally {
+      setLocationLoading(false);
+    }
+  };
 
   const storeTypes = [
     {
@@ -162,63 +221,36 @@ const CreateStorePage = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    // التحقق من اسم المحل
+    // Only validate required fields based on creation mode
     if (!formData.name.trim()) {
       newErrors.name = "اسم المحل مطلوب";
     } else if (formData.name.length < 2) {
       newErrors.name = "اسم المحل يجب أن يكون حرفين على الأقل";
     }
 
-    // التحقق من العنوان
-    if (!formData.address.trim()) {
-      newErrors.address = "عنوان المحل مطلوب";
-    } else if (formData.address.length < 10) {
-      newErrors.address = "العنوان يجب أن يكون 10 أحرف على الأقل";
-    }
+    // For quick mode, only location is required besides name
+    if (creationMode === "quick") {
+      if (!currentLocation && !selectedLocation) {
+        newErrors.location = "يجب تحديد موقع المحل - استخدم زر 'استخدام الموقع الحالي' أو اختر من الخريطة";
+      }
+    } else {
+      // Detailed mode validations
+      if (!formData.address.trim()) {
+        newErrors.address = "عنوان المحل مطلوب في الوضع التفصيلي";
+      }
 
-    // التحقق من رقم الهاتف
-    if (formData.phone && !/^\+?[\d\s\-\(\)]+$/.test(formData.phone)) {
-      newErrors.phone = "رقم الهاتف غير صحيح";
-    }
+      // Optional validations for detailed mode
+      if (formData.phone && !/^\+?[\d\s\-\(\)]+$/.test(formData.phone)) {
+        newErrors.phone = "رقم الهاتف غير صحيح";
+      }
 
-    // التحقق من البريد الإلكتروني
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "البريد الإلكتروني غير صحيح";
-    }
+      if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        newErrors.email = "البريد الإلكتروني غير صحيح";
+      }
 
-    // التحقق من الحد الائتماني باليورو
-    if (
-      formData.credit_limit_eur &&
-      (isNaN(formData.credit_limit_eur) ||
-        parseFloat(formData.credit_limit_eur) < 0)
-    ) {
-      newErrors.credit_limit_eur =
-        "الحد الائتماني باليورو يجب أن يكون رقم موجب";
-    }
-
-    // التحقق من الحد الائتماني بالليرة السورية
-    if (
-      formData.credit_limit_syp &&
-      (isNaN(formData.credit_limit_syp) ||
-        parseFloat(formData.credit_limit_syp) < 0)
-    ) {
-      newErrors.credit_limit_syp =
-        "الحد الائتماني بالليرة السورية يجب أن يكون رقم موجب";
-    }
-
-    // التحقق من معدل العمولة
-    if (
-      formData.commission_rate &&
-      (isNaN(formData.commission_rate) ||
-        parseFloat(formData.commission_rate) < 0 ||
-        parseFloat(formData.commission_rate) > 100)
-    ) {
-      newErrors.commission_rate = "معدل العمولة يجب أن يكون بين 0 و 100";
-    }
-
-    // التحقق من الموقع
-    if (!selectedLocation) {
-      newErrors.location = "يجب اختيار موقع المحل على الخريطة";
+      if (!selectedLocation && !currentLocation) {
+        newErrors.location = "يجب اختيار موقع المحل على الخريطة";
+      }
     }
 
     setErrors(newErrors);
@@ -245,28 +277,52 @@ const CreateStorePage = () => {
     setErrors({});
 
     try {
-      const storeData = {
-        ...formData,
-        gps_coordinates: selectedLocation
-          ? {
+      let response;
+
+      if (creationMode === "quick") {
+        // Use quick create API
+        const quickData = {
+          name: formData.name.trim(),
+          current_location: currentLocation || {
+            latitude: selectedLocation.lat,
+            longitude: selectedLocation.lng
+          },
+          owner_name: formData.owner_name?.trim() || null,
+          phone: formData.phone?.trim() || null,
+          category: formData.category,
+          store_type: formData.store_type,
+          address_details: formData.address_details?.trim() || null,
+          special_instructions: formData.special_instructions?.trim() || null
+        };
+
+        response = await storeService.quickCreateStore(quickData);
+      } else {
+        // Use detailed create API
+        const storeData = {
+          ...formData,
+          gps_coordinates: currentLocation ? {
+              latitude: currentLocation.latitude,
+              longitude: currentLocation.longitude,
+              source: 'distributor_current_location'
+            } : selectedLocation ? {
               latitude: selectedLocation.lat,
               longitude: selectedLocation.lng,
               name: selectedLocation.name || null,
-            }
-          : null,
-        // Convert numeric fields
-        credit_limit_eur: formData.credit_limit_eur
-          ? parseFloat(formData.credit_limit_eur)
-          : 0,
-        credit_limit_syp: formData.credit_limit_syp
-          ? parseFloat(formData.credit_limit_syp)
-          : 0,
-        commission_rate: formData.commission_rate
-          ? parseFloat(formData.commission_rate)
-          : 0,
-      };
+            } : null,
+          // Convert numeric fields
+          credit_limit_eur: formData.credit_limit_eur
+            ? parseFloat(formData.credit_limit_eur)
+            : 0,
+          credit_limit_syp: formData.credit_limit_syp
+            ? parseFloat(formData.credit_limit_syp)
+            : 0,
+          commission_rate: formData.commission_rate
+            ? parseFloat(formData.commission_rate)
+            : 0,
+        };
 
-      const response = await storeService.createStore(storeData);
+        response = await storeService.createStore(storeData);
+      }
 
       if (response.success) {
         setIsSuccess(true);
@@ -306,9 +362,44 @@ const CreateStorePage = () => {
             </div>
             <BackButton variant="outline" size="lg" />
           </div>
+
+          {/* Creation Mode Selector */}
+          <div className="flex items-center justify-center mb-6">
+            <div className="bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
+              <EnhancedButton
+                onClick={() => setCreationMode("quick")}
+                variant={creationMode === "quick" ? "primary" : "ghost"}
+                size="md"
+                icon={<Zap className="w-4 h-4" />}
+              >
+                إضافة سريعة
+              </EnhancedButton>
+              <EnhancedButton
+                onClick={() => setCreationMode("detailed")}
+                variant={creationMode === "detailed" ? "primary" : "ghost"}
+                size="md"
+                icon={<Settings className="w-4 h-4" />}
+              >
+                إضافة تفصيلية
+              </EnhancedButton>
+            </div>
+          </div>
+
+          {/* Mode Description */}
+          <div className="text-center mb-6">
+            {creationMode === "quick" ? (
+              <p className="text-gray-600">
+                الوضع السريع: أدخل اسم المحل واستخدم موقعك الحالي للإضافة السريعة
+              </p>
+            ) : (
+              <p className="text-gray-600">
+                الوضع التفصيلي: أدخل جميع المعلومات التفصيلية للمحل
+              </p>
+            )}
+          </div>
         </motion.div>
 
-        {/* رسائل النجاح والخطأ */}
+        {/* Success/Error Messages */}
         <AnimatePresence>
           {isSuccess && (
             <motion.div
@@ -344,440 +435,328 @@ const CreateStorePage = () => {
         </AnimatePresence>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* معلومات المحل الأساسية */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                  <Store className="w-5 h-5 ml-2" />
-                  معلومات المحل الأساسية
-                </h2>
-              </CardHeader>
-              <CardBody className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* اسم المحل */}
-                  <EnhancedInput
-                    label="اسم المحل"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="أدخل اسم المحل"
-                    required
-                    error={errors.name}
-                    icon={<Store className="w-4 h-4" />}
-                  />
-
-                  {/* اسم المالك */}
-                  <EnhancedInput
-                    label="اسم المالك"
-                    name="owner_name"
-                    value={formData.owner_name}
-                    onChange={handleChange}
-                    placeholder="أدخل اسم مالك المحل"
-                    error={errors.owner_name}
-                    icon={<User className="w-4 h-4" />}
-                  />
-
-                  {/* رقم الهاتف */}
-                  <EnhancedInput
-                    label="رقم الهاتف"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    placeholder="أدخل رقم الهاتف"
-                    error={errors.phone}
-                    icon={<Phone className="w-4 h-4" />}
-                  />
-
-                  {/* البريد الإلكتروني */}
-                  <EnhancedInput
-                    label="البريد الإلكتروني"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="أدخل البريد الإلكتروني"
-                    error={errors.email}
-                    icon={<Mail className="w-4 h-4" />}
-                  />
-
-                  {/* العنوان */}
-                  <div className="md:col-span-2">
+          {/* Quick Create Mode */}
+          {creationMode === "quick" && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <Card className="border-0 shadow-lg">
+                <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
+                  <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                    <Zap className="w-5 h-5 ml-2" />
+                    إضافة سريعة للمحل
+                  </h2>
+                </CardHeader>
+                <CardBody className="p-6">
+                  <div className="space-y-6">
+                    {/* Store Name - Required */}
                     <EnhancedInput
-                      label="عنوان المحل"
-                      name="address"
-                      value={formData.address}
+                      label="اسم المحل"
+                      name="name"
+                      value={formData.name}
                       onChange={handleChange}
-                      placeholder="أدخل العنوان الكامل للمحل"
+                      placeholder="أدخل اسم المحل"
                       required
-                      error={errors.address}
-                      icon={<MapPin className="w-4 h-4" />}
-                      multiline
-                      rows={3}
+                      error={errors.name}
+                      icon={<Store className="w-4 h-4" />}
                     />
-                  </div>
 
-                  {/* نوع المحل */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      نوع المحل <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="store_type"
-                      value={formData.store_type}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    >
-                      {storeTypes.map((type) => (
-                        <option key={type.value} value={type.value}>
-                          {type.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* فئة المحل */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      فئة المحل <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="category"
-                      value={formData.category}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    >
-                      {storeCategories.map((category) => (
-                        <option key={category.value} value={category.value}>
-                          {category.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* حجم المحل */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      حجم المحل <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="size_category"
-                      value={formData.size_category}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    >
-                      {sizeCategories.map((size) => (
-                        <option key={size.value} value={size.value}>
-                          {size.label} - {size.description}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* وقت التسليم المفضل */}
-                  <EnhancedInput
-                    label="وقت التسليم المفضل"
-                    name="preferred_delivery_time"
-                    value={formData.preferred_delivery_time}
-                    onChange={handleChange}
-                    placeholder="مثل: صباحاً من 8-10، مساءً من 5-7"
-                    error={errors.preferred_delivery_time}
-                    icon={<Clock className="w-4 h-4" />}
-                  />
-                </div>
-
-                {/* التعليمات الخاصة */}
-                <div className="mt-6">
-                  <EnhancedInput
-                    label="تعليمات خاصة"
-                    name="special_instructions"
-                    value={formData.special_instructions}
-                    onChange={handleChange}
-                    placeholder="أدخل أي تعليمات خاصة للتوصيل أو التعامل مع المحل..."
-                    icon={<FileText className="w-4 h-4" />}
-                    multiline
-                    rows={3}
-                  />
-                </div>
-              </CardBody>
-            </Card>
-          </motion.div>
-
-          {/* المعلومات المالية */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
-                <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                  <Euro className="w-5 h-5 ml-2" />
-                  المعلومات المالية
-                </h2>
-              </CardHeader>
-              <CardBody className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* الحد الائتماني باليورو */}
-                  <EnhancedInput
-                    label="الحد الائتماني (€)"
-                    name="credit_limit_eur"
-                    type="number"
-                    value={formData.credit_limit_eur}
-                    onChange={handleChange}
-                    placeholder="0.00"
-                    error={errors.credit_limit_eur}
-                    icon={<Euro className="w-4 h-4" />}
-                    min="0"
-                    step="0.01"
-                  />
-
-                  {/* الحد الائتماني بالليرة السورية */}
-                  <EnhancedInput
-                    label="الحد الائتماني (ل.س)"
-                    name="credit_limit_syp"
-                    type="number"
-                    value={formData.credit_limit_syp}
-                    onChange={handleChange}
-                    placeholder="0.00"
-                    error={errors.credit_limit_syp}
-                    icon={<CreditCard className="w-4 h-4" />}
-                    min="0"
-                    step="0.01"
-                  />
-
-                  {/* معدل العمولة */}
-                  <EnhancedInput
-                    label="معدل العمولة (%)"
-                    name="commission_rate"
-                    type="number"
-                    value={formData.commission_rate}
-                    onChange={handleChange}
-                    placeholder="0.00"
-                    error={errors.commission_rate}
-                    icon={<Percent className="w-4 h-4" />}
-                    min="0"
-                    max="100"
-                    step="0.01"
-                  />
-                </div>
-              </CardBody>
-            </Card>
-          </motion.div>
-
-          {/* ساعات العمل */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-          >
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-green-50 to-white">
-                <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                  <Clock className="w-5 h-5 ml-2" />
-                  ساعات العمل
-                </h2>
-              </CardHeader>
-              <CardBody className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.entries(formData.opening_hours).map(
-                    ([day, hours]) => (
-                      <div key={day} className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          {day === "monday"
-                            ? "الاثنين"
-                            : day === "tuesday"
-                            ? "الثلاثاء"
-                            : day === "wednesday"
-                            ? "الأربعاء"
-                            : day === "thursday"
-                            ? "الخميس"
-                            : day === "friday"
-                            ? "الجمعة"
-                            : day === "saturday"
-                            ? "السبت"
-                            : "الأحد"}
-                        </label>
-                        <select
-                          value={hours}
-                          onChange={(e) =>
-                            handleOpeningHoursChange(day, e.target.value)
-                          }
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        >
-                          <option value="closed">مغلق</option>
-                          <option value="06:00-18:00">
-                            6:00 صباحاً - 6:00 مساءً
-                          </option>
-                          <option value="07:00-19:00">
-                            7:00 صباحاً - 7:00 مساءً
-                          </option>
-                          <option value="08:00-20:00">
-                            8:00 صباحاً - 8:00 مساءً
-                          </option>
-                          <option value="09:00-21:00">
-                            9:00 صباحاً - 9:00 مساءً
-                          </option>
-                          <option value="10:00-22:00">
-                            10:00 صباحاً - 10:00 مساءً
-                          </option>
-                          <option value="24/7">24 ساعة</option>
-                        </select>
-                      </div>
-                    )
-                  )}
-                </div>
-              </CardBody>
-            </Card>
-          </motion.div>
-
-          {/* شروط الدفع */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-yellow-50 to-white">
-                <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                  <CreditCard className="w-5 h-5 ml-2" />
-                  شروط الدفع
-                </h2>
-              </CardHeader>
-              <CardBody className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {paymentTerms.map((term) => (
-                    <motion.div
-                      key={term.value}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <input
-                        type="radio"
-                        id={term.value}
-                        name="payment_terms"
-                        value={term.value}
-                        checked={formData.payment_terms === term.value}
-                        onChange={handleChange}
-                        className="sr-only"
-                      />
-                      <label
-                        htmlFor={term.value}
-                        className={`block p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
-                          formData.payment_terms === term.value
-                            ? `border-blue-500 bg-gradient-to-r ${term.color} text-white shadow-lg`
-                            : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-md"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`p-2 rounded-lg ${
-                              formData.payment_terms === term.value
-                                ? "bg-white/20"
-                                : "bg-gray-100"
-                            }`}
-                          >
-                            {term.icon}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-sm">
-                              {term.label}
-                            </div>
-                            <div
-                              className={`text-xs ${
-                                formData.payment_terms === term.value
-                                  ? "text-white/80"
-                                  : "text-gray-500"
-                              }`}
-                            >
-                              {term.description}
-                            </div>
-                          </div>
-                        </div>
+                    {/* Current Location Section */}
+                    <div className="space-y-4">
+                      <label className="block text-sm font-medium text-gray-700">
+                        موقع المحل <span className="text-red-500">*</span>
                       </label>
-                    </motion.div>
-                  ))}
-                </div>
-              </CardBody>
-            </Card>
-          </motion.div>
 
-          {/* اختيار الموقع */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                  <MapPin className="w-5 h-5 ml-2" />
-                  موقع المحل
-                </h2>
-              </CardHeader>
-              <CardBody className="p-6">
-                {selectedLocation && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-blue-900">
-                          الموقع المحدد
-                        </p>
-                        <p className="text-sm text-blue-700">
-                          خط العرض: {selectedLocation.lat.toFixed(6)}, خط الطول:{" "}
-                          {selectedLocation.lng.toFixed(6)}
-                        </p>
-                        {selectedLocation.name && (
-                          <p className="text-sm text-blue-600">
-                            {selectedLocation.name}
-                          </p>
+                      <div className="flex gap-4">
+                        <EnhancedButton
+                          type="button"
+                          onClick={getCurrentLocation}
+                          loading={locationLoading}
+                          variant="primary"
+                          icon={<Navigation className="w-4 h-4" />}
+                        >
+                          {locationLoading ? "جاري تحديد الموقع..." : "استخدام الموقع الحالي"}
+                        </EnhancedButton>
+
+                        {currentLocation && (
+                          <div className="flex-1 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <div className="flex items-center text-green-800">
+                              <CheckCircle className="w-4 h-4 ml-2" />
+                              <span className="text-sm font-medium">
+                                تم تحديد الموقع الحالي بنجاح
+                              </span>
+                            </div>
+                            <div className="text-xs text-green-600 mt-1">
+                              خط العرض: {currentLocation.latitude.toFixed(6)}, 
+                              خط الطول: {currentLocation.longitude.toFixed(6)}
+                            </div>
+                          </div>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={clearLocation}
-                        className="text-blue-600 hover:text-blue-800 transition-colors"
-                      >
-                        <AlertCircle className="w-4 h-4" />
-                      </button>
+
+                      {errors.location && (
+                        <div className="text-sm text-red-600 flex items-center gap-1">
+                          <AlertCircle className="w-4 h-4" />
+                          <span>{errors.location}</span>
+                        </div>
+                      )}
                     </div>
-                  </motion.div>
-                )}
 
-                <div className="mb-4">
-                  <StoreMap
-                    stores={[]}
-                    onLocationSelect={handleLocationSelect}
-                    selectedLocation={selectedLocation}
-                    height="400px"
-                    interactive={true}
-                  />
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Optional Quick Fields */}
+                      <EnhancedInput
+                        label="اسم المالك"
+                        name="owner_name"
+                        value={formData.owner_name}
+                        onChange={handleChange}
+                        placeholder="أدخل اسم مالك المحل (اختياري)"
+                        icon={<User className="w-4 h-4" />}
+                      />
 
-                <p className="text-sm text-gray-600">
-                  انقر على الخريطة لاختيار موقع المحل، أو انقر على محل موجود
-                  لاختيار موقعه.
-                </p>
+                      <EnhancedInput
+                        label="رقم الهاتف"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        placeholder="أدخل رقم الهاتف (اختياري)"
+                        icon={<Phone className="w-4 h-4" />}
+                      />
 
-                {errors.location && (
-                  <div className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                    <AlertCircle className="w-4 h-4" />
-                    <span>{errors.location}</span>
+                      {/* Category */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          فئة المحل
+                        </label>
+                        <select
+                          name="category"
+                          value={formData.category}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        >
+                          {storeCategories.map((category) => (
+                            <option key={category.value} value={category.value}>
+                              {category.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Store Type */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          نوع المحل
+                        </label>
+                        <select
+                          name="store_type"
+                          value={formData.store_type}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        >
+                          {storeTypes.map((type) => (
+                            <option key={type.value} value={type.value}>
+                              {type.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Address Details for Navigation Help */}
+                    <EnhancedInput
+                      label="تفاصيل إضافية للموقع"
+                      name="address_details"
+                      value={formData.address_details}
+                      onChange={handleChange}
+                      placeholder="أدخل معلومات إضافية للمساعدة في الوصول (مثل: بجانب البنك، الطابق الثاني...)"
+                      icon={<MapPin className="w-4 h-4" />}
+                      multiline
+                      rows={2}
+                    />
+
+                    {/* Special Instructions */}
+                    <EnhancedInput
+                      label="تعليمات خاصة"
+                      name="special_instructions"
+                      value={formData.special_instructions}
+                      onChange={handleChange}
+                      placeholder="أدخل أي تعليمات خاصة (اختياري)"
+                      icon={<FileText className="w-4 h-4" />}
+                      multiline
+                      rows={2}
+                    />
                   </div>
-                )}
-              </CardBody>
-            </Card>
-          </motion.div>
+                </CardBody>
+              </Card>
+            </motion.div>
+          )}
 
-          {/* أزرار الإجراءات */}
+          {/* Detailed Create Mode - Keep existing detailed form */}
+          {creationMode === "detailed" && (
+            <>
+              {/* معلومات المحل الأساسية */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <Card className="border-0 shadow-lg">
+                  <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                    <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                      <Store className="w-5 h-5 ml-2" />
+                      معلومات المحل الأساسية
+                    </h2>
+                  </CardHeader>
+                  <CardBody className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Required Fields */}
+                      <EnhancedInput
+                        label="اسم المحل"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        placeholder="أدخل اسم المحل"
+                        required
+                        error={errors.name}
+                        icon={<Store className="w-4 h-4" />}
+                      />
+
+                      <EnhancedInput
+                        label="العنوان"
+                        name="address"
+                        value={formData.address}
+                        onChange={handleChange}
+                        placeholder="أدخل العنوان الكامل للمحل"
+                        required
+                        error={errors.address}
+                        icon={<MapPin className="w-4 h-4" />}
+                      />
+
+                      {/* Optional Fields */}
+                      <EnhancedInput
+                        label="اسم المالك"
+                        name="owner_name"
+                        value={formData.owner_name}
+                        onChange={handleChange}
+                        placeholder="أدخل اسم مالك المحل (اختياري)"
+                        error={errors.owner_name}
+                        icon={<User className="w-4 h-4" />}
+                      />
+
+                      <EnhancedInput
+                        label="رقم الهاتف"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        placeholder="أدخل رقم الهاتف (اختياري)"
+                        error={errors.phone}
+                        icon={<Phone className="w-4 h-4" />}
+                      />
+
+                      <EnhancedInput
+                        label="البريد الإلكتروني"
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        placeholder="أدخل البريد الإلكتروني (اختياري)"
+                        error={errors.email}
+                        icon={<Mail className="w-4 h-4" />}
+                      />
+
+                      {/* Store Categories and Types */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          فئة المحل
+                        </label>
+                        <select
+                          name="category"
+                          value={formData.category}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        >
+                          {storeCategories.map((category) => (
+                            <option key={category.value} value={category.value}>
+                              {category.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </CardBody>
+                </Card>
+              </motion.div>
+
+              {/* Location Selection for Detailed Mode */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                <Card className="border-0 shadow-lg">
+                  <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                    <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                      <MapPin className="w-5 h-5 ml-2" />
+                      موقع المحل
+                    </h2>
+                  </CardHeader>
+                  <CardBody className="p-6">
+                    <div className="space-y-4">
+                      {/* Current Location Button */}
+                      <div className="flex gap-4">
+                        <EnhancedButton
+                          type="button"
+                          onClick={getCurrentLocation}
+                          loading={locationLoading}
+                          variant="primary"
+                          icon={<Navigation className="w-4 h-4" />}
+                        >
+                          {locationLoading ? "جاري تحديد الموقع..." : "استخدام الموقع الحالي"}
+                        </EnhancedButton>
+
+                        {currentLocation && (
+                          <div className="flex-1 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <div className="flex items-center text-green-800">
+                              <CheckCircle className="w-4 h-4 ml-2" />
+                              <span className="text-sm font-medium">
+                                تم تحديد الموقع الحالي
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Map */}
+                      <div className="mb-4">
+                        <StoreMap
+                          stores={[]}
+                          onLocationSelect={setSelectedLocation}
+                          selectedLocation={selectedLocation}
+                          height="400px"
+                          interactive={true}
+                          enableCurrentLocation={true}
+                        />
+                      </div>
+
+                      <p className="text-sm text-gray-600">
+                        استخدم زر "استخدام الموقع الحالي" أو انقر على الخريطة لاختيار موقع المحل.
+                      </p>
+
+                      {errors.location && (
+                        <div className="text-sm text-red-600 flex items-center gap-1">
+                          <AlertCircle className="w-4 h-4" />
+                          <span>{errors.location}</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardBody>
+                </Card>
+              </motion.div>
+            </>
+          )}
+
+          {/* Submit Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -792,7 +771,12 @@ const CreateStorePage = () => {
               icon={<Save className="w-5 h-5" />}
               fullWidth
             >
-              {isLoading ? "جاري الإنشاء..." : "إنشاء المحل"}
+              {isLoading 
+                ? "جاري الإنشاء..." 
+                : creationMode === "quick" 
+                  ? "إنشاء المحل سريعاً" 
+                  : "إنشاء المحل"
+              }
             </EnhancedButton>
             <EnhancedButton
               type="button"

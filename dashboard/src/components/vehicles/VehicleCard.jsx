@@ -35,7 +35,13 @@ const VehicleCard = ({
   const fuelTypeInfo = vehicleService.getFuelTypeInfo(vehicle.fuel_type);
 
   const handleViewDetails = () => {
-    navigate(`/vehicles/details/${vehicle.id}`);
+    console.log('Vehicle object:', vehicle);
+    console.log('Vehicle ID:', vehicle.id);
+    if (vehicle.id) {
+      navigate(`/vehicles/details/${vehicle.id}`);
+    } else {
+      console.error('Vehicle ID is missing or undefined');
+    }
   };
 
   const getStatusColor = (status) => {
