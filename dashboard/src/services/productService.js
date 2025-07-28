@@ -19,23 +19,46 @@ class ProductService {
             const queryParams = {
                 page: params.page || 1,
                 limit: params.limit || 10,
-                search: params.search || '',
-                status: params.status || null,
-                category: params.category || null,
-                is_featured: params.is_featured || null,
-                sortBy: params.sortBy || 'name',
-                sortOrder: params.sortOrder || 'ASC',
-                minPrice: params.minPrice || null,
-                maxPrice: params.maxPrice || null,
-                lowStock: params.lowStock || null
             };
 
-            // Remove null values
-            Object.keys(queryParams).forEach(key => {
-                if (queryParams[key] === null) {
-                    delete queryParams[key];
-                }
-            });
+            // Only add search if it's not empty
+            if (params.search && params.search.trim() !== '') {
+                queryParams.search = params.search.trim();
+            }
+
+            // Only add status if it's not empty
+            if (params.status && params.status !== '') {
+                queryParams.status = params.status;
+            }
+
+            // Only add category if it's not empty
+            if (params.category && params.category !== '') {
+                queryParams.category = params.category;
+            }
+
+            // Only add is_featured if it's not empty
+            if (params.is_featured && params.is_featured !== '') {
+                queryParams.is_featured = params.is_featured;
+            }
+
+            // Always include sorting parameters
+            queryParams.sortBy = params.sortBy || 'name';
+            queryParams.sortOrder = params.sortOrder || 'ASC';
+
+            // Optional filter parameters
+            if (params.minPrice && params.minPrice !== '') {
+                queryParams.minPrice = params.minPrice;
+            }
+
+            if (params.maxPrice && params.maxPrice !== '') {
+                queryParams.maxPrice = params.maxPrice;
+            }
+
+            if (params.lowStock && params.lowStock !== '') {
+                queryParams.lowStock = params.lowStock;
+            }
+
+            console.log('[FRONTEND] Sending product query params:', queryParams);
 
             const response = await apiService.get(this.baseEndpoint, queryParams);
             return response;

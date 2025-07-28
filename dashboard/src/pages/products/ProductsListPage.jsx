@@ -75,21 +75,22 @@ import { toast } from "react-hot-toast";
 
 const ProductsListPage = () => {
   const navigate = useNavigate();
-  
+
   // State management
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFiltering, setIsFiltering] = useState(false);
   const [error, setError] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState([]);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(12);
-  
+
   // Filter state
   const [filters, setFilters] = useState({
     search: "",
@@ -97,7 +98,7 @@ const ProductsListPage = () => {
     status: "",
     is_featured: "",
     sortBy: "name",
-    sortOrder: "ASC"
+    sortOrder: "ASC",
   });
 
   // Statistics state
@@ -107,7 +108,7 @@ const ProductsListPage = () => {
     inactive: 0,
     featured: 0,
     lowStock: 0,
-    outOfStock: 0
+    outOfStock: 0,
   });
 
   const [deleteModal, setDeleteModal] = useState({
@@ -132,7 +133,12 @@ const ProductsListPage = () => {
   // Load products
   const loadProducts = async () => {
     try {
-      setIsLoading(true);
+      // Show different loading states for initial load vs filtering
+      if (products.length === 0) {
+        setIsLoading(true);
+      } else {
+        setIsFiltering(true);
+      }
       setError("");
 
       const params = {
@@ -152,15 +158,25 @@ const ProductsListPage = () => {
         setProducts(response.data.products || []);
         setTotalPages(response.data.totalPages || 1);
         setTotalProducts(response.data.total || 0);
-        
+
         // Mock statistics for now - you can implement this in your API
         setStatistics({
           total: response.data.total || 0,
-          active: response.data.products?.filter(p => p.status === 'active').length || 0,
-          inactive: response.data.products?.filter(p => p.status === 'inactive').length || 0,
-          featured: response.data.products?.filter(p => p.is_featured).length || 0,
-          lowStock: response.data.products?.filter(p => p.stock_quantity <= p.minimum_stock && p.stock_quantity > 0).length || 0,
-          outOfStock: response.data.products?.filter(p => p.stock_quantity === 0).length || 0
+          active:
+            response.data.products?.filter((p) => p.status === "active")
+              .length || 0,
+          inactive:
+            response.data.products?.filter((p) => p.status === "inactive")
+              .length || 0,
+          featured:
+            response.data.products?.filter((p) => p.is_featured).length || 0,
+          lowStock:
+            response.data.products?.filter(
+              (p) => p.stock_quantity <= p.minimum_stock && p.stock_quantity > 0
+            ).length || 0,
+          outOfStock:
+            response.data.products?.filter((p) => p.stock_quantity === 0)
+              .length || 0,
         });
       } else {
         throw new Error(response.message || "Failed to load products");
@@ -171,15 +187,23 @@ const ProductsListPage = () => {
       toast.error("Failed to load products");
     } finally {
       setIsLoading(false);
+      setIsFiltering(false);
     }
   };
 
-  // Load on mount and filter changes
+  // Debounced search effect
   useEffect(() => {
-    loadProducts();
+    const timeoutId = setTimeout(
+      () => {
+        loadProducts();
+      },
+      filters.search ? 500 : 0
+    ); // Add delay only for search
+
+    return () => clearTimeout(timeoutId);
   }, [currentPage, filters]);
 
-  // Handle search input
+  // Handle search input with immediate state update but debounced API call
   const handleSearchChange = (value) => {
     setFilters((prev) => ({ ...prev, search: value }));
     setCurrentPage(1);
@@ -199,16 +223,16 @@ const ProductsListPage = () => {
       status: "",
       is_featured: "",
       sortBy: "name",
-      sortOrder: "ASC"
+      sortOrder: "ASC",
     });
     setCurrentPage(1);
   };
 
   // Handle product selection
   const handleProductSelection = (productId) => {
-    setSelectedProducts(prev => 
-      prev.includes(productId) 
-        ? prev.filter(id => id !== productId)
+    setSelectedProducts((prev) =>
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
         : [...prev, productId]
     );
   };
@@ -218,7 +242,7 @@ const ProductsListPage = () => {
     if (selectedProducts.length === products.length) {
       setSelectedProducts([]);
     } else {
-      setSelectedProducts(products.map(p => p.id));
+      setSelectedProducts(products.map((p) => p.id));
     }
   };
 
@@ -234,10 +258,12 @@ const ProductsListPage = () => {
 
   const confirmDelete = async () => {
     try {
-      setDeleteModal(prev => ({ ...prev, isLoading: true }));
-      
-      const response = await productService.deleteProduct(deleteModal.productId);
-      
+      setDeleteModal((prev) => ({ ...prev, isLoading: true }));
+
+      const response = await productService.deleteProduct(
+        deleteModal.productId
+      );
+
       if (response.success) {
         toast.success("Product deleted successfully");
         loadProducts();
@@ -254,7 +280,7 @@ const ProductsListPage = () => {
       console.error("Error deleting product:", error);
       toast.error("Failed to delete product");
     } finally {
-      setDeleteModal(prev => ({ ...prev, isLoading: false }));
+      setDeleteModal((prev) => ({ ...prev, isLoading: false }));
     }
   };
 
@@ -314,7 +340,7 @@ const ProductsListPage = () => {
     } else if (stock <= minStock) {
       return {
         text: "Low Stock",
-        color: "text-yellow-600", 
+        color: "text-yellow-600",
         bg: "bg-yellow-50",
         icon: AlertTriangle,
       };
@@ -330,7 +356,10 @@ const ProductsListPage = () => {
 
   // Render product card
   const renderProductCard = (product) => {
-    const stockStatus = getStockStatus(product.stock_quantity, product.minimum_stock);
+    const stockStatus = getStockStatus(
+      product.stock_quantity,
+      product.minimum_stock
+    );
     const StockIcon = stockStatus.icon;
 
     return (
@@ -371,8 +400,12 @@ const ProductsListPage = () => {
 
           {/* Status badge */}
           <div className="absolute top-3 left-3">
-            <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(product.status)}`}>
-              {product.status === 'active' ? 'Active' : 'Inactive'}
+            <span
+              className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                product.status
+              )}`}
+            >
+              {product.status === "active" ? "Active" : "Inactive"}
             </span>
           </div>
         </div>
@@ -400,7 +433,9 @@ const ProductsListPage = () => {
                 </p>
               )}
             </div>
-            <div className={`px-2 py-1 rounded-full text-xs font-medium ${stockStatus.bg} ${stockStatus.color} flex items-center gap-1`}>
+            <div
+              className={`px-2 py-1 rounded-full text-xs font-medium ${stockStatus.bg} ${stockStatus.color} flex items-center gap-1`}
+            >
               <StockIcon className="w-3 h-3" />
               <span>{stockStatus.text}</span>
             </div>
@@ -413,13 +448,21 @@ const ProductsListPage = () => {
               <span>{product.stock_quantity || 0} units</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
+              <div
                 className={`h-2 rounded-full ${
-                  product.stock_quantity === 0 ? 'bg-red-500' :
-                  product.stock_quantity <= product.minimum_stock ? 'bg-yellow-500' : 'bg-green-500'
+                  product.stock_quantity === 0
+                    ? "bg-red-500"
+                    : product.stock_quantity <= product.minimum_stock
+                    ? "bg-yellow-500"
+                    : "bg-green-500"
                 }`}
-                style={{ 
-                  width: `${Math.min(100, (product.stock_quantity / Math.max(product.minimum_stock * 2, 1)) * 100)}%` 
+                style={{
+                  width: `${Math.min(
+                    100,
+                    (product.stock_quantity /
+                      Math.max(product.minimum_stock * 2, 1)) *
+                      100
+                  )}%`,
                 }}
               ></div>
             </div>
@@ -482,29 +525,46 @@ const ProductsListPage = () => {
             </div>
 
             <div className="flex items-center gap-3">
+              <div className="relative">
+                <EnhancedButton
+                  onClick={() => setShowFilters(!showFilters)}
+                  variant={filters.search || filters.category || filters.status || filters.is_featured ? "primary" : "outline"}
+                  size="sm"
+                  icon={<Sliders className="w-4 h-4" />}
+                >
+                  {showFilters ? "Hide Filters" : "Filters"}
+                </EnhancedButton>
+                {(filters.search || filters.category || filters.status || filters.is_featured) && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+                )}
+              </div>
+
               <EnhancedButton
-                onClick={() => setShowFilters(!showFilters)}
+                onClick={() =>
+                  setViewMode(viewMode === "grid" ? "table" : "grid")
+                }
                 variant="outline"
                 size="sm"
-                icon={<Sliders className="w-4 h-4" />}
-              >
-                {showFilters ? "Hide Filters" : "Filters"}
-              </EnhancedButton>
-              
-              <EnhancedButton
-                onClick={() => setViewMode(viewMode === "grid" ? "table" : "grid")}
-                variant="outline"
-                size="sm"
-                icon={viewMode === "grid" ? <List className="w-4 h-4" /> : <Grid className="w-4 h-4" />}
+                icon={
+                  viewMode === "grid" ? (
+                    <List className="w-4 h-4" />
+                  ) : (
+                    <Grid className="w-4 h-4" />
+                  )
+                }
               >
                 {viewMode === "grid" ? "Table" : "Grid"}
               </EnhancedButton>
-              
+
               <EnhancedButton
                 onClick={loadProducts}
                 variant="outline"
                 size="sm"
-                icon={<RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />}
+                icon={
+                  <RefreshCw
+                    className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
+                  />
+                }
               >
                 Refresh
               </EnhancedButton>
@@ -534,9 +594,7 @@ const ProductsListPage = () => {
                   <p className="text-blue-100 text-xs font-medium uppercase tracking-wide">
                     Total
                   </p>
-                  <p className="text-2xl font-bold mt-1">
-                    {statistics.total}
-                  </p>
+                  <p className="text-2xl font-bold mt-1">{statistics.total}</p>
                 </div>
                 <Package className="w-8 h-8 text-blue-200" />
               </div>
@@ -550,9 +608,7 @@ const ProductsListPage = () => {
                   <p className="text-green-100 text-xs font-medium uppercase tracking-wide">
                     Active
                   </p>
-                  <p className="text-2xl font-bold mt-1">
-                    {statistics.active}
-                  </p>
+                  <p className="text-2xl font-bold mt-1">{statistics.active}</p>
                 </div>
                 <CheckCircle className="w-8 h-8 text-green-200" />
               </div>
@@ -634,49 +690,82 @@ const ProductsListPage = () => {
           <Card>
             <CardBody>
               <div className="flex flex-col lg:flex-row gap-4">
-                <div className="flex-1">
+                <div className="flex-1 relative">
                   <EnhancedInput
                     placeholder="Search products by name, description, or barcode..."
                     value={filters.search}
                     onChange={(e) => handleSearchChange(e.target.value)}
-                    icon={<Search className="w-4 h-4" />}
+                    icon={isFiltering && filters.search ? 
+                      <Loader2 className="w-4 h-4 animate-spin" /> : 
+                      <Search className="w-4 h-4" />
+                    }
                   />
                 </div>
-                
+
                 <div className="flex items-center gap-3">
-                  <select
-                    value={filters.category}
-                    onChange={(e) => handleFilterChange("category", e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {categories.map((cat) => (
-                      <option key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={filters.category}
+                      onChange={(e) =>
+                        handleFilterChange("category", e.target.value)
+                      }
+                      className={`px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        filters.category ? 'border-blue-300 bg-blue-50' : 'border-gray-300'
+                      }`}
+                    >
+                      {categories.map((cat) => (
+                        <option key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </option>
+                      ))}
+                    </select>
+                    {filters.category && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full"></div>
+                    )}
+                  </div>
 
-                  <select
-                    value={filters.status}
-                    onChange={(e) => handleFilterChange("status", e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={filters.status}
+                      onChange={(e) =>
+                        handleFilterChange("status", e.target.value)
+                      }
+                      className={`px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        filters.status ? 'border-blue-300 bg-blue-50' : 'border-gray-300'
+                      }`}
+                    >
+                      <option value="">All Status</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                    {filters.status && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full"></div>
+                    )}
+                  </div>
 
-                  <select
-                    value={filters.is_featured}
-                    onChange={(e) => handleFilterChange("is_featured", e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">All Products</option>
-                    <option value="true">Featured Only</option>
-                    <option value="false">Non-Featured</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={filters.is_featured}
+                      onChange={(e) =>
+                        handleFilterChange("is_featured", e.target.value)
+                      }
+                      className={`px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        filters.is_featured ? 'border-blue-300 bg-blue-50' : 'border-gray-300'
+                      }`}
+                    >
+                      <option value="">All Products</option>
+                      <option value="true">Featured Only</option>
+                      <option value="false">Non-Featured</option>
+                    </select>
+                    {filters.is_featured && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full"></div>
+                    )}
+                  </div>
 
-                  {(filters.search || filters.category || filters.status || filters.is_featured) && (
+                  {(filters.search ||
+                    filters.category ||
+                    filters.status ||
+                    filters.is_featured) && (
                     <EnhancedButton
                       onClick={clearAllFilters}
                       variant="outline"
@@ -691,6 +780,53 @@ const ProductsListPage = () => {
             </CardBody>
           </Card>
         </motion.div>
+
+        {/* Filter Results Info */}
+        {!isLoading && !error && (filters.search || filters.category || filters.status || filters.is_featured) && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+          >
+            <Card className="border-blue-200 bg-blue-50">
+              <CardBody>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <FilterIcon className="w-5 h-5 text-blue-600" />
+                    <span className="text-blue-900 font-medium">
+                      Filters applied - Found {totalProducts} product{totalProducts !== 1 ? 's' : ''}
+                    </span>
+                    {isFiltering && (
+                      <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-blue-700">
+                    {filters.search && (
+                      <span className="px-2 py-1 bg-blue-200 rounded-full">
+                        Search: "{filters.search}"
+                      </span>
+                    )}
+                    {filters.category && (
+                      <span className="px-2 py-1 bg-blue-200 rounded-full">
+                        Category: {categories.find(c => c.value === filters.category)?.label}
+                      </span>
+                    )}
+                    {filters.status && (
+                      <span className="px-2 py-1 bg-blue-200 rounded-full">
+                        Status: {filters.status}
+                      </span>
+                    )}
+                    {filters.is_featured && (
+                      <span className="px-2 py-1 bg-blue-200 rounded-full">
+                        {filters.is_featured === 'true' ? 'Featured Only' : 'Non-Featured'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Bulk Actions */}
         {selectedProducts.length > 0 && (
@@ -745,7 +881,9 @@ const ProductsListPage = () => {
               <CardBody>
                 <div className="text-center py-12">
                   <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Products</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Error Loading Products
+                  </h3>
                   <p className="text-gray-600 mb-4">{error}</p>
                   <EnhancedButton
                     onClick={loadProducts}
@@ -762,12 +900,13 @@ const ProductsListPage = () => {
               <CardBody>
                 <div className="text-center py-12">
                   <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Products Found</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    No Products Found
+                  </h3>
                   <p className="text-gray-600 mb-6">
-                    {filters.search || filters.category || filters.status ? 
-                      "No products match your current filters." :
-                      "Get started by adding your first product."
-                    }
+                    {filters.search || filters.category || filters.status
+                      ? "No products match your current filters."
+                      : "Get started by adding your first product."}
                   </p>
                   <div className="flex items-center justify-center gap-3">
                     {(filters.search || filters.category || filters.status) && (
@@ -801,7 +940,9 @@ const ProductsListPage = () => {
                 <div className="flex items-center justify-between mt-8">
                   <div className="flex items-center gap-2">
                     <EnhancedButton
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(1, prev - 1))
+                      }
                       disabled={currentPage === 1}
                       variant="outline"
                       size="sm"
@@ -809,13 +950,15 @@ const ProductsListPage = () => {
                     >
                       Previous
                     </EnhancedButton>
-                    
+
                     <span className="text-sm text-gray-600 mx-4">
                       Page {currentPage} of {totalPages}
                     </span>
-                    
+
                     <EnhancedButton
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                      }
                       disabled={currentPage === totalPages}
                       variant="outline"
                       size="sm"
@@ -824,10 +967,11 @@ const ProductsListPage = () => {
                       Next
                     </EnhancedButton>
                   </div>
-                  
+
                   <div className="text-sm text-gray-600">
-                    Showing {((currentPage - 1) * itemsPerPage) + 1} to{' '}
-                    {Math.min(currentPage * itemsPerPage, totalProducts)} of {totalProducts} products
+                    Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                    {Math.min(currentPage * itemsPerPage, totalProducts)} of{" "}
+                    {totalProducts} products
                   </div>
                 </div>
               )}

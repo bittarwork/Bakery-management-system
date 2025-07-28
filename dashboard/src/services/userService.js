@@ -328,6 +328,23 @@ class UserService {
             };
         }
     }
+
+    /**
+     * الحصول على المستخدمين حسب الدور
+     * @param {string} role - الدور المطلوب
+     * @returns {Promise<Object>} استجابة API
+     */
+    async getUsersByRole(role) {
+        try {
+            const response = await apiService.get(`/users?role=${role}`);
+            return response;
+        } catch (error) {
+            return {
+                success: false,
+                message: error.message || 'خطأ في جلب المستخدمين حسب الدور'
+            };
+        }
+    }
 }
 
 export default new UserService(); 

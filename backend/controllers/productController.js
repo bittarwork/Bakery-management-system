@@ -139,17 +139,17 @@ export const createProduct = async (req, res) => {
         const {
             name,
             description,
-            category = 'other',
+            category,
             unit,
             price_eur,
             price_syp,
             cost_eur,
             cost_syp,
-            stock_quantity = 0,
-            minimum_stock = 0,
+            stock_quantity,
+            minimum_stock,
             barcode,
-            is_featured = false,
-            status = 'active',
+            is_featured,
+            status,
             image_url,
             weight_grams,
             shelf_life_days,
@@ -157,10 +157,13 @@ export const createProduct = async (req, res) => {
             supplier_info,
             nutritional_info,
             allergen_info,
+            expiry_date,
+            production_date,
+            dimensions,
             created_by_name
         } = req.body;
 
-        // التحقق من عدم وجود منتج بنفس الاسم
+        // Check for duplicate product name
         const existingProduct = await Product.findOne({
             where: { name }
         });
@@ -172,10 +175,10 @@ export const createProduct = async (req, res) => {
             });
         }
 
-        // Check if product with same barcode exists
-        if (barcode) {
+        // Check for duplicate barcode if provided
+        if (barcode && barcode.trim() !== '') {
             const existingBarcode = await Product.findOne({
-                where: { barcode }
+                where: { barcode: barcode.trim() }
             });
 
             if (existingBarcode) {
@@ -186,112 +189,117 @@ export const createProduct = async (req, res) => {
             }
         }
 
-        // Prepare product data with proper null handling for optional fields
-        const productData = {
-            name,
-            description: description || null,
-            category: category || 'other',
-            unit: unit || 'piece',
-            price_eur: parseFloat(price_eur) > 0 ? parseFloat(price_eur) : 0.01, // Required field with minimum 0.01
-            price_syp: price_syp && parseFloat(price_syp) > 0 ? parseFloat(price_syp) : null, // Optional, null if not provided
-            cost_eur: cost_eur && parseFloat(cost_eur) >= 0 ? parseFloat(cost_eur) : null, // Optional, null if not provided
-            cost_syp: cost_syp && parseFloat(cost_syp) >= 0 ? parseFloat(cost_syp) : null, // Optional, null if not provided
-            stock_quantity: stock_quantity && parseInt(stock_quantity) >= 0 ? parseInt(stock_quantity) : null, // Optional, null if not provided
-            minimum_stock: minimum_stock && parseInt(minimum_stock) >= 0 ? parseInt(minimum_stock) : null, // Optional, null if not provided
-            barcode: barcode || null,
-            is_featured: is_featured || false,
-            status: status || 'active',
-            image_url: image_url || null,
-            weight_grams: weight_grams && parseInt(weight_grams) > 0 ? parseInt(weight_grams) : null, // Optional, null if not provided
-            shelf_life_days: shelf_life_days && parseInt(shelf_life_days) > 0 ? parseInt(shelf_life_days) : null, // Optional, null if not provided
-            storage_conditions: storage_conditions || null,
-            supplier_info: supplier_info ? (typeof supplier_info === 'string' ? { description: supplier_info } : supplier_info) : null,
-            nutritional_info: nutritional_info ? (typeof nutritional_info === 'string' ? { description: nutritional_info } : nutritional_info) : null,
-            allergen_info: allergen_info ? (typeof allergen_info === 'string' ? { description: allergen_info } : allergen_info) : null,
-            created_by: req.userId || 1, // Default to user ID 1 (admin) if not available
-            created_by_name: created_by_name || 'System'
+        // Helper function to parse numeric values safely
+        const parseNumber = (value, defaultValue = null) => {
+            if (value === null || value === undefined || value === '') {
+                return defaultValue;
+            }
+            const parsed = parseFloat(value);
+            return isNaN(parsed) ? defaultValue : parsed;
         };
 
-        // Set default values only for fields that are required or should have default values
-        if (productData.total_sold === null || productData.total_sold === undefined) {
-            productData.total_sold = 0;
-        }
-        if (productData.total_revenue_eur === null || productData.total_revenue_eur === undefined) {
-            productData.total_revenue_eur = 0;
-        }
-        if (productData.total_revenue_syp === null || productData.total_revenue_syp === undefined) {
-            productData.total_revenue_syp = 0;
+        const parseInteger = (value, defaultValue = null) => {
+            if (value === null || value === undefined || value === '') {
+                return defaultValue;
+            }
+            const parsed = parseInt(value);
+            return isNaN(parsed) ? defaultValue : parsed;
+        };
+
+        // Prepare clean product data
+        const productData = {
+            name: name?.trim(),
+            description: description?.trim() || null,
+            category: category || 'other',
+            unit: unit || 'piece',
+            price_eur: Math.max(parseNumber(price_eur, 0.01), 0.01), // Required field with minimum 0.01
+            price_syp: parseNumber(price_syp, null), // Optional field
+            cost_eur: parseNumber(cost_eur, null), // Optional field
+            cost_syp: parseNumber(cost_syp, null), // Optional field
+            stock_quantity: parseInteger(stock_quantity, null), // Optional field
+            minimum_stock: parseInteger(minimum_stock, null), // Optional field
+            barcode: barcode?.trim() || null,
+            is_featured: Boolean(is_featured),
+            status: ['active', 'inactive', 'discontinued'].includes(status) ? status : 'active',
+            image_url: image_url?.trim() || null,
+            weight_grams: parseInteger(weight_grams, null), // Optional field
+            shelf_life_days: parseInteger(shelf_life_days, null), // Optional field
+            storage_conditions: storage_conditions?.trim() || null,
+            created_by: req.userId || 1,
+            created_by_name: created_by_name?.trim() || 'System'
+        };
+
+        // Handle JSON fields properly
+        if (supplier_info) {
+            productData.supplier_info = typeof supplier_info === 'string' 
+                ? { description: supplier_info.trim() }
+                : supplier_info;
         }
 
-        // Clean up empty strings and ensure proper data types
-        if (productData.description === '') productData.description = null;
-        if (productData.barcode === '') productData.barcode = null;
-        if (productData.storage_conditions === '') productData.storage_conditions = null;
-        if (productData.image_url === '') productData.image_url = null;
+        if (nutritional_info) {
+            productData.nutritional_info = typeof nutritional_info === 'string' 
+                ? { description: nutritional_info.trim() }
+                : nutritional_info;
+        }
 
-        // Ensure boolean values are properly set
-        productData.is_featured = Boolean(productData.is_featured);
+        if (allergen_info) {
+            productData.allergen_info = typeof allergen_info === 'string' 
+                ? { description: allergen_info.trim() }
+                : allergen_info;
+        }
 
-        // Ensure status is valid
-        if (!['active', 'inactive'].includes(productData.status)) {
-            productData.status = 'active';
+        if (dimensions) {
+            productData.dimensions = dimensions;
+        }
+
+        // Handle dates
+        if (expiry_date) {
+            productData.expiry_date = new Date(expiry_date);
+        }
+
+        if (production_date) {
+            productData.production_date = new Date(production_date);
         }
 
         console.log('[PRODUCTS] Final product data before creation:', JSON.stringify(productData, null, 2));
 
-        try {
-            const product = await Product.create(productData);
-            console.log('[PRODUCTS] Product created successfully:', product.id);
+        // Create the product
+        const product = await Product.create(productData);
+        
+        console.log('[PRODUCTS] Product created successfully:', product.id);
 
-            res.status(201).json({
-                success: true,
-                data: product,
-                message: 'Product created successfully'
-            });
+        res.status(201).json({
+            success: true,
+            data: product,
+            message: 'Product created successfully'
+        });
 
-            console.log('[PRODUCTS] ✅ Product creation completed successfully');
-            console.log('[PRODUCTS] Response data:', {
-                id: product.id,
-                name: product.name,
-                price_eur: product.price_eur,
-                created_at: product.created_at
-            });
-        } catch (dbError) {
-            console.error('[PRODUCTS] Database error during product creation:', dbError);
-            console.error('[PRODUCTS] Error details:', {
-                message: dbError.message,
-                name: dbError.name,
-                sql: dbError.sql,
-                parameters: dbError.parameters
-            });
-
-            // Handle specific database errors
-            if (dbError.name === 'SequelizeValidationError') {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Validation error',
-                    errors: dbError.errors.map(err => ({
-                        field: err.path,
-                        message: err.message,
-                        value: err.value
-                    }))
-                });
-            }
-
-            if (dbError.name === 'SequelizeUniqueConstraintError') {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Duplicate entry error',
-                    field: dbError.errors[0]?.path,
-                    value: dbError.errors[0]?.value
-                });
-            }
-
-            throw dbError; // Re-throw to be caught by outer catch
-        }
     } catch (error) {
         console.error('[PRODUCTS] Failed to create product:', error);
         console.error('[PRODUCTS] Full error stack:', error.stack);
+
+        // Handle specific Sequelize errors
+        if (error.name === 'SequelizeValidationError') {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation error occurred',
+                errors: error.errors.map(err => ({
+                    field: err.path,
+                    message: err.message,
+                    value: err.value
+                }))
+            });
+        }
+
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(400).json({
+                success: false,
+                message: 'Duplicate entry error',
+                field: error.errors[0]?.path,
+                value: error.errors[0]?.value
+            });
+        }
+
         res.status(500).json({
             success: false,
             message: 'Failed to create product',
@@ -336,7 +344,10 @@ export const updateProduct = async (req, res) => {
             storage_conditions,
             supplier_info,
             nutritional_info,
-            allergen_info
+            allergen_info,
+            expiry_date,
+            production_date,
+            dimensions
         } = req.body;
 
         const product = await Product.findByPk(id);
@@ -349,10 +360,10 @@ export const updateProduct = async (req, res) => {
         }
 
         // Check if another product with same name exists
-        if (name && name !== product.name) {
+        if (name && name.trim() !== product.name) {
             const existingProduct = await Product.findOne({
                 where: {
-                    name,
+                    name: name.trim(),
                     id: { [Op.ne]: id }
                 }
             });
@@ -366,10 +377,10 @@ export const updateProduct = async (req, res) => {
         }
 
         // Check if another product with same barcode exists
-        if (barcode && barcode !== product.barcode) {
+        if (barcode && barcode.trim() !== '' && barcode.trim() !== product.barcode) {
             const existingBarcode = await Product.findOne({
                 where: {
-                    barcode,
+                    barcode: barcode.trim(),
                     id: { [Op.ne]: id }
                 }
             });
@@ -382,40 +393,109 @@ export const updateProduct = async (req, res) => {
             }
         }
 
+        // Helper function to parse numeric values safely
+        const parseNumber = (value, defaultValue = null) => {
+            if (value === null || value === undefined || value === '') {
+                return defaultValue;
+            }
+            const parsed = parseFloat(value);
+            return isNaN(parsed) ? defaultValue : parsed;
+        };
+
+        const parseInteger = (value, defaultValue = null) => {
+            if (value === null || value === undefined || value === '') {
+                return defaultValue;
+            }
+            const parsed = parseInt(value);
+            return isNaN(parsed) ? defaultValue : parsed;
+        };
+
+        // Prepare update data
         const updateData = {};
-        if (name !== undefined) updateData.name = name;
-        if (description !== undefined) updateData.description = description || null;
+        
+        if (name !== undefined) updateData.name = name?.trim();
+        if (description !== undefined) updateData.description = description?.trim() || null;
         if (category !== undefined) updateData.category = category || 'other';
         if (unit !== undefined) updateData.unit = unit || 'piece';
-        if (price_eur !== undefined) updateData.price_eur = parseFloat(price_eur) > 0 ? parseFloat(price_eur) : 0.01; // Required field
-        if (price_syp !== undefined) updateData.price_syp = price_syp && parseFloat(price_syp) > 0 ? parseFloat(price_syp) : null; // Optional field
-        if (cost_eur !== undefined) updateData.cost_eur = cost_eur && parseFloat(cost_eur) >= 0 ? parseFloat(cost_eur) : null; // Optional field
-        if (cost_syp !== undefined) updateData.cost_syp = cost_syp && parseFloat(cost_syp) >= 0 ? parseFloat(cost_syp) : null; // Optional field
-        if (stock_quantity !== undefined) updateData.stock_quantity = stock_quantity && parseInt(stock_quantity) >= 0 ? parseInt(stock_quantity) : null; // Optional field
-        if (minimum_stock !== undefined) updateData.minimum_stock = minimum_stock && parseInt(minimum_stock) >= 0 ? parseInt(minimum_stock) : null; // Optional field
-        if (barcode !== undefined) updateData.barcode = barcode || null;
-        if (is_featured !== undefined) updateData.is_featured = is_featured || false;
-        if (status !== undefined) updateData.status = status || 'active';
-        if (image_url !== undefined) updateData.image_url = image_url || null;
-        if (weight_grams !== undefined) updateData.weight_grams = weight_grams && parseInt(weight_grams) > 0 ? parseInt(weight_grams) : null; // Optional field
-        if (shelf_life_days !== undefined) updateData.shelf_life_days = shelf_life_days && parseInt(shelf_life_days) > 0 ? parseInt(shelf_life_days) : null; // Optional field
-        if (storage_conditions !== undefined) updateData.storage_conditions = storage_conditions || null;
-        if (supplier_info !== undefined) updateData.supplier_info = supplier_info ? (typeof supplier_info === 'string' ? { description: supplier_info } : supplier_info) : null;
-        if (nutritional_info !== undefined) updateData.nutritional_info = nutritional_info ? (typeof nutritional_info === 'string' ? { description: nutritional_info } : nutritional_info) : null;
-        if (allergen_info !== undefined) updateData.allergen_info = allergen_info ? (typeof allergen_info === 'string' ? { description: allergen_info } : allergen_info) : null;
+        if (price_eur !== undefined) updateData.price_eur = Math.max(parseNumber(price_eur, 0.01), 0.01);
+        if (price_syp !== undefined) updateData.price_syp = parseNumber(price_syp, null);
+        if (cost_eur !== undefined) updateData.cost_eur = parseNumber(cost_eur, null);
+        if (cost_syp !== undefined) updateData.cost_syp = parseNumber(cost_syp, null);
+        if (stock_quantity !== undefined) updateData.stock_quantity = parseInteger(stock_quantity, null);
+        if (minimum_stock !== undefined) updateData.minimum_stock = parseInteger(minimum_stock, null);
+        if (barcode !== undefined) updateData.barcode = barcode?.trim() || null;
+        if (is_featured !== undefined) updateData.is_featured = Boolean(is_featured);
+        if (status !== undefined) updateData.status = ['active', 'inactive', 'discontinued'].includes(status) ? status : 'active';
+        if (image_url !== undefined) updateData.image_url = image_url?.trim() || null;
+        if (weight_grams !== undefined) updateData.weight_grams = parseInteger(weight_grams, null);
+        if (shelf_life_days !== undefined) updateData.shelf_life_days = parseInteger(shelf_life_days, null);
+        if (storage_conditions !== undefined) updateData.storage_conditions = storage_conditions?.trim() || null;
+
+        // Handle JSON fields properly
+        if (supplier_info !== undefined) {
+            updateData.supplier_info = supplier_info ? 
+                (typeof supplier_info === 'string' ? { description: supplier_info.trim() } : supplier_info) : null;
+        }
+
+        if (nutritional_info !== undefined) {
+            updateData.nutritional_info = nutritional_info ? 
+                (typeof nutritional_info === 'string' ? { description: nutritional_info.trim() } : nutritional_info) : null;
+        }
+
+        if (allergen_info !== undefined) {
+            updateData.allergen_info = allergen_info ? 
+                (typeof allergen_info === 'string' ? { description: allergen_info.trim() } : allergen_info) : null;
+        }
+
+        if (dimensions !== undefined) {
+            updateData.dimensions = dimensions;
+        }
+
+        // Handle dates
+        if (expiry_date !== undefined) {
+            updateData.expiry_date = expiry_date ? new Date(expiry_date) : null;
+        }
+
+        if (production_date !== undefined) {
+            updateData.production_date = production_date ? new Date(production_date) : null;
+        }
 
         await product.update(updateData);
 
         res.json({
             success: true,
             data: product,
-            message: 'تم تحديث المنتج بنجاح'
+            message: 'Product updated successfully'
         });
     } catch (error) {
-        console.error('[PRODUCTS] Failed to update product:', error.message);
+        console.error('[PRODUCTS] Failed to update product:', error);
+        console.error('[PRODUCTS] Full error stack:', error.stack);
+
+        // Handle specific Sequelize errors
+        if (error.name === 'SequelizeValidationError') {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation error occurred',
+                errors: error.errors.map(err => ({
+                    field: err.path,
+                    message: err.message,
+                    value: err.value
+                }))
+            });
+        }
+
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(400).json({
+                success: false,
+                message: 'Duplicate entry error',
+                field: error.errors[0]?.path,
+                value: error.errors[0]?.value
+            });
+        }
+
         res.status(500).json({
             success: false,
-            message: 'خطأ في تحديث المنتج',
+            message: 'Failed to update product',
             error: error.message
         });
     }
