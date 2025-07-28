@@ -319,9 +319,24 @@ class VehicleService {
         }
     }
 
+    // Get general vehicle statistics (all vehicles)
+    async getAllVehicleStatistics() {
+        try {
+            const response = await apiService.get(`${this.baseEndpoint}/statistics`);
+            return response;
+        } catch (error) {
+            console.error('Error fetching vehicle statistics:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     // Get vehicle-specific statistics
     async getVehicleStatistics(vehicleId) {
         try {
+            if (!vehicleId) {
+                console.error('Vehicle ID is required for getting specific vehicle statistics');
+                return { success: false, error: 'Vehicle ID is required' };
+            }
             const response = await apiService.get(`${this.baseEndpoint}/${vehicleId}/statistics`);
             return response;
         } catch (error) {

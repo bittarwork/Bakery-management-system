@@ -24,17 +24,90 @@ const StoreMap = ({
   // Use Google Maps API key from config
   const googleMapsApiKey = config.GOOGLE_MAPS_API_KEY;
 
+  // Debug logging
+  useEffect(() => {
+    console.log("StoreMap Debug:", {
+      storesCount: stores.length,
+      stores: stores.slice(0, 2), // Log first 2 stores to check structure
+      googleMapsApiKey: googleMapsApiKey ? "Present" : "Missing",
+      mapProvider,
+    });
+  }, [stores, googleMapsApiKey, mapProvider]);
+
   // Add markers for Google Maps
   const addGoogleMarkers = (mapInstance) => {
-    if (!window.google || !window.google.maps || !stores.length) return;
+    console.log("addGoogleMarkers called:", {
+      hasGoogleApi: !!(window.google && window.google.maps),
+      storesLength: stores.length,
+      mapInstance: !!mapInstance,
+    });
 
-    stores.forEach((store) => {
-      if (!store.latitude || !store.longitude) return;
+    if (!window.google || !window.google.maps || !stores.length) {
+      console.log("addGoogleMarkers early return:", {
+        hasGoogle: !!(window.google && window.google.maps),
+        storesLength: stores.length,
+      });
+      return;
+    }
 
-      const position = {
-        lat: parseFloat(store.latitude),
-        lng: parseFloat(store.longitude),
-      };
+    let validStoresCount = 0;
+    stores.forEach((store, index) => {
+      // Check for coordinates in different formats
+      let lat = null;
+      let lng = null;
+
+      // Format 1: Direct latitude/longitude fields
+      if (store.latitude && store.longitude) {
+        lat = parseFloat(store.latitude);
+        lng = parseFloat(store.longitude);
+      }
+      // Format 2: current_location object
+      else if (store.current_location) {
+        if (store.current_location.lat && store.current_location.lng) {
+          lat = parseFloat(store.current_location.lat);
+          lng = parseFloat(store.current_location.lng);
+        } else if (
+          store.current_location.latitude &&
+          store.current_location.longitude
+        ) {
+          lat = parseFloat(store.current_location.latitude);
+          lng = parseFloat(store.current_location.longitude);
+        }
+      }
+      // Format 3: gps_coordinates object (backend format)
+      else if (store.gps_coordinates) {
+        if (store.gps_coordinates.lat && store.gps_coordinates.lng) {
+          lat = parseFloat(store.gps_coordinates.lat);
+          lng = parseFloat(store.gps_coordinates.lng);
+        } else if (
+          store.gps_coordinates.latitude &&
+          store.gps_coordinates.longitude
+        ) {
+          lat = parseFloat(store.gps_coordinates.latitude);
+          lng = parseFloat(store.gps_coordinates.longitude);
+        }
+      }
+
+      if (!lat || !lng) {
+        console.log(`Store ${index} missing coordinates:`, {
+          name: store.name,
+          lat: store.latitude,
+          lng: store.longitude,
+          current_location: store.current_location,
+          gps_coordinates: store.gps_coordinates,
+          fullStore: store,
+        });
+        return;
+      }
+
+      validStoresCount++;
+      const position = { lat, lng };
+
+      console.log(`Creating marker for store ${index}:`, {
+        name: store.name,
+        position,
+        originalStore: store,
+      });
 
       const marker = new window.google.maps.Marker({
         position: position,
@@ -105,21 +178,88 @@ const StoreMap = ({
         }
       });
     });
+
+    console.log(
+      `addGoogleMarkers completed: ${validStoresCount} valid stores out of ${stores.length} total stores`
+    );
   };
 
   // Add markers for Leaflet Maps
   const addLeafletMarkers = (mapInstance) => {
-    if (!window.L || !stores.length) return;
+    console.log("addLeafletMarkers called:", {
+      hasLeaflet: !!window.L,
+      storesLength: stores.length,
+      mapInstance: !!mapInstance,
+    });
+
+    if (!window.L || !stores.length) {
+      console.log("addLeafletMarkers early return:", {
+        hasLeaflet: !!window.L,
+        storesLength: stores.length,
+      });
+      return;
+    }
 
     const L = window.L;
+    let validStoresCount = 0;
 
-    stores.forEach((store) => {
-      if (!store.latitude || !store.longitude) return;
+    stores.forEach((store, index) => {
+      // Check for coordinates in different formats
+      let lat = null;
+      let lng = null;
 
-      const position = [
-        parseFloat(store.latitude),
-        parseFloat(store.longitude),
-      ];
+      // Format 1: Direct latitude/longitude fields
+      if (store.latitude && store.longitude) {
+        lat = parseFloat(store.latitude);
+        lng = parseFloat(store.longitude);
+      }
+      // Format 2: current_location object
+      else if (store.current_location) {
+        if (store.current_location.lat && store.current_location.lng) {
+          lat = parseFloat(store.current_location.lat);
+          lng = parseFloat(store.current_location.lng);
+        } else if (
+          store.current_location.latitude &&
+          store.current_location.longitude
+        ) {
+          lat = parseFloat(store.current_location.latitude);
+          lng = parseFloat(store.current_location.longitude);
+        }
+      }
+      // Format 3: gps_coordinates object (backend format)
+      else if (store.gps_coordinates) {
+        if (store.gps_coordinates.lat && store.gps_coordinates.lng) {
+          lat = parseFloat(store.gps_coordinates.lat);
+          lng = parseFloat(store.gps_coordinates.lng);
+        } else if (
+          store.gps_coordinates.latitude &&
+          store.gps_coordinates.longitude
+        ) {
+          lat = parseFloat(store.gps_coordinates.latitude);
+          lng = parseFloat(store.gps_coordinates.longitude);
+        }
+      }
+
+      if (!lat || !lng) {
+        console.log(`Leaflet - Store ${index} missing coordinates:`, {
+          name: store.name,
+          lat: store.latitude,
+          lng: store.longitude,
+          current_location: store.current_location,
+          gps_coordinates: store.gps_coordinates,
+          fullStore: store,
+        });
+        return;
+      }
+
+      validStoresCount++;
+      const position = [lat, lng];
+
+      console.log(`Creating Leaflet marker for store ${index}:`, {
+        name: store.name,
+        position,
+        originalStore: store,
+      });
 
       const marker = L.marker(position, {
         icon: L.divIcon({
@@ -192,6 +332,10 @@ const StoreMap = ({
         }
       });
     });
+
+    console.log(
+      `addLeafletMarkers completed: ${validStoresCount} valid stores out of ${stores.length} total stores`
+    );
   };
 
   // Add current location marker
@@ -431,9 +575,14 @@ const StoreMap = ({
 
     const initGoogleMap = async () => {
       try {
+        console.log("initGoogleMap starting...");
+
         // Load Google Maps API if not already loaded
         if (!window.google || !window.google.maps) {
+          console.log("Loading Google Maps API...");
           await loadGoogleMapsAPI();
+        } else {
+          console.log("Google Maps API already loaded");
         }
 
         // Wait a bit more to ensure API is fully loaded
@@ -443,9 +592,13 @@ const StoreMap = ({
           throw new Error("Google Maps API failed to load properly");
         }
 
+        console.log("Creating Google Maps instance...");
+
         // Default center (Belgium/Brussels area for bakery context)
         const defaultCenter = center ||
           userLocation || { lat: 50.8503, lng: 4.3517 };
+
+        console.log("Map center:", defaultCenter);
 
         const mapInstance = new window.google.maps.Map(mapRef.current, {
           center: defaultCenter,
@@ -470,22 +623,26 @@ const StoreMap = ({
           ],
         });
 
+        console.log("Google Maps instance created successfully");
         mapInstanceRef.current = mapInstance;
 
         // Wait for map to be ready
+        console.log("Waiting for map idle event...");
         await new Promise((resolve) => {
-          window.google.maps.event.addListenerOnce(
-            mapInstance,
-            "idle",
-            resolve
-          );
+          window.google.maps.event.addListenerOnce(mapInstance, "idle", () => {
+            console.log("Map idle event fired - ready to add markers");
+            resolve();
+          });
         });
 
         // Add markers for stores
+        console.log("About to add Google markers...");
         addGoogleMarkers(mapInstance);
+        console.log("Google markers added");
 
         // Add click listener if interactive
         if (interactive && onLocationSelect) {
+          console.log("Adding map click listener");
           mapInstance.addListener("click", (event) => {
             const position = event.latLng;
             onLocationSelect({
@@ -498,11 +655,15 @@ const StoreMap = ({
 
         // Add current location marker if available
         if (userLocation) {
+          console.log("Adding current location marker");
           addCurrentLocationMarker(mapInstance, userLocation);
         }
+
+        console.log("initGoogleMap completed successfully");
       } catch (error) {
         console.error("Error initializing Google Map:", error);
         // Fallback to Leaflet if Google Maps fails
+        console.log("Falling back to Leaflet...");
         await initLeafletMap();
       }
     };

@@ -25,7 +25,7 @@ import LoadingSpinner from "../../components/ui/LoadingSpinner";
 
 const VehicleManagementPage = () => {
   const navigate = useNavigate();
-  
+
   // State management
   const [vehicles, setVehicles] = useState([]);
   const [distributors, setDistributors] = useState([]);
@@ -52,8 +52,6 @@ const VehicleManagementPage = () => {
   const [selectedVehicleId, setSelectedVehicleId] = useState(null);
   const [selectedDistributorId, setSelectedDistributorId] = useState("");
 
-
-
   // Load initial data
   useEffect(() => {
     loadData();
@@ -73,7 +71,7 @@ const VehicleManagementPage = () => {
 
       const [vehiclesResponse, statsResponse] = await Promise.all([
         vehicleService.getAllVehicles(vehiclesParams),
-        vehicleService.getVehicleStatistics(),
+        vehicleService.getAllVehicleStatistics(),
       ]);
 
       if (vehiclesResponse.success) {
@@ -228,15 +226,15 @@ const VehicleManagementPage = () => {
     try {
       setActionLoading(true);
       const response = await vehicleService.exportVehiclesCSV();
-      
+
       if (response.success) {
-        toast.success('تم تصدير البيانات بنجاح');
+        toast.success("تم تصدير البيانات بنجاح");
       } else {
-        toast.error('خطأ في تصدير البيانات');
+        toast.error("خطأ في تصدير البيانات");
       }
     } catch (error) {
-      toast.error('خطأ في تصدير البيانات');
-      console.error('Export error:', error);
+      toast.error("خطأ في تصدير البيانات");
+      console.error("Export error:", error);
     } finally {
       setActionLoading(false);
     }
@@ -608,8 +606,6 @@ const VehicleManagementPage = () => {
             </motion.div>
           </motion.div>
         )}
-
-        
       </AnimatePresence>
     </div>
   );

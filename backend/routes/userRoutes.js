@@ -8,134 +8,223 @@ import {
     deleteUser,
     toggleUserStatus,
     getUserStatistics,
-    exportUsers
+    exportUsers,
+    getDistributorDetails,
+    getAllDistributors,
+    updateDistributorStatus,
+    getAdminDetails,
+    getAllAdmins,
+    updateUserPassword
 } from '../controllers/userController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// تطبيق middleware المصادقة على جميع المسارات
+// Apply authentication middleware to all routes
 router.use(protect);
 
-// قواعد التحقق من صحة البيانات
+// Enhanced validation rules
 const createUserValidation = [
     body('username')
         .notEmpty()
-        .withMessage('اسم المستخدم مطلوب')
+        .withMessage('Username is required')
         .isLength({ min: 3, max: 50 })
-        .withMessage('اسم المستخدم يجب أن يكون بين 3 و 50 حرف')
+        .withMessage('Username must be between 3 and 50 characters')
         .matches(/^[a-zA-Z0-9_]+$/)
-        .withMessage('اسم المستخدم يجب أن يحتوي على أحرف وأرقام وشرطة سفلية فقط'),
+        .withMessage('Username can only contain letters, numbers, and underscores'),
 
     body('email')
         .notEmpty()
-        .withMessage('البريد الإلكتروني مطلوب')
+        .withMessage('Email is required')
         .isEmail()
-        .withMessage('البريد الإلكتروني غير صحيح'),
+        .withMessage('Invalid email format'),
 
     body('password')
         .notEmpty()
-        .withMessage('كلمة المرور مطلوبة')
+        .withMessage('Password is required')
         .isLength({ min: 8 })
-        .withMessage('كلمة المرور يجب أن تكون 8 أحرف على الأقل')
+        .withMessage('Password must be at least 8 characters long')
         .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-        .withMessage('كلمة المرور يجب أن تحتوي على حرف صغير وحرف كبير ورقم'),
+        .withMessage('Password must contain lowercase, uppercase, and number'),
 
     body('full_name')
         .notEmpty()
-        .withMessage('الاسم الكامل مطلوب')
+        .withMessage('Full name is required')
         .isLength({ min: 2, max: 100 })
-        .withMessage('الاسم الكامل يجب أن يكون بين 2 و 100 حرف'),
+        .withMessage('Full name must be between 2 and 100 characters'),
 
     body('phone')
         .optional()
         .matches(/^\+?[\d\s\-\(\)]+$/)
-        .withMessage('رقم الهاتف غير صحيح'),
+        .withMessage('Invalid phone number format'),
 
     body('role')
         .isIn(['admin', 'manager', 'distributor', 'cashier', 'accountant'])
-        .withMessage('الدور غير صحيح')
+        .withMessage('Invalid role'),
+        
+    body('salary')
+        .optional()
+        .isNumeric()
+        .withMessage('Salary must be a number'),
+        
+    body('license_number')
+        .optional()
+        .isLength({ min: 5, max: 50 })
+        .withMessage('License number must be between 5 and 50 characters')
 ];
 
 const updateUserValidation = [
     body('username')
         .notEmpty()
-        .withMessage('اسم المستخدم مطلوب')
+        .withMessage('Username is required')
         .isLength({ min: 3, max: 50 })
-        .withMessage('اسم المستخدم يجب أن يكون بين 3 و 50 حرف')
+        .withMessage('Username must be between 3 and 50 characters')
         .matches(/^[a-zA-Z0-9_]+$/)
-        .withMessage('اسم المستخدم يجب أن يحتوي على أحرف وأرقام وشرطة سفلية فقط'),
+        .withMessage('Username can only contain letters, numbers, and underscores'),
 
     body('email')
         .notEmpty()
-        .withMessage('البريد الإلكتروني مطلوب')
+        .withMessage('Email is required')
         .isEmail()
-        .withMessage('البريد الإلكتروني غير صحيح'),
+        .withMessage('Invalid email format'),
 
     body('full_name')
         .notEmpty()
-        .withMessage('الاسم الكامل مطلوب')
+        .withMessage('Full name is required')
         .isLength({ min: 2, max: 100 })
-        .withMessage('الاسم الكامل يجب أن يكون بين 2 و 100 حرف'),
+        .withMessage('Full name must be between 2 and 100 characters'),
 
     body('phone')
         .optional()
         .matches(/^\+?[\d\s\-\(\)]+$/)
-        .withMessage('رقم الهاتف غير صحيح'),
+        .withMessage('Invalid phone number format'),
 
     body('role')
         .isIn(['admin', 'manager', 'distributor', 'cashier', 'accountant'])
-        .withMessage('الدور غير صحيح'),
+        .withMessage('Invalid role'),
 
     body('status')
         .isIn(['active', 'inactive', 'suspended'])
-        .withMessage('الحالة غير صحيحة')
+        .withMessage('Invalid status')
 ];
 
 const toggleStatusValidation = [
     body('status')
         .isIn(['active', 'inactive', 'suspended'])
-        .withMessage('الحالة غير صحيحة')
+        .withMessage('Invalid status')
 ];
 
-// @desc    الحصول على جميع الموظفين
+const passwordUpdateValidation = [
+    body('new_password')
+        .notEmpty()
+        .withMessage('New password is required')
+        .isLength({ min: 6 })
+        .withMessage('New password must be at least 6 characters long'),
+    
+    body('current_password')
+        .optional()
+        .notEmpty()
+        .withMessage('Current password is required when provided')
+];
+
+const distributorStatusValidation = [
+    body('work_status')
+        .optional()
+        .isIn(['available', 'busy', 'offline', 'break'])
+        .withMessage('Invalid work status'),
+        
+    body('location')
+        .optional()
+        .isObject()
+        .withMessage('Location must be an object'),
+        
+    body('location.latitude')
+        .optional()
+        .isFloat({ min: -90, max: 90 })
+        .withMessage('Invalid latitude'),
+        
+    body('location.longitude')
+        .optional()
+        .isFloat({ min: -180, max: 180 })
+        .withMessage('Invalid longitude')
+];
+
+// ===== GENERAL USER ROUTES =====
+
+// @desc    Get all users with enhanced filtering
 // @route   GET /api/users
 // @access  Private (Admin/Manager)
 router.get('/', authorize('admin', 'manager'), getUsers);
 
-// @desc    الحصول على إحصائيات الموظفين
+// @desc    Get user statistics
 // @route   GET /api/users/statistics
 // @access  Private (Admin/Manager)
 router.get('/statistics', authorize('admin', 'manager'), getUserStatistics);
 
-// @desc    تصدير بيانات الموظفين
+// @desc    Export users data
 // @route   GET /api/users/export
 // @access  Private (Admin/Manager)
 router.get('/export', authorize('admin', 'manager'), exportUsers);
 
-// @desc    إنشاء موظف جديد
+// ===== DISTRIBUTOR SPECIFIC ROUTES =====
+
+// @desc    Get all distributors with performance data
+// @route   GET /api/users/distributors
+// @access  Private (Admin/Manager)
+router.get('/distributors', authorize('admin', 'manager'), getAllDistributors);
+
+// @desc    Get distributor details with performance metrics
+// @route   GET /api/users/distributors/:id/details
+// @access  Private (Admin/Manager)
+router.get('/distributors/:id/details', authorize('admin', 'manager'), getDistributorDetails);
+
+// @desc    Update distributor work status and location
+// @route   PATCH /api/users/distributors/:id/status
+// @access  Private (Admin/Manager/Self)
+router.patch('/distributors/:id/status', authorize('admin', 'manager', 'distributor'), distributorStatusValidation, updateDistributorStatus);
+
+// ===== ADMIN SPECIFIC ROUTES =====
+
+// @desc    Get all admins and managers
+// @route   GET /api/users/admins
+// @access  Private (Admin)
+router.get('/admins', authorize('admin'), getAllAdmins);
+
+// @desc    Get admin details with permissions
+// @route   GET /api/users/admins/:id/details
+// @access  Private (Admin)  
+router.get('/admins/:id/details', authorize('admin'), getAdminDetails);
+
+// ===== INDIVIDUAL USER ROUTES =====
+
+// @desc    Create new user
 // @route   POST /api/users
 // @access  Private (Admin)
 router.post('/', authorize('admin'), createUserValidation, createUser);
 
-// @desc    الحصول على موظف واحد
+// @desc    Get single user
 // @route   GET /api/users/:id
 // @access  Private (Admin/Manager)
 router.get('/:id', authorize('admin', 'manager'), getUser);
 
-// @desc    تحديث بيانات موظف
+// @desc    Update user data
 // @route   PUT /api/users/:id
 // @access  Private (Admin)
 router.put('/:id', authorize('admin'), updateUserValidation, updateUser);
 
-// @desc    حذف موظف
-// @route   DELETE /api/users/:id
-// @access  Private (Admin)
-router.delete('/:id', authorize('admin'), deleteUser);
+// @desc    Update user password
+// @route   PATCH /api/users/:id/password
+// @access  Private (Admin/Self)
+router.patch('/:id/password', passwordUpdateValidation, updateUserPassword);
 
-// @desc    تغيير حالة موظف
+// @desc    Toggle user status
 // @route   PATCH /api/users/:id/status
 // @access  Private (Admin)
 router.patch('/:id/status', authorize('admin'), toggleStatusValidation, toggleUserStatus);
+
+// @desc    Delete user
+// @route   DELETE /api/users/:id
+// @access  Private (Admin)
+router.delete('/:id', authorize('admin'), deleteUser);
 
 export default router; 

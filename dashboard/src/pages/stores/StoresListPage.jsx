@@ -765,7 +765,7 @@ const StoresListPage = () => {
                                 </EnhancedButton>
                                 <EnhancedButton
                                   onClick={() =>
-                                    navigate(`/stores/edit/${store.id}`)
+                                    navigate(`/stores/${store.id}/edit`)
                                   }
                                   variant="warning"
                                   size="sm"
