@@ -35,6 +35,9 @@ import conversationRoutes from './conversationRoutes.js';
 // Import Advanced Analytics routes
 import advancedAnalyticsRoutes from './advancedAnalyticsRoutes.js';
 
+// Import Mobile App routes
+import mobileDistributorRoutes from './mobileDistributorRoutes.js';
+
 const router = express.Router();
 
 // API Documentation endpoint
@@ -127,6 +130,9 @@ router.use('/conversations', conversationRoutes);
 router.use('/analytics', advancedAnalyticsRoutes);
 router.use('/reports', advancedAnalyticsRoutes);
 router.use('/predictions', advancedAnalyticsRoutes);
+
+// Mount Mobile App routes
+router.use('/mobile', mobileDistributorRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {

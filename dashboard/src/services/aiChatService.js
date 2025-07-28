@@ -7,6 +7,10 @@ class AIChatService {
         this.chatHistory = [];
         this.isTyping = false;
         this.config = null;
+        // Multi-chat support
+        this.chats = [];
+        this.activeChat = null;
+        this.loadChats();
     }
 
     /**
@@ -188,17 +192,45 @@ class AIChatService {
             ...metadata
         };
 
-        this.chatHistory.push(historyItem);
-
-        // Keep only last 50 messages to prevent memory issues
-        const maxHistory = parseInt(import.meta.env.VITE_MAX_CHAT_HISTORY || '50');
-        if (this.chatHistory.length > maxHistory) {
-            this.chatHistory = this.chatHistory.slice(-maxHistory);
-        }
-
-        // Save to localStorage if enabled
-        if (import.meta.env.VITE_SAVE_CHAT_HISTORY === 'true') {
-            this.saveChatHistory();
+        // Add to active chat if exists, otherwise use legacy chatHistory
+        if (this.activeChat) {
+            this.activeChat.messages.push(historyItem);
+            this.activeChat.lastUsedAt = new Date().toISOString();
+            this.activeChat.messageCount = this.activeChat.messages.length;
+            
+            // Update chatHistory for backward compatibility
+            this.chatHistory = this.activeChat.messages;
+            
+            // Keep only last 50 messages per chat to prevent memory issues
+            const maxHistory = parseInt(import.meta.env.VITE_MAX_CHAT_HISTORY || '50');
+            if (this.activeChat.messages.length > maxHistory) {
+                this.activeChat.messages = this.activeChat.messages.slice(-maxHistory);
+                this.chatHistory = this.activeChat.messages;
+            }
+            
+            this.saveChats();
+        } else {
+            // Legacy behavior - create new chat if none exists
+            if (this.chats.length === 0) {
+                this.createNewChat();
+            }
+            
+            // Add to current chat
+            if (this.activeChat) {
+                this.activeChat.messages.push(historyItem);
+                this.activeChat.lastUsedAt = new Date().toISOString();
+                this.activeChat.messageCount = this.activeChat.messages.length;
+                this.chatHistory = this.activeChat.messages;
+                this.saveChats();
+            } else {
+                // Fallback to old system
+                this.chatHistory.push(historyItem);
+                const maxHistory = parseInt(import.meta.env.VITE_MAX_CHAT_HISTORY || '50');
+                if (this.chatHistory.length > maxHistory) {
+                    this.chatHistory = this.chatHistory.slice(-maxHistory);
+                }
+                this.saveChatHistory();
+            }
         }
     }
 
@@ -206,16 +238,24 @@ class AIChatService {
      * Get chat history
      */
     getChatHistory() {
-        return this.chatHistory;
+        return this.activeChat ? this.activeChat.messages : this.chatHistory;
     }
 
     /**
      * Clear chat history
      */
     clearChatHistory() {
-        this.chatHistory = [];
-        if (typeof localStorage !== 'undefined') {
-            localStorage.removeItem('aiChatHistory');
+        if (this.activeChat) {
+            this.activeChat.messages = [];
+            this.activeChat.messageCount = 0;
+            this.activeChat.lastUsedAt = new Date().toISOString();
+            this.chatHistory = [];
+            this.saveChats();
+        } else {
+            this.chatHistory = [];
+            if (typeof localStorage !== 'undefined') {
+                localStorage.removeItem('aiChatHistory');
+            }
         }
         toast.success('تم مسح سجل المحادثة');
     }
@@ -296,10 +336,11 @@ class AIChatService {
      * Get message statistics
      */
     getMessageStats() {
-        const total = this.chatHistory.length;
-        const userMessages = this.chatHistory.filter(msg => msg.sender === 'user').length;
-        const aiMessages = this.chatHistory.filter(msg => msg.sender === 'ai').length;
-        const cachedResponses = this.chatHistory.filter(msg => msg.sender === 'ai' && msg.cached).length;
+        const messages = this.activeChat?.messages || this.chatHistory;
+        const total = messages.length;
+        const userMessages = messages.filter(msg => msg.sender === 'user').length;
+        const aiMessages = messages.filter(msg => msg.sender === 'ai').length;
+        const cachedResponses = messages.filter(msg => msg.sender === 'ai' && msg.cached).length;
 
         return {
             total,
@@ -308,6 +349,218 @@ class AIChatService {
             cachedResponses,
             cacheHitRate: aiMessages > 0 ? (cachedResponses / aiMessages * 100).toFixed(1) : 0
         };
+    }
+
+    // === MULTI-CHAT MANAGEMENT METHODS ===
+
+    /**
+     * Create a new chat session
+     */
+    createNewChat(title = null) {
+        const now = new Date();
+        const chatId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        const newChat = {
+            id: chatId,
+            title: title || `دردشة جديدة - ${now.toLocaleDateString('ar')}`,
+            messages: [],
+            createdAt: now.toISOString(),
+            lastUsedAt: now.toISOString(),
+            messageCount: 0,
+            archived: false,
+            starred: false
+        };
+
+        this.chats.unshift(newChat);
+        this.activeChat = newChat;
+        this.saveChats();
+        
+        return newChat;
+    }
+
+    /**
+     * Get all chats
+     */
+    getAllChats() {
+        return this.chats;
+    }
+
+    /**
+     * Get active chat
+     */
+    getActiveChat() {
+        return this.activeChat;
+    }
+
+    /**
+     * Select a chat as active
+     */
+    selectChat(chatId) {
+        const chat = this.chats.find(c => c.id === chatId);
+        if (chat) {
+            this.activeChat = chat;
+            chat.lastUsedAt = new Date().toISOString();
+            this.saveChats();
+            
+            // Update chatHistory for backward compatibility
+            this.chatHistory = chat.messages;
+            return chat;
+        }
+        return null;
+    }
+
+    /**
+     * Delete a chat
+     */
+    deleteChat(chatId) {
+        const chatIndex = this.chats.findIndex(c => c.id === chatId);
+        if (chatIndex !== -1) {
+            const deletedChat = this.chats[chatIndex];
+            this.chats.splice(chatIndex, 1);
+            
+            // If deleted chat was active, select another one
+            if (this.activeChat && this.activeChat.id === chatId) {
+                this.activeChat = this.chats.length > 0 ? this.chats[0] : null;
+                this.chatHistory = this.activeChat ? this.activeChat.messages : [];
+            }
+            
+            this.saveChats();
+            return deletedChat;
+        }
+        return null;
+    }
+
+    /**
+     * Rename a chat
+     */
+    renameChat(chatId, newTitle) {
+        const chat = this.chats.find(c => c.id === chatId);
+        if (chat) {
+            chat.title = newTitle;
+            chat.lastUsedAt = new Date().toISOString();
+            this.saveChats();
+            return chat;
+        }
+        return null;
+    }
+
+    /**
+     * Archive/Unarchive a chat
+     */
+    archiveChat(chatId, archived = true) {
+        const chat = this.chats.find(c => c.id === chatId);
+        if (chat) {
+            chat.archived = archived;
+            chat.lastUsedAt = new Date().toISOString();
+            this.saveChats();
+            return chat;
+        }
+        return null;
+    }
+
+    /**
+     * Star/Unstar a chat
+     */
+    starChat(chatId, starred = true) {
+        const chat = this.chats.find(c => c.id === chatId);
+        if (chat) {
+            chat.starred = starred;
+            chat.lastUsedAt = new Date().toISOString();
+            this.saveChats();
+            return chat;
+        }
+        return null;
+    }
+
+    /**
+     * Load chats from localStorage
+     */
+    loadChats() {
+        try {
+            if (typeof localStorage !== 'undefined') {
+                const saved = localStorage.getItem('aiChats');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    this.chats = data.chats || [];
+                    const activeChatId = data.activeChatId;
+                    
+                    if (activeChatId) {
+                        this.activeChat = this.chats.find(c => c.id === activeChatId);
+                    }
+                    
+                    // If no active chat but chats exist, select the first one
+                    if (!this.activeChat && this.chats.length > 0) {
+                        this.activeChat = this.chats[0];
+                    }
+                    
+                    // Update chatHistory for backward compatibility
+                    this.chatHistory = this.activeChat ? this.activeChat.messages : [];
+                }
+                
+                // Migrate old chat history if exists and no chats
+                if (this.chats.length === 0) {
+                    this.migrateOldChatHistory();
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to load chats from localStorage:', error);
+            this.chats = [];
+            this.activeChat = null;
+        }
+    }
+
+    /**
+     * Save chats to localStorage
+     */
+    saveChats() {
+        try {
+            if (typeof localStorage !== 'undefined') {
+                const data = {
+                    chats: this.chats,
+                    activeChatId: this.activeChat?.id || null,
+                    lastSaved: new Date().toISOString()
+                };
+                localStorage.setItem('aiChats', JSON.stringify(data));
+            }
+        } catch (error) {
+            console.warn('Failed to save chats to localStorage:', error);
+        }
+    }
+
+    /**
+     * Migrate old chat history to new format
+     */
+    migrateOldChatHistory() {
+        try {
+            if (typeof localStorage !== 'undefined') {
+                const oldHistory = localStorage.getItem('aiChatHistory');
+                if (oldHistory) {
+                    const messages = JSON.parse(oldHistory);
+                    if (messages.length > 0) {
+                        const migrationChat = {
+                            id: `migrated_chat_${Date.now()}`,
+                            title: 'الدردشة السابقة',
+                            messages: messages,
+                            createdAt: new Date().toISOString(),
+                            lastUsedAt: new Date().toISOString(),
+                            messageCount: messages.length,
+                            archived: false,
+                            starred: false
+                        };
+                        
+                        this.chats = [migrationChat];
+                        this.activeChat = migrationChat;
+                        this.chatHistory = messages;
+                        this.saveChats();
+                        
+                        // Remove old storage
+                        localStorage.removeItem('aiChatHistory');
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to migrate old chat history:', error);
+        }
     }
 }
 

@@ -15,6 +15,7 @@ import {
   TrendingUp,
   FileText,
   Target,
+  Plus,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
@@ -22,9 +23,9 @@ import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import ChatMessage from "../../components/ai-chat/ChatMessage";
 import ChatInput from "../../components/ai-chat/ChatInput";
 import SuggestedQuestions from "../../components/ai-chat/SuggestedQuestions";
-import AIDashboard from "../../components/ai-chat/AIDashboard";
-import DetailedReports from "../../components/ai-chat/DetailedReports";
-import PredictionSystem from "../../components/ai-chat/PredictionSystem";
+import ChatManager from "../../components/ai-chat/ChatManager";
+import EnhancedAIDashboard from "../../components/ai-chat/EnhancedAIDashboard";
+import EnhancedPredictionSystem from "../../components/ai-chat/EnhancedPredictionSystem";
 import aiChatService from "../../services/aiChatService";
 import { useAuthStore } from "../../stores/authStore";
 import { toast } from "react-hot-toast";
@@ -39,6 +40,11 @@ const AIChatPage = () => {
   const [error, setError] = useState("");
   const [isConfigLoading, setIsConfigLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("chat");
+
+  // Multi-chat state
+  const [chats, setChats] = useState([]);
+  const [activeChat, setActiveChat] = useState(null);
+  const [showChatManager, setShowChatManager] = useState(false);
 
   // Refs
   const messagesEndRef = useRef(null);
@@ -57,15 +63,9 @@ const AIChatPage = () => {
     },
     {
       id: "dashboard",
-      label: "لوحة التحكم",
+      label: "لوحة التحكم الذكية",
       icon: Brain,
-      description: "نظرة شاملة على أداء المخبز",
-    },
-    {
-      id: "reports",
-      label: "التقارير التفصيلية",
-      icon: FileText,
-      description: "تحليلات متقدمة ورؤى تفصيلية",
+      description: "نظرة شاملة ومتطورة على أداء المخبز",
     },
     {
       id: "predictions",
@@ -85,8 +85,16 @@ const AIChatPage = () => {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  // Load chat history on mount
+  // Load chat history and chats on mount
   useEffect(() => {
+    // Load multi-chat data
+    const allChats = aiChatService.getAllChats();
+    const currentActiveChat = aiChatService.getActiveChat();
+
+    setChats(allChats);
+    setActiveChat(currentActiveChat);
+
+    // Load messages from active chat
     const history = aiChatService.getChatHistory();
     setMessages(history);
   }, []);
@@ -133,6 +141,14 @@ const AIChatPage = () => {
   const handleSendMessage = async (messageText) => {
     if (!messageText.trim() || isLoading) return;
 
+    // Ensure we have an active chat
+    if (!activeChat) {
+      const newChat = aiChatService.createNewChat();
+      const updatedChats = aiChatService.getAllChats();
+      setChats(updatedChats);
+      setActiveChat(newChat);
+    }
+
     // Validate message
     const validation = aiChatService.validateMessage(messageText);
     if (!validation.valid) {
@@ -167,6 +183,10 @@ const AIChatPage = () => {
         provider: response.provider,
       };
       setMessages((prev) => [...prev, aiMessage]);
+
+      // Update chats list
+      const updatedChats = aiChatService.getAllChats();
+      setChats(updatedChats);
     } catch (error) {
       console.error("❌ Error sending message:", error);
       setError("فشل في إرسال الرسالة. يرجى المحاولة مرة أخرى.");
@@ -191,7 +211,13 @@ const AIChatPage = () => {
   };
 
   const handleClearChat = () => {
-    if (window.confirm("هل أنت متأكد من أنك تريد مسح سجل المحادثة؟")) {
+    if (!activeChat) return;
+
+    if (
+      window.confirm(
+        `هل أنت متأكد من أنك تريد مسح سجل المحادثة "${activeChat.title}"؟`
+      )
+    ) {
       aiChatService.clearChatHistory();
       setMessages([]);
 
@@ -209,6 +235,10 @@ const AIChatPage = () => {
           isWelcome: true,
         });
       }
+
+      // Update chats list
+      const updatedChats = aiChatService.getAllChats();
+      setChats(updatedChats);
     }
   };
 
@@ -226,22 +256,99 @@ const AIChatPage = () => {
     return aiChatService.getMessageStats();
   };
 
+  // Multi-chat management functions
+  const handleCreateNewChat = (title) => {
+    const newChat = aiChatService.createNewChat(title);
+    const updatedChats = aiChatService.getAllChats();
+
+    setChats(updatedChats);
+    setActiveChat(newChat);
+    setMessages([]);
+
+    // Add welcome message to new chat if configured
+    if (chatConfig?.welcomeMessage) {
+      const welcomeMessage = {
+        id: "welcome-" + Date.now(),
+        sender: "ai",
+        message: chatConfig.welcomeMessage,
+        timestamp: new Date(),
+        isWelcome: true,
+      };
+      setMessages([welcomeMessage]);
+      aiChatService.addToHistory("ai", chatConfig.welcomeMessage, {
+        isWelcome: true,
+      });
+    }
+  };
+
+  const handleSelectChat = (chat) => {
+    const selectedChat = aiChatService.selectChat(chat.id);
+    if (selectedChat) {
+      setActiveChat(selectedChat);
+      setMessages(selectedChat.messages);
+      setShowChatManager(false);
+    }
+  };
+
+  const handleDeleteChat = (chatId) => {
+    aiChatService.deleteChat(chatId);
+    const updatedChats = aiChatService.getAllChats();
+    const currentActiveChat = aiChatService.getActiveChat();
+
+    setChats(updatedChats);
+    setActiveChat(currentActiveChat);
+    setMessages(currentActiveChat ? currentActiveChat.messages : []);
+  };
+
+  const handleRenameChat = (chatId, newTitle) => {
+    aiChatService.renameChat(chatId, newTitle);
+    const updatedChats = aiChatService.getAllChats();
+    setChats(updatedChats);
+  };
+
+  const handleArchiveChat = (chatId, archived) => {
+    aiChatService.archiveChat(chatId, archived);
+    const updatedChats = aiChatService.getAllChats();
+    setChats(updatedChats);
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case "chat":
         return renderChatContent();
       case "dashboard":
-        return <AIDashboard />;
-      case "reports":
-        return <DetailedReports />;
+        return <EnhancedAIDashboard />;
       case "predictions":
-        return <PredictionSystem />;
+        return <EnhancedPredictionSystem />;
       default:
         return renderChatContent();
     }
   };
 
-  const renderChatContent = () => (
+  const renderChatContent = () => {
+    if (showChatManager) {
+      return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+          <div className="lg:col-span-1">
+            <ChatManager
+              chats={chats}
+              activeChat={activeChat}
+              onSelectChat={handleSelectChat}
+              onCreateChat={handleCreateNewChat}
+              onDeleteChat={handleDeleteChat}
+              onRenameChat={handleRenameChat}
+              onArchiveChat={handleArchiveChat}
+            />
+          </div>
+          <div className="lg:col-span-2">{renderMainChatArea()}</div>
+        </div>
+      );
+    }
+
+    return renderMainChatArea();
+  };
+
+  const renderMainChatArea = () => (
     <Card className="flex-1 flex flex-col overflow-hidden">
       {/* Suggested Questions */}
       {suggestedQuestions.length > 0 && (
@@ -284,11 +391,20 @@ const AIChatPage = () => {
           <div className="text-center py-12">
             <Bot className="h-16 w-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-600 mb-2">
-              مرحباً بك في المساعد الذكي!
+              مرحباً بك في المساعد الذكي المطور!
             </h3>
-            <p className="text-gray-500">
+            <p className="text-gray-500 mb-4">
               ابدأ محادثة بكتابة سؤالك أو اختر أحد الاقتراحات أعلاه
             </p>
+            {chats.length === 0 && (
+              <EnhancedButton
+                onClick={() => handleCreateNewChat()}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <MessageCircle className="w-4 h-4 mr-2" />
+                إنشاء دردشة جديدة
+              </EnhancedButton>
+            )}
           </div>
         )}
 
@@ -300,7 +416,9 @@ const AIChatPage = () => {
         onSendMessage={handleSendMessage}
         disabled={isLoading}
         maxLength={chatConfig?.maxMessageLength || 1000}
-        placeholder="اسأل عن أي شيء متعلق بالمخبز..."
+        placeholder={
+          activeChat ? "اكتب رسالتك هنا..." : "إنشاء دردشة جديدة للبدء..."
+        }
       />
     </Card>
   );
@@ -364,6 +482,28 @@ const AIChatPage = () => {
                   <EnhancedButton
                     variant="outline"
                     size="sm"
+                    onClick={() => setShowChatManager(!showChatManager)}
+                    className={`${
+                      showChatManager
+                        ? "bg-blue-50 text-blue-700 border-blue-300"
+                        : "text-blue-600 border-blue-200 hover:bg-blue-50"
+                    }`}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                  </EnhancedButton>
+
+                  <EnhancedButton
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCreateNewChat()}
+                    className="text-green-600 border-green-200 hover:bg-green-50"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </EnhancedButton>
+
+                  <EnhancedButton
+                    variant="outline"
+                    size="sm"
                     onClick={handleRefreshSuggestions}
                     className="text-blue-600 border-blue-200 hover:bg-blue-50"
                   >
@@ -375,6 +515,7 @@ const AIChatPage = () => {
                     size="sm"
                     onClick={handleClearChat}
                     className="text-red-600 border-red-200 hover:bg-red-50"
+                    disabled={!activeChat}
                   >
                     <Trash2 className="h-4 w-4" />
                   </EnhancedButton>
