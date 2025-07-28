@@ -759,6 +759,48 @@ const App = () => {
             />
 
             <Route
+              path="/vehicles/add"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <AddVehiclePage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/vehicles/edit/:id"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <EditVehiclePage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/vehicles/expenses"
               element={
                 <ProtectedRoute

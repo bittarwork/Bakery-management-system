@@ -554,4 +554,169 @@ export const updateVehicleStatus = async (req, res) => {
             error: error.message
         });
     }
+};
+
+// @desc    Export vehicles to CSV
+// @route   GET /api/vehicles/export/csv
+// @access  Private (Admin, Manager)
+export const exportVehiclesCSV = async (req, res) => {
+    try {
+        const vehicles = await Vehicle.findAll({
+            include: [
+                {
+                    model: User,
+                    as: 'assignedDistributor',
+                    attributes: ['id', 'full_name', 'phone', 'email'],
+                    required: false
+                },
+                {
+                    model: User,
+                    as: 'creator',
+                    attributes: ['id', 'full_name'],
+                    required: false
+                }
+            ],
+            order: [['created_at', 'DESC']]
+        });
+
+        // CSV Headers (in English)
+        const csvHeaders = [
+            'ID',
+            'Vehicle Type',
+            'Model',
+            'License Plate',
+            'Year',
+            'Color',
+            'Status',
+            'Fuel Type',
+            'Transmission Type',
+            'Engine Capacity',
+            'Assigned Distributor',
+            'Distributor Phone',
+            'Distributor Email',
+            'Insurance Company',
+            'Insurance Expiry Date',
+            'Registration Expiry Date',
+            'Purchase Date',
+            'Purchase Price (EUR)',
+            'Purchase Price (SYP)',
+            'Current KM',
+            'Last Maintenance Date',
+            'Last Maintenance KM',
+            'Next Maintenance KM',
+            'Company Owned',
+            'Created By',
+            'Created At',
+            'Updated At',
+            'Notes'
+        ];
+
+        // Convert vehicles data to CSV format
+        const csvData = vehicles.map(vehicle => {
+            const getVehicleTypeDisplay = (type) => {
+                const types = {
+                    'car': 'Car',
+                    'van': 'Van',
+                    'truck': 'Truck',
+                    'motorcycle': 'Motorcycle'
+                };
+                return types[type] || type;
+            };
+
+            const getStatusDisplay = (status) => {
+                const statuses = {
+                    'active': 'Active',
+                    'maintenance': 'Under Maintenance',
+                    'inactive': 'Inactive',
+                    'retired': 'Retired'
+                };
+                return statuses[status] || status;
+            };
+
+            const getFuelTypeDisplay = (fuelType) => {
+                const types = {
+                    'gasoline': 'Gasoline',
+                    'diesel': 'Diesel',
+                    'electric': 'Electric',
+                    'hybrid': 'Hybrid'
+                };
+                return types[fuelType] || fuelType;
+            };
+
+            const getTransmissionDisplay = (transmission) => {
+                const types = {
+                    'manual': 'Manual',
+                    'automatic': 'Automatic'
+                };
+                return types[transmission] || transmission;
+            };
+
+            return [
+                vehicle.id,
+                getVehicleTypeDisplay(vehicle.vehicle_type),
+                vehicle.vehicle_model || '',
+                vehicle.vehicle_plate || '',
+                vehicle.vehicle_year || '',
+                vehicle.vehicle_color || '',
+                getStatusDisplay(vehicle.status),
+                getFuelTypeDisplay(vehicle.fuel_type),
+                getTransmissionDisplay(vehicle.transmission_type),
+                vehicle.engine_capacity || '',
+                vehicle.assignedDistributor ? vehicle.assignedDistributor.full_name : 'Not Assigned',
+                vehicle.assignedDistributor ? vehicle.assignedDistributor.phone : '',
+                vehicle.assignedDistributor ? vehicle.assignedDistributor.email : '',
+                vehicle.insurance_company || '',
+                vehicle.insurance_expiry_date ? new Date(vehicle.insurance_expiry_date).toLocaleDateString('en-US') : '',
+                vehicle.registration_expiry_date ? new Date(vehicle.registration_expiry_date).toLocaleDateString('en-US') : '',
+                vehicle.purchase_date ? new Date(vehicle.purchase_date).toLocaleDateString('en-US') : '',
+                vehicle.purchase_price_eur || '0.00',
+                vehicle.purchase_price_syp || '0.00',
+                vehicle.current_km || '0',
+                vehicle.last_maintenance_date ? new Date(vehicle.last_maintenance_date).toLocaleDateString('en-US') : '',
+                vehicle.last_maintenance_km || '0',
+                vehicle.next_maintenance_km || '0',
+                vehicle.is_company_owned ? 'Yes' : 'No',
+                vehicle.creator ? vehicle.creator.full_name : '',
+                new Date(vehicle.created_at).toLocaleString('en-US'),
+                new Date(vehicle.updated_at).toLocaleString('en-US'),
+                vehicle.notes ? vehicle.notes.replace(/"/g, '""').replace(/\n/g, ' ') : ''
+            ];
+        });
+
+        // Create CSV content
+        const csvContent = [
+            csvHeaders.join(','),
+            ...csvData.map(row => 
+                row.map(field => {
+                    // Escape fields containing commas, quotes, or newlines
+                    if (typeof field === 'string' && (field.includes(',') || field.includes('"') || field.includes('\n'))) {
+                        return `"${field.replace(/"/g, '""')}"`;
+                    }
+                    return field;
+                }).join(',')
+            )
+        ].join('\n');
+
+        // Set headers for CSV download
+        const timestamp = new Date().toISOString().split('T')[0];
+        const filename = `vehicles_export_${timestamp}.csv`;
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Length', Buffer.byteLength(csvContent, 'utf8'));
+
+        // Add BOM for Excel compatibility
+        res.write('\uFEFF');
+        res.end(csvContent);
+
+        logger.info(`Vehicles CSV exported by ${req.user.full_name}, ${vehicles.length} records`);
+
+    } catch (error) {
+        logger.error('Export vehicles CSV error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في تصدير البيانات',
+            error: error.message
+        });
+    }
 }; 

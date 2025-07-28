@@ -217,18 +217,7 @@ export const createProduct = async (req, res) => {
             return parsed && parsed > 0 ? parsed : null;
         };
 
-        // Helper function for database fields that don't allow null but need positive validation
-        const parsePositiveNumberWithDefault = (value, defaultValue) => {
-            const parsed = parseNumber(value, null);
-            if (parsed && parsed > 0) return parsed;
-            return defaultValue; // Use provided default instead of null
-        };
 
-        const parsePositiveIntegerWithDefault = (value, defaultValue) => {
-            const parsed = parseInteger(value, null);
-            if (parsed && parsed > 0) return parsed;
-            return defaultValue; // Use provided default instead of null
-        };
 
         // Prepare clean product data
         const productData = {
@@ -237,7 +226,7 @@ export const createProduct = async (req, res) => {
             category: category || 'other',
             unit: unit || 'piece',
             price_eur: Math.max(parseNumber(price_eur, 0.01), 0.01), // Required field with minimum 0.01
-            price_syp: parsePositiveNumberWithDefault(price_syp, 0), // Use 0 as default if not provided or invalid
+            price_syp: parsePositiveNumber(price_syp), // Must be positive or null (not 0!)
             cost_eur: parseNumber(cost_eur, null), // Can be 0 or null
             cost_syp: parseNumber(cost_syp, null), // Can be 0 or null
             stock_quantity: parseInteger(stock_quantity, null), // Can be 0 or null
@@ -246,8 +235,8 @@ export const createProduct = async (req, res) => {
             is_featured: Boolean(is_featured),
             status: ['active', 'inactive', 'discontinued'].includes(status) ? status : 'active',
             image_url: image_url?.trim() || null,
-            weight_grams: parsePositiveIntegerWithDefault(weight_grams, 0), // Use 0 as default if not provided or invalid
-            shelf_life_days: parsePositiveIntegerWithDefault(shelf_life_days, 0), // Use 0 as default if not provided or invalid
+            weight_grams: parsePositiveInteger(weight_grams), // Must be positive or null (not 0!)
+            shelf_life_days: parsePositiveInteger(shelf_life_days), // Must be positive or null (not 0!)
             storage_conditions: storage_conditions?.trim() || null,
             created_by: req.userId || 1,
             created_by_name: created_by_name?.trim() || 'System',
@@ -455,19 +444,19 @@ export const updateProduct = async (req, res) => {
         if (name !== undefined) updateData.name = name?.trim();
         if (description !== undefined) updateData.description = description?.trim() || null;
         if (category !== undefined) updateData.category = category || 'other';
-                 if (unit !== undefined) updateData.unit = unit || 'piece';
-         if (price_eur !== undefined) updateData.price_eur = Math.max(parseNumber(price_eur, 0.01), 0.01);
-         if (price_syp !== undefined) updateData.price_syp = parsePositiveNumberWithDefault(price_syp, 0);
-         if (cost_eur !== undefined) updateData.cost_eur = parseNumber(cost_eur, null);
-         if (cost_syp !== undefined) updateData.cost_syp = parseNumber(cost_syp, null);
-         if (stock_quantity !== undefined) updateData.stock_quantity = parseInteger(stock_quantity, null);
-         if (minimum_stock !== undefined) updateData.minimum_stock = parseInteger(minimum_stock, null);
-         if (barcode !== undefined) updateData.barcode = barcode?.trim() || null;
-         if (is_featured !== undefined) updateData.is_featured = Boolean(is_featured);
-         if (status !== undefined) updateData.status = ['active', 'inactive', 'discontinued'].includes(status) ? status : 'active';
-         if (image_url !== undefined) updateData.image_url = image_url?.trim() || null;
-         if (weight_grams !== undefined) updateData.weight_grams = parsePositiveIntegerWithDefault(weight_grams, 0);
-         if (shelf_life_days !== undefined) updateData.shelf_life_days = parsePositiveIntegerWithDefault(shelf_life_days, 0);
+        if (unit !== undefined) updateData.unit = unit || 'piece';
+        if (price_eur !== undefined) updateData.price_eur = Math.max(parseNumber(price_eur, 0.01), 0.01);
+        if (price_syp !== undefined) updateData.price_syp = parsePositiveNumber(price_syp);
+        if (cost_eur !== undefined) updateData.cost_eur = parseNumber(cost_eur, null);
+        if (cost_syp !== undefined) updateData.cost_syp = parseNumber(cost_syp, null);
+        if (stock_quantity !== undefined) updateData.stock_quantity = parseInteger(stock_quantity, null);
+        if (minimum_stock !== undefined) updateData.minimum_stock = parseInteger(minimum_stock, null);
+        if (barcode !== undefined) updateData.barcode = barcode?.trim() || null;
+        if (is_featured !== undefined) updateData.is_featured = Boolean(is_featured);
+        if (status !== undefined) updateData.status = ['active', 'inactive', 'discontinued'].includes(status) ? status : 'active';
+        if (image_url !== undefined) updateData.image_url = image_url?.trim() || null;
+        if (weight_grams !== undefined) updateData.weight_grams = parsePositiveInteger(weight_grams);
+        if (shelf_life_days !== undefined) updateData.shelf_life_days = parsePositiveInteger(shelf_life_days);
         if (storage_conditions !== undefined) updateData.storage_conditions = storage_conditions?.trim() || null;
 
         // Handle JSON fields properly

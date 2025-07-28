@@ -10,7 +10,8 @@ import {
     getAvailableVehicles,
     getVehiclesByDistributor,
     getVehicleStatistics,
-    updateVehicleStatus
+    updateVehicleStatus,
+    exportVehiclesCSV
 } from '../controllers/vehicleController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
@@ -22,6 +23,7 @@ router.use(protect);
 // GET routes
 router.get('/', authorize('admin', 'manager'), getAllVehicles);
 router.get('/statistics', authorize('admin', 'manager'), getVehicleStatistics);
+router.get('/export/csv', authorize('admin', 'manager'), exportVehiclesCSV);
 router.get('/available', getAvailableVehicles);
 router.get('/distributor/:distributorId', getVehiclesByDistributor);
 router.get('/:id', getVehicleById);
