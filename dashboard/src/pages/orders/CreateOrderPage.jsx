@@ -45,9 +45,9 @@ const CreateOrderPage = () => {
     try {
       setLoadingStores(true);
       const response = await storeService.getStores({ status: "active" });
-      if (response.success && response.data) {
-        setStores(response.data.stores || response.data);
-      }
+      // Handle both old and new response formats
+      const storesData = response.data || response;
+      setStores(storesData.stores || storesData || []);
     } catch (error) {
       console.error("Error fetching stores:", error);
       toast.error("Error loading stores");
@@ -60,9 +60,9 @@ const CreateOrderPage = () => {
     try {
       setLoadingProducts(true);
       const response = await productService.getProducts({ status: "active" });
-      if (response.success && response.data) {
-        setProducts(response.data.products || response.data);
-      }
+      // Handle both old and new response formats
+      const productsData = response.data || response;
+      setProducts(productsData.products || productsData || []);
     } catch (error) {
       console.error("Error fetching products:", error);
       toast.error("Error loading products");

@@ -24,6 +24,7 @@ import EnhancedInput from "../../components/ui/EnhancedInput";
 import BackButton from "../../components/ui/BackButton";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import userService from "../../services/userService";
+import vehicleService from "../../services/vehicleService";
 
 const EditUserPage = () => {
   const navigate = useNavigate();
@@ -35,7 +36,9 @@ const EditUserPage = () => {
     phone: "",
     role: "",
     status: "active",
+    vehicle_id: "",
   });
+  const [availableVehicles, setAvailableVehicles] = useState([]);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -121,7 +124,13 @@ const EditUserPage = () => {
           phone: response.data.phone || "",
           role: response.data.role || "",
           status: response.data.status || "active",
+          vehicle_id: response.data.vehicle_info?.vehicle_id || "",
         });
+
+        // Load available vehicles if user is a distributor
+        if (response.data.role === "distributor") {
+          loadAvailableVehicles();
+        }
       } else {
         setUserNotFound(true);
         setErrors({ submit: response.message });
@@ -134,6 +143,17 @@ const EditUserPage = () => {
     }
   };
 
+  const loadAvailableVehicles = async () => {
+    try {
+      const response = await vehicleService.getAvailableVehicles();
+      if (response.success) {
+        setAvailableVehicles(response.data);
+      }
+    } catch (error) {
+      console.error("Error loading available vehicles:", error);
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -141,6 +161,11 @@ const EditUserPage = () => {
     // إزالة خطأ الحقل عند الكتابة
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+
+    // Load vehicles when role changes to distributor
+    if (name === "role" && value === "distributor") {
+      loadAvailableVehicles();
     }
   };
 
@@ -201,7 +226,20 @@ const EditUserPage = () => {
     setErrors({});
 
     try {
-      const response = await userService.updateUser(id, formData);
+      // Prepare data for submission
+      const submitData = {
+        ...formData,
+        // Format vehicle info as JSON for distributors
+        vehicle_info:
+          formData.role === "distributor" && formData.vehicle_id
+            ? {
+                vehicle_id: formData.vehicle_id,
+                assigned_date: new Date().toISOString(),
+              }
+            : null,
+      };
+
+      const response = await userService.updateUser(id, submitData);
 
       if (response.success) {
         setIsSuccess(true);
@@ -488,6 +526,34 @@ const EditUserPage = () => {
                     </div>
                   )}
                 </div>
+
+                {/* تعيين المركبة للموزعين */}
+                {formData.role === "distributor" && (
+                  <div className="space-y-4">
+                    <label className="block text-sm font-medium text-gray-700">
+                      تعيين المركبة
+                    </label>
+                    <select
+                      name="vehicle_id"
+                      value={formData.vehicle_id}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">اختر مركبة</option>
+                      {availableVehicles.map((vehicle) => (
+                        <option key={vehicle.id} value={vehicle.id}>
+                          {vehicle.plate_number} - {vehicle.model} (
+                          {vehicle.type})
+                        </option>
+                      ))}
+                    </select>
+                    {availableVehicles.length === 0 && (
+                      <p className="text-sm text-gray-500">
+                        لا توجد مركبات متاحة حالياً
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* أزرار الإجراءات */}
                 <div className="flex gap-4 pt-6 border-t border-gray-200">

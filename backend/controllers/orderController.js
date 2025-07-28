@@ -44,8 +44,7 @@ export const getOrders = async (req, res) => {
             const searchTerm = req.query.search.trim();
             whereClause[Op.or] = [
                 { order_number: { [Op.like]: `%${searchTerm}%` } },
-                { notes: { [Op.like]: `%${searchTerm}%` } },
-                { '$store.name$': { [Op.like]: `%${searchTerm}%` } }
+                { notes: { [Op.like]: `%${searchTerm}%` } }
             ];
             filters.search = searchTerm;
         }
@@ -99,23 +98,9 @@ export const getOrders = async (req, res) => {
             }
         }
 
+        // Simplified query without complex includes
         const { count, rows } = await Order.findAndCountAll({
             where: whereClause,
-            include: [
-                { model: Store, as: 'store' },
-                { model: User, as: 'creator', attributes: ['id', 'full_name', 'username'] },
-                {
-                    model: User,
-                    as: 'assignedDistributor',
-                    attributes: ['id', 'full_name', 'username', 'phone'],
-                    required: false
-                },
-                {
-                    model: OrderItem,
-                    as: 'items',
-                    include: [{ model: Product, as: 'product', attributes: ['id', 'name', 'unit'] }]
-                }
-            ],
             limit,
             offset,
             order: [['created_at', 'DESC']]
@@ -127,11 +112,40 @@ export const getOrders = async (req, res) => {
             total: count
         };
 
-        const ordersResponse = new OrdersListResponse(rows, pagination, filters);
+        // Create simple response without complex DTO
+        const orders = rows.map(order => ({
+            id: order.id,
+            order_number: order.order_number,
+            store_id: order.store_id,
+            store_name: order.store_name,
+            order_date: order.order_date,
+            delivery_date: order.delivery_date,
+            total_amount_eur: parseFloat(order.total_amount_eur || 0),
+            total_amount_syp: parseFloat(order.total_amount_syp || 0),
+            final_amount_eur: parseFloat(order.final_amount_eur || 0),
+            final_amount_syp: parseFloat(order.final_amount_syp || 0),
+            currency: order.currency,
+            status: order.status,
+            payment_status: order.payment_status,
+            notes: order.notes,
+            assigned_distributor_id: order.assigned_distributor_id,
+            created_by: order.created_by,
+            created_at: order.created_at,
+            updated_at: order.updated_at
+        }));
 
         res.json({
             success: true,
-            data: ordersResponse
+            data: {
+                orders,
+                pagination,
+                filters,
+                summary: {
+                    total_orders: count,
+                    total_amount_eur: orders.reduce((sum, order) => sum + order.final_amount_eur, 0),
+                    total_amount_syp: orders.reduce((sum, order) => sum + order.final_amount_syp, 0)
+                }
+            }
         });
 
     } catch (error) {
@@ -158,23 +172,8 @@ export const getOrder = async (req, res) => {
             });
         }
 
-        const order = await Order.findByPk(orderId, {
-            include: [
-                { model: Store, as: 'store' },
-                { model: User, as: 'creator', attributes: ['id', 'full_name', 'username'] },
-                {
-                    model: User,
-                    as: 'assignedDistributor',
-                    attributes: ['id', 'full_name', 'username', 'phone', 'email'],
-                    required: false
-                },
-                {
-                    model: OrderItem,
-                    as: 'items',
-                    include: [{ model: Product, as: 'product' }]
-                }
-            ]
-        });
+        // Simplified query without complex includes
+        const order = await Order.findByPk(orderId);
 
         if (!order) {
             return res.status(404).json({
@@ -198,11 +197,53 @@ export const getOrder = async (req, res) => {
             }
         }
 
-        const orderResponse = new OrderResponse(order, true, true, true, true);
+        // Get order items separately
+        const orderItems = await OrderItem.findAll({
+            where: { order_id: orderId },
+            include: [{ model: Product, as: 'product', attributes: ['id', 'name', 'unit'] }]
+        });
+
+        // Create simple response
+        const orderData = {
+            id: order.id,
+            order_number: order.order_number,
+            store_id: order.store_id,
+            store_name: order.store_name,
+            order_date: order.order_date,
+            delivery_date: order.delivery_date,
+            total_amount_eur: parseFloat(order.total_amount_eur || 0),
+            total_amount_syp: parseFloat(order.total_amount_syp || 0),
+            final_amount_eur: parseFloat(order.final_amount_eur || 0),
+            final_amount_syp: parseFloat(order.final_amount_syp || 0),
+            currency: order.currency,
+            status: order.status,
+            payment_status: order.payment_status,
+            notes: order.notes,
+            assigned_distributor_id: order.assigned_distributor_id,
+            created_by: order.created_by,
+            created_at: order.created_at,
+            updated_at: order.updated_at,
+            items: orderItems.map(item => ({
+                id: item.id,
+                product_id: item.product_id,
+                product_name: item.product_name,
+                quantity: item.quantity,
+                unit_price_eur: parseFloat(item.unit_price_eur || 0),
+                unit_price_syp: parseFloat(item.unit_price_syp || 0),
+                total_price_eur: parseFloat(item.total_price_eur || 0),
+                total_price_syp: parseFloat(item.total_price_syp || 0),
+                notes: item.notes,
+                product: item.product ? {
+                    id: item.product.id,
+                    name: item.product.name,
+                    unit: item.product.unit
+                } : null
+            }))
+        };
 
         res.json({
             success: true,
-            data: orderResponse
+            data: orderData
         });
 
     } catch (error) {

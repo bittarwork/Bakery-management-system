@@ -98,3 +98,4 @@ CardBody.displayName = "CardBody";
 CardFooter.displayName = "CardFooter";
 
 export { Card, CardHeader, CardBody, CardFooter };
+export default Card;

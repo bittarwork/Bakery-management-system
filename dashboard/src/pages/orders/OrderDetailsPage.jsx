@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
+import { useState, useEffect } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import {
   PencilIcon,
   TrashIcon,
   UserIcon,
@@ -9,20 +9,20 @@ import {
   CurrencyEuroIcon,
   DocumentTextIcon,
   CheckCircleIcon,
-  XCircleIcon
-} from '@heroicons/react/24/outline';
-import { toast } from 'react-hot-toast';
-import orderService from '../../services/orderService.js';
-import userService from '../../services/userService';
-import Card from '../../components/ui/Card';
-import Badge from '../../components/ui/Badge';
-import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import BackButton from '../../components/ui/BackButton';
+  XCircleIcon,
+} from "@heroicons/react/24/outline";
+import { toast } from "react-hot-toast";
+import orderService from "../../services/orderService.js";
+import userService from "../../services/userService";
+import Card from "../../components/ui/Card";
+import Badge from "../../components/ui/Badge";
+import LoadingSpinner from "../../components/ui/LoadingSpinner";
+import BackButton from "../../components/ui/BackButton";
 
 const OrderDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+
   // State management
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -41,11 +41,13 @@ const OrderDetailsPage = () => {
     try {
       setLoading(true);
       const response = await orderService.getOrder(id);
-      setOrder(response);
+      // Handle both old and new response formats
+      const orderData = response.data || response;
+      setOrder(orderData);
     } catch (error) {
-      console.error('Error loading order:', error);
-      toast.error('Error loading order');
-      navigate('/orders');
+      console.error("Error loading order:", error);
+      toast.error("Error loading order");
+      navigate("/orders");
     } finally {
       setLoading(false);
     }
@@ -53,12 +55,12 @@ const OrderDetailsPage = () => {
 
   const loadDistributors = async () => {
     try {
-      const response = await userService.getUsers({ role: 'distributor' });
-      if (response.success && response.data) {
-        setDistributors(response.data.users || response.data);
-      }
+      const response = await userService.getUsers({ role: "distributor" });
+      // Handle both old and new response formats
+      const usersData = response.data || response;
+      setDistributors(usersData.users || usersData || []);
     } catch (error) {
-      console.error('Error loading distributors:', error);
+      console.error("Error loading distributors:", error);
     }
   };
 
@@ -67,11 +69,14 @@ const OrderDetailsPage = () => {
     try {
       setUpdating(true);
       await orderService.updateOrderStatus(id, newStatus);
-      toast.success('Order status updated successfully');
+      toast.success("Order status updated successfully");
       loadOrder();
     } catch (error) {
-      console.error('Error updating status:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Error updating status';
+      console.error("Error updating status:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Error updating status";
       toast.error(errorMessage);
     } finally {
       setUpdating(false);
@@ -82,11 +87,14 @@ const OrderDetailsPage = () => {
     try {
       setUpdating(true);
       await orderService.updatePaymentStatus(id, newPaymentStatus);
-      toast.success('Payment status updated successfully');
+      toast.success("Payment status updated successfully");
       loadOrder();
     } catch (error) {
-      console.error('Error updating payment status:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Error updating payment status';
+      console.error("Error updating payment status:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Error updating payment status";
       toast.error(errorMessage);
     } finally {
       setUpdating(false);
@@ -99,15 +107,18 @@ const OrderDetailsPage = () => {
       setUpdating(true);
       if (distributorId) {
         await orderService.assignDistributor(id, distributorId);
-        toast.success('Distributor assigned successfully');
+        toast.success("Distributor assigned successfully");
       } else {
         await orderService.unassignDistributor(id);
-        toast.success('Distributor unassigned successfully');
+        toast.success("Distributor unassigned successfully");
       }
       loadOrder();
     } catch (error) {
-      console.error('Error updating distributor:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Error updating distributor';
+      console.error("Error updating distributor:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Error updating distributor";
       toast.error(errorMessage);
     } finally {
       setUpdating(false);
@@ -116,17 +127,20 @@ const OrderDetailsPage = () => {
 
   // Handle order deletion
   const handleDeleteOrder = async () => {
-    if (!window.confirm('Are you sure you want to delete this order?')) {
+    if (!window.confirm("Are you sure you want to delete this order?")) {
       return;
     }
 
     try {
       await orderService.deleteOrder(id);
-      toast.success('Order deleted successfully');
-      navigate('/orders');
+      toast.success("Order deleted successfully");
+      navigate("/orders");
     } catch (error) {
-      console.error('Error deleting order:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Error deleting order';
+      console.error("Error deleting order:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Error deleting order";
       toast.error(errorMessage);
     }
   };
@@ -142,8 +156,12 @@ const OrderDetailsPage = () => {
   if (!order) {
     return (
       <div className="text-center py-12">
-        <h3 className="text-lg font-medium text-gray-900 mb-1">Order not found</h3>
-        <p className="text-gray-500 mb-4">The order you're looking for doesn't exist.</p>
+        <h3 className="text-lg font-medium text-gray-900 mb-1">
+          Order not found
+        </h3>
+        <p className="text-gray-500 mb-4">
+          The order you're looking for doesn't exist.
+        </p>
         <Link
           to="/orders"
           className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700"
@@ -195,7 +213,9 @@ const OrderDetailsPage = () => {
           {/* Order Status */}
           <Card>
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Order Status</h2>
+              <h2 className="text-lg font-medium text-gray-900">
+                Order Status
+              </h2>
             </div>
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -207,9 +227,11 @@ const OrderDetailsPage = () => {
                     value={order.status}
                     onChange={(e) => handleStatusUpdate(e.target.value)}
                     disabled={updating}
-                    className={`w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${orderService.getStatusColor(order.status)} border-none`}
+                    className={`w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${orderService.getStatusColor(
+                      order.status
+                    )} border-none`}
                   >
-                    {orderService.getStatusOptions().map(option => (
+                    {orderService.getStatusOptions().map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
@@ -224,9 +246,11 @@ const OrderDetailsPage = () => {
                     value={order.payment_status}
                     onChange={(e) => handlePaymentStatusUpdate(e.target.value)}
                     disabled={updating}
-                    className={`w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${orderService.getPaymentStatusColor(order.payment_status)} border-none`}
+                    className={`w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${orderService.getPaymentStatusColor(
+                      order.payment_status
+                    )} border-none`}
                   >
-                    {orderService.getPaymentStatusOptions().map(option => (
+                    {orderService.getPaymentStatusOptions().map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
@@ -269,7 +293,8 @@ const OrderDetailsPage = () => {
                             {item.product?.name || item.product_name}
                           </div>
                           <div className="text-sm text-gray-500">
-                            Unit: {item.product?.unit || item.product_unit || 'piece'}
+                            Unit:{" "}
+                            {item.product?.unit || item.product_unit || "piece"}
                           </div>
                           {item.notes && (
                             <div className="text-sm text-gray-500 italic">
@@ -284,16 +309,26 @@ const OrderDetailsPage = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center text-sm text-gray-900">
-                        {order.currency === 'EUR' 
-                          ? orderService.formatAmount(item.unit_price_eur, 'EUR')
-                          : orderService.formatAmount(item.unit_price_syp, 'SYP')
-                        }
+                        {order.currency === "EUR"
+                          ? orderService.formatAmount(
+                              item.unit_price_eur,
+                              "EUR"
+                            )
+                          : orderService.formatAmount(
+                              item.unit_price_syp,
+                              "SYP"
+                            )}
                       </td>
                       <td className="px-6 py-4 text-center text-sm font-medium text-gray-900">
-                        {order.currency === 'EUR' 
-                          ? orderService.formatAmount(item.total_price_eur, 'EUR')
-                          : orderService.formatAmount(item.total_price_syp, 'SYP')
-                        }
+                        {order.currency === "EUR"
+                          ? orderService.formatAmount(
+                              item.total_price_eur,
+                              "EUR"
+                            )
+                          : orderService.formatAmount(
+                              item.total_price_syp,
+                              "SYP"
+                            )}
                       </td>
                     </tr>
                   ))}
@@ -303,12 +338,13 @@ const OrderDetailsPage = () => {
             {/* Order Total */}
             <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
               <div className="flex justify-between items-center">
-                <span className="text-lg font-medium text-gray-900">Total Amount:</span>
+                <span className="text-lg font-medium text-gray-900">
+                  Total Amount:
+                </span>
                 <span className="text-xl font-bold text-blue-600">
-                  {order.currency === 'EUR' 
-                    ? orderService.formatAmount(order.final_amount_eur, 'EUR')
-                    : orderService.formatAmount(order.final_amount_syp, 'SYP')
-                  }
+                  {order.currency === "EUR"
+                    ? orderService.formatAmount(order.final_amount_eur, "EUR")
+                    : orderService.formatAmount(order.final_amount_syp, "SYP")}
                 </span>
               </div>
             </div>
@@ -335,24 +371,34 @@ const OrderDetailsPage = () => {
           {/* Order Summary */}
           <Card>
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Order Summary</h2>
+              <h2 className="text-lg font-medium text-gray-900">
+                Order Summary
+              </h2>
             </div>
             <div className="p-6 space-y-4">
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Order ID:</span>
-                <span className="text-sm font-medium text-gray-900">{order.id}</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {order.id}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Order Number:</span>
-                <span className="text-sm font-medium text-gray-900">{order.order_number}</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {order.order_number}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Currency:</span>
-                <span className="text-sm font-medium text-gray-900">{order.currency}</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {order.currency}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Items Count:</span>
-                <span className="text-sm font-medium text-gray-900">{order.items?.length || 0}</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {order.items?.length || 0}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Created By:</span>
@@ -377,7 +423,9 @@ const OrderDetailsPage = () => {
                   {order.store?.name || order.store_name}
                 </h3>
                 {order.store?.location && (
-                  <p className="text-sm text-gray-600 mt-1">{order.store.location}</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {order.store.location}
+                  </p>
                 )}
                 {order.store?.phone && (
                   <p className="text-sm text-gray-600">{order.store.phone}</p>
@@ -403,7 +451,9 @@ const OrderDetailsPage = () => {
                         {order.assignedDistributor?.full_name}
                       </h3>
                       {order.assignedDistributor?.phone && (
-                        <p className="text-sm text-gray-600">{order.assignedDistributor.phone}</p>
+                        <p className="text-sm text-gray-600">
+                          {order.assignedDistributor.phone}
+                        </p>
                       )}
                     </div>
                     <Badge color="green">
@@ -426,12 +476,15 @@ const OrderDetailsPage = () => {
                     <span className="text-sm">No distributor assigned</span>
                   </div>
                   <select
-                    onChange={(e) => e.target.value && handleDistributorAssignment(parseInt(e.target.value))}
+                    onChange={(e) =>
+                      e.target.value &&
+                      handleDistributorAssignment(parseInt(e.target.value))
+                    }
                     disabled={updating}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Select Distributor</option>
-                    {distributors.map(distributor => (
+                    {distributors.map((distributor) => (
                       <option key={distributor.id} value={distributor.id}>
                         {distributor.full_name}
                       </option>

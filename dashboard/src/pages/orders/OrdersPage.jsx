@@ -1,45 +1,45 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { 
-  PlusIcon, 
-  EyeIcon, 
-  PencilIcon, 
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  PlusIcon,
+  EyeIcon,
+  PencilIcon,
   TrashIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
   ArrowDownTrayIcon,
-  UserIcon
-} from '@heroicons/react/24/outline';
-import { toast } from 'react-hot-toast';
-import orderService from '../../services/orderService.js';
-import storeService from '../../services/storeService';
-import userService from '../../services/userService';
-import Card from '../../components/ui/Card';
-import Badge from '../../components/ui/Badge';
-import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import Pagination from '../../components/ui/Pagination';
+  UserIcon,
+} from "@heroicons/react/24/outline";
+import { toast } from "react-hot-toast";
+import orderService from "../../services/orderService.js";
+import storeService from "../../services/storeService";
+import userService from "../../services/userService";
+import Card from "../../components/ui/Card";
+import Badge from "../../components/ui/Badge";
+import LoadingSpinner from "../../components/ui/LoadingSpinner";
+import Pagination from "../../components/ui/Pagination";
 
 const OrdersPage = () => {
   const navigate = useNavigate();
-  
+
   // State management
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalOrders, setTotalOrders] = useState(0);
   const [stores, setStores] = useState([]);
   const [distributors, setDistributors] = useState([]);
-  
+
   // Filters and pagination
   const [filters, setFilters] = useState({
     page: 1,
     limit: 10,
-    search: '',
-    status: '',
-    payment_status: '',
-    store_id: '',
-    distributor_id: '',
-    date_from: '',
-    date_to: ''
+    search: "",
+    status: "",
+    payment_status: "",
+    store_id: "",
+    distributor_id: "",
+    date_from: "",
+    date_to: "",
   });
 
   // UI state
@@ -63,12 +63,14 @@ const OrdersPage = () => {
     try {
       setLoading(true);
       const response = await orderService.getOrders(filters);
-      
-      setOrders(response.orders || []);
-      setTotalOrders(response.pagination?.total || 0);
+
+      // Handle both old and new response formats
+      const ordersData = response.data || response;
+      setOrders(ordersData.orders || ordersData || []);
+      setTotalOrders(ordersData.pagination?.total || 0);
     } catch (error) {
-      console.error('Error loading orders:', error);
-      toast.error('Error loading orders');
+      console.error("Error loading orders:", error);
+      toast.error("Error loading orders");
     } finally {
       setLoading(false);
     }
@@ -77,37 +79,37 @@ const OrdersPage = () => {
   const loadStores = async () => {
     try {
       const response = await storeService.getStores();
-      if (response.success && response.data) {
-        setStores(response.data.stores || response.data);
-      }
+      // Handle both old and new response formats
+      const storesData = response.data || response;
+      setStores(storesData.stores || storesData || []);
     } catch (error) {
-      console.error('Error loading stores:', error);
+      console.error("Error loading stores:", error);
     }
   };
 
   const loadDistributors = async () => {
     try {
-      const response = await userService.getUsers({ role: 'distributor' });
-      if (response.success && response.data) {
-        setDistributors(response.data.users || response.data);
-      }
+      const response = await userService.getUsers({ role: "distributor" });
+      // Handle both old and new response formats
+      const usersData = response.data || response;
+      setDistributors(usersData.users || usersData || []);
     } catch (error) {
-      console.error('Error loading distributors:', error);
+      console.error("Error loading distributors:", error);
     }
   };
 
   // Handle filter changes
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
       [key]: value,
-      page: 1 // Reset to first page when filters change
+      page: 1, // Reset to first page when filters change
     }));
   };
 
   // Handle pagination
   const handlePageChange = (page) => {
-    setFilters(prev => ({ ...prev, page }));
+    setFilters((prev) => ({ ...prev, page }));
   };
 
   // Clear filters
@@ -115,29 +117,32 @@ const OrdersPage = () => {
     setFilters({
       page: 1,
       limit: 10,
-      search: '',
-      status: '',
-      payment_status: '',
-      store_id: '',
-      distributor_id: '',
-      date_from: '',
-      date_to: ''
+      search: "",
+      status: "",
+      payment_status: "",
+      store_id: "",
+      distributor_id: "",
+      date_from: "",
+      date_to: "",
     });
   };
 
   // Handle order deletion
   const handleDeleteOrder = async (orderId) => {
-    if (!window.confirm('Are you sure you want to delete this order?')) {
+    if (!window.confirm("Are you sure you want to delete this order?")) {
       return;
     }
 
     try {
       await orderService.deleteOrder(orderId);
-      toast.success('Order deleted successfully');
+      toast.success("Order deleted successfully");
       loadOrders();
     } catch (error) {
-      console.error('Error deleting order:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Error deleting order';
+      console.error("Error deleting order:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Error deleting order";
       toast.error(errorMessage);
     }
   };
@@ -146,11 +151,14 @@ const OrdersPage = () => {
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
       await orderService.updateOrderStatus(orderId, newStatus);
-      toast.success('Order status updated successfully');
+      toast.success("Order status updated successfully");
       loadOrders();
     } catch (error) {
-      console.error('Error updating order status:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Error updating order status';
+      console.error("Error updating order status:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Error updating order status";
       toast.error(errorMessage);
     }
   };
@@ -159,11 +167,14 @@ const OrdersPage = () => {
   const handlePaymentStatusUpdate = async (orderId, newPaymentStatus) => {
     try {
       await orderService.updatePaymentStatus(orderId, newPaymentStatus);
-      toast.success('Payment status updated successfully');
+      toast.success("Payment status updated successfully");
       loadOrders();
     } catch (error) {
-      console.error('Error updating payment status:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Error updating payment status';
+      console.error("Error updating payment status:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Error updating payment status";
       toast.error(errorMessage);
     }
   };
@@ -172,11 +183,14 @@ const OrdersPage = () => {
   const handleAssignDistributor = async (orderId, distributorId) => {
     try {
       await orderService.assignDistributor(orderId, distributorId);
-      toast.success('Distributor assigned successfully');
+      toast.success("Distributor assigned successfully");
       loadOrders();
     } catch (error) {
-      console.error('Error assigning distributor:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Error assigning distributor';
+      console.error("Error assigning distributor:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Error assigning distributor";
       toast.error(errorMessage);
     }
   };
@@ -184,16 +198,14 @@ const OrdersPage = () => {
   // Export orders
   const handleExportOrders = async () => {
     try {
-      const response = await orderService.exportOrders('csv');
+      const response = await orderService.exportOrders("csv");
       // Handle CSV download (simplified)
-      toast.success('Orders exported successfully');
+      toast.success("Orders exported successfully");
     } catch (error) {
-      console.error('Error exporting orders:', error);
-      toast.error('Error exporting orders');
+      console.error("Error exporting orders:", error);
+      toast.error("Error exporting orders");
     }
   };
-
-  const totalPages = Math.ceil(totalOrders / filters.limit);
 
   return (
     <div className="space-y-6">
@@ -232,7 +244,7 @@ const OrdersPage = () => {
                   type="text"
                   placeholder="Search orders..."
                   value={filters.search}
-                  onChange={(e) => handleFilterChange('search', e.target.value)}
+                  onChange={(e) => handleFilterChange("search", e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -256,11 +268,11 @@ const OrdersPage = () => {
                 </label>
                 <select
                   value={filters.status}
-                  onChange={(e) => handleFilterChange('status', e.target.value)}
+                  onChange={(e) => handleFilterChange("status", e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">All Statuses</option>
-                  {orderService.getStatusOptions().map(option => (
+                  {orderService.getStatusOptions().map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
@@ -275,11 +287,13 @@ const OrdersPage = () => {
                 </label>
                 <select
                   value={filters.payment_status}
-                  onChange={(e) => handleFilterChange('payment_status', e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("payment_status", e.target.value)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">All Payment Statuses</option>
-                  {orderService.getPaymentStatusOptions().map(option => (
+                  {orderService.getPaymentStatusOptions().map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
@@ -294,11 +308,13 @@ const OrdersPage = () => {
                 </label>
                 <select
                   value={filters.store_id}
-                  onChange={(e) => handleFilterChange('store_id', e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("store_id", e.target.value)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">All Stores</option>
-                  {stores.map(store => (
+                  {stores.map((store) => (
                     <option key={store.id} value={store.id}>
                       {store.name}
                     </option>
@@ -313,11 +329,13 @@ const OrdersPage = () => {
                 </label>
                 <select
                   value={filters.distributor_id}
-                  onChange={(e) => handleFilterChange('distributor_id', e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("distributor_id", e.target.value)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">All Distributors</option>
-                  {distributors.map(distributor => (
+                  {distributors.map((distributor) => (
                     <option key={distributor.id} value={distributor.id}>
                       {distributor.full_name}
                     </option>
@@ -333,7 +351,9 @@ const OrdersPage = () => {
                 <input
                   type="date"
                   value={filters.date_from}
-                  onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("date_from", e.target.value)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -345,7 +365,9 @@ const OrdersPage = () => {
                 <input
                   type="date"
                   value={filters.date_to}
-                  onChange={(e) => handleFilterChange('date_to', e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("date_to", e.target.value)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -381,12 +403,26 @@ const OrdersPage = () => {
         ) : orders.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
-              <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <svg
+                className="mx-auto h-12 w-12"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-1">No orders found</h3>
-            <p className="text-gray-500 mb-4">Get started by creating your first order.</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-1">
+              No orders found
+            </h3>
+            <p className="text-gray-500 mb-4">
+              Get started by creating your first order.
+            </p>
             <Link
               to="/orders/create"
               className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700"
@@ -448,10 +484,14 @@ const OrdersPage = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <select
                           value={order.status}
-                          onChange={(e) => handleStatusUpdate(order.id, e.target.value)}
-                          className={`text-xs font-medium px-2 py-1 rounded-full border-none focus:ring-2 focus:ring-blue-500 ${orderService.getStatusColor(order.status)}`}
+                          onChange={(e) =>
+                            handleStatusUpdate(order.id, e.target.value)
+                          }
+                          className={`text-xs font-medium px-2 py-1 rounded-full border-none focus:ring-2 focus:ring-blue-500 ${orderService.getStatusColor(
+                            order.status
+                          )}`}
                         >
-                          {orderService.getStatusOptions().map(option => (
+                          {orderService.getStatusOptions().map((option) => (
                             <option key={option.value} value={option.value}>
                               {option.label}
                             </option>
@@ -461,14 +501,20 @@ const OrdersPage = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <select
                           value={order.payment_status}
-                          onChange={(e) => handlePaymentStatusUpdate(order.id, e.target.value)}
-                          className={`text-xs font-medium px-2 py-1 rounded-full border-none focus:ring-2 focus:ring-blue-500 ${orderService.getPaymentStatusColor(order.payment_status)}`}
+                          onChange={(e) =>
+                            handlePaymentStatusUpdate(order.id, e.target.value)
+                          }
+                          className={`text-xs font-medium px-2 py-1 rounded-full border-none focus:ring-2 focus:ring-blue-500 ${orderService.getPaymentStatusColor(
+                            order.payment_status
+                          )}`}
                         >
-                          {orderService.getPaymentStatusOptions().map(option => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
+                          {orderService
+                            .getPaymentStatusOptions()
+                            .map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
                         </select>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -478,12 +524,21 @@ const OrdersPage = () => {
                           </div>
                         ) : (
                           <select
-                            onChange={(e) => e.target.value && handleAssignDistributor(order.id, parseInt(e.target.value))}
+                            onChange={(e) =>
+                              e.target.value &&
+                              handleAssignDistributor(
+                                order.id,
+                                parseInt(e.target.value)
+                              )
+                            }
                             className="text-xs px-2 py-1 border border-gray-300 rounded text-gray-500"
                           >
                             <option value="">Assign Distributor</option>
-                            {distributors.map(distributor => (
-                              <option key={distributor.id} value={distributor.id}>
+                            {distributors.map((distributor) => (
+                              <option
+                                key={distributor.id}
+                                value={distributor.id}
+                              >
                                 {distributor.full_name}
                               </option>
                             ))}
@@ -492,10 +547,15 @@ const OrdersPage = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
-                          {order.currency === 'EUR' 
-                            ? orderService.formatAmount(order.final_amount_eur, 'EUR')
-                            : orderService.formatAmount(order.final_amount_syp, 'SYP')
-                          }
+                          {order.currency === "EUR"
+                            ? orderService.formatAmount(
+                                order.final_amount_eur,
+                                "EUR"
+                              )
+                            : orderService.formatAmount(
+                                order.final_amount_syp,
+                                "SYP"
+                              )}
                         </div>
                         <div className="text-sm text-gray-500">
                           {order.currency}
@@ -553,4 +613,4 @@ const OrdersPage = () => {
   );
 };
 
-export default OrdersPage; 
+export default OrdersPage;
