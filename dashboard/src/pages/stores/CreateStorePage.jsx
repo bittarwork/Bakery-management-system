@@ -36,12 +36,12 @@ import { AnimatePresence } from "framer-motion";
 
 const CreateStorePage = () => {
   const navigate = useNavigate();
-  
+
   // Add creation mode state
   const [creationMode, setCreationMode] = useState("quick"); // "quick" or "detailed"
   const [currentLocation, setCurrentLocation] = useState(null);
   const [locationLoading, setLocationLoading] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     name: "",
     owner_name: "",
@@ -80,45 +80,40 @@ const CreateStorePage = () => {
     setLocationLoading(true);
     try {
       if (!navigator.geolocation) {
-        throw new Error('المتصفح لا يدعم تحديد الموقع');
+        throw new Error("المتصفح لا يدعم تحديد الموقع");
       }
 
       const position = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          resolve,
-          reject,
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 300000, // 5 minutes
-          }
-        );
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000, // 5 minutes
+        });
       });
 
       const location = {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
         accuracy: position.coords.accuracy,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
 
       setCurrentLocation(location);
       setSelectedLocation({
         lat: location.latitude,
         lng: location.longitude,
-        name: "الموقع الحالي"
+        name: "الموقع الحالي",
       });
 
       // Clear location error if it exists
-      setErrors(prev => ({ ...prev, location: "" }));
-
+      setErrors((prev) => ({ ...prev, location: "" }));
     } catch (error) {
-      console.error('Error getting location:', error);
-      setErrors(prev => ({ 
-        ...prev, 
-        location: error.message.includes('denied') 
-          ? 'تم رفض الوصول للموقع. يرجى السماح بالوصول للموقع من إعدادات المتصفح' 
-          : 'خطأ في تحديد الموقع الحالي'
+      console.error("Error getting location:", error);
+      setErrors((prev) => ({
+        ...prev,
+        location: error.message.includes("denied")
+          ? "تم رفض الوصول للموقع. يرجى السماح بالوصول للموقع من إعدادات المتصفح"
+          : "خطأ في تحديد الموقع الحالي",
       }));
     } finally {
       setLocationLoading(false);
@@ -231,7 +226,8 @@ const CreateStorePage = () => {
     // For quick mode, only location is required besides name
     if (creationMode === "quick") {
       if (!currentLocation && !selectedLocation) {
-        newErrors.location = "يجب تحديد موقع المحل - استخدم زر 'استخدام الموقع الحالي' أو اختر من الخريطة";
+        newErrors.location =
+          "يجب تحديد موقع المحل - استخدم زر 'استخدام الموقع الحالي' أو اختر من الخريطة";
       }
     } else {
       // Detailed mode validations
@@ -244,7 +240,10 @@ const CreateStorePage = () => {
         newErrors.phone = "رقم الهاتف غير صحيح";
       }
 
-      if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      if (
+        formData.email &&
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
+      ) {
         newErrors.email = "البريد الإلكتروني غير صحيح";
       }
 
@@ -280,35 +279,77 @@ const CreateStorePage = () => {
       let response;
 
       if (creationMode === "quick") {
+        // Validate location data before sending
+        if (!currentLocation && !selectedLocation) {
+          setErrors({
+            location:
+              "يجب اختيار موقع المحل على الخريطة أو السماح بالوصول للموقع الحالي",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Ensure location data is properly formatted
+        let locationData;
+        if (currentLocation) {
+          locationData = {
+            latitude: parseFloat(currentLocation.latitude),
+            longitude: parseFloat(currentLocation.longitude),
+          };
+        } else if (selectedLocation) {
+          locationData = {
+            latitude: parseFloat(selectedLocation.lat),
+            longitude: parseFloat(selectedLocation.lng),
+          };
+        }
+
+        // Validate location coordinates
+        if (
+          !locationData ||
+          isNaN(locationData.latitude) ||
+          isNaN(locationData.longitude) ||
+          locationData.latitude < -90 ||
+          locationData.latitude > 90 ||
+          locationData.longitude < -180 ||
+          locationData.longitude > 180
+        ) {
+          setErrors({ location: "إحداثيات الموقع غير صحيحة" });
+          setIsLoading(false);
+          return;
+        }
+
         // Use quick create API
         const quickData = {
           name: formData.name.trim(),
-          current_location: currentLocation || {
-            latitude: selectedLocation.lat,
-            longitude: selectedLocation.lng
-          },
+          current_location: locationData,
           owner_name: formData.owner_name?.trim() || null,
           phone: formData.phone?.trim() || null,
           category: formData.category,
           store_type: formData.store_type,
           address_details: formData.address_details?.trim() || null,
-          special_instructions: formData.special_instructions?.trim() || null
+          special_instructions: formData.special_instructions?.trim() || null,
         };
+
+        console.log("Quick create data being sent:", quickData); // Debug log
 
         response = await storeService.quickCreateStore(quickData);
       } else {
         // Use detailed create API
         const storeData = {
           ...formData,
-          gps_coordinates: currentLocation ? {
-              latitude: currentLocation.latitude,
-              longitude: currentLocation.longitude,
-              source: 'distributor_current_location'
-            } : selectedLocation ? {
-              latitude: selectedLocation.lat,
-              longitude: selectedLocation.lng,
-              name: selectedLocation.name || null,
-            } : null,
+          gps_coordinates: currentLocation
+            ? {
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+                source: "distributor_current_location",
+              }
+            : selectedLocation
+            ? {
+                latitude: selectedLocation.lat,
+                longitude: selectedLocation.lng,
+                name: selectedLocation.name || null,
+              }
+            : null,
           // Convert numeric fields
           credit_limit_eur: formData.credit_limit_eur
             ? parseFloat(formData.credit_limit_eur)
@@ -335,7 +376,14 @@ const CreateStorePage = () => {
     } catch (error) {
       console.error("Error creating store:", error);
       if (error.response?.data?.errors) {
-        setErrors(error.response.data.errors);
+        // Handle validation errors from backend
+        const backendErrors = {};
+        error.response.data.errors.forEach((err) => {
+          backendErrors[err.path || "submit"] = err.msg || err.message;
+        });
+        setErrors(backendErrors);
+      } else if (error.response?.data?.message) {
+        setErrors({ submit: error.response.data.message });
       } else {
         setErrors({ submit: "خطأ في إنشاء المحل. يرجى المحاولة مرة أخرى." });
       }
@@ -389,7 +437,8 @@ const CreateStorePage = () => {
           <div className="text-center mb-6">
             {creationMode === "quick" ? (
               <p className="text-gray-600">
-                الوضع السريع: أدخل اسم المحل واستخدم موقعك الحالي للإضافة السريعة
+                الوضع السريع: أدخل اسم المحل واستخدم موقعك الحالي للإضافة
+                السريعة
               </p>
             ) : (
               <p className="text-gray-600">
@@ -477,7 +526,9 @@ const CreateStorePage = () => {
                           variant="primary"
                           icon={<Navigation className="w-4 h-4" />}
                         >
-                          {locationLoading ? "جاري تحديد الموقع..." : "استخدام الموقع الحالي"}
+                          {locationLoading
+                            ? "جاري تحديد الموقع..."
+                            : "استخدام الموقع الحالي"}
                         </EnhancedButton>
 
                         {currentLocation && (
@@ -489,7 +540,7 @@ const CreateStorePage = () => {
                               </span>
                             </div>
                             <div className="text-xs text-green-600 mt-1">
-                              خط العرض: {currentLocation.latitude.toFixed(6)}, 
+                              خط العرض: {currentLocation.latitude.toFixed(6)},
                               خط الطول: {currentLocation.longitude.toFixed(6)}
                             </div>
                           </div>
@@ -712,7 +763,9 @@ const CreateStorePage = () => {
                           variant="primary"
                           icon={<Navigation className="w-4 h-4" />}
                         >
-                          {locationLoading ? "جاري تحديد الموقع..." : "استخدام الموقع الحالي"}
+                          {locationLoading
+                            ? "جاري تحديد الموقع..."
+                            : "استخدام الموقع الحالي"}
                         </EnhancedButton>
 
                         {currentLocation && (
@@ -740,7 +793,8 @@ const CreateStorePage = () => {
                       </div>
 
                       <p className="text-sm text-gray-600">
-                        استخدم زر "استخدام الموقع الحالي" أو انقر على الخريطة لاختيار موقع المحل.
+                        استخدم زر "استخدام الموقع الحالي" أو انقر على الخريطة
+                        لاختيار موقع المحل.
                       </p>
 
                       {errors.location && (
@@ -771,12 +825,11 @@ const CreateStorePage = () => {
               icon={<Save className="w-5 h-5" />}
               fullWidth
             >
-              {isLoading 
-                ? "جاري الإنشاء..." 
-                : creationMode === "quick" 
-                  ? "إنشاء المحل سريعاً" 
-                  : "إنشاء المحل"
-              }
+              {isLoading
+                ? "جاري الإنشاء..."
+                : creationMode === "quick"
+                ? "إنشاء المحل سريعاً"
+                : "إنشاء المحل"}
             </EnhancedButton>
             <EnhancedButton
               type="button"

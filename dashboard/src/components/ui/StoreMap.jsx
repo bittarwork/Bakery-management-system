@@ -24,30 +24,304 @@ const StoreMap = ({
   // Use Google Maps API key from config
   const googleMapsApiKey = config.GOOGLE_MAPS_API_KEY;
 
+  // Add markers for Google Maps
+  const addGoogleMarkers = (mapInstance) => {
+    if (!window.google || !window.google.maps || !stores.length) return;
+
+    stores.forEach((store) => {
+      if (!store.latitude || !store.longitude) return;
+
+      const position = {
+        lat: parseFloat(store.latitude),
+        lng: parseFloat(store.longitude),
+      };
+
+      const marker = new window.google.maps.Marker({
+        position: position,
+        map: mapInstance,
+        title: store.name,
+        icon: {
+          url:
+            "data:image/svg+xml;charset=UTF-8," +
+            encodeURIComponent(`
+            <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="16" cy="16" r="12" fill="#EF4444" stroke="#ffffff" stroke-width="2"/>
+              <circle cx="16" cy="16" r="6" fill="#ffffff"/>
+            </svg>
+          `),
+          scaledSize: new window.google.maps.Size(32, 32),
+          anchor: new window.google.maps.Point(16, 16),
+        },
+      });
+
+      // Add info window
+      const infoWindow = new window.google.maps.InfoWindow({
+        content: `
+          <div style="padding: 8px; max-width: 250px;">
+            <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 16px; font-weight: 600;">${
+              store.name
+            }</h3>
+            ${
+              store.owner_name
+                ? `<p style="margin: 4px 0; color: #6b7280;"><strong>المالك:</strong> ${store.owner_name}</p>`
+                : ""
+            }
+            ${
+              store.phone
+                ? `<p style="margin: 4px 0; color: #6b7280;"><strong>الهاتف:</strong> ${store.phone}</p>`
+                : ""
+            }
+            ${
+              store.address
+                ? `<p style="margin: 4px 0; color: #6b7280;"><strong>العنوان:</strong> ${store.address}</p>`
+                : ""
+            }
+            ${
+              store.category
+                ? `<p style="margin: 4px 0; color: #6b7280;"><strong>الفئة:</strong> ${store.category}</p>`
+                : ""
+            }
+          </div>
+        `,
+      });
+
+      marker.addListener("click", () => {
+        // Close any open info window
+        if (window.currentInfoWindow) {
+          window.currentInfoWindow.close();
+        }
+
+        infoWindow.open(mapInstance, marker);
+        window.currentInfoWindow = infoWindow;
+
+        // Call onLocationSelect if provided
+        if (onLocationSelect) {
+          onLocationSelect({
+            lat: position.lat,
+            lng: position.lng,
+            name: store.name,
+            store: store,
+          });
+        }
+      });
+    });
+  };
+
+  // Add markers for Leaflet Maps
+  const addLeafletMarkers = (mapInstance) => {
+    if (!window.L || !stores.length) return;
+
+    const L = window.L;
+
+    stores.forEach((store) => {
+      if (!store.latitude || !store.longitude) return;
+
+      const position = [
+        parseFloat(store.latitude),
+        parseFloat(store.longitude),
+      ];
+
+      const marker = L.marker(position, {
+        icon: L.divIcon({
+          className: "store-marker",
+          html: `
+            <div style="
+              width: 32px; 
+              height: 32px; 
+              background: #EF4444; 
+              border: 2px solid white; 
+              border-radius: 50%; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            ">
+              <div style="
+                width: 12px; 
+                height: 12px; 
+                background: white; 
+                border-radius: 50%;
+              "></div>
+            </div>
+          `,
+          iconSize: [32, 32],
+          iconAnchor: [16, 32],
+        }),
+      }).addTo(mapInstance);
+
+      // Add popup
+      const popupContent = `
+        <div style="padding: 8px; max-width: 250px;">
+          <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 16px; font-weight: 600;">${
+            store.name
+          }</h3>
+          ${
+            store.owner_name
+              ? `<p style="margin: 4px 0; color: #6b7280;"><strong>المالك:</strong> ${store.owner_name}</p>`
+              : ""
+          }
+          ${
+            store.phone
+              ? `<p style="margin: 4px 0; color: #6b7280;"><strong>الهاتف:</strong> ${store.phone}</p>`
+              : ""
+          }
+          ${
+            store.address
+              ? `<p style="margin: 4px 0; color: #6b7280;"><strong>العنوان:</strong> ${store.address}</p>`
+              : ""
+          }
+          ${
+            store.category
+              ? `<p style="margin: 4px 0; color: #6b7280;"><strong>الفئة:</strong> ${store.category}</p>`
+              : ""
+          }
+        </div>
+      `;
+
+      marker.bindPopup(popupContent);
+
+      marker.on("click", () => {
+        // Call onLocationSelect if provided
+        if (onLocationSelect) {
+          onLocationSelect({
+            lat: position[0],
+            lng: position[1],
+            name: store.name,
+            store: store,
+          });
+        }
+      });
+    });
+  };
+
+  // Add current location marker
+  const addCurrentLocationMarker = (mapInstance, location) => {
+    if (!location) return;
+
+    if (mapProvider === "google" && window.google && window.google.maps) {
+      // Remove existing current location marker
+      if (window.currentLocationMarker) {
+        window.currentLocationMarker.setMap(null);
+      }
+
+      const currentLocationMarker = new window.google.maps.Marker({
+        position: location,
+        map: mapInstance,
+        title: "موقعك الحالي",
+        icon: {
+          url:
+            "data:image/svg+xml;charset=UTF-8," +
+            encodeURIComponent(`
+            <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="20" cy="20" r="18" fill="#10B981" stroke="#ffffff" stroke-width="4"/>
+              <circle cx="20" cy="20" r="10" fill="#ffffff"/>
+              <circle cx="20" cy="20" r="4" fill="#10B981"/>
+            </svg>
+          `),
+          scaledSize: new window.google.maps.Size(40, 40),
+          anchor: new window.google.maps.Point(20, 20),
+        },
+        zIndex: 1000,
+      });
+
+      window.currentLocationMarker = currentLocationMarker;
+
+      // Add info window for current location
+      const infoWindow = new window.google.maps.InfoWindow({
+        content: `
+          <div style="padding: 8px;">
+            <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 16px; font-weight: 600;">موقعك الحالي</h3>
+            <p style="margin: 4px 0; color: #6b7280;">دقة التحديد: ${Math.round(
+              location.accuracy || 0
+            )} متر</p>
+          </div>
+        `,
+      });
+
+      currentLocationMarker.addListener("click", () => {
+        infoWindow.open(mapInstance, currentLocationMarker);
+      });
+    } else if (window.L) {
+      // Remove existing current location marker
+      if (window.currentLocationMarker && mapInstance.removeLayer) {
+        mapInstance.removeLayer(window.currentLocationMarker);
+      }
+
+      const L = window.L;
+      const currentLocationMarker = L.marker([location.lat, location.lng], {
+        icon: L.divIcon({
+          className: "current-location-marker",
+          html: `
+            <div style="
+              width: 40px; 
+              height: 40px; 
+              background: #10B981; 
+              border: 4px solid white; 
+              border-radius: 50%; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center;
+              box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            ">
+              <div style="
+                width: 20px; 
+                height: 20px; 
+                background: white; 
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              ">
+                <div style="
+                  width: 8px; 
+                  height: 8px; 
+                  background: #10B981; 
+                  border-radius: 50%;
+                "></div>
+              </div>
+            </div>
+          `,
+          iconSize: [40, 40],
+          iconAnchor: [20, 40],
+        }),
+      }).addTo(mapInstance);
+
+      window.currentLocationMarker = currentLocationMarker;
+
+      // Add popup
+      const popupContent = `
+        <div style="padding: 8px;">
+          <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 16px; font-weight: 600;">موقعك الحالي</h3>
+          <p style="margin: 4px 0; color: #6b7280;">دقة التحديد: ${Math.round(
+            location.accuracy || 0
+          )} متر</p>
+        </div>
+      `;
+
+      currentLocationMarker.bindPopup(popupContent);
+    }
+  };
+
   // Get current location
   const getCurrentLocation = async () => {
     setCurrentLocationLoading(true);
     try {
       if (!navigator.geolocation) {
-        throw new Error('المتصفح لا يدعم تحديد الموقع');
+        throw new Error("المتصفح لا يدعم تحديد الموقع");
       }
 
       const position = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          resolve,
-          reject,
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 300000, // 5 minutes
-          }
-        );
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000, // 5 minutes
+        });
       });
 
       const location = {
         lat: position.coords.latitude,
         lng: position.coords.longitude,
-        accuracy: position.coords.accuracy
+        accuracy: position.coords.accuracy,
       };
 
       setUserLocation(location);
@@ -66,16 +340,50 @@ const StoreMap = ({
       if (onLocationSelect) {
         onLocationSelect({
           ...location,
-          name: "الموقع الحالي"
+          name: "الموقع الحالي",
         });
       }
-
     } catch (error) {
-      console.error('Error getting location:', error);
-      setError('خطأ في تحديد الموقع الحالي');
+      console.error("Error getting location:", error);
+      setError("خطأ في تحديد الموقع الحالي");
     } finally {
       setCurrentLocationLoading(false);
     }
+  };
+
+  // Load Google Maps API
+  const loadGoogleMapsAPI = () => {
+    return new Promise((resolve, reject) => {
+      if (window.google && window.google.maps) {
+        resolve();
+        return;
+      }
+
+      // Remove existing script if any
+      const existingScript = document.querySelector(
+        'script[src*="maps.googleapis.com"]'
+      );
+      if (existingScript) {
+        existingScript.remove();
+      }
+
+      const script = document.createElement("script");
+      script.async = true;
+      script.defer = true;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&loading=async`;
+      script.onload = () => {
+        if (window.google && window.google.maps) {
+          resolve();
+        } else {
+          reject(new Error("Failed to load Google Maps API"));
+        }
+      };
+      script.onerror = (error) => {
+        console.error("Error loading Google Maps API:", error);
+        reject(error);
+      };
+      document.head.appendChild(script);
+    });
   };
 
   // Initialize map
@@ -83,40 +391,18 @@ const StoreMap = ({
     let isMounted = true;
 
     const initMap = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+      if (!mapRef.current || !isMounted) return;
 
-        // Clean up existing map more thoroughly
+      try {
+        // Clean up existing map
         if (mapInstanceRef.current) {
-          if (mapProvider === "google") {
-            // Google Maps cleanup
-            mapInstanceRef.current = null;
-          } else {
-            // Leaflet cleanup
-            try {
-              if (mapInstanceRef.current.remove) {
-                mapInstanceRef.current.remove();
-              }
-            } catch (e) {
-              console.log("Map cleanup error:", e.message);
-            }
-            mapInstanceRef.current = null;
-          }
+          // Clear existing map
+          mapInstanceRef.current = null;
         }
 
-        // Clear container completely
+        // Clear any existing content
         if (mapRef.current) {
           mapRef.current.innerHTML = "";
-          // Remove any existing map-related attributes
-          mapRef.current.removeAttribute("data-leaflet-map");
-          mapRef.current.className = mapRef.current.className.replace(
-            /leaflet-container.*?(\s|$)/g,
-            ""
-          );
-          // Clean up Leaflet specific properties
-          delete mapRef.current._leaflet_id;
-          delete mapRef.current._leaflet_map;
         }
 
         // Small delay to ensure cleanup is complete
@@ -137,66 +423,87 @@ const StoreMap = ({
       } catch (err) {
         console.error("Error initializing map:", err);
         if (isMounted) {
-          setError(
-            "فشل في تحميل الخريطة. يرجى التحقق من الاتصال بالإنترنت."
-          );
+          setError("فشل في تحميل الخريطة. يرجى التحقق من الاتصال بالإنترنت.");
           setIsLoading(false);
         }
       }
     };
 
     const initGoogleMap = async () => {
-      // Load Google Maps API if not already loaded
-      if (!window.google || !window.google.maps) {
-        await loadGoogleMapsAPI();
-      }
+      try {
+        // Load Google Maps API if not already loaded
+        if (!window.google || !window.google.maps) {
+          await loadGoogleMapsAPI();
+        }
 
-      // Default center (Belgium/Brussels area for bakery context)
-      const defaultCenter = center || userLocation || { lat: 50.8503, lng: 4.3517 };
+        // Wait a bit more to ensure API is fully loaded
+        await new Promise((resolve) => setTimeout(resolve, 200));
 
-      const mapInstance = new window.google.maps.Map(mapRef.current, {
-        center: defaultCenter,
-        zoom: zoom,
-        mapTypeId: window.google.maps.MapTypeId.ROADMAP,
-        mapTypeControl: showControls,
-        streetViewControl: showControls,
-        fullscreenControl: showControls,
-        zoomControl: showControls,
-        // Improved styling for better UX
-        styles: [
-          {
-            featureType: "poi",
-            elementType: "labels",
-            stylers: [{ visibility: "on" }]
-          },
-          {
-            featureType: "transit",
-            elementType: "labels",
-            stylers: [{ visibility: "on" }]
-          }
-        ]
-      });
+        if (!window.google || !window.google.maps) {
+          throw new Error("Google Maps API failed to load properly");
+        }
 
-      mapInstanceRef.current = mapInstance;
+        // Default center (Belgium/Brussels area for bakery context)
+        const defaultCenter = center ||
+          userLocation || { lat: 50.8503, lng: 4.3517 };
 
-      // Add markers for stores
-      addGoogleMarkers(mapInstance);
-
-      // Add click listener if interactive
-      if (interactive && onLocationSelect) {
-        mapInstance.addListener("click", (event) => {
-          const position = event.latLng;
-          onLocationSelect({
-            lat: position.lat(),
-            lng: position.lng(),
-            name: "موقع محدد",
-          });
+        const mapInstance = new window.google.maps.Map(mapRef.current, {
+          center: defaultCenter,
+          zoom: zoom,
+          mapTypeId: window.google.maps.MapTypeId.ROADMAP,
+          mapTypeControl: showControls,
+          streetViewControl: showControls,
+          fullscreenControl: showControls,
+          zoomControl: showControls,
+          // Improved styling for better UX
+          styles: [
+            {
+              featureType: "poi",
+              elementType: "labels",
+              stylers: [{ visibility: "on" }],
+            },
+            {
+              featureType: "transit",
+              elementType: "labels",
+              stylers: [{ visibility: "on" }],
+            },
+          ],
         });
-      }
 
-      // Add current location marker if available
-      if (userLocation) {
-        addCurrentLocationMarker(mapInstance, userLocation);
+        mapInstanceRef.current = mapInstance;
+
+        // Wait for map to be ready
+        await new Promise((resolve) => {
+          window.google.maps.event.addListenerOnce(
+            mapInstance,
+            "idle",
+            resolve
+          );
+        });
+
+        // Add markers for stores
+        addGoogleMarkers(mapInstance);
+
+        // Add click listener if interactive
+        if (interactive && onLocationSelect) {
+          mapInstance.addListener("click", (event) => {
+            const position = event.latLng;
+            onLocationSelect({
+              lat: position.lat(),
+              lng: position.lng(),
+              name: "موقع محدد",
+            });
+          });
+        }
+
+        // Add current location marker if available
+        if (userLocation) {
+          addCurrentLocationMarker(mapInstance, userLocation);
+        }
+      } catch (error) {
+        console.error("Error initializing Google Map:", error);
+        // Fallback to Leaflet if Google Maps fails
+        await initLeafletMap();
       }
     };
 
@@ -240,7 +547,7 @@ const StoreMap = ({
       let mapCenter = center || userLocation || [50.8503, 4.3517]; // Default to Brussels
 
       // Convert object to array for Leaflet
-      if (mapCenter && typeof mapCenter === 'object' && mapCenter.lat) {
+      if (mapCenter && typeof mapCenter === "object" && mapCenter.lat) {
         mapCenter = [mapCenter.lat, mapCenter.lng];
       }
 
@@ -278,159 +585,6 @@ const StoreMap = ({
       } catch (error) {
         console.error("Error creating Leaflet map:", error);
         throw error;
-      }
-    };
-
-    const loadGoogleMapsAPI = () => {
-      return new Promise((resolve, reject) => {
-        const script = document.createElement("script");
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places`;
-        script.async = true;
-        script.defer = true;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-    };
-
-    const addCurrentLocationMarker = (mapInstance, location) => {
-      if (!mapInstance || !window.google) return;
-
-      new window.google.maps.Marker({
-        position: location,
-        map: mapInstance,
-        title: "موقعك الحالي",
-        icon: {
-          url: "data:image/svg+xml;charset=UTF-8," +
-            encodeURIComponent(`
-            <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="8" fill="#4285F4" stroke="#ffffff" stroke-width="2"/>
-              <circle cx="12" cy="12" r="3" fill="#ffffff"/>
-            </svg>
-          `),
-          scaledSize: new window.google.maps.Size(24, 24),
-          anchor: new window.google.maps.Point(12, 12),
-        },
-        zIndex: 1000
-      });
-    };
-
-    const addGoogleMarkers = (mapInstance) => {
-      if (!mapInstance || !window.google) return;
-
-      const bounds = new window.google.maps.LatLngBounds();
-      let hasValidStores = false;
-
-      stores.forEach((store) => {
-        // Handle different coordinate field names
-        const lat = store.gps_coordinates?.latitude || store.latitude;
-        const lng = store.gps_coordinates?.longitude || store.longitude;
-        
-        if (!lat || !lng) return;
-
-        const position = {
-          lat: parseFloat(lat),
-          lng: parseFloat(lng),
-        };
-
-        const marker = new window.google.maps.Marker({
-          position,
-          map: mapInstance,
-          title: store.name,
-          icon: {
-            url: "data:image/svg+xml;charset=UTF-8," +
-              encodeURIComponent(`
-              <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                <path d="M16 4C11.6 4 8 7.6 8 12c0 8 8 16 8 16s8-8 8-16c0-4.4-3.6-8-8-8z" fill="#FF6B6B" stroke="#ffffff" stroke-width="2"/>
-                <circle cx="16" cy="12" r="3" fill="#ffffff"/>
-              </svg>
-            `),
-            scaledSize: new window.google.maps.Size(32, 32),
-            anchor: new window.google.maps.Point(16, 32),
-          },
-        });
-
-        const infoWindow = new window.google.maps.InfoWindow({
-          content: `
-            <div style="padding: 10px; max-width: 250px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
-              <h3 style="margin: 0 0 8px 0; font-weight: bold; color: #333; font-size: 16px;">${store.name}</h3>
-              ${store.address ? `<p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>العنوان:</strong> ${store.address}</p>` : ""}
-              ${store.phone ? `<p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>الهاتف:</strong> ${store.phone}</p>` : ""}
-              ${store.category ? `<p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>الفئة:</strong> ${store.category}</p>` : ""}
-              <p style="margin: 4px 0; font-size: 14px;"><strong>الحالة:</strong> 
-                <span style="color: ${store.status === "active" ? "#10B981" : "#EF4444"}; font-weight: bold;">
-                  ${store.status === "active" ? "نشط" : "غير نشط"}
-                </span>
-              </p>
-              ${store.total_orders ? `<p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>إجمالي الطلبات:</strong> ${store.total_orders}</p>` : ""}
-            </div>
-          `,
-        });
-
-        marker.addListener("click", () => {
-          // Close any open info windows
-          if (window.currentInfoWindow) {
-            window.currentInfoWindow.close();
-          }
-          infoWindow.open(mapInstance, marker);
-          window.currentInfoWindow = infoWindow;
-        });
-
-        bounds.extend(position);
-        hasValidStores = true;
-      });
-
-      // Fit bounds if multiple stores
-      if (hasValidStores && stores.length > 1) {
-        mapInstance.fitBounds(bounds);
-        // Ensure zoom doesn't get too high
-        const listener = window.google.maps.event.addListener(mapInstance, 'idle', () => {
-          if (mapInstance.getZoom() > 16) {
-            mapInstance.setZoom(16);
-          }
-          window.google.maps.event.removeListener(listener);
-        });
-      }
-    };
-
-    const addLeafletMarkers = (mapInstance) => {
-      if (!mapInstance || !window.L) return;
-
-      const L = window.L;
-      const markers = [];
-
-      stores.forEach((store) => {
-        // Handle different coordinate field names
-        const lat = store.gps_coordinates?.latitude || store.latitude;
-        const lng = store.gps_coordinates?.longitude || store.longitude;
-        
-        if (!lat || !lng) return;
-
-        const position = [parseFloat(lat), parseFloat(lng)];
-
-        const marker = L.marker(position).addTo(mapInstance);
-
-        const popupContent = `
-          <div style="padding: 10px; max-width: 200px;">
-            <h3 style="margin: 0 0 8px 0; font-weight: bold;">${store.name}</h3>
-            ${store.address ? `<p style="margin: 4px 0;"><strong>العنوان:</strong> ${store.address}</p>` : ""}
-            ${store.phone ? `<p style="margin: 4px 0;"><strong>الهاتف:</strong> ${store.phone}</p>` : ""}
-            <p style="margin: 4px 0;"><strong>الحالة:</strong> 
-              <span style="color: ${store.status === "active" ? "green" : "red"};">
-                ${store.status === "active" ? "نشط" : "غير نشط"}
-              </span>
-            </p>
-          </div>
-        `;
-
-        marker.bindPopup(popupContent);
-        markers.push(marker);
-      });
-
-      // Fit bounds if multiple stores
-      if (markers.length > 1) {
-        const group = L.featureGroup(markers);
-        mapInstance.fitBounds(group.getBounds());
       }
     };
 
@@ -485,6 +639,23 @@ const StoreMap = ({
         window.selectedMarker = null;
       }
 
+      // Clean up current location marker
+      if (window.currentLocationMarker) {
+        try {
+          if (mapProvider === "google") {
+            window.currentLocationMarker.setMap(null);
+          } else if (
+            mapInstanceRef.current &&
+            mapInstanceRef.current.removeLayer
+          ) {
+            mapInstanceRef.current.removeLayer(window.currentLocationMarker);
+          }
+        } catch (e) {
+          console.log("Current location marker cleanup error:", e.message);
+        }
+        window.currentLocationMarker = null;
+      }
+
       // Close info window
       if (window.currentInfoWindow) {
         try {
@@ -533,7 +704,7 @@ const StoreMap = ({
           scaledSize: new window.google.maps.Size(40, 40),
           anchor: new window.google.maps.Point(20, 20),
         },
-        zIndex: 999
+        zIndex: 999,
       });
 
       window.selectedMarker = selectedMarker;

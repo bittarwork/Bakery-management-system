@@ -29,7 +29,7 @@ router.get('/statistics', authorize('admin', 'manager'), getVehicleStatistics);
 router.get('/export/csv', authorize('admin', 'manager'), exportVehiclesCSV);
 router.get('/available', getAvailableVehicles);
 router.get('/distributor/:distributorId', getVehiclesByDistributor);
-router.get('/:id', getVehicleById);
+router.get('/:id', authorize('admin', 'manager'), getVehicleById);
 router.get('/:id/expenses', authorize('admin', 'manager'), getVehicleExpenses);
 router.get('/:id/statistics', authorize('admin', 'manager'), getVehicleStatisticsById);
 router.get('/:id/export', authorize('admin', 'manager'), exportVehicleData);

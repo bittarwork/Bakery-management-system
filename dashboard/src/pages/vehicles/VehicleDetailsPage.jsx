@@ -46,7 +46,6 @@ const VehicleDetailsPage = () => {
 
   // Load data
   useEffect(() => {
-    console.log("Vehicle ID from params:", id);
     if (id && id !== "undefined") {
       loadVehicleDetails();
     } else {
@@ -59,7 +58,6 @@ const VehicleDetailsPage = () => {
 
   const loadVehicleDetails = async () => {
     if (!id || id === "undefined" || id === "null") {
-      console.error("Cannot load vehicle details: Invalid ID -", id);
       toast.error("معرف المركبة غير صحيح");
       navigate("/vehicles");
       return;
@@ -67,7 +65,6 @@ const VehicleDetailsPage = () => {
 
     try {
       setLoading(true);
-      console.log("Loading vehicle details for ID:", id);
 
       const [vehicleResponse, expensesResponse, statsResponse] =
         await Promise.all([
@@ -77,11 +74,7 @@ const VehicleDetailsPage = () => {
         ]);
 
       if (vehicleResponse.success) {
-        setVehicle(vehicleResponse.data.vehicle);
-        console.log(
-          "Vehicle loaded successfully:",
-          vehicleResponse.data.vehicle
-        );
+        setVehicle(vehicleResponse.data);
       } else {
         console.error("Failed to load vehicle:", vehicleResponse);
         toast.error("خطأ في تحميل بيانات المركبة");
