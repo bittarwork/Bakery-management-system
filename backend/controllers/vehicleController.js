@@ -1,19 +1,19 @@
 import Vehicle from '../models/Vehicle.js';
 import User from '../models/User.js';
-import { logger } from '../config/logger.js';
+import logger from '../config/logger.js';
 
 // @desc    Get all vehicles
 // @route   GET /api/vehicles
 // @access  Private (Admin, Manager)
 export const getAllVehicles = async (req, res) => {
     try {
-        const { 
-            page = 1, 
-            limit = 10, 
-            status, 
-            vehicle_type, 
+        const {
+            page = 1,
+            limit = 10,
+            status,
+            vehicle_type,
             assigned,
-            search 
+            search
         } = req.query;
 
         const offset = (page - 1) * limit;
@@ -148,8 +148,8 @@ export const createVehicle = async (req, res) => {
         } = req.body;
 
         // Check if vehicle plate already exists
-        const existingVehicle = await Vehicle.findOne({ 
-            where: { vehicle_plate } 
+        const existingVehicle = await Vehicle.findOne({
+            where: { vehicle_plate }
         });
 
         if (existingVehicle) {
@@ -217,11 +217,11 @@ export const updateVehicle = async (req, res) => {
 
         // Check if vehicle plate is being changed and if it already exists
         if (updateData.vehicle_plate && updateData.vehicle_plate !== vehicle.vehicle_plate) {
-            const existingVehicle = await Vehicle.findOne({ 
-                where: { 
+            const existingVehicle = await Vehicle.findOne({
+                where: {
                     vehicle_plate: updateData.vehicle_plate,
                     id: { [Vehicle.sequelize.Op.ne]: id }
-                } 
+                }
             });
 
             if (existingVehicle) {
@@ -409,7 +409,7 @@ export const unassignVehicle = async (req, res) => {
         }
 
         const distributorName = vehicle.assignedDistributor?.full_name || 'Unknown';
-        
+
         await vehicle.update({ assigned_distributor_id: null });
 
         logger.info(`Vehicle ${vehicle.vehicle_plate} unassigned from ${distributorName} by ${req.user.full_name}`);
@@ -529,7 +529,7 @@ export const updateVehicleStatus = async (req, res) => {
 
         // If changing to inactive or retired, unassign from distributor
         if (['inactive', 'retired'].includes(status) && vehicle.assigned_distributor_id) {
-            await vehicle.update({ 
+            await vehicle.update({
                 status,
                 assigned_distributor_id: null
             });

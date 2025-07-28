@@ -5,154 +5,47 @@ import { toast } from "react-hot-toast";
 import {
   ArrowLeft,
   Edit,
-  Package,
+  Trash2,
   Star,
   StarOff,
-  Trash2,
-  DollarSign,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
+  Package,
   Tag,
+  DollarSign,
   Calendar,
   Scale,
   Thermometer,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
   TrendingUp,
   TrendingDown,
   BarChart3,
-  PieChart,
-  Loader2,
-  AlertCircle,
-  Image,
-  Download,
+  Activity,
+  Truck,
+  MapPin,
+  Phone,
+  Mail,
+  Clock,
+  Shield,
+  Info,
   Eye,
+  EyeOff,
   RefreshCw,
-  ShoppingCart,
-  Package2,
-  FileText,
+  Download,
+  Share2,
+  Copy,
   Heart,
-  Users,
+  Package2,
   Euro,
   Coins,
-  Activity,
-  Clock,
-  Building,
-  Archive,
-  Copy,
-  Upload,
-  Info,
-  Settings,
-  Box,
+  Calculator,
   Layers,
-  Target,
+  Image,
+  FileText,
   Award,
   Zap,
-  Shield,
-  BookOpen,
-  Map,
-  Home,
-  Globe,
-  Warehouse,
-  PlusCircle,
-  MinusCircle,
-  RotateCcw,
-  History,
-  Bookmark,
-  Share,
-  Flag,
-  Bell,
-  Filter,
-  Search,
-  ExternalLink,
-  Maximize,
-  Minimize,
-  Database,
-  Server,
-  Code,
-  Cpu,
-  HardDrive,
-  Smartphone,
-  Tablet,
-  Monitor,
-  Headphones,
-  Camera,
-  Gamepad2,
-  Keyboard,
-  Mouse,
-  Printer,
-  Wifi,
-  Bluetooth,
-  Usb,
-  Battery,
-  Power,
-  Signal,
-  Volume2,
-  VolumeX,
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  Repeat,
-  Shuffle,
-  Music,
-  Video,
-  Film,
-  ImageIcon,
-  Mic,
-  MicOff,
-  PhoneCall,
-  PhoneOff,
-  MessageCircle,
-  MessageSquare,
-  Send,
-  Inbox,
-  MailOpen,
-  MailCheck,
-  UserPlus,
-  UserMinus,
-  UserCheck,
-  UserX,
-  Group,
-  Crown,
-  Briefcase,
-  GraduationCap,
-  School,
-  Library,
-  Bookmark as BookmarkIcon,
-  BookOpen as BookOpenIcon,
-  FileImage,
-  FileVideo,
-  FileAudio,
-  FileSpreadsheet,
-  FileCode,
-  FolderOpen,
-  FolderClosed,
-  Save,
-  SaveAll,
-  Folder,
-  FolderPlus,
-  FolderMinus,
-  FolderX,
-  FolderCheck,
-  FolderEdit,
-  FolderSearch,
-  FolderUp,
-  FolderDown,
-  FolderTree,
-  FolderRoot,
-  FolderHeart,
-  FolderClock,
-  FolderKey,
-  FolderGit,
-  FolderSync,
-  FolderArchive,
-  FolderInput,
-  FolderOutput,
-  FolderSymlink,
-  FolderKanban,
-  FolderOpenDot,
-  FolderDot,
-  FolderCog,
+  Target,
+  Loader2,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
@@ -164,17 +57,15 @@ import { productService } from "../../services/productService";
 const ProductDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+
+  // State management
   const [product, setProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [analytics, setAnalytics] = useState(null);
   const [performance, setPerformance] = useState(null);
   const [salesHistory, setSalesHistory] = useState([]);
   const [inventory, setInventory] = useState(null);
-  const [recommendations, setRecommendations] = useState([]);
-  const [priceHistory, setPriceHistory] = useState([]);
-  const [variants, setVariants] = useState([]);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isToggleFeatured, setIsToggleFeatured] = useState(false);
 
@@ -196,27 +87,25 @@ const ProductDetailsPage = () => {
       setIsLoading(true);
       setError("");
 
-      // Load product details
-      const productResponse = await productService.getProduct(id);
-      if (productResponse.success) {
-        setProduct(productResponse.data);
-      } else {
-        throw new Error(productResponse.message || "فشل في تحميل المنتج");
-      }
+      const response = await productService.getProduct(id);
 
-      // Load additional data in parallel
-      await Promise.allSettled([
-        loadAnalytics(),
-        loadPerformance(),
-        loadSalesHistory(),
-        loadInventory(),
-        loadRecommendations(),
-        loadPriceHistory(),
-        loadVariants(),
-      ]);
-    } catch (error) {
-      console.error("Error loading product:", error);
-      setError(error.message);
+      if (response.success) {
+        setProduct(response.data);
+
+        // Load additional data
+        await Promise.all([
+          loadAnalytics(),
+          loadPerformance(),
+          loadSalesHistory(),
+          loadInventory(),
+        ]);
+      } else {
+        throw new Error(response.message || "Failed to load product");
+      }
+    } catch (err) {
+      console.error("Error loading product:", err);
+      setError(err.message || "Failed to load product details");
+      toast.error("Failed to load product details");
     } finally {
       setIsLoading(false);
     }
@@ -229,7 +118,7 @@ const ProductDetailsPage = () => {
         setAnalytics(response.data);
       }
     } catch (error) {
-      console.warn("Could not load analytics:", error);
+      console.error("Error loading analytics:", error);
     }
   };
 
@@ -240,20 +129,18 @@ const ProductDetailsPage = () => {
         setPerformance(response.data);
       }
     } catch (error) {
-      console.warn("Could not load performance:", error);
+      console.error("Error loading performance:", error);
     }
   };
 
   const loadSalesHistory = async () => {
     try {
-      const response = await productService.getProductSalesHistory(id, {
-        limit: 10,
-      });
+      const response = await productService.getProductSalesHistory(id);
       if (response.success) {
         setSalesHistory(response.data);
       }
     } catch (error) {
-      console.warn("Could not load sales history:", error);
+      console.error("Error loading sales history:", error);
     }
   };
 
@@ -264,53 +151,56 @@ const ProductDetailsPage = () => {
         setInventory(response.data);
       }
     } catch (error) {
-      console.warn("Could not load inventory:", error);
+      console.error("Error loading inventory:", error);
     }
   };
 
-  const loadRecommendations = async () => {
+  // Toggle product status
+  const handleToggleStatus = async () => {
     try {
-      const response = await productService.getProductRecommendations(id, {
-        limit: 5,
-      });
+      setIsUpdatingStatus(true);
+      const response = await productService.toggleProductStatus(id);
+
       if (response.success) {
-        setRecommendations(response.data);
+        setProduct((prev) => ({
+          ...prev,
+          status: prev.status === "active" ? "inactive" : "active",
+        }));
+        toast.success("Product status updated successfully");
+      } else {
+        throw new Error(response.message || "Failed to update status");
       }
     } catch (error) {
-      console.warn("Could not load recommendations:", error);
+      console.error("Error toggling status:", error);
+      toast.error("Failed to update product status");
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
-  const loadPriceHistory = async () => {
+  // Toggle featured status
+  const handleToggleFeatured = async () => {
     try {
-      const response = await productService.getProductPriceHistory(id, {
-        limit: 10,
-      });
+      setIsToggleFeatured(true);
+      const response = await productService.toggleProductFeatured(id);
+
       if (response.success) {
-        setPriceHistory(response.data);
+        setProduct((prev) => ({ ...prev, is_featured: !prev.is_featured }));
+        toast.success("Featured status updated successfully");
+      } else {
+        throw new Error(response.message || "Failed to update featured status");
       }
     } catch (error) {
-      console.warn("Could not load price history:", error);
+      console.error("Error toggling featured:", error);
+      toast.error("Failed to update featured status");
+    } finally {
+      setIsToggleFeatured(false);
     }
   };
 
-  const loadVariants = async () => {
-    try {
-      const response = await productService.getProductVariants(id);
-      if (response.success) {
-        setVariants(response.data);
-      }
-    } catch (error) {
-      console.warn("Could not load variants:", error);
-    }
-  };
-
-  // Handle product deletion
+  // Delete product
   const handleDelete = () => {
-    setDeleteModal({
-      isOpen: true,
-      isLoading: false,
-    });
+    setDeleteModal({ isOpen: true, isLoading: false });
   };
 
   const confirmDelete = async () => {
@@ -318,89 +208,18 @@ const ProductDetailsPage = () => {
       setDeleteModal((prev) => ({ ...prev, isLoading: true }));
 
       const response = await productService.deleteProduct(id);
+
       if (response.success) {
-        setSuccess("تم حذف المنتج بنجاح");
-        setTimeout(() => {
-          navigate("/products");
-        }, 1500);
+        toast.success("Product deleted successfully");
+        navigate("/products");
       } else {
-        setError(response.message || "فشل في حذف المنتج");
+        throw new Error(response.message || "Failed to delete product");
       }
     } catch (error) {
       console.error("Error deleting product:", error);
-      setError("فشل في حذف المنتج");
+      toast.error("Failed to delete product");
     } finally {
       setDeleteModal((prev) => ({ ...prev, isLoading: false }));
-    }
-  };
-
-  // Handle status toggle
-  const handleToggleStatus = async () => {
-    try {
-      setIsUpdatingStatus(true);
-      const response = await productService.toggleProductStatus(id);
-      if (response.success) {
-        setProduct(response.data);
-        setSuccess("تم تحديث حالة المنتج بنجاح");
-      } else {
-        setError(response.message || "فشل في تحديث حالة المنتج");
-      }
-    } catch (error) {
-      console.error("Error toggling status:", error);
-      setError("فشل في تحديث حالة المنتج");
-    } finally {
-      setIsUpdatingStatus(false);
-    }
-  };
-
-  // Handle featured toggle
-  const handleToggleFeatured = async () => {
-    try {
-      setIsToggleFeatured(true);
-      const response = await productService.toggleProductFeatured(id);
-      if (response.success) {
-        setProduct(response.data);
-        setSuccess("تم تحديث حالة المنتج المميز بنجاح");
-      } else {
-        setError(response.message || "فشل في تحديث حالة المنتج المميز");
-      }
-    } catch (error) {
-      console.error("Error toggling featured:", error);
-      setError("فشل في تحديث حالة المنتج المميز");
-    } finally {
-      setIsToggleFeatured(false);
-    }
-  };
-
-  // Handle duplicate product
-  const handleDuplicate = async () => {
-    try {
-      const response = await productService.duplicateProduct(id);
-      if (response.success) {
-        setSuccess("تم نسخ المنتج بنجاح");
-        navigate(`/products/${response.data.id}`);
-      } else {
-        setError(response.message || "فشل في نسخ المنتج");
-      }
-    } catch (error) {
-      console.error("Error duplicating product:", error);
-      setError("فشل في نسخ المنتج");
-    }
-  };
-
-  // Handle archive product
-  const handleArchive = async () => {
-    try {
-      const response = await productService.archiveProduct(id);
-      if (response.success) {
-        setSuccess("تم أرشفة المنتج بنجاح");
-        loadProductData();
-      } else {
-        setError(response.message || "فشل في أرشفة المنتج");
-      }
-    } catch (error) {
-      console.error("Error archiving product:", error);
-      setError("فشل في أرشفة المنتج");
     }
   };
 
@@ -411,8 +230,6 @@ const ProductDetailsPage = () => {
         return "bg-green-100 text-green-800 border-green-200";
       case "inactive":
         return "bg-red-100 text-red-800 border-red-200";
-      case "archived":
-        return "bg-gray-100 text-gray-800 border-gray-200";
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
@@ -422,21 +239,21 @@ const ProductDetailsPage = () => {
   const getStockStatus = (stock, minStock) => {
     if (stock === 0) {
       return {
-        text: "نفد المخزون",
+        text: "Out of Stock",
         color: "text-red-600",
         bg: "bg-red-50",
         icon: XCircle,
       };
     } else if (stock <= minStock) {
       return {
-        text: "مخزون منخفض",
+        text: "Low Stock",
         color: "text-yellow-600",
         bg: "bg-yellow-50",
         icon: AlertTriangle,
       };
     } else {
       return {
-        text: "متوفر",
+        text: "In Stock",
         color: "text-green-600",
         bg: "bg-green-50",
         icon: CheckCircle,
@@ -444,75 +261,51 @@ const ProductDetailsPage = () => {
     }
   };
 
-  // Format currency
-  const formatCurrency = (amount, currency = "EUR") => {
-    // Handle invalid amounts
-    const numericAmount = parseFloat(amount);
-    if (isNaN(numericAmount) || amount === null || amount === undefined) {
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: currency,
-      }).format(0);
-    }
-
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-    }).format(numericAmount);
-  };
-
-  // Format date
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("ar-EG");
-  };
-
-  // Show loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <LoadingSpinner size="large" />
-          <p className="text-gray-600 mt-4">جاري تحميل تفاصيل المنتج...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state
-  if (error && !product) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            خطأ في تحميل المنتج
-          </h2>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <div className="flex gap-3 justify-center">
-            <EnhancedButton
-              onClick={loadProductData}
-              variant="primary"
-              icon={<RefreshCw className="w-4 h-4" />}
-            >
-              إعادة المحاولة
-            </EnhancedButton>
-            <BackButton />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-center py-20">
+            <LoadingSpinner />
           </div>
         </div>
       </div>
     );
   }
 
-  if (!product) {
+  if (error || !product) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            المنتج غير موجود
-          </h2>
-          <p className="text-gray-600 mb-6">لم يتم العثور على المنتج المطلوب</p>
-          <BackButton />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Card>
+            <CardBody>
+              <div className="text-center py-12">
+                <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Product Not Found
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  {error || "The requested product could not be found."}
+                </p>
+                <div className="flex items-center justify-center gap-3">
+                  <EnhancedButton
+                    onClick={() => navigate("/products")}
+                    variant="outline"
+                    icon={<ArrowLeft className="w-4 h-4" />}
+                  >
+                    Back to Products
+                  </EnhancedButton>
+                  <EnhancedButton
+                    onClick={loadProductData}
+                    variant="primary"
+                    icon={<RefreshCw className="w-4 h-4" />}
+                  >
+                    Try Again
+                  </EnhancedButton>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
         </div>
       </div>
     );
@@ -525,101 +318,126 @@ const ProductDetailsPage = () => {
   const StockIcon = stockStatus.icon;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <BackButton variant="outline" size="lg" />
+              <BackButton to="/products" />
               <div>
-                <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                  {product.name}
-                </h1>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-3xl font-bold text-gray-900">
+                    {product.name}
+                  </h1>
+                  {product.is_featured && (
+                    <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
+                      <Star className="w-4 h-4 text-white" />
+                    </div>
+                  )}
                   <span
-                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(
+                    className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(
                       product.status
                     )}`}
                   >
-                    <Activity className="w-4 h-4 mr-1" />
-                    {product.status === "active"
-                      ? "نشط"
-                      : product.status === "inactive"
-                      ? "غير نشط"
-                      : "مأرشف"}
-                  </span>
-                  {product.is_featured && (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
-                      <Star className="w-4 h-4 mr-1" />
-                      منتج مميز
-                    </span>
-                  )}
-                  <span className="text-gray-500">•</span>
-                  <span className="text-gray-600 text-sm">
-                    تم الإنشاء: {formatDate(product.created_at)}
+                    {product.status === "active" ? "Active" : "Inactive"}
                   </span>
                 </div>
+                <p className="text-gray-600">
+                  Product Details • Category: {product.category} • Updated{" "}
+                  {new Date(product.updated_at).toLocaleDateString()}
+                </p>
               </div>
             </div>
+
             <div className="flex items-center gap-3">
               <EnhancedButton
-                onClick={handleToggleFeatured}
-                variant={product.is_featured ? "warning" : "primary"}
-                size="lg"
-                disabled={isToggleFeatured}
+                onClick={handleToggleStatus}
+                variant={product.status === "active" ? "warning" : "success"}
+                disabled={isUpdatingStatus}
                 icon={
-                  isToggleFeatured ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : product.is_featured ? (
-                    <StarOff className="w-5 h-5" />
+                  isUpdatingStatus ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : product.status === "active" ? (
+                    <XCircle className="w-4 h-4" />
                   ) : (
-                    <Star className="w-5 h-5" />
+                    <CheckCircle className="w-4 h-4" />
                   )
                 }
               >
-                {product.is_featured ? "إلغاء التمييز" : "جعل مميز"}
+                {product.status === "active" ? "Deactivate" : "Activate"}
               </EnhancedButton>
+
+              <EnhancedButton
+                onClick={handleToggleFeatured}
+                variant={product.is_featured ? "warning" : "primary"}
+                disabled={isToggleFeatured}
+                icon={
+                  isToggleFeatured ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : product.is_featured ? (
+                    <StarOff className="w-4 h-4" />
+                  ) : (
+                    <Star className="w-4 h-4" />
+                  )
+                }
+              >
+                {product.is_featured ? "Unfeature" : "Feature"}
+              </EnhancedButton>
+
               <EnhancedButton
                 onClick={() => navigate(`/products/${id}/edit`)}
                 variant="primary"
-                size="lg"
-                icon={<Edit className="w-5 h-5" />}
+                icon={<Edit className="w-4 h-4" />}
               >
-                تعديل المنتج
+                Edit Product
               </EnhancedButton>
+
               <EnhancedButton
                 onClick={handleDelete}
                 variant="danger"
-                size="lg"
-                icon={<Trash2 className="w-5 h-5" />}
+                icon={<Trash2 className="w-4 h-4" />}
               >
-                حذف المنتج
+                Delete
               </EnhancedButton>
             </div>
           </div>
         </motion.div>
 
-        {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Product Info & Details */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Product Image and Basic Info */}
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Product Overview */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <Card className="border-0 shadow-lg">
-                <CardBody className="p-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                      <Package className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        Product Overview
+                      </h2>
+                      <p className="text-sm text-gray-600">
+                        Essential product information
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardBody>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Product Image */}
-                    <div className="space-y-4">
-                      <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl overflow-hidden">
+                    <div>
+                      <div className="relative h-64 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg overflow-hidden">
                         {product.image_url ? (
                           <img
                             src={product.image_url}
@@ -628,133 +446,67 @@ const ProductDetailsPage = () => {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <Package className="w-20 h-20 text-gray-400" />
+                            <Package className="w-16 h-16 text-gray-400" />
                           </div>
                         )}
-                      </div>
-                      <div className="flex justify-center gap-2">
-                        <EnhancedButton
-                          onClick={() => navigate(`/products/${id}/edit`)}
-                          variant="outline"
-                          size="sm"
-                          icon={<Upload className="w-4 h-4" />}
-                        >
-                          تغيير الصورة
-                        </EnhancedButton>
-                        <EnhancedButton
-                          onClick={handleDuplicate}
-                          variant="outline"
-                          size="sm"
-                          icon={<Copy className="w-4 h-4" />}
-                        >
-                          نسخ المنتج
-                        </EnhancedButton>
                       </div>
                     </div>
 
                     {/* Product Details */}
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                          المعلومات الأساسية
+                        <h3 className="text-sm font-medium text-gray-700 mb-2">
+                          Description
                         </h3>
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <span className="text-sm font-medium text-gray-700">
-                              الفئة
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <Tag className="w-4 h-4 text-gray-500" />
-                              <span className="text-sm text-gray-900 capitalize">
-                                {product.category}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <span className="text-sm font-medium text-gray-700">
-                              الوحدة
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <Package2 className="w-4 h-4 text-gray-500" />
-                              <span className="text-sm text-gray-900">
-                                {product.unit}
-                              </span>
-                            </div>
-                          </div>
-                          {product.barcode && (
-                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                              <span className="text-sm font-medium text-gray-700">
-                                الباركود
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <Target className="w-4 h-4 text-gray-500" />
-                                <span className="text-sm text-gray-900 font-mono">
-                                  {product.barcode}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <span className="text-sm font-medium text-gray-700">
-                              تاريخ الإنشاء
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-gray-500" />
-                              <span className="text-sm text-gray-900">
-                                {formatDate(product.created_at)}
-                              </span>
-                            </div>
-                          </div>
+                        <p className="text-gray-900">
+                          {product.description || "No description available"}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-1">
+                            Category
+                          </h4>
+                          <p className="text-gray-900 capitalize">
+                            {product.category}
+                          </p>
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-1">
+                            Unit
+                          </h4>
+                          <p className="text-gray-900">{product.unit}</p>
                         </div>
                       </div>
 
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                          السعر والتكلفة
-                        </h3>
-                        <div className="space-y-4">
-                          {/* Primary Price in EUR */}
-                          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
-                            <span className="text-sm font-medium text-gray-700">
-                              السعر الأساسي
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <Euro className="w-5 h-5 text-green-600" />
-                              <span className="text-2xl font-bold text-green-700">
-                                {formatCurrency(product.price_eur, "EUR")}
-                              </span>
-                            </div>
-                          </div>
+                      {product.barcode && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-1">
+                            Barcode
+                          </h4>
+                          <p className="text-gray-900 font-mono">
+                            {product.barcode}
+                          </p>
+                        </div>
+                      )}
 
-                          {/* Alternative Price in SYP - if available */}
-                          {product.price_syp > 0 && (
-                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                              <span className="text-xs font-medium text-gray-500">
-                                سعر بديل (ليرة سورية)
-                              </span>
-                              <div className="flex items-center gap-1">
-                                <Coins className="w-3 h-3 text-gray-500" />
-                                <span className="text-sm font-medium text-gray-600">
-                                  {product.price_syp.toLocaleString()} ل.س
-                                </span>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Cost in EUR - if available */}
-                          {product.cost_eur > 0 && (
-                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                              <span className="text-sm font-medium text-gray-700">
-                                التكلفة (يورو)
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <DollarSign className="w-4 h-4 text-gray-600" />
-                                <span className="text-sm text-gray-900">
-                                  {formatCurrency(product.cost_eur, "EUR")}
-                                </span>
-                              </div>
-                            </div>
-                          )}
+                      <div className="pt-4 border-t border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">
+                            Created by
+                          </span>
+                          <span className="text-sm text-gray-900">
+                            {product.created_by_name || "System"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-sm text-gray-600">
+                            Created on
+                          </span>
+                          <span className="text-sm text-gray-900">
+                            {new Date(product.created_at).toLocaleDateString()}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -763,145 +515,399 @@ const ProductDetailsPage = () => {
               </Card>
             </motion.div>
 
-            {/* Description */}
-            {product.description && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                <Card className="border-0 shadow-lg">
-                  <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                    <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                      <FileText className="w-5 h-5 ml-2 text-blue-600" />
-                      وصف المنتج
-                    </h2>
-                  </CardHeader>
-                  <CardBody className="p-6">
-                    <p className="text-gray-700 leading-relaxed">
-                      {product.description}
-                    </p>
-                  </CardBody>
-                </Card>
-              </motion.div>
-            )}
-
-            {/* Additional Details */}
+            {/* Pricing & Financial */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+              transition={{ delay: 0.2 }}
             >
-              <Card className="border-0 shadow-lg">
-                <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                  <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                    <Info className="w-5 h-5 ml-2 text-purple-600" />
-                    تفاصيل إضافية
-                  </h2>
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                      <DollarSign className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        Pricing & Financial
+                      </h2>
+                      <p className="text-sm text-gray-600">
+                        Pricing details and profit margins
+                      </p>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardBody className="p-6">
+                <CardBody>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {product.weight_grams && (
-                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                        <Scale className="w-5 h-5 text-gray-500" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">
-                            الوزن
-                          </p>
-                          <p className="text-sm text-gray-900">
-                            {product.weight_grams} جرام
-                          </p>
+                    {/* EUR Pricing */}
+                    <div className="space-y-4">
+                      <h3 className="font-medium text-gray-900 flex items-center gap-2">
+                        <Euro className="w-4 h-4 text-green-600" />
+                        EUR Pricing
+                      </h3>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Selling Price</span>
+                          <span className="text-lg font-bold text-green-600">
+                            €{parseFloat(product.price_eur || 0).toFixed(2)}
+                          </span>
                         </div>
+                        {product.cost_eur > 0 && (
+                          <>
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600">Cost Price</span>
+                              <span className="text-gray-900">
+                                €{parseFloat(product.cost_eur).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600">
+                                Profit Margin
+                              </span>
+                              <span className="text-blue-600 font-medium">
+                                €
+                                {(
+                                  parseFloat(product.price_eur) -
+                                  parseFloat(product.cost_eur)
+                                ).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600">Margin %</span>
+                              <span className="text-purple-600 font-medium">
+                                {(
+                                  ((parseFloat(product.price_eur) -
+                                    parseFloat(product.cost_eur)) /
+                                    parseFloat(product.cost_eur)) *
+                                  100
+                                ).toFixed(1)}
+                                %
+                              </span>
+                            </div>
+                          </>
+                        )}
                       </div>
-                    )}
-                    {product.shelf_life_days && (
-                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                        <Clock className="w-5 h-5 text-gray-500" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">
-                            فترة الصلاحية
-                          </p>
-                          <p className="text-sm text-gray-900">
-                            {product.shelf_life_days} يوم
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    {product.storage_conditions && (
-                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                        <Thermometer className="w-5 h-5 text-gray-500" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">
-                            شروط التخزين
-                          </p>
-                          <p className="text-sm text-gray-900">
-                            {product.storage_conditions}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    {product.supplier_info && (
-                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                        <Building className="w-5 h-5 text-gray-500" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">
-                            معلومات المورد
-                          </p>
-                          <p className="text-sm text-gray-900">
-                            {product.supplier_info}
-                          </p>
+                    </div>
+
+                    {/* SYP Pricing */}
+                    {product.price_syp && (
+                      <div className="space-y-4">
+                        <h3 className="font-medium text-gray-900 flex items-center gap-2">
+                          <Coins className="w-4 h-4 text-orange-600" />
+                          SYP Pricing
+                        </h3>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Selling Price</span>
+                            <span className="text-lg font-bold text-orange-600">
+                              {parseFloat(product.price_syp).toLocaleString()}{" "}
+                              SYP
+                            </span>
+                          </div>
+                          {product.cost_syp > 0 && (
+                            <>
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600">
+                                  Cost Price
+                                </span>
+                                <span className="text-gray-900">
+                                  {parseFloat(
+                                    product.cost_syp
+                                  ).toLocaleString()}{" "}
+                                  SYP
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600">
+                                  Profit Margin
+                                </span>
+                                <span className="text-blue-600 font-medium">
+                                  {(
+                                    parseFloat(product.price_syp) -
+                                    parseFloat(product.cost_syp)
+                                  ).toLocaleString()}{" "}
+                                  SYP
+                                </span>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     )}
                   </div>
+
+                  {/* Revenue Information */}
+                  {(product.total_revenue_eur > 0 ||
+                    product.total_revenue_syp > 0) && (
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-blue-600" />
+                        Total Revenue
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-green-600">
+                            €
+                            {parseFloat(product.total_revenue_eur || 0).toFixed(
+                              2
+                            )}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Total Revenue (EUR)
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-orange-600">
+                            {parseFloat(
+                              product.total_revenue_syp || 0
+                            ).toLocaleString()}{" "}
+                            SYP
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Total Revenue (SYP)
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-blue-600">
+                            {product.total_sold || 0}
+                          </p>
+                          <p className="text-sm text-gray-600">Units Sold</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardBody>
               </Card>
             </motion.div>
 
-            {/* Sales History */}
-            {salesHistory.length > 0 && (
+            {/* Advanced Details */}
+            {(product.weight_grams ||
+              product.shelf_life_days ||
+              product.storage_conditions ||
+              product.nutritional_info ||
+              product.allergen_info ||
+              product.supplier_info) && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
+                transition={{ delay: 0.3 }}
               >
-                <Card className="border-0 shadow-lg">
-                  <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                    <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                      <History className="w-5 h-5 ml-2 text-green-600" />
-                      تاريخ المبيعات
-                    </h2>
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                        <Layers className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-900">
+                          Advanced Details
+                        </h2>
+                        <p className="text-sm text-gray-600">
+                          Additional product specifications
+                        </p>
+                      </div>
+                    </div>
                   </CardHeader>
-                  <CardBody className="p-6">
-                    <div className="space-y-4">
-                      {salesHistory.map((sale, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-green-100 rounded-lg">
-                              <ShoppingCart className="w-4 h-4 text-green-600" />
+                  <CardBody>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Physical Properties */}
+                      {(product.weight_grams || product.shelf_life_days) && (
+                        <div className="space-y-4">
+                          <h3 className="font-medium text-gray-900">
+                            Physical Properties
+                          </h3>
+                          {product.weight_grams && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600 flex items-center gap-2">
+                                <Scale className="w-4 h-4" />
+                                Weight
+                              </span>
+                              <span className="text-gray-900">
+                                {product.weight_grams}g
+                              </span>
                             </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">
-                                {sale.quantity} وحدة
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {formatDate(sale.date)}
-                              </p>
+                          )}
+                          {product.shelf_life_days && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600 flex items-center gap-2">
+                                <Clock className="w-4 h-4" />
+                                Shelf Life
+                              </span>
+                              <span className="text-gray-900">
+                                {product.shelf_life_days} days
+                              </span>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-bold text-green-600">
-                              {formatCurrency(sale.total_amount, "EUR")}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {sale.store_name}
-                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Dates */}
+                      {(product.production_date || product.expiry_date) && (
+                        <div className="space-y-4">
+                          <h3 className="font-medium text-gray-900">
+                            Important Dates
+                          </h3>
+                          {product.production_date && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600 flex items-center gap-2">
+                                <Calendar className="w-4 h-4" />
+                                Production Date
+                              </span>
+                              <span className="text-gray-900">
+                                {new Date(
+                                  product.production_date
+                                ).toLocaleDateString()}
+                              </span>
+                            </div>
+                          )}
+                          {product.expiry_date && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600 flex items-center gap-2">
+                                <AlertTriangle className="w-4 h-4" />
+                                Expiry Date
+                              </span>
+                              <span className="text-gray-900">
+                                {new Date(
+                                  product.expiry_date
+                                ).toLocaleDateString()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Text Fields */}
+                    <div className="mt-6 space-y-4">
+                      {product.storage_conditions && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                            <Thermometer className="w-4 h-4" />
+                            Storage Conditions
+                          </h4>
+                          <p className="text-gray-700 bg-gray-50 p-3 rounded-lg">
+                            {product.storage_conditions}
+                          </p>
+                        </div>
+                      )}
+
+                      {product.supplier_info && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                            <Truck className="w-4 h-4" />
+                            Supplier Information
+                          </h4>
+                          <div className="text-gray-700 bg-gray-50 p-3 rounded-lg">
+                            {typeof product.supplier_info === "string" ? (
+                              <p>{product.supplier_info}</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {product.supplier_info.name && (
+                                  <p>
+                                    <strong>Name:</strong>{" "}
+                                    {product.supplier_info.name}
+                                  </p>
+                                )}
+                                {product.supplier_info.contact && (
+                                  <p>
+                                    <strong>Contact:</strong>{" "}
+                                    {product.supplier_info.contact}
+                                  </p>
+                                )}
+                                {product.supplier_info.notes && (
+                                  <p>
+                                    <strong>Notes:</strong>{" "}
+                                    {product.supplier_info.notes}
+                                  </p>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
-                      ))}
+                      )}
+
+                      {product.nutritional_info && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                            <Heart className="w-4 h-4" />
+                            Nutritional Information
+                          </h4>
+                          <div className="text-gray-700 bg-gray-50 p-3 rounded-lg">
+                            {typeof product.nutritional_info === "string" ? (
+                              <p>{product.nutritional_info}</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {product.nutritional_info.description && (
+                                  <p>{product.nutritional_info.description}</p>
+                                )}
+                                {product.nutritional_info.calories && (
+                                  <p>
+                                    <strong>Calories:</strong>{" "}
+                                    {product.nutritional_info.calories}
+                                  </p>
+                                )}
+                                {product.nutritional_info.protein && (
+                                  <p>
+                                    <strong>Protein:</strong>{" "}
+                                    {product.nutritional_info.protein}g
+                                  </p>
+                                )}
+                                {product.nutritional_info.carbs && (
+                                  <p>
+                                    <strong>Carbs:</strong>{" "}
+                                    {product.nutritional_info.carbs}g
+                                  </p>
+                                )}
+                                {product.nutritional_info.fat && (
+                                  <p>
+                                    <strong>Fat:</strong>{" "}
+                                    {product.nutritional_info.fat}g
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {product.allergen_info && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                            <Shield className="w-4 h-4" />
+                            Allergen Information
+                          </h4>
+                          <div className="text-gray-700 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                            {typeof product.allergen_info === "string" ? (
+                              <p>{product.allergen_info}</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {product.allergen_info.description && (
+                                  <p>{product.allergen_info.description}</p>
+                                )}
+                                {product.allergen_info.contains &&
+                                  product.allergen_info.contains.length > 0 && (
+                                    <p>
+                                      <strong>Contains:</strong>{" "}
+                                      {product.allergen_info.contains.join(
+                                        ", "
+                                      )}
+                                    </p>
+                                  )}
+                                {product.allergen_info.may_contain &&
+                                  product.allergen_info.may_contain.length >
+                                    0 && (
+                                    <p>
+                                      <strong>May contain:</strong>{" "}
+                                      {product.allergen_info.may_contain.join(
+                                        ", "
+                                      )}
+                                    </p>
+                                  )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardBody>
                 </Card>
@@ -909,43 +915,96 @@ const ProductDetailsPage = () => {
             )}
           </div>
 
-          {/* Right Column - Stats, Stock & Actions */}
-          <div className="space-y-8">
+          {/* Sidebar */}
+          <div className="space-y-6">
             {/* Stock Status */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
             >
-              <Card className="border-0 shadow-lg">
-                <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-purple-50 to-violet-50">
-                  <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                    <Warehouse className="w-5 h-5 ml-2 text-purple-600" />
-                    حالة المخزون
-                  </h2>
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                      <Package2 className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        Inventory Status
+                      </h2>
+                      <p className="text-sm text-gray-600">
+                        Current stock information
+                      </p>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardBody className="p-6">
-                  <div className="text-center space-y-4">
+                <CardBody>
+                  <div className="space-y-4">
+                    {/* Stock Status Badge */}
                     <div
-                      className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${stockStatus.bg} ${stockStatus.color}`}
+                      className={`p-4 rounded-lg ${stockStatus.bg} border border-opacity-20`}
                     >
-                      <StockIcon className="w-4 h-4 mr-2" />
-                      {stockStatus.text}
-                    </div>
-                    <div className="text-4xl font-bold text-gray-900">
-                      {product.stock_quantity}
-                    </div>
-                    <p className="text-sm text-gray-600">الكمية المتوفرة</p>
-                    {product.minimum_stock > 0 && (
-                      <div className="pt-3 border-t border-gray-200">
-                        <p className="text-sm text-gray-600">
-                          الحد الأدنى:{" "}
-                          <span className="font-semibold">
-                            {product.minimum_stock}
-                          </span>
-                        </p>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-gray-900">
+                          Stock Status
+                        </span>
+                        <StockIcon className={`w-5 h-5 ${stockStatus.color}`} />
                       </div>
-                    )}
+                      <p className={`text-sm font-medium ${stockStatus.color}`}>
+                        {stockStatus.text}
+                      </p>
+                    </div>
+
+                    {/* Stock Numbers */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Current Stock</span>
+                        <span className="text-xl font-bold text-gray-900">
+                          {product.stock_quantity || 0}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Minimum Stock</span>
+                        <span className="text-gray-900">
+                          {product.minimum_stock || 0}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Stock Progress Bar */}
+                    <div>
+                      <div className="flex justify-between text-sm text-gray-600 mb-1">
+                        <span>Stock Level</span>
+                        <span>
+                          {Math.round(
+                            (product.stock_quantity /
+                              Math.max(product.minimum_stock * 2, 1)) *
+                              100
+                          )}
+                          %
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${
+                            product.stock_quantity === 0
+                              ? "bg-red-500"
+                              : product.stock_quantity <= product.minimum_stock
+                              ? "bg-yellow-500"
+                              : "bg-green-500"
+                          }`}
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              (product.stock_quantity /
+                                Math.max(product.minimum_stock * 2, 1)) *
+                                100
+                            )}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
                   </div>
                 </CardBody>
               </Card>
@@ -953,161 +1012,135 @@ const ProductDetailsPage = () => {
 
             {/* Quick Actions */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
             >
-              <Card className="border-0 shadow-lg">
-                <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-cyan-50">
-                  <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                    <Zap className="w-5 h-5 ml-2 text-blue-600" />
-                    إجراءات سريعة
-                  </h2>
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                      <Zap className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        Quick Actions
+                      </h2>
+                      <p className="text-sm text-gray-600">
+                        Common product operations
+                      </p>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardBody className="p-6 space-y-3">
-                  <EnhancedButton
-                    onClick={() => navigate(`/products/${id}/edit`)}
-                    variant="primary"
-                    size="sm"
-                    icon={<Edit className="w-4 h-4" />}
-                    fullWidth
-                  >
-                    تعديل المنتج
-                  </EnhancedButton>
-                  <EnhancedButton
-                    onClick={handleToggleStatus}
-                    variant={product.status === "active" ? "danger" : "success"}
-                    size="sm"
-                    disabled={isUpdatingStatus}
-                    icon={
-                      isUpdatingStatus ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : product.status === "active" ? (
-                        <XCircle className="w-4 h-4" />
-                      ) : (
-                        <CheckCircle className="w-4 h-4" />
-                      )
-                    }
-                    fullWidth
-                  >
-                    {product.status === "active" ? "إلغاء التفعيل" : "تفعيل"}
-                  </EnhancedButton>
-                  <EnhancedButton
-                    onClick={handleDuplicate}
-                    variant="secondary"
-                    size="sm"
-                    icon={<Copy className="w-4 h-4" />}
-                    fullWidth
-                  >
-                    نسخ المنتج
-                  </EnhancedButton>
-                  <EnhancedButton
-                    onClick={handleArchive}
-                    variant="warning"
-                    size="sm"
-                    icon={<Archive className="w-4 h-4" />}
-                    fullWidth
-                  >
-                    أرشفة المنتج
-                  </EnhancedButton>
-                  <EnhancedButton
-                    onClick={() => navigate("/products")}
-                    variant="outline"
-                    size="sm"
-                    icon={<ArrowLeft className="w-4 h-4" />}
-                    fullWidth
-                  >
-                    العودة للقائمة
-                  </EnhancedButton>
+                <CardBody>
+                  <div className="space-y-3">
+                    <EnhancedButton
+                      onClick={() => navigate(`/products/${id}/edit`)}
+                      variant="outline"
+                      className="w-full justify-start"
+                      icon={<Edit className="w-4 h-4" />}
+                    >
+                      Edit Product Details
+                    </EnhancedButton>
+
+                    <EnhancedButton
+                      onClick={() => {
+                        navigator.clipboard.writeText(window.location.href);
+                        toast.success("Product link copied to clipboard");
+                      }}
+                      variant="outline"
+                      className="w-full justify-start"
+                      icon={<Copy className="w-4 h-4" />}
+                    >
+                      Copy Product Link
+                    </EnhancedButton>
+
+                    <EnhancedButton
+                      onClick={() => {
+                        window.open(`/products/new?duplicate=${id}`, "_blank");
+                      }}
+                      variant="outline"
+                      className="w-full justify-start"
+                      icon={<Copy className="w-4 h-4" />}
+                    >
+                      Duplicate Product
+                    </EnhancedButton>
+
+                    <EnhancedButton
+                      variant="outline"
+                      className="w-full justify-start"
+                      icon={<Download className="w-4 h-4" />}
+                    >
+                      Export Data
+                    </EnhancedButton>
+                  </div>
                 </CardBody>
               </Card>
             </motion.div>
 
-            {/* Analytics */}
-            {analytics && (
+            {/* Performance Metrics */}
+            {(analytics || performance) && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
               >
-                <Card className="border-0 shadow-lg">
-                  <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
-                    <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                      <BarChart3 className="w-5 h-5 ml-2 text-green-600" />
-                      التحليلات
-                    </h2>
-                  </CardHeader>
-                  <CardBody className="p-6">
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <TrendingUp className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                        <p className="text-2xl font-bold text-blue-600">
-                          {analytics.totalSales || 0}
-                        </p>
-                        <p className="text-sm text-gray-600">إجمالي المبيعات</p>
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                        <BarChart3 className="w-5 h-5 text-green-600" />
                       </div>
-                      <div className="text-center p-4 bg-green-50 rounded-lg">
-                        <Euro className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                        <p className="text-2xl font-bold text-green-600">
-                          {formatCurrency(analytics.totalRevenue || 0, "EUR")}
-                        </p>
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-900">
+                          Performance
+                        </h2>
                         <p className="text-sm text-gray-600">
-                          إجمالي الإيرادات
+                          Sales and analytics data
                         </p>
-                      </div>
-                      <div className="text-center p-4 bg-purple-50 rounded-lg">
-                        <Users className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                        <p className="text-2xl font-bold text-purple-600">
-                          {analytics.uniqueCustomers || 0}
-                        </p>
-                        <p className="text-sm text-gray-600">عملاء فريدون</p>
                       </div>
                     </div>
-                  </CardBody>
-                </Card>
-              </motion.div>
-            )}
-
-            {/* Related Products */}
-            {recommendations.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-              >
-                <Card className="border-0 shadow-lg">
-                  <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-orange-50 to-red-50">
-                    <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                      <Target className="w-5 h-5 ml-2 text-orange-600" />
-                      منتجات مشابهة
-                    </h2>
                   </CardHeader>
-                  <CardBody className="p-6">
-                    <div className="space-y-3">
-                      {recommendations.map((rec, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
-                          onClick={() => navigate(`/products/${rec.id}`)}
-                        >
-                          <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-600 rounded-lg flex items-center justify-center">
-                            <Package className="w-5 h-5 text-white" />
+                  <CardBody>
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-green-600">
+                          {product.total_sold || 0}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Total Units Sold
+                        </p>
+                      </div>
+
+                      {product.total_revenue_eur > 0 && (
+                        <div className="text-center">
+                          <p className="text-xl font-bold text-blue-600">
+                            €{parseFloat(product.total_revenue_eur).toFixed(2)}
+                          </p>
+                          <p className="text-sm text-gray-600">Total Revenue</p>
+                        </div>
+                      )}
+
+                      {analytics && (
+                        <div className="pt-4 border-t border-gray-200 space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">
+                              Avg. Sale Price
+                            </span>
+                            <span className="text-gray-900">
+                              €{analytics.averagePrice?.toFixed(2) || "0.00"}
+                            </span>
                           </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900">
-                              {rec.name}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {rec.category}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-bold text-gray-900">
-                              {formatCurrency(rec.price_eur, "EUR")}
-                            </p>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">
+                              Sales This Month
+                            </span>
+                            <span className="text-gray-900">
+                              {analytics.monthlyUnits || 0}
+                            </span>
                           </div>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </CardBody>
                 </Card>
@@ -1115,47 +1148,17 @@ const ProductDetailsPage = () => {
             )}
           </div>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        <DeleteConfirmationModal
+          isOpen={deleteModal.isOpen}
+          onClose={() => setDeleteModal({ isOpen: false, isLoading: false })}
+          onConfirm={confirmDelete}
+          itemName={product.name}
+          itemType="product"
+          isLoading={deleteModal.isLoading}
+        />
       </div>
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        isOpen={deleteModal.isOpen}
-        onClose={() => setDeleteModal({ isOpen: false, isLoading: false })}
-        onConfirm={confirmDelete}
-        itemName={product?.name}
-        itemType="المنتج"
-        isLoading={deleteModal.isLoading}
-      />
-
-      {/* Toast Messages */}
-      <AnimatePresence>
-        {success && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50"
-          >
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5" />
-              <span>{success}</span>
-            </div>
-          </motion.div>
-        )}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50"
-          >
-            <div className="flex items-center gap-2">
-              <XCircle className="w-5 h-5" />
-              <span>{error}</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

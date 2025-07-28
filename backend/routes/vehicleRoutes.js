@@ -12,8 +12,7 @@ import {
     getVehicleStatistics,
     updateVehicleStatus
 } from '../controllers/vehicleController.js';
-import { protect } from '../middleware/auth.js';
-import { authorize } from '../middleware/enhancedAuth.js';
+import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
