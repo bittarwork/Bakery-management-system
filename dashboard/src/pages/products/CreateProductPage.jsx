@@ -333,54 +333,54 @@ const CreateProductPage = () => {
           !isNaN(parseFloat(formData.price_eur)) &&
           parseFloat(formData.price_eur) > 0
             ? parseFloat(formData.price_eur)
-            : 0.01,
+            : 0.01, // EUR price is required with minimum of 0.01
         price_syp:
           formData.price_syp &&
           formData.price_syp !== "" &&
           !isNaN(parseFloat(formData.price_syp)) &&
           parseFloat(formData.price_syp) > 0
             ? parseFloat(formData.price_syp)
-            : 0, // Changed from null to 0
+            : null, // SYP price is optional, send null if not provided
         cost_eur:
           formData.cost_eur &&
           formData.cost_eur !== "" &&
           !isNaN(parseFloat(formData.cost_eur)) &&
           parseFloat(formData.cost_eur) >= 0
             ? parseFloat(formData.cost_eur)
-            : 0, // Changed from null to 0
+            : null, // Cost is optional, send null if not provided
         cost_syp:
           formData.cost_syp &&
           formData.cost_syp !== "" &&
           !isNaN(parseFloat(formData.cost_syp)) &&
           parseFloat(formData.cost_syp) >= 0
             ? parseFloat(formData.cost_syp)
-            : 0, // Changed from null to 0
+            : null, // Cost is optional, send null if not provided
         stock_quantity:
           formData.stock_quantity &&
           formData.stock_quantity !== "" &&
           !isNaN(parseInt(formData.stock_quantity)) &&
           parseInt(formData.stock_quantity) >= 0
             ? parseInt(formData.stock_quantity)
-            : 0, // Changed from null to 0
+            : null, // Stock quantity is optional, send null if not provided
         minimum_stock:
           formData.minimum_stock &&
           formData.minimum_stock !== "" &&
           !isNaN(parseInt(formData.minimum_stock)) &&
           parseInt(formData.minimum_stock) >= 0
             ? parseInt(formData.minimum_stock)
-            : 0, // Changed from null to 0
+            : null, // Minimum stock is optional, send null if not provided
         weight_grams:
           formData.weight_grams &&
           !isNaN(parseFloat(formData.weight_grams)) &&
           parseFloat(formData.weight_grams) > 0
             ? parseFloat(formData.weight_grams)
-            : 0, // Changed from null to 0
+            : null, // Weight is optional, send null if not provided
         shelf_life_days:
           formData.shelf_life_days &&
           !isNaN(parseInt(formData.shelf_life_days)) &&
           parseInt(formData.shelf_life_days) > 0
             ? parseInt(formData.shelf_life_days)
-            : 0, // Changed from null to 0
+            : null, // Shelf life is optional, send null if not provided
         is_featured: formData.is_featured,
         image_url:
           formData.image_url && formData.image_url.trim() !== ""

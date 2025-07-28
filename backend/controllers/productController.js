@@ -186,24 +186,24 @@ export const createProduct = async (req, res) => {
             }
         }
 
-        // Prepare product data with database-compatible defaults (no nulls for required fields)
+        // Prepare product data with proper null handling for optional fields
         const productData = {
             name,
             description: description || null,
             category: category || 'other',
             unit: unit || 'piece',
-            price_eur: parseFloat(price_eur) > 0 ? parseFloat(price_eur) : 0.01,
-            price_syp: price_syp && parseFloat(price_syp) > 0 ? parseFloat(price_syp) : 0, // Default to 0 instead of null
-            cost_eur: cost_eur && parseFloat(cost_eur) >= 0 ? parseFloat(cost_eur) : 0, // Default to 0 instead of null
-            cost_syp: cost_syp && parseFloat(cost_syp) >= 0 ? parseFloat(cost_syp) : 0, // Default to 0 instead of null
-            stock_quantity: stock_quantity && parseInt(stock_quantity) >= 0 ? parseInt(stock_quantity) : 0,
-            minimum_stock: minimum_stock && parseInt(minimum_stock) >= 0 ? parseInt(minimum_stock) : 0,
+            price_eur: parseFloat(price_eur) > 0 ? parseFloat(price_eur) : 0.01, // Required field with minimum 0.01
+            price_syp: price_syp && parseFloat(price_syp) > 0 ? parseFloat(price_syp) : null, // Optional, null if not provided
+            cost_eur: cost_eur && parseFloat(cost_eur) >= 0 ? parseFloat(cost_eur) : null, // Optional, null if not provided
+            cost_syp: cost_syp && parseFloat(cost_syp) >= 0 ? parseFloat(cost_syp) : null, // Optional, null if not provided
+            stock_quantity: stock_quantity && parseInt(stock_quantity) >= 0 ? parseInt(stock_quantity) : null, // Optional, null if not provided
+            minimum_stock: minimum_stock && parseInt(minimum_stock) >= 0 ? parseInt(minimum_stock) : null, // Optional, null if not provided
             barcode: barcode || null,
             is_featured: is_featured || false,
             status: status || 'active',
             image_url: image_url || null,
-            weight_grams: weight_grams && parseInt(weight_grams) > 0 ? parseInt(weight_grams) : 0, // Default to 0
-            shelf_life_days: shelf_life_days && parseInt(shelf_life_days) > 0 ? parseInt(shelf_life_days) : 0, // Default to 0
+            weight_grams: weight_grams && parseInt(weight_grams) > 0 ? parseInt(weight_grams) : null, // Optional, null if not provided
+            shelf_life_days: shelf_life_days && parseInt(shelf_life_days) > 0 ? parseInt(shelf_life_days) : null, // Optional, null if not provided
             storage_conditions: storage_conditions || null,
             supplier_info: supplier_info ? (typeof supplier_info === 'string' ? { description: supplier_info } : supplier_info) : null,
             nutritional_info: nutritional_info ? (typeof nutritional_info === 'string' ? { description: nutritional_info } : nutritional_info) : null,
@@ -212,27 +212,16 @@ export const createProduct = async (req, res) => {
             created_by_name: created_by_name || 'System'
         };
 
-        // Additional validation to ensure no null values for critical fields
-        const requiredDefaults = {
-            price_syp: 0,
-            cost_eur: 0,
-            cost_syp: 0,
-            stock_quantity: 0,
-            minimum_stock: 0,
-            weight_grams: 0,
-            shelf_life_days: 0,
-            total_sold: 0,
-            total_revenue_eur: 0,
-            total_revenue_syp: 0
-        };
-
-        // Apply defaults for any null/undefined values
-        Object.keys(requiredDefaults).forEach(key => {
-            if (productData[key] === null || productData[key] === undefined) {
-                productData[key] = requiredDefaults[key];
-                console.log(`[PRODUCTS] Applied default value for ${key}: ${requiredDefaults[key]}`);
-            }
-        });
+        // Set default values only for fields that are required or should have default values
+        if (productData.total_sold === null || productData.total_sold === undefined) {
+            productData.total_sold = 0;
+        }
+        if (productData.total_revenue_eur === null || productData.total_revenue_eur === undefined) {
+            productData.total_revenue_eur = 0;
+        }
+        if (productData.total_revenue_syp === null || productData.total_revenue_syp === undefined) {
+            productData.total_revenue_syp = 0;
+        }
 
         // Clean up empty strings and ensure proper data types
         if (productData.description === '') productData.description = null;
@@ -398,18 +387,18 @@ export const updateProduct = async (req, res) => {
         if (description !== undefined) updateData.description = description || null;
         if (category !== undefined) updateData.category = category || 'other';
         if (unit !== undefined) updateData.unit = unit || 'piece';
-        if (price_eur !== undefined) updateData.price_eur = parseFloat(price_eur) > 0 ? parseFloat(price_eur) : 0.01;
-        if (price_syp !== undefined) updateData.price_syp = price_syp && parseFloat(price_syp) > 0 ? parseFloat(price_syp) : 0;
-        if (cost_eur !== undefined) updateData.cost_eur = cost_eur && parseFloat(cost_eur) >= 0 ? parseFloat(cost_eur) : 0;
-        if (cost_syp !== undefined) updateData.cost_syp = cost_syp && parseFloat(cost_syp) >= 0 ? parseFloat(cost_syp) : 0;
-        if (stock_quantity !== undefined) updateData.stock_quantity = stock_quantity && parseInt(stock_quantity) >= 0 ? parseInt(stock_quantity) : 0;
-        if (minimum_stock !== undefined) updateData.minimum_stock = minimum_stock && parseInt(minimum_stock) >= 0 ? parseInt(minimum_stock) : 0;
+        if (price_eur !== undefined) updateData.price_eur = parseFloat(price_eur) > 0 ? parseFloat(price_eur) : 0.01; // Required field
+        if (price_syp !== undefined) updateData.price_syp = price_syp && parseFloat(price_syp) > 0 ? parseFloat(price_syp) : null; // Optional field
+        if (cost_eur !== undefined) updateData.cost_eur = cost_eur && parseFloat(cost_eur) >= 0 ? parseFloat(cost_eur) : null; // Optional field
+        if (cost_syp !== undefined) updateData.cost_syp = cost_syp && parseFloat(cost_syp) >= 0 ? parseFloat(cost_syp) : null; // Optional field
+        if (stock_quantity !== undefined) updateData.stock_quantity = stock_quantity && parseInt(stock_quantity) >= 0 ? parseInt(stock_quantity) : null; // Optional field
+        if (minimum_stock !== undefined) updateData.minimum_stock = minimum_stock && parseInt(minimum_stock) >= 0 ? parseInt(minimum_stock) : null; // Optional field
         if (barcode !== undefined) updateData.barcode = barcode || null;
         if (is_featured !== undefined) updateData.is_featured = is_featured || false;
         if (status !== undefined) updateData.status = status || 'active';
         if (image_url !== undefined) updateData.image_url = image_url || null;
-        if (weight_grams !== undefined) updateData.weight_grams = weight_grams && parseInt(weight_grams) > 0 ? parseInt(weight_grams) : 0;
-        if (shelf_life_days !== undefined) updateData.shelf_life_days = shelf_life_days && parseInt(shelf_life_days) > 0 ? parseInt(shelf_life_days) : 0;
+        if (weight_grams !== undefined) updateData.weight_grams = weight_grams && parseInt(weight_grams) > 0 ? parseInt(weight_grams) : null; // Optional field
+        if (shelf_life_days !== undefined) updateData.shelf_life_days = shelf_life_days && parseInt(shelf_life_days) > 0 ? parseInt(shelf_life_days) : null; // Optional field
         if (storage_conditions !== undefined) updateData.storage_conditions = storage_conditions || null;
         if (supplier_info !== undefined) updateData.supplier_info = supplier_info ? (typeof supplier_info === 'string' ? { description: supplier_info } : supplier_info) : null;
         if (nutritional_info !== undefined) updateData.nutritional_info = nutritional_info ? (typeof nutritional_info === 'string' ? { description: nutritional_info } : nutritional_info) : null;

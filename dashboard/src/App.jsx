@@ -759,7 +759,9 @@ const App = () => {
             <Route
               path="/vehicles/expenses"
               element={
-                <ProtectedRoute allowedRoles={["distributor", "admin", "manager"]}>
+                <ProtectedRoute
+                  allowedRoles={["distributor", "admin", "manager"]}
+                >
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}

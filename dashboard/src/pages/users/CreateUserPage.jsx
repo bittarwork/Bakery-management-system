@@ -23,12 +23,14 @@ import {
   FileText,
   UserCheck,
   Car,
+  AlertTriangle,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
 import EnhancedInput from "../../components/ui/EnhancedInput";
 import BackButton from "../../components/ui/BackButton";
 import userService from "../../services/userService";
+import vehicleService from "../../services/vehicleService";
 import { AnimatePresence } from "framer-motion";
 
 const CreateUserPage = () => {
@@ -48,17 +50,33 @@ const CreateUserPage = () => {
     emergency_contact_name: "",
     emergency_contact_phone: "",
     emergency_contact_relation: "",
-    vehicle_type: "",
-    vehicle_model: "",
-    vehicle_plate: "",
-    vehicle_year: "",
+    vehicle_id: "",
     work_status: "available",
   });
+  const [availableVehicles, setAvailableVehicles] = useState([]);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Load available vehicles when role is distributor
+  React.useEffect(() => {
+    if (formData.role === "distributor") {
+      loadAvailableVehicles();
+    }
+  }, [formData.role]);
+
+  const loadAvailableVehicles = async () => {
+    try {
+      const response = await vehicleService.getAvailableVehicles();
+      if (response.success) {
+        setAvailableVehicles(response.data);
+      }
+    } catch (error) {
+      console.error("Error loading available vehicles:", error);
+    }
+  };
 
   const roles = [
     {
@@ -606,50 +624,151 @@ const CreateUserPage = () => {
                       </div>
                     </div>
 
-                    {/* معلومات المركبة */}
+                    {/* تعيين المركبة */}
                     <div className="bg-green-50 p-6 rounded-xl border border-green-200">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                         <Car className="w-5 h-5" />
-                        معلومات المركبة
+                        تعيين المركبة
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <EnhancedInput
-                          label="نوع المركبة"
-                          name="vehicle_type"
-                          value={formData.vehicle_type}
-                          onChange={handleChange}
-                          placeholder="مثل: سيارة، دراجة نارية، شاحنة"
-                          error={errors.vehicle_type}
-                          icon={<Car className="w-4 h-4" />}
-                        />
-                        <EnhancedInput
-                          label="موديل المركبة"
-                          name="vehicle_model"
-                          value={formData.vehicle_model}
-                          onChange={handleChange}
-                          placeholder="مثل: تويوتا كامري، هوندا سيفيك"
-                          error={errors.vehicle_model}
-                          icon={<Car className="w-4 h-4" />}
-                        />
-                        <EnhancedInput
-                          label="رقم اللوحة"
-                          name="vehicle_plate"
-                          value={formData.vehicle_plate}
-                          onChange={handleChange}
-                          placeholder="رقم لوحة المركبة"
-                          error={errors.vehicle_plate}
-                          icon={<FileText className="w-4 h-4" />}
-                        />
-                        <EnhancedInput
-                          label="سنة الصنع"
-                          name="vehicle_year"
-                          type="number"
-                          value={formData.vehicle_year}
-                          onChange={handleChange}
-                          placeholder="مثل: 2020"
-                          error={errors.vehicle_year}
-                          icon={<Calendar className="w-4 h-4" />}
-                        />
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            اختر المركبة
+                          </label>
+                          <select
+                            name="vehicle_id"
+                            value={formData.vehicle_id}
+                            onChange={handleChange}
+                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                              errors.vehicle_id
+                                ? "border-red-500"
+                                : "border-gray-300"
+                            }`}
+                          >
+                            <option value="">اختر مركبة متاحة...</option>
+                            {availableVehicles.map((vehicle) => (
+                              <option key={vehicle.id} value={vehicle.id}>
+                                {vehicle.vehicle_model} ({vehicle.vehicle_plate}
+                                ) -{" "}
+                                {vehicle.vehicle_type === "car"
+                                  ? "سيارة"
+                                  : vehicle.vehicle_type === "van"
+                                  ? "فان"
+                                  : vehicle.vehicle_type === "truck"
+                                  ? "شاحنة"
+                                  : "دراجة نارية"}
+                              </option>
+                            ))}
+                          </select>
+                          {errors.vehicle_id && (
+                            <p className="text-red-500 text-xs mt-1">
+                              {errors.vehicle_id}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* معاينة المركبة المختارة */}
+                        {formData.vehicle_id && (
+                          <div className="mt-4 p-4 bg-white rounded-lg border border-gray-200">
+                            {(() => {
+                              const selectedVehicle = availableVehicles.find(
+                                (v) => v.id.toString() === formData.vehicle_id
+                              );
+                              if (!selectedVehicle) return null;
+
+                              const typeInfo =
+                                vehicleService.getVehicleTypeInfo(
+                                  selectedVehicle.vehicle_type
+                                );
+                              const statusInfo = vehicleService.getStatusInfo(
+                                selectedVehicle.status
+                              );
+                              const fuelInfo = vehicleService.getFuelTypeInfo(
+                                selectedVehicle.fuel_type
+                              );
+
+                              return (
+                                <div>
+                                  <div className="flex items-center space-x-3 mb-3">
+                                    <div className="text-2xl">
+                                      {typeInfo.icon}
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-gray-900">
+                                        {selectedVehicle.vehicle_model}
+                                      </h4>
+                                      <p className="text-sm text-gray-600">
+                                        {typeInfo.label} •{" "}
+                                        {selectedVehicle.vehicle_year}
+                                      </p>
+                                    </div>
+                                    <div
+                                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                        statusInfo.color === "green"
+                                          ? "bg-green-100 text-green-800"
+                                          : "bg-gray-100 text-gray-800"
+                                      }`}
+                                    >
+                                      {statusInfo.label}
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div className="flex items-center space-x-2">
+                                      <span className="text-gray-500">
+                                        رقم اللوحة:
+                                      </span>
+                                      <span className="font-medium">
+                                        {selectedVehicle.vehicle_plate}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      <span className="text-gray-500">
+                                        نوع الوقود:
+                                      </span>
+                                      <span className="font-medium">
+                                        {fuelInfo.label}
+                                      </span>
+                                    </div>
+                                    {selectedVehicle.engine_capacity && (
+                                      <div className="flex items-center space-x-2">
+                                        <span className="text-gray-500">
+                                          المحرك:
+                                        </span>
+                                        <span className="font-medium">
+                                          {selectedVehicle.engine_capacity}
+                                        </span>
+                                      </div>
+                                    )}
+                                    <div className="flex items-center space-x-2">
+                                      <span className="text-gray-500">
+                                        ناقل الحركة:
+                                      </span>
+                                      <span className="font-medium">
+                                        {selectedVehicle.transmission_type ===
+                                        "manual"
+                                          ? "يدوي"
+                                          : "أوتوماتيك"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
+
+                        {availableVehicles.length === 0 && (
+                          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <div className="flex items-center space-x-2">
+                              <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                              <p className="text-sm text-yellow-800">
+                                لا توجد مركبات متاحة حالياً. يمكنك إنشاء الموظف
+                                وتعيين المركبة لاحقاً.
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

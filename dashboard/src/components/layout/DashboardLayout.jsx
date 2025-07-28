@@ -29,6 +29,8 @@ import {
   Building2,
   UserCheck,
   Cog,
+  Car,
+  Receipt,
 } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import Logo from "../ui/Logo";
@@ -104,6 +106,14 @@ const DashboardLayout = ({ children }) => {
           icon: UserCheck,
           description: "الموظفين والمستخدمين",
           roles: ["admin"],
+          badge: null,
+        },
+        {
+          name: "المركبات",
+          path: "/vehicles",
+          icon: Car,
+          description: "إدارة مركبات التوزيع",
+          roles: ["admin", "manager"],
           badge: null,
         },
       ],
@@ -188,6 +198,14 @@ const DashboardLayout = ({ children }) => {
           path: "/profile",
           icon: User,
           description: "معلوماتك الشخصية",
+          badge: null,
+        },
+        {
+          name: "مصروفات المركبة",
+          path: "/vehicles/expenses",
+          icon: Receipt,
+          description: "تسجيل مصروفات مركبة التوزيع",
+          roles: ["distributor"],
           badge: null,
         },
       ],
