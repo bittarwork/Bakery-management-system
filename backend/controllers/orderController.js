@@ -1,6 +1,7 @@
 import { validationResult } from 'express-validator';
 import { Op, Transaction } from 'sequelize';
-import { Order, OrderItem, Store, Product, User, getSequelizeConnection } from '../models/index.js';
+import { Order, OrderItem, Store, Product, User } from '../models/index.js';
+import sequelize from '../config/database.js';
 import { ORDER_STATUS, PAYMENT_STATUS } from '../constants/index.js';
 import { CreateOrderRequest } from '../dto/request/CreateOrderRequest.js';
 import { OrderResponse, OrdersListResponse } from '../dto/response/OrderResponse.js';
@@ -260,7 +261,6 @@ export const getOrder = async (req, res) => {
 // @route   POST /api/orders
 // @access  Private
 export const createOrder = async (req, res) => {
-    const sequelize = await getSequelizeConnection();
     const transaction = await sequelize.transaction({
         isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED,
         timeout: 30000
@@ -453,7 +453,6 @@ export const createOrder = async (req, res) => {
 // @route   PUT /api/orders/:id
 // @access  Private
 export const updateOrder = async (req, res) => {
-    const sequelize = await getSequelizeConnection();
     const transaction = await sequelize.transaction();
 
     try {
@@ -601,7 +600,6 @@ export const updateOrder = async (req, res) => {
 // @route   DELETE /api/orders/:id
 // @access  Private
 export const deleteOrder = async (req, res) => {
-    const sequelize = await getSequelizeConnection();
     const transaction = await sequelize.transaction();
 
     try {

@@ -1,6 +1,7 @@
 import { validationResult } from 'express-validator';
 import { Op } from 'sequelize';
-import { Order, OrderItem, Product, Store, getSequelizeConnection } from '../models/index.js';
+import { Order, OrderItem, Product, Store } from '../models/index.js';
+import sequelize from '../config/database.js';
 
 // Default tax configuration
 const DEFAULT_TAX_CONFIG = {

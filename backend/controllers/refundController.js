@@ -1,6 +1,7 @@
 import { validationResult } from 'express-validator';
 import { Op } from 'sequelize';
-import { Order, OrderItem, Product, Store, User, getSequelizeConnection } from '../models/index.js';
+import { Order, OrderItem, Product, Store, User } from '../models/index.js';
+import sequelize from '../config/database.js';
 
 // Mock refund data (in real app, this would be a database table)
 let refundData = [];

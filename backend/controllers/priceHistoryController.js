@@ -1,6 +1,7 @@
 import { validationResult } from 'express-validator';
 import { Op } from 'sequelize';
-import { Product, getSequelizeConnection } from '../models/index.js';
+import { Product } from '../models/index.js';
+import sequelize from '../config/database.js';
 
 // Mock price history data (in real app, this would be a database table)
 let priceHistoryData = [];
