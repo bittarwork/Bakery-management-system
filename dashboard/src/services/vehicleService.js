@@ -116,6 +116,16 @@ class VehicleService {
         }
     }
 
+    async getAllVehiclesWithStatus() {
+        try {
+            const response = await apiService.get(`${this.baseEndpoint}/all-with-status`);
+            return response;
+        } catch (error) {
+            console.error('Error fetching all vehicles with status:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
     // Get vehicles by distributor
     async getVehiclesByDistributor(distributorId) {
         try {

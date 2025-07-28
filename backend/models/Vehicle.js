@@ -437,6 +437,22 @@ Vehicle.getAvailableVehicles = async function() {
     });
 };
 
+// New method to get all vehicles with availability status
+Vehicle.getAllVehiclesWithStatus = async function() {
+    return await Vehicle.findAll({
+        order: [['vehicle_type', 'ASC'], ['vehicle_model', 'ASC']],
+        attributes: [
+            'id',
+            'vehicle_type',
+            'vehicle_model', 
+            'vehicle_plate',
+            'vehicle_year',
+            'status',
+            'assigned_distributor_id'
+        ]
+    });
+};
+
 Vehicle.getVehiclesByDistributor = async function(distributorId) {
     return await Vehicle.findAll({
         where: {

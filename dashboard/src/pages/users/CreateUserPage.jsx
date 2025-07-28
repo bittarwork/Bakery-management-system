@@ -53,42 +53,57 @@ const CreateUserPage = () => {
   });
 
   const [availableVehicles, setAvailableVehicles] = useState([]);
+  const [showAllVehicles, setShowAllVehicles] = useState(false);
+  const [vehicleLoading, setVehicleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Load available vehicles when role is distributor
+  // Load vehicles when role changes to distributor
   useEffect(() => {
     if (formData.role === "distributor") {
-      loadAvailableVehicles();
+      loadVehicles();
     }
   }, [formData.role]);
 
-  // Load vehicles on component mount if role is distributor
+  // Reload vehicles when toggle changes
   useEffect(() => {
     if (formData.role === "distributor") {
-      loadAvailableVehicles();
+      loadVehicles();
     }
-  }, []);
+  }, [showAllVehicles]);
 
-  const loadAvailableVehicles = async () => {
+  const loadVehicles = async () => {
     try {
-      console.log("Loading available vehicles...");
-      const response = await vehicleService.getAvailableVehicles();
+      setVehicleLoading(true);
+      console.log("Loading vehicles...");
+      
+      const response = showAllVehicles 
+        ? await vehicleService.getAllVehiclesWithStatus()
+        : await vehicleService.getAvailableVehicles();
+        
       console.log("Vehicle response:", response);
       if (response.success) {
         setAvailableVehicles(response.data || []);
-        console.log("Available vehicles loaded:", response.data);
+        console.log("Vehicles loaded:", response.data);
       } else {
         console.error("Failed to load vehicles:", response.message);
         setAvailableVehicles([]);
       }
     } catch (error) {
-      console.error("Error loading available vehicles:", error);
+      console.error("Error loading vehicles:", error);
       setAvailableVehicles([]);
+    } finally {
+      setVehicleLoading(false);
     }
+  };
+
+  // Toggle between available and all vehicles
+  const toggleVehicleView = () => {
+    setShowAllVehicles(!showAllVehicles);
+    setFormData(prev => ({ ...prev, vehicle_id: "" })); // Clear selection when switching
   };
 
   const handleChange = (e) => {
@@ -584,23 +599,49 @@ const CreateUserPage = () => {
 
                       {/* تعيين المركبة */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          تعيين المركبة
-                        </label>
-                        <select
-                          name="vehicle_id"
-                          value={formData.vehicle_id}
-                          onChange={handleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
-                          <option value="">اختر مركبة</option>
-                          {availableVehicles.map((vehicle) => (
-                            <option key={vehicle.id} value={vehicle.id}>
-                              {vehicle.vehicle_plate} - {vehicle.vehicle_model} ({vehicle.vehicle_type})
-                            </option>
-                          ))}
-                        </select>
-                        {availableVehicles.length === 0 && (
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            تعيين المركبة
+                          </label>
+                          <button
+                            type="button"
+                            onClick={toggleVehicleView}
+                            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            {showAllVehicles ? "عرض المتاح فقط" : "عرض جميع المركبات"}
+                          </button>
+                        </div>
+                        
+                        {vehicleLoading ? (
+                          <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                            <div className="flex items-center justify-center">
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                              <span className="text-sm text-gray-500">جاري تحميل المركبات...</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <select
+                            name="vehicle_id"
+                            value={formData.vehicle_id}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="">اختر مركبة</option>
+                            {availableVehicles.map((vehicle) => (
+                              <option 
+                                key={vehicle.id} 
+                                value={vehicle.id}
+                                disabled={!vehicle.isAvailable && showAllVehicles}
+                                className={!vehicle.isAvailable && showAllVehicles ? "text-gray-400" : ""}
+                              >
+                                {vehicle.vehicle_plate} - {vehicle.vehicle_model} ({vehicle.vehicle_type})
+                                {showAllVehicles && vehicle.availabilityStatus && ` - ${vehicle.availabilityStatus}`}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        
+                        {availableVehicles.length === 0 && !vehicleLoading && (
                           <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                             <p className="text-sm text-yellow-700">
                               لا توجد مركبات متاحة حالياً. يمكنك إضافة مركبات
@@ -608,10 +649,22 @@ const CreateUserPage = () => {
                             </p>
                           </div>
                         )}
-                        {availableVehicles.length > 0 && (
-                          <p className="mt-1 text-sm text-gray-500">
-                            تم العثور على {availableVehicles.length} مركبة متاحة
-                          </p>
+                        
+                        {availableVehicles.length > 0 && !vehicleLoading && (
+                          <div className="mt-2 space-y-1">
+                            <p className="text-sm text-gray-500">
+                              {showAllVehicles 
+                                ? `تم العثور على ${availableVehicles.length} مركبة (جميع المركبات)`
+                                : `تم العثور على ${availableVehicles.length} مركبة متاحة`
+                              }
+                            </p>
+                            {showAllVehicles && (
+                              <div className="flex gap-4 text-xs text-gray-400">
+                                <span>• المتاح: {availableVehicles.filter(v => v.isAvailable).length}</span>
+                                <span>• المخصص: {availableVehicles.filter(v => !v.isAvailable).length}</span>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>

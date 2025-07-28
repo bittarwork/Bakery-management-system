@@ -14,7 +14,8 @@ import {
     getVehicleStatisticsById,
     exportVehicleData,
     updateVehicleStatus,
-    exportVehiclesCSV
+    exportVehiclesCSV,
+    getAllVehiclesWithStatus
 } from '../controllers/vehicleController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
@@ -28,6 +29,7 @@ router.get('/', authorize('admin', 'manager'), getAllVehicles);
 router.get('/statistics', authorize('admin', 'manager'), getVehicleStatistics);
 router.get('/export/csv', authorize('admin', 'manager'), exportVehiclesCSV);
 router.get('/available', getAvailableVehicles);
+router.get('/all-with-status', getAllVehiclesWithStatus);
 router.get('/distributor/:distributorId', getVehiclesByDistributor);
 router.get('/:id', authorize('admin', 'manager'), getVehicleById);
 router.get('/:id/expenses', authorize('admin', 'manager'), getVehicleExpenses);

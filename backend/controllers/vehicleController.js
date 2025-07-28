@@ -436,18 +436,46 @@ export const unassignVehicle = async (req, res) => {
 export const getAvailableVehicles = async (req, res) => {
     try {
         const vehicles = await Vehicle.getAvailableVehicles();
-
         res.json({
             success: true,
             data: vehicles,
             message: 'تم جلب المركبات المتاحة بنجاح'
         });
-
     } catch (error) {
         logger.error('Get available vehicles error:', error);
         res.status(500).json({
             success: false,
             message: 'خطأ في جلب المركبات المتاحة',
+            error: error.message
+        });
+    }
+};
+
+export const getAllVehiclesWithStatus = async (req, res) => {
+    try {
+        const vehicles = await Vehicle.getAllVehiclesWithStatus();
+        
+        // Add availability status to each vehicle
+        const vehiclesWithStatus = vehicles.map(vehicle => ({
+            ...vehicle.toJSON(),
+            isAvailable: vehicle.status === 'active' && !vehicle.assigned_distributor_id,
+            availabilityStatus: vehicle.status === 'active' && !vehicle.assigned_distributor_id 
+                ? 'متاح' 
+                : vehicle.assigned_distributor_id 
+                    ? 'مخصص' 
+                    : 'غير متاح'
+        }));
+        
+        res.json({
+            success: true,
+            data: vehiclesWithStatus,
+            message: 'تم جلب جميع المركبات بنجاح'
+        });
+    } catch (error) {
+        logger.error('Get all vehicles with status error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في جلب المركبات',
             error: error.message
         });
     }
