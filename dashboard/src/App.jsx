@@ -50,6 +50,8 @@ import UserProfilePage from "./pages/users/UserProfilePage";
 
 // Pages - Vehicles
 import VehicleManagementPage from "./pages/vehicles/VehicleManagementPage";
+import AddVehiclePage from "./pages/vehicles/AddVehiclePage";
+import EditVehiclePage from "./pages/vehicles/EditVehiclePage";
 import VehicleExpensesPage from "./pages/vehicles/VehicleExpensesPage";
 
 // Pages - Reports

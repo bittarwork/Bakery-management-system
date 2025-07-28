@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Search,
@@ -23,6 +24,8 @@ import Button from "../../components/ui/Button";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 
 const VehicleManagementPage = () => {
+  const navigate = useNavigate();
+  
   // State management
   const [vehicles, setVehicles] = useState([]);
   const [distributors, setDistributors] = useState([]);
@@ -49,24 +52,7 @@ const VehicleManagementPage = () => {
   const [selectedVehicleId, setSelectedVehicleId] = useState(null);
   const [selectedDistributorId, setSelectedDistributorId] = useState("");
 
-  // Add vehicle modal states
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newVehicleData, setNewVehicleData] = useState({
-    vehicle_type: "",
-    vehicle_model: "",
-    vehicle_plate: "",
-    vehicle_year: new Date().getFullYear(),
-    status: "available",
-    fuel_type: "gasoline",
-    transmission: "manual",
-    vehicle_color: "",
-    purchase_price: "",
-    currency: "EUR",
-    insurance_provider: "",
-    insurance_expiry: "",
-    registration_expiry: "",
-    notes: "",
-  });
+
 
   // Load initial data
   useEffect(() => {
@@ -135,9 +121,7 @@ const VehicleManagementPage = () => {
 
   // Vehicle actions
   const handleEdit = (vehicle) => {
-    // Navigate to edit page (to be implemented)
-    console.log("Edit vehicle:", vehicle.id);
-    toast("صفحة التعديل قيد التطوير", { icon: "ℹ️" });
+    navigate(`/vehicles/edit/${vehicle.id}`);
   };
 
   const handleDelete = async (vehicleId) => {
@@ -234,91 +218,9 @@ const VehicleManagementPage = () => {
     }
   };
 
-  // Add vehicle functions
+  // Add vehicle function
   const handleAddVehicle = () => {
-    setShowAddModal(true);
-  };
-
-  const handleNewVehicleChange = (field, value) => {
-    setNewVehicleData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const confirmAddVehicle = async () => {
-    // Validation
-    if (
-      !newVehicleData.vehicle_type ||
-      !newVehicleData.vehicle_model ||
-      !newVehicleData.vehicle_plate
-    ) {
-      toast.error("يرجى ملء الحقول المطلوبة");
-      return;
-    }
-
-    try {
-      setActionLoading(true);
-
-      // Transform data to match backend expectations
-      const vehicleDataForBackend = {
-        vehicle_type: newVehicleData.vehicle_type,
-        vehicle_model: newVehicleData.vehicle_model,
-        vehicle_plate: newVehicleData.vehicle_plate,
-        vehicle_year: newVehicleData.vehicle_year,
-        vehicle_color: newVehicleData.vehicle_color,
-        fuel_type: newVehicleData.fuel_type,
-        transmission_type: newVehicleData.transmission,
-        insurance_company: newVehicleData.insurance_provider,
-        insurance_expiry_date: newVehicleData.insurance_expiry,
-        registration_expiry_date: newVehicleData.registration_expiry,
-        // Handle price and currency conversion
-        purchase_price_eur:
-          newVehicleData.currency === "EUR"
-            ? parseFloat(newVehicleData.purchase_price) || 0
-            : 0,
-        purchase_price_syp:
-          newVehicleData.currency === "SYP"
-            ? parseFloat(newVehicleData.purchase_price) || 0
-            : 0,
-        notes: newVehicleData.notes,
-        is_company_owned: true,
-        purchase_date: new Date().toISOString().split("T")[0], // Current date as purchase date
-      };
-
-      const response = await vehicleService.createVehicle(
-        vehicleDataForBackend
-      );
-
-      if (response.success) {
-        toast.success("تم إضافة المركبة بنجاح");
-        setShowAddModal(false);
-        // Reset form
-        setNewVehicleData({
-          vehicle_type: "",
-          vehicle_model: "",
-          vehicle_plate: "",
-          vehicle_year: new Date().getFullYear(),
-          status: "active",
-          fuel_type: "gasoline",
-          transmission: "manual",
-          vehicle_color: "",
-          purchase_price: "",
-          currency: "EUR",
-          insurance_provider: "",
-          insurance_expiry: "",
-          registration_expiry: "",
-          notes: "",
-        });
-        loadData(); // Reload data
-      } else {
-        toast.error(response.message || "خطأ في إضافة المركبة");
-      }
-    } catch (error) {
-      toast.error("خطأ في إضافة المركبة");
-    } finally {
-      setActionLoading(false);
-    }
+    navigate("/vehicles/add");
   };
 
   return (
@@ -680,271 +582,7 @@ const VehicleManagementPage = () => {
           </motion.div>
         )}
 
-        {/* Add Vehicle Modal */}
-        {showAddModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-            onClick={() => setShowAddModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-lg font-bold text-gray-900 mb-4">
-                إضافة مركبة جديدة
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Vehicle Type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    نوع المركبة *
-                  </label>
-                  <select
-                    value={newVehicleData.vehicle_type}
-                    onChange={(e) =>
-                      handleNewVehicleChange("vehicle_type", e.target.value)
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="">اختر نوع المركبة...</option>
-                    <option value="truck">شاحنة</option>
-                    <option value="van">فان</option>
-                    <option value="motorcycle">دراجة نارية</option>
-                    <option value="car">سيارة</option>
-                  </select>
-                </div>
-
-                {/* Vehicle Model */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    الموديل *
-                  </label>
-                  <input
-                    type="text"
-                    value={newVehicleData.vehicle_model}
-                    onChange={(e) =>
-                      handleNewVehicleChange("vehicle_model", e.target.value)
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                    placeholder="أدخل موديل المركبة"
-                    required
-                  />
-                </div>
-
-                {/* License Plate */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    رقم اللوحة *
-                  </label>
-                  <input
-                    type="text"
-                    value={newVehicleData.vehicle_plate}
-                    onChange={(e) =>
-                      handleNewVehicleChange("vehicle_plate", e.target.value)
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                    placeholder="أدخل رقم اللوحة"
-                    required
-                  />
-                </div>
-
-                {/* Year */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    سنة الصنع
-                  </label>
-                  <input
-                    type="number"
-                    value={newVehicleData.vehicle_year}
-                    onChange={(e) =>
-                      handleNewVehicleChange(
-                        "vehicle_year",
-                        parseInt(e.target.value)
-                      )
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                    min="1990"
-                    max={new Date().getFullYear() + 1}
-                  />
-                </div>
-
-                {/* Color */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    اللون
-                  </label>
-                  <input
-                    type="text"
-                    value={newVehicleData.vehicle_color}
-                    onChange={(e) =>
-                      handleNewVehicleChange("vehicle_color", e.target.value)
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                    placeholder="أدخل لون المركبة"
-                  />
-                </div>
-
-                {/* Fuel Type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    نوع الوقود
-                  </label>
-                  <select
-                    value={newVehicleData.fuel_type}
-                    onChange={(e) =>
-                      handleNewVehicleChange("fuel_type", e.target.value)
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="gasoline">بنزين</option>
-                    <option value="diesel">ديزل</option>
-                    <option value="electric">كهربائي</option>
-                    <option value="hybrid">هجين</option>
-                  </select>
-                </div>
-
-                {/* Transmission */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    ناقل الحركة
-                  </label>
-                  <select
-                    value={newVehicleData.transmission}
-                    onChange={(e) =>
-                      handleNewVehicleChange("transmission", e.target.value)
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="manual">يدوي</option>
-                    <option value="automatic">أوتوماتيك</option>
-                  </select>
-                </div>
-
-                {/* Purchase Price */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    سعر الشراء
-                  </label>
-                  <div className="flex">
-                    <input
-                      type="number"
-                      value={newVehicleData.purchase_price}
-                      onChange={(e) =>
-                        handleNewVehicleChange("purchase_price", e.target.value)
-                      }
-                      className="flex-1 border border-gray-300 rounded-l-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                      placeholder="0.00"
-                      min="0"
-                      step="0.01"
-                    />
-                    <select
-                      value={newVehicleData.currency}
-                      onChange={(e) =>
-                        handleNewVehicleChange("currency", e.target.value)
-                      }
-                      className="border border-l-0 border-gray-300 rounded-r-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="EUR">EUR</option>
-                      <option value="SYP">SYP</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Insurance Provider */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    شركة التأمين
-                  </label>
-                  <input
-                    type="text"
-                    value={newVehicleData.insurance_provider}
-                    onChange={(e) =>
-                      handleNewVehicleChange(
-                        "insurance_provider",
-                        e.target.value
-                      )
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                    placeholder="أدخل اسم شركة التأمين"
-                  />
-                </div>
-
-                {/* Insurance Expiry */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    تاريخ انتهاء التأمين
-                  </label>
-                  <input
-                    type="date"
-                    value={newVehicleData.insurance_expiry}
-                    onChange={(e) =>
-                      handleNewVehicleChange("insurance_expiry", e.target.value)
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Registration Expiry */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    تاريخ انتهاء الترخيص
-                  </label>
-                  <input
-                    type="date"
-                    value={newVehicleData.registration_expiry}
-                    onChange={(e) =>
-                      handleNewVehicleChange(
-                        "registration_expiry",
-                        e.target.value
-                      )
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Notes */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    ملاحظات
-                  </label>
-                  <textarea
-                    value={newVehicleData.notes}
-                    onChange={(e) =>
-                      handleNewVehicleChange("notes", e.target.value)
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                    rows="3"
-                    placeholder="أدخل أي ملاحظات إضافية"
-                  />
-                </div>
-              </div>
-
-              <div className="flex space-x-3 justify-end mt-6">
-                <Button
-                  onClick={() => setShowAddModal(false)}
-                  variant="secondary"
-                >
-                  إلغاء
-                </Button>
-                <Button
-                  onClick={confirmAddVehicle}
-                  variant="primary"
-                  loading={actionLoading}
-                >
-                  إضافة المركبة
-                </Button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
+        
       </AnimatePresence>
     </div>
   );

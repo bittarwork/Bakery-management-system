@@ -206,6 +206,30 @@ export const createProduct = async (req, res) => {
             return isNaN(parsed) ? defaultValue : parsed;
         };
 
+        // Helper function for positive numbers only
+        const parsePositiveNumber = (value) => {
+            const parsed = parseNumber(value, null);
+            return parsed && parsed > 0 ? parsed : null;
+        };
+
+        const parsePositiveInteger = (value) => {
+            const parsed = parseInteger(value, null);
+            return parsed && parsed > 0 ? parsed : null;
+        };
+
+        // Helper function for database fields that don't allow null but need positive validation
+        const parsePositiveNumberWithDefault = (value, defaultValue) => {
+            const parsed = parseNumber(value, null);
+            if (parsed && parsed > 0) return parsed;
+            return defaultValue; // Use provided default instead of null
+        };
+
+        const parsePositiveIntegerWithDefault = (value, defaultValue) => {
+            const parsed = parseInteger(value, null);
+            if (parsed && parsed > 0) return parsed;
+            return defaultValue; // Use provided default instead of null
+        };
+
         // Prepare clean product data
         const productData = {
             name: name?.trim(),
@@ -213,17 +237,17 @@ export const createProduct = async (req, res) => {
             category: category || 'other',
             unit: unit || 'piece',
             price_eur: Math.max(parseNumber(price_eur, 0.01), 0.01), // Required field with minimum 0.01
-            price_syp: parseNumber(price_syp, 0), // Set to 0 if not provided, cannot be null
-            cost_eur: parseNumber(cost_eur, 0), // Set to 0 if not provided
-            cost_syp: parseNumber(cost_syp, 0), // Set to 0 if not provided
-            stock_quantity: parseInteger(stock_quantity, 0), // Set to 0 if not provided
-            minimum_stock: parseInteger(minimum_stock, 0), // Set to 0 if not provided
+            price_syp: parsePositiveNumberWithDefault(price_syp, 0), // Use 0 as default if not provided or invalid
+            cost_eur: parseNumber(cost_eur, null), // Can be 0 or null
+            cost_syp: parseNumber(cost_syp, null), // Can be 0 or null
+            stock_quantity: parseInteger(stock_quantity, null), // Can be 0 or null
+            minimum_stock: parseInteger(minimum_stock, null), // Can be 0 or null
             barcode: barcode?.trim() || null,
             is_featured: Boolean(is_featured),
             status: ['active', 'inactive', 'discontinued'].includes(status) ? status : 'active',
             image_url: image_url?.trim() || null,
-            weight_grams: parseInteger(weight_grams, 0), // Set to 0 if not provided
-            shelf_life_days: parseInteger(shelf_life_days, 0), // Set to 0 if not provided
+            weight_grams: parsePositiveIntegerWithDefault(weight_grams, 0), // Use 0 as default if not provided or invalid
+            shelf_life_days: parsePositiveIntegerWithDefault(shelf_life_days, 0), // Use 0 as default if not provided or invalid
             storage_conditions: storage_conditions?.trim() || null,
             created_by: req.userId || 1,
             created_by_name: created_by_name?.trim() || 'System',
@@ -235,19 +259,19 @@ export const createProduct = async (req, res) => {
 
         // Handle JSON fields properly
         if (supplier_info) {
-            productData.supplier_info = typeof supplier_info === 'string' 
+            productData.supplier_info = typeof supplier_info === 'string'
                 ? { description: supplier_info.trim() }
                 : supplier_info;
         }
 
         if (nutritional_info) {
-            productData.nutritional_info = typeof nutritional_info === 'string' 
+            productData.nutritional_info = typeof nutritional_info === 'string'
                 ? { description: nutritional_info.trim() }
                 : nutritional_info;
         }
 
         if (allergen_info) {
-            productData.allergen_info = typeof allergen_info === 'string' 
+            productData.allergen_info = typeof allergen_info === 'string'
                 ? { description: allergen_info.trim() }
                 : allergen_info;
         }
@@ -269,7 +293,7 @@ export const createProduct = async (req, res) => {
 
         // Create the product
         const product = await Product.create(productData);
-        
+
         console.log('[PRODUCTS] Product created successfully:', product.id);
 
         res.status(201).json({
@@ -414,40 +438,51 @@ export const updateProduct = async (req, res) => {
             return isNaN(parsed) ? defaultValue : parsed;
         };
 
+        // Helper function for positive numbers only
+        const parsePositiveNumber = (value) => {
+            const parsed = parseNumber(value, null);
+            return parsed && parsed > 0 ? parsed : null;
+        };
+
+        const parsePositiveInteger = (value) => {
+            const parsed = parseInteger(value, null);
+            return parsed && parsed > 0 ? parsed : null;
+        };
+
         // Prepare update data
         const updateData = {};
-        
+
         if (name !== undefined) updateData.name = name?.trim();
         if (description !== undefined) updateData.description = description?.trim() || null;
         if (category !== undefined) updateData.category = category || 'other';
-        if (unit !== undefined) updateData.unit = unit || 'piece';
-        if (price_eur !== undefined) updateData.price_eur = Math.max(parseNumber(price_eur, 0.01), 0.01);
-        if (price_syp !== undefined) updateData.price_syp = parseNumber(price_syp, 0);
-        if (cost_eur !== undefined) updateData.cost_eur = parseNumber(cost_eur, 0);
-        if (cost_syp !== undefined) updateData.cost_syp = parseNumber(cost_syp, 0);
-        if (stock_quantity !== undefined) updateData.stock_quantity = parseInteger(stock_quantity, 0);
-        if (minimum_stock !== undefined) updateData.minimum_stock = parseInteger(minimum_stock, 0);
-        if (barcode !== undefined) updateData.barcode = barcode?.trim() || null;
-        if (is_featured !== undefined) updateData.is_featured = Boolean(is_featured);
-        if (status !== undefined) updateData.status = ['active', 'inactive', 'discontinued'].includes(status) ? status : 'active';
-        if (image_url !== undefined) updateData.image_url = image_url?.trim() || null;
-        if (weight_grams !== undefined) updateData.weight_grams = parseInteger(weight_grams, 0);
-        if (shelf_life_days !== undefined) updateData.shelf_life_days = parseInteger(shelf_life_days, 0);
+                 if (unit !== undefined) updateData.unit = unit || 'piece';
+         if (price_eur !== undefined) updateData.price_eur = Math.max(parseNumber(price_eur, 0.01), 0.01);
+         if (price_syp !== undefined) updateData.price_syp = parsePositiveNumberWithDefault(price_syp, 0);
+         if (cost_eur !== undefined) updateData.cost_eur = parseNumber(cost_eur, null);
+         if (cost_syp !== undefined) updateData.cost_syp = parseNumber(cost_syp, null);
+         if (stock_quantity !== undefined) updateData.stock_quantity = parseInteger(stock_quantity, null);
+         if (minimum_stock !== undefined) updateData.minimum_stock = parseInteger(minimum_stock, null);
+         if (barcode !== undefined) updateData.barcode = barcode?.trim() || null;
+         if (is_featured !== undefined) updateData.is_featured = Boolean(is_featured);
+         if (status !== undefined) updateData.status = ['active', 'inactive', 'discontinued'].includes(status) ? status : 'active';
+         if (image_url !== undefined) updateData.image_url = image_url?.trim() || null;
+         if (weight_grams !== undefined) updateData.weight_grams = parsePositiveIntegerWithDefault(weight_grams, 0);
+         if (shelf_life_days !== undefined) updateData.shelf_life_days = parsePositiveIntegerWithDefault(shelf_life_days, 0);
         if (storage_conditions !== undefined) updateData.storage_conditions = storage_conditions?.trim() || null;
 
         // Handle JSON fields properly
         if (supplier_info !== undefined) {
-            updateData.supplier_info = supplier_info ? 
+            updateData.supplier_info = supplier_info ?
                 (typeof supplier_info === 'string' ? { description: supplier_info.trim() } : supplier_info) : null;
         }
 
         if (nutritional_info !== undefined) {
-            updateData.nutritional_info = nutritional_info ? 
+            updateData.nutritional_info = nutritional_info ?
                 (typeof nutritional_info === 'string' ? { description: nutritional_info.trim() } : nutritional_info) : null;
         }
 
         if (allergen_info !== undefined) {
-            updateData.allergen_info = allergen_info ? 
+            updateData.allergen_info = allergen_info ?
                 (typeof allergen_info === 'string' ? { description: allergen_info.trim() } : allergen_info) : null;
         }
 
