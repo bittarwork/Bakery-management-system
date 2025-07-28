@@ -62,7 +62,7 @@ import {
   Copy,
   ExternalLink,
   Share,
-  Print,
+  Printer,
   Save,
   Undo,
   Redo,

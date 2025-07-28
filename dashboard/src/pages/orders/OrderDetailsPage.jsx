@@ -1,23 +1,43 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
-  PencilIcon,
-  TrashIcon,
-  UserIcon,
-  BuildingStorefrontIcon,
-  CalendarIcon,
-  CurrencyEuroIcon,
-  DocumentTextIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-} from "@heroicons/react/24/outline";
+  Edit,
+  Trash2,
+  User,
+  Store,
+  Calendar,
+  Euro,
+  FileText,
+  CheckCircle,
+  XCircle,
+  ArrowLeft,
+  Package,
+  Clock,
+  CreditCard,
+  Truck,
+  MapPin,
+  Phone,
+  Mail,
+  Hash,
+  ShoppingCart,
+  DollarSign,
+  AlertTriangle,
+  Info,
+  Activity,
+  Zap,
+  RefreshCw,
+  Copy,
+  Print,
+  Calculator,
+} from "lucide-react";
 import { toast } from "react-hot-toast";
 import orderService from "../../services/orderService.js";
 import userService from "../../services/userService";
-import Card from "../../components/ui/Card";
-import Badge from "../../components/ui/Badge";
+import { Card, CardHeader, CardBody } from "../../components/ui/Card";
+import EnhancedButton from "../../components/ui/EnhancedButton";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
-import BackButton from "../../components/ui/BackButton";
+import { DeleteConfirmationModal } from "../../components/ui/Modal";
 
 const OrderDetailsPage = () => {
   const { id } = useParams();
@@ -28,6 +48,7 @@ const OrderDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [distributors, setDistributors] = useState([]);
   const [updating, setUpdating] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Load order data
   useEffect(() => {
@@ -41,12 +62,12 @@ const OrderDetailsPage = () => {
     try {
       setLoading(true);
       const response = await orderService.getOrder(id);
-      // Handle both old and new response formats
       const orderData = response.data || response;
       setOrder(orderData);
     } catch (error) {
       console.error("Error loading order:", error);
-      const errorMessage = error.response?.data?.message || error.message || "Error loading order";
+      const errorMessage =
+        error.response?.data?.message || error.message || "خطأ في تحميل الطلب";
       toast.error(errorMessage);
       navigate("/orders");
     } finally {
@@ -56,8 +77,10 @@ const OrderDetailsPage = () => {
 
   const loadDistributors = async () => {
     try {
-      const response = await userService.getUsers({ role: "distributor" });
-      // Handle both old and new response formats
+      const response = await userService.getUsers({
+        role: "distributor",
+        status: "active",
+      });
       const usersData = response.data || response;
       setDistributors(usersData.users || usersData || []);
     } catch (error) {
@@ -69,15 +92,13 @@ const OrderDetailsPage = () => {
   const handleStatusUpdate = async (newStatus) => {
     try {
       setUpdating(true);
-      await orderService.updateOrderStatus(id, newStatus);
-      toast.success("Order status updated successfully");
+      await orderService.updateOrder(id, { status: newStatus });
+      toast.success("تم تحديث حالة الطلب بنجاح");
       loadOrder();
     } catch (error) {
       console.error("Error updating status:", error);
       const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Error updating status";
+        error.response?.data?.message || error.message || "خطأ في تحديث الحالة";
       toast.error(errorMessage);
     } finally {
       setUpdating(false);
@@ -87,15 +108,15 @@ const OrderDetailsPage = () => {
   const handlePaymentStatusUpdate = async (newPaymentStatus) => {
     try {
       setUpdating(true);
-      await orderService.updatePaymentStatus(id, newPaymentStatus);
-      toast.success("Payment status updated successfully");
+      await orderService.updateOrder(id, { payment_status: newPaymentStatus });
+      toast.success("تم تحديث حالة الدفع بنجاح");
       loadOrder();
     } catch (error) {
       console.error("Error updating payment status:", error);
       const errorMessage =
         error.response?.data?.message ||
         error.message ||
-        "Error updating payment status";
+        "خطأ في تحديث حالة الدفع";
       toast.error(errorMessage);
     } finally {
       setUpdating(false);
@@ -106,20 +127,17 @@ const OrderDetailsPage = () => {
   const handleDistributorAssignment = async (distributorId) => {
     try {
       setUpdating(true);
-      if (distributorId) {
-        await orderService.assignDistributor(id, distributorId);
-        toast.success("Distributor assigned successfully");
-      } else {
-        await orderService.unassignDistributor(id);
-        toast.success("Distributor unassigned successfully");
-      }
+      await orderService.updateOrder(id, {
+        distributor_id: distributorId || null,
+      });
+      toast.success(
+        distributorId ? "تم تعيين الموزع بنجاح" : "تم إلغاء تعيين الموزع"
+      );
       loadOrder();
     } catch (error) {
       console.error("Error updating distributor:", error);
       const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Error updating distributor";
+        error.response?.data?.message || error.message || "خطأ في تحديث الموزع";
       toast.error(errorMessage);
     } finally {
       setUpdating(false);
@@ -128,27 +146,51 @@ const OrderDetailsPage = () => {
 
   // Handle order deletion
   const handleDeleteOrder = async () => {
-    if (!window.confirm("Are you sure you want to delete this order?")) {
-      return;
-    }
-
     try {
       await orderService.deleteOrder(id);
-      toast.success("Order deleted successfully");
+      toast.success("تم حذف الطلب بنجاح");
       navigate("/orders");
     } catch (error) {
       console.error("Error deleting order:", error);
       const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Error deleting order";
+        error.response?.data?.message || error.message || "خطأ في حذف الطلب";
       toast.error(errorMessage);
     }
   };
 
+  // Helper functions
+  const formatDate = (dateString) => {
+    if (!dateString) return "غير محدد";
+    return new Date(dateString).toLocaleDateString("ar-SA");
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "غير محدد";
+    return new Date(dateString).toLocaleString("ar-SA");
+  };
+
+  const formatAmount = (amount, currency = "EUR") => {
+    const numAmount = parseFloat(amount || 0);
+    return currency === "EUR"
+      ? `€${numAmount.toFixed(2)}`
+      : `${numAmount.toLocaleString()} ل.س`;
+  };
+
+  const calculateOrderStats = () => {
+    if (!order?.items) return { totalItems: 0, totalQuantity: 0 };
+
+    return {
+      totalItems: order.items.length,
+      totalQuantity: order.items.reduce(
+        (sum, item) => sum + (parseInt(item.quantity) || 0),
+        0
+      ),
+    };
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-64">
+      <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner size="lg" />
       </div>
     );
@@ -156,385 +198,662 @@ const OrderDetailsPage = () => {
 
   if (!order) {
     return (
-      <div className="text-center py-12">
-        <h3 className="text-lg font-medium text-gray-900 mb-1">
-          Order not found
-        </h3>
-        <p className="text-gray-500 mb-4">
-          The order you're looking for doesn't exist.
-        </p>
-        <Link
-          to="/orders"
-          className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700"
-        >
-          Back to Orders
-        </Link>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card>
+          <CardBody>
+            <div className="text-center py-12">
+              <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                الطلب غير موجود
+              </h3>
+              <p className="text-gray-600 mb-6">
+                الطلب الذي تبحث عنه غير موجود أو تم حذفه.
+              </p>
+              <EnhancedButton
+                onClick={() => navigate("/orders")}
+                variant="primary"
+                icon={<ArrowLeft className="w-4 h-4" />}
+              >
+                العودة إلى الطلبات
+              </EnhancedButton>
+            </div>
+          </CardBody>
+        </Card>
       </div>
     );
   }
 
+  const orderStats = calculateOrderStats();
+
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <BackButton />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Order {order.order_number}
-            </h1>
-            <p className="text-gray-600 mt-1">Order details and management</p>
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-4">
+              <EnhancedButton
+                onClick={() => navigate("/orders")}
+                variant="ghost"
+                size="sm"
+                icon={<ArrowLeft className="w-4 h-4" />}
+              >
+                العودة
+              </EnhancedButton>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                  <ShoppingCart className="w-7 h-7 text-blue-600" />
+                  طلب #{order.order_number || order.id}
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  تفاصيل الطلب وإدارته
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <EnhancedButton
+                onClick={() => window.print()}
+                variant="outline"
+                size="sm"
+                icon={<Printer className="w-4 h-4" />}
+              >
+                طباعة
+              </EnhancedButton>
+
+              <EnhancedButton
+                onClick={() => navigate(`/orders/${order.id}/edit`)}
+                variant="warning"
+                size="sm"
+                icon={<Edit className="w-4 h-4" />}
+              >
+                تعديل
+              </EnhancedButton>
+
+              <EnhancedButton
+                onClick={() => setShowDeleteModal(true)}
+                variant="danger"
+                size="sm"
+                icon={<Trash2 className="w-4 h-4" />}
+              >
+                حذف
+              </EnhancedButton>
+            </div>
           </div>
         </div>
-        <div className="flex items-center space-x-4">
-          {orderService.canEditOrder(order) && (
-            <Link
-              to={`/orders/${order.id}/edit`}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              <PencilIcon className="h-4 w-4 mr-2" />
-              Edit
-            </Link>
-          )}
-          {orderService.canDeleteOrder(order) && (
-            <button
-              onClick={handleDeleteOrder}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700"
-            >
-              <TrashIcon className="h-4 w-4 mr-2" />
-              Delete
-            </button>
-          )}
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Order Status */}
-          <Card>
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">
-                Order Status
-              </h2>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Status Cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
+        >
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+            <CardBody>
+              <div className="flex items-center justify-between">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Order Status
-                  </label>
-                  <select
-                    value={order.status}
-                    onChange={(e) => handleStatusUpdate(e.target.value)}
-                    disabled={updating}
-                    className={`w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${orderService.getStatusColor(
-                      order.status
-                    )} border-none`}
-                  >
-                    {orderService.getStatusOptions().map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  <p className="text-blue-600 text-xs font-medium uppercase tracking-wide">
+                    حالة الطلب
+                  </p>
+                  <p className="text-lg font-bold text-blue-900 mt-1">
+                    {order.status === "draft" && "مسودة"}
+                    {order.status === "pending" && "معلق"}
+                    {order.status === "confirmed" && "مؤكد"}
+                    {order.status === "processing" && "قيد المعالجة"}
+                    {order.status === "ready" && "جاهز"}
+                    {order.status === "delivered" && "مُسلّم"}
+                    {order.status === "cancelled" && "ملغي"}
+                  </p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Payment Status
-                  </label>
-                  <select
-                    value={order.payment_status}
-                    onChange={(e) => handlePaymentStatusUpdate(e.target.value)}
-                    disabled={updating}
-                    className={`w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${orderService.getPaymentStatusColor(
-                      order.payment_status
-                    )} border-none`}
-                  >
-                    {orderService.getPaymentStatusOptions().map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <Activity className="w-8 h-8 text-blue-600" />
               </div>
-            </div>
+            </CardBody>
           </Card>
 
-          {/* Order Items */}
-          <Card>
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Order Items</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Product
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Quantity
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Unit Price
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {order.items?.map((item, index) => (
-                    <tr key={item.id || index}>
-                      <td className="px-6 py-4">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {item.product?.name || item.product_name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            Unit:{" "}
-                            {item.product?.unit || item.product_unit || "piece"}
-                          </div>
-                          {item.notes && (
-                            <div className="text-sm text-gray-500 italic">
-                              Note: {item.notes}
-                            </div>
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <CardBody>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-600 text-xs font-medium uppercase tracking-wide">
+                    حالة الدفع
+                  </p>
+                  <p className="text-lg font-bold text-green-900 mt-1">
+                    {order.payment_status === "pending" && "معلق"}
+                    {order.payment_status === "paid" && "مدفوع"}
+                    {order.payment_status === "partial" && "جزئي"}
+                    {order.payment_status === "failed" && "فاشل"}
+                    {order.payment_status === "overdue" && "متأخر"}
+                  </p>
+                </div>
+                <CreditCard className="w-8 h-8 text-green-600" />
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+            <CardBody>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-600 text-xs font-medium uppercase tracking-wide">
+                    المبلغ الإجمالي
+                  </p>
+                  <p className="text-lg font-bold text-purple-900 mt-1">
+                    {formatAmount(
+                      order.final_amount_eur || order.total_amount_eur
+                    )}
+                  </p>
+                </div>
+                <Euro className="w-8 h-8 text-purple-600" />
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+            <CardBody>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-orange-600 text-xs font-medium uppercase tracking-wide">
+                    عدد المنتجات
+                  </p>
+                  <p className="text-lg font-bold text-orange-900 mt-1">
+                    {orderStats.totalItems}
+                  </p>
+                </div>
+                <Package className="w-8 h-8 text-orange-600" />
+              </div>
+            </CardBody>
+          </Card>
+        </motion.div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Quick Actions */}
+            <Card>
+              <CardHeader>
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-blue-600" />
+                  إجراءات سريعة
+                </h2>
+              </CardHeader>
+              <CardBody>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      حالة الطلب
+                    </label>
+                    <select
+                      value={order.status}
+                      onChange={(e) => handleStatusUpdate(e.target.value)}
+                      disabled={updating}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="draft">مسودة</option>
+                      <option value="pending">معلق</option>
+                      <option value="confirmed">مؤكد</option>
+                      <option value="processing">قيد المعالجة</option>
+                      <option value="ready">جاهز</option>
+                      <option value="delivered">مُسلّم</option>
+                      <option value="cancelled">ملغي</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      حالة الدفع
+                    </label>
+                    <select
+                      value={order.payment_status}
+                      onChange={(e) =>
+                        handlePaymentStatusUpdate(e.target.value)
+                      }
+                      disabled={updating}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="pending">معلق</option>
+                      <option value="paid">مدفوع</option>
+                      <option value="partial">جزئي</option>
+                      <option value="failed">فاشل</option>
+                      <option value="overdue">متأخر</option>
+                    </select>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+
+            {/* Order Items */}
+            <Card>
+              <CardHeader>
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Package className="w-5 h-5 text-green-600" />
+                  منتجات الطلب ({orderStats.totalItems} منتج)
+                </h2>
+              </CardHeader>
+              <CardBody>
+                {order.items && order.items.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            المنتج
+                          </th>
+                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            الكمية
+                          </th>
+                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            سعر الوحدة
+                          </th>
+                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            المجموع
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {order.items.map((item, index) => {
+                          const product = item.product || {};
+                          const unitPrice = parseFloat(
+                            item.unit_price_eur || product.price_eur || 0
+                          );
+                          const quantity = parseInt(item.quantity || 0);
+                          const total = unitPrice * quantity;
+
+                          return (
+                            <tr
+                              key={item.id || index}
+                              className="hover:bg-gray-50"
+                            >
+                              <td className="px-6 py-4">
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {product.name ||
+                                      item.product_name ||
+                                      "منتج غير محدد"}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    الوحدة: {product.unit || "قطعة"}
+                                  </div>
+                                  {item.notes && (
+                                    <div className="text-sm text-gray-500 italic mt-1">
+                                      ملاحظة: {item.notes}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                  {quantity}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-center text-sm text-gray-900 font-medium">
+                                {formatAmount(unitPrice)}
+                              </td>
+                              <td className="px-6 py-4 text-center text-sm font-bold text-green-600">
+                                {formatAmount(total)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+
+                    {/* Order Total */}
+                    <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <div className="text-base font-semibold text-gray-900">
+                          المجموع الكلي:
+                        </div>
+                        <div className="text-xl font-bold text-green-600 flex items-center gap-2">
+                          <Euro className="w-5 h-5" />
+                          {formatAmount(
+                            order.final_amount_eur || order.total_amount_eur
                           )}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {item.quantity}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-center text-sm text-gray-900">
-                        {order.currency === "EUR"
-                          ? orderService.formatAmount(
-                              item.unit_price_eur,
-                              "EUR"
-                            )
-                          : orderService.formatAmount(
-                              item.unit_price_syp,
-                              "SYP"
-                            )}
-                      </td>
-                      <td className="px-6 py-4 text-center text-sm font-medium text-gray-900">
-                        {order.currency === "EUR"
-                          ? orderService.formatAmount(
-                              item.total_price_eur,
-                              "EUR"
-                            )
-                          : orderService.formatAmount(
-                              item.total_price_syp,
-                              "SYP"
-                            )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {/* Order Total */}
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-medium text-gray-900">
-                  Total Amount:
-                </span>
-                <span className="text-xl font-bold text-blue-600">
-                  {order.currency === "EUR"
-                    ? orderService.formatAmount(order.final_amount_eur, "EUR")
-                    : orderService.formatAmount(order.final_amount_syp, "SYP")}
-                </span>
-              </div>
-            </div>
-          </Card>
+                      </div>
 
-          {/* Order Notes */}
-          {order.notes && (
-            <Card>
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900 flex items-center">
-                  <DocumentTextIcon className="h-5 w-5 mr-2" />
-                  Order Notes
-                </h2>
-              </div>
-              <div className="p-6">
-                <p className="text-gray-700">{order.notes}</p>
-              </div>
-            </Card>
-          )}
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Order Summary */}
-          <Card>
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">
-                Order Summary
-              </h2>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Order ID:</span>
-                <span className="text-sm font-medium text-gray-900">
-                  {order.id}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Order Number:</span>
-                <span className="text-sm font-medium text-gray-900">
-                  {order.order_number}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Currency:</span>
-                <span className="text-sm font-medium text-gray-900">
-                  {order.currency}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Items Count:</span>
-                <span className="text-sm font-medium text-gray-900">
-                  {order.items?.length || 0}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Created By:</span>
-                <span className="text-sm font-medium text-gray-900">
-                  {order.creator?.full_name || order.created_by_name}
-                </span>
-              </div>
-            </div>
-          </Card>
-
-          {/* Store Information */}
-          <Card>
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900 flex items-center">
-                <BuildingStorefrontIcon className="h-5 w-5 mr-2" />
-                Store Information
-              </h2>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-gray-900">
-                  {order.store?.name || order.store_name}
-                </h3>
-                {order.store?.location && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    {order.store.location}
-                  </p>
-                )}
-                {order.store?.phone && (
-                  <p className="text-sm text-gray-600">{order.store.phone}</p>
-                )}
-              </div>
-            </div>
-          </Card>
-
-          {/* Distributor Assignment */}
-          <Card>
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900 flex items-center">
-                <UserIcon className="h-5 w-5 mr-2" />
-                Distributor Assignment
-              </h2>
-            </div>
-            <div className="p-6">
-              {order.assigned_distributor_id ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-900">
-                        {order.assignedDistributor?.full_name}
-                      </h3>
-                      {order.assignedDistributor?.phone && (
-                        <p className="text-sm text-gray-600">
-                          {order.assignedDistributor.phone}
-                        </p>
+                      {order.final_amount_syp && (
+                        <div className="flex justify-between items-center mt-2">
+                          <div className="text-sm text-gray-600">
+                            بالليرة السورية:
+                          </div>
+                          <div className="text-lg font-semibold text-blue-600 flex items-center gap-2">
+                            <DollarSign className="w-4 h-4" />
+                            {formatAmount(order.final_amount_syp, "SYP")}
+                          </div>
+                        </div>
                       )}
                     </div>
-                    <Badge color="green">
-                      <CheckCircleIcon className="h-4 w-4 mr-1" />
-                      Assigned
-                    </Badge>
                   </div>
-                  <button
-                    onClick={() => handleDistributorAssignment(null)}
-                    disabled={updating}
-                    className="w-full px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50"
-                  >
-                    Unassign Distributor
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center text-gray-500">
-                    <XCircleIcon className="h-5 w-5 mr-2" />
-                    <span className="text-sm">No distributor assigned</span>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Package className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p>لا توجد منتجات في هذا الطلب</p>
                   </div>
-                  <select
-                    onChange={(e) =>
-                      e.target.value &&
-                      handleDistributorAssignment(parseInt(e.target.value))
-                    }
-                    disabled={updating}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select Distributor</option>
-                    {distributors.map((distributor) => (
-                      <option key={distributor.id} value={distributor.id}>
-                        {distributor.full_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-          </Card>
+                )}
+              </CardBody>
+            </Card>
 
-          {/* Order Dates */}
-          <Card>
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900 flex items-center">
-                <CalendarIcon className="h-5 w-5 mr-2" />
-                Important Dates
-              </h2>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <span className="text-sm text-gray-600">Order Date:</span>
-                <p className="text-sm font-medium text-gray-900">
-                  {new Date(order.order_date).toLocaleDateString()}
-                </p>
-              </div>
-              {order.delivery_date && (
-                <div>
-                  <span className="text-sm text-gray-600">Delivery Date:</span>
-                  <p className="text-sm font-medium text-gray-900">
-                    {new Date(order.delivery_date).toLocaleDateString()}
-                  </p>
+            {/* Order Notes */}
+            {(order.notes || order.special_instructions) && (
+              <Card>
+                <CardHeader>
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-purple-600" />
+                    ملاحظات الطلب
+                  </h2>
+                </CardHeader>
+                <CardBody>
+                  <div className="space-y-4">
+                    {order.notes && (
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">
+                          ملاحظات عامة:
+                        </h4>
+                        <p className="text-gray-700 bg-gray-50 p-3 rounded-lg">
+                          {order.notes}
+                        </p>
+                      </div>
+                    )}
+
+                    {order.special_instructions && (
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-orange-500" />
+                          تعليمات خاصة للتسليم:
+                        </h4>
+                        <p className="text-gray-700 bg-orange-50 p-3 rounded-lg border border-orange-200">
+                          {order.special_instructions}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardBody>
+              </Card>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Order Summary */}
+            <Card>
+              <CardHeader>
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Info className="w-5 h-5 text-blue-600" />
+                  معلومات الطلب
+                </h2>
+              </CardHeader>
+              <CardBody>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">رقم الطلب:</span>
+                    <span className="text-sm font-bold text-gray-900 flex items-center gap-1">
+                      <Hash className="w-3 h-3" />
+                      {order.order_number || order.id}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">العملة:</span>
+                    <span className="text-sm font-medium text-gray-900 flex items-center gap-1">
+                      <Euro className="w-3 h-3" />
+                      {order.currency}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">عدد المنتجات:</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {orderStats.totalItems}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">
+                      إجمالي الكمية:
+                    </span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {orderStats.totalQuantity}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">أنشأ بواسطة:</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {order.creator?.name ||
+                        order.created_by_name ||
+                        "غير محدد"}
+                    </span>
+                  </div>
                 </div>
-              )}
-              <div>
-                <span className="text-sm text-gray-600">Created At:</span>
-                <p className="text-sm font-medium text-gray-900">
-                  {new Date(order.created_at).toLocaleString()}
-                </p>
-              </div>
-              <div>
-                <span className="text-sm text-gray-600">Last Updated:</span>
-                <p className="text-sm font-medium text-gray-900">
-                  {new Date(order.updated_at).toLocaleString()}
-                </p>
-              </div>
-            </div>
-          </Card>
+              </CardBody>
+            </Card>
+
+            {/* Store Information */}
+            <Card>
+              <CardHeader>
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Store className="w-5 h-5 text-green-600" />
+                  معلومات المتجر
+                </h2>
+              </CardHeader>
+              <CardBody>
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900">
+                      {order.store?.name || order.store_name || "غير محدد"}
+                    </h3>
+                  </div>
+
+                  {order.store?.phone && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Phone className="w-4 h-4" />
+                      <span>{order.store.phone}</span>
+                    </div>
+                  )}
+
+                  {order.store?.email && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Mail className="w-4 h-4" />
+                      <span>{order.store.email}</span>
+                    </div>
+                  )}
+
+                  {order.store?.address && (
+                    <div className="flex items-start gap-2 text-sm text-gray-600">
+                      <MapPin className="w-4 h-4 mt-0.5" />
+                      <span>{order.store.address}</span>
+                    </div>
+                  )}
+
+                  {order.store?.contact_person && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <User className="w-4 h-4" />
+                      <span>المسؤول: {order.store.contact_person}</span>
+                    </div>
+                  )}
+                </div>
+              </CardBody>
+            </Card>
+
+            {/* Distributor Assignment */}
+            <Card>
+              <CardHeader>
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Truck className="w-5 h-5 text-purple-600" />
+                  تعيين الموزع
+                </h2>
+              </CardHeader>
+              <CardBody>
+                {order.distributor_id || order.assigned_distributor_id ? (
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-green-600" />
+                          {order.distributor?.name ||
+                            order.assignedDistributor?.name ||
+                            "موزع مختار"}
+                        </h3>
+                        {(order.distributor?.phone ||
+                          order.assignedDistributor?.phone) && (
+                          <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                            <Phone className="w-3 h-3" />
+                            {order.distributor?.phone ||
+                              order.assignedDistributor?.phone}
+                          </p>
+                        )}
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-2">
+                          مُعيّن
+                        </span>
+                      </div>
+                    </div>
+                    <EnhancedButton
+                      onClick={() => handleDistributorAssignment(null)}
+                      disabled={updating}
+                      variant="outline"
+                      size="sm"
+                      icon={<XCircle className="w-4 h-4" />}
+                      className="w-full"
+                    >
+                      إلغاء التعيين
+                    </EnhancedButton>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center text-gray-500">
+                      <XCircle className="w-5 h-5 mr-2" />
+                      <span className="text-sm">لم يتم تعيين موزع</span>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        اختر موزع:
+                      </label>
+                      <select
+                        onChange={(e) =>
+                          e.target.value &&
+                          handleDistributorAssignment(parseInt(e.target.value))
+                        }
+                        disabled={updating}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="">اختر الموزع</option>
+                        {distributors.map((distributor) => (
+                          <option key={distributor.id} value={distributor.id}>
+                            {distributor.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </CardBody>
+            </Card>
+
+            {/* Important Dates */}
+            <Card>
+              <CardHeader>
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-indigo-600" />
+                  التواريخ المهمة
+                </h2>
+              </CardHeader>
+              <CardBody>
+                <div className="space-y-3">
+                  <div>
+                    <span className="text-sm text-gray-600">تاريخ الطلب:</span>
+                    <p className="text-sm font-medium text-gray-900 mt-1">
+                      {formatDate(order.order_date)}
+                    </p>
+                  </div>
+
+                  {order.delivery_date && (
+                    <div>
+                      <span className="text-sm text-gray-600">
+                        تاريخ التسليم المطلوب:
+                      </span>
+                      <p className="text-sm font-medium text-gray-900 mt-1 flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-blue-600" />
+                        {formatDate(order.delivery_date)}
+                      </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <span className="text-sm text-gray-600">
+                      تاريخ الإنشاء:
+                    </span>
+                    <p className="text-sm font-medium text-gray-900 mt-1">
+                      {formatDateTime(order.created_at)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-sm text-gray-600">آخر تحديث:</span>
+                    <p className="text-sm font-medium text-gray-900 mt-1">
+                      {formatDateTime(order.updated_at)}
+                    </p>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+
+            {/* Actions */}
+            <Card>
+              <CardHeader>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  إجراءات إضافية
+                </h2>
+              </CardHeader>
+              <CardBody>
+                <div className="space-y-3">
+                  <EnhancedButton
+                    onClick={() =>
+                      navigate(`/orders/create?duplicate=${order.id}`)
+                    }
+                    variant="outline"
+                    size="sm"
+                    icon={<Copy className="w-4 h-4" />}
+                    className="w-full"
+                  >
+                    تكرار الطلب
+                  </EnhancedButton>
+
+                  <EnhancedButton
+                    onClick={() => window.print()}
+                    variant="outline"
+                    size="sm"
+                    icon={<Printer className="w-4 h-4" />}
+                    className="w-full"
+                  >
+                    طباعة الطلب
+                  </EnhancedButton>
+
+                  <EnhancedButton
+                    onClick={loadOrder}
+                    variant="outline"
+                    size="sm"
+                    icon={<RefreshCw className="w-4 h-4" />}
+                    className="w-full"
+                  >
+                    تحديث البيانات
+                  </EnhancedButton>
+                </div>
+              </CardBody>
+            </Card>
+          </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteOrder}
+        title="حذف الطلب"
+        message="هل أنت متأكد من أنك تريد حذف هذا الطلب؟ هذا الإجراء لا يمكن التراجع عنه."
+      />
     </div>
   );
 };

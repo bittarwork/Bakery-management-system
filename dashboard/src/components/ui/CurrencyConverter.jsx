@@ -43,7 +43,7 @@ import {
   Download,
   Upload,
   Share,
-  Print,
+  Printer,
   Eye,
   EyeOff,
   Lock,
