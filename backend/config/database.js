@@ -39,8 +39,6 @@ const config = {
         },
         dialectOptions: {
             connectTimeout: 60000,
-            acquireTimeout: 60000,
-            timeout: 60000,
             multipleStatements: true,
             supportBigNumbers: true,
             bigNumberStrings: true
@@ -79,8 +77,6 @@ const config = {
         },
         dialectOptions: {
             connectTimeout: 60000,
-            acquireTimeout: 60000,
-            timeout: 60000,
             multipleStatements: true,
             supportBigNumbers: true,
             bigNumberStrings: true

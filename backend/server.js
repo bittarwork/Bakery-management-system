@@ -34,21 +34,26 @@ import { updateSessionActivity, checkSessionExpiry, detectDevice } from './middl
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Enable trust proxy for Railway and other hosting platforms
-app.set('trust proxy', true);
+// Enable trust proxy with secure configuration for Railway and other hosting platforms
+app.set('trust proxy', ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']);
 
-// Rate limiting
+// Rate limiting with secure configuration
 const limiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minute
     max: process.env.MOBILE_RATE_LIMIT ? parseInt(process.env.MOBILE_RATE_LIMIT) : 200,
     message: 'Too many requests from this IP, please try again later.',
     standardHeaders: true,
     legacyHeaders: false,
+    // Use secure trust proxy configuration
+    trustProxy: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'],
     skip: (req) => {
         return req.path === '/api/health' || req.path.startsWith('/static/');
     },
     keyGenerator: (req) => {
-        return req.user ? req.user.id.toString() : req.ip;
+        // Use more secure key generation
+        const forwarded = req.headers['x-forwarded-for'];
+        const ip = forwarded ? forwarded.split(',')[0].trim() : req.connection.remoteAddress;
+        return req.user ? `user:${req.user.id}` : `ip:${ip}`;
     }
 });
 
