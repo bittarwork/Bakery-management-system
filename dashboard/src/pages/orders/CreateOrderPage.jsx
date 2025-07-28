@@ -1,30 +1,52 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
-  PlusIcon,
-  TrashIcon,
-  ShoppingCartIcon,
-  CurrencyEuroIcon,
-  CalendarIcon,
-} from "@heroicons/react/24/outline";
+  Plus,
+  Trash2,
+  ShoppingCart,
+  Euro,
+  Calendar,
+  Package,
+  Store,
+  User,
+  Clock,
+  AlertTriangle,
+  FileText,
+  CreditCard,
+  Truck,
+  Save,
+  ArrowLeft,
+  Building,
+  Phone,
+  MapPin,
+  DollarSign,
+  Calculator,
+} from "lucide-react";
 import { toast } from "react-hot-toast";
 import orderService from "../../services/orderService.js";
 import storeService from "../../services/storeService";
 import productService from "../../services/productService";
-import Card from "../../components/ui/Card";
-import Badge from "../../components/ui/Badge";
+import userService from "../../services/userService";
+import { Card, CardHeader, CardBody } from "../../components/ui/Card";
+import EnhancedButton from "../../components/ui/EnhancedButton";
+import EnhancedInput from "../../components/ui/EnhancedInput";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
-import BackButton from "../../components/ui/BackButton";
 
 const CreateOrderPage = () => {
   const navigate = useNavigate();
 
-  // Form state - Currency always EUR
+  // Form state with enhanced fields
   const [formData, setFormData] = useState({
     store_id: "",
+    distributor_id: "",
     currency: "EUR", // Always EUR
     delivery_date: "",
+    priority: "normal",
+    payment_status: "pending",
+    payment_method: "",
     notes: "",
+    special_instructions: "",
     items: [],
   });
 
@@ -32,25 +54,36 @@ const CreateOrderPage = () => {
   const [loading, setLoading] = useState(false);
   const [stores, setStores] = useState([]);
   const [products, setProducts] = useState([]);
+  const [distributors, setDistributors] = useState([]);
   const [loadingStores, setLoadingStores] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [loadingDistributors, setLoadingDistributors] = useState(true);
 
-  // Fetch stores and products on component mount
+  // Selected store details for display
+  const [selectedStore, setSelectedStore] = useState(null);
+
+  // Fetch data on component mount
   useEffect(() => {
-    fetchStores();
-    fetchProducts();
+    fetchInitialData();
   }, []);
+
+  const fetchInitialData = async () => {
+    await Promise.all([
+      fetchStores(),
+      fetchProducts(),
+      fetchDistributors()
+    ]);
+  };
 
   const fetchStores = async () => {
     try {
       setLoadingStores(true);
       const response = await storeService.getStores({ status: "active" });
-      // Handle both old and new response formats
       const storesData = response.data || response;
       setStores(storesData.stores || storesData || []);
     } catch (error) {
       console.error("Error fetching stores:", error);
-      toast.error("Error loading stores");
+      toast.error("خطأ في تحميل المتاجر");
     } finally {
       setLoadingStores(false);
     }
@@ -60,21 +93,41 @@ const CreateOrderPage = () => {
     try {
       setLoadingProducts(true);
       const response = await productService.getProducts({ status: "active" });
-      // Handle both old and new response formats
       const productsData = response.data || response;
       setProducts(productsData.products || productsData || []);
     } catch (error) {
       console.error("Error fetching products:", error);
-      toast.error("Error loading products");
+      toast.error("خطأ في تحميل المنتجات");
     } finally {
       setLoadingProducts(false);
     }
   };
 
+  const fetchDistributors = async () => {
+    try {
+      setLoadingDistributors(true);
+      const response = await userService.getUsers({ role: "distributor", status: "active" });
+      const usersData = response.data || response;
+      setDistributors(usersData.users || usersData || []);
+    } catch (error) {
+      console.error("Error fetching distributors:", error);
+      toast.error("خطأ في تحميل الموزعين");
+    } finally {
+      setLoadingDistributors(false);
+    }
+  };
+
+  // Handle store selection
+  const handleStoreChange = (storeId) => {
+    const store = stores.find(s => s.id === parseInt(storeId));
+    setSelectedStore(store);
+    setFormData(prev => ({ ...prev, store_id: storeId }));
+  };
+
   // Add new item to order
   const addItem = () => {
     const newItem = {
-      id: Date.now(), // Temporary ID for frontend
+      id: Date.now(),
       product_id: "",
       quantity: 1,
       notes: "",
@@ -140,12 +193,12 @@ const CreateOrderPage = () => {
 
     // Validation
     if (!formData.store_id) {
-      toast.error("Please select a store");
+      toast.error("يرجى اختيار المتجر");
       return;
     }
 
     if (formData.items.length === 0) {
-      toast.error("Please add at least one item");
+      toast.error("يرجى إضافة منتج واحد على الأقل");
       return;
     }
 
@@ -156,19 +209,24 @@ const CreateOrderPage = () => {
     );
 
     if (invalidItems.length > 0) {
-      toast.error("Please fill in all item details with valid quantities");
+      toast.error("يرجى ملء جميع تفاصيل المنتجات بكميات صحيحة");
       return;
     }
 
     try {
       setLoading(true);
 
-      // Prepare order data for API - No distributor assignment
+      // Prepare order data for API
       const orderData = {
         store_id: parseInt(formData.store_id),
-        currency: "EUR", // Always EUR
+        distributor_id: formData.distributor_id ? parseInt(formData.distributor_id) : null,
+        currency: "EUR",
         delivery_date: formData.delivery_date || null,
+        priority: formData.priority,
+        payment_status: formData.payment_status,
+        payment_method: formData.payment_method || null,
         notes: formData.notes,
+        special_instructions: formData.special_instructions,
         items: formData.items.map((item) => ({
           product_id: parseInt(item.product_id),
           quantity: parseInt(item.quantity),
@@ -177,15 +235,15 @@ const CreateOrderPage = () => {
       };
 
       const response = await orderService.createOrder(orderData);
-
-      toast.success("Order created successfully");
+      
+      toast.success("تم إنشاء الطلب بنجاح");
       navigate(`/orders/${response.data?.id || response.id}`);
     } catch (error) {
       console.error("Error creating order:", error);
       const errorMessage =
         error.response?.data?.message ||
         error.message ||
-        "Error creating order";
+        "خطأ في إنشاء الطلب";
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -194,325 +252,515 @@ const CreateOrderPage = () => {
 
   const orderTotal = calculateOrderTotal();
 
+  if (loadingStores || loadingProducts || loadingDistributors) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <BackButton />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-              <ShoppingCartIcon className="h-8 w-8 mr-3 text-blue-600" />
-              Create New Order
-            </h1>
-            <p className="text-gray-600 mt-1">Add a new order to the system</p>
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-4">
+              <EnhancedButton
+                onClick={() => navigate("/orders")}
+                variant="ghost"
+                size="sm"
+                icon={<ArrowLeft className="w-4 h-4" />}
+              >
+                العودة
+              </EnhancedButton>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                  <ShoppingCart className="w-7 h-7 text-blue-600" />
+                  إنشاء طلب جديد
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  قم بإضافة تفاصيل الطلب وتعيين الموزع
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <EnhancedButton
+                type="submit"
+                form="orderForm"
+                loading={loading}
+                variant="primary"
+                size="lg"
+                icon={<Save className="w-4 h-4" />}
+              >
+                حفظ الطلب
+              </EnhancedButton>
+            </div>
           </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Order Details */}
-        <Card>
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">Order Details</h2>
-          </div>
-          <div className="p-6 space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <form id="orderForm" onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Form */}
+            <div className="lg:col-span-2 space-y-6">
               {/* Store Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Store *
-                </label>
-                {loadingStores ? (
-                  <div className="flex items-center justify-center h-10 border rounded-lg">
-                    <LoadingSpinner size="sm" />
-                  </div>
-                ) : (
-                  <select
-                    value={formData.store_id}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        store_id: e.target.value,
-                      }))
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  >
-                    <option value="">Select a store</option>
-                    {stores.map((store) => (
-                      <option key={store.id} value={store.id}>
-                        {store.name} - {store.owner_name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              {/* Currency - Fixed to EUR */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Currency *
-                </label>
-                <div className="flex items-center px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
-                  <CurrencyEuroIcon className="h-5 w-5 text-gray-400 mr-2" />
-                  <span className="text-gray-900">Euro (€) - Fixed</span>
-                </div>
-              </div>
-
-              {/* Delivery Date */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Delivery Date
-                </label>
-                <div className="relative">
-                  <CalendarIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="date"
-                    value={formData.delivery_date}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        delivery_date: e.target.value,
-                      }))
-                    }
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Order Notes */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Order Notes
-              </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, notes: e.target.value }))
-                }
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Any special instructions or notes for this order..."
-              />
-            </div>
-          </div>
-        </Card>
-
-        {/* Order Items */}
-        <Card>
-          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-lg font-medium text-gray-900">Order Items</h2>
-            <button
-              type="button"
-              onClick={addItem}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Add Item
-            </button>
-          </div>
-
-          <div className="p-6">
-            {formData.items.length === 0 ? (
-              <div className="text-center py-12">
-                <ShoppingCartIcon className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">
-                  No items yet
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Get started by adding an item to the order.
-                </p>
-                <button
-                  type="button"
-                  onClick={addItem}
-                  className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700"
-                >
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  Add First Item
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {formData.items.map((item, index) => {
-                  const product = getProduct(item.product_id);
-                  const itemTotal = calculateItemTotal(item);
-
-                  return (
-                    <div
-                      key={item.id}
-                      className="border border-gray-200 rounded-lg p-4"
-                    >
-                      <div className="flex items-start justify-between mb-4">
-                        <h4 className="text-sm font-medium text-gray-900">
-                          Item #{index + 1}
-                        </h4>
-                        <button
-                          type="button"
-                          onClick={() => removeItem(item.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <TrashIcon className="h-5 w-5" />
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {/* Product Selection */}
-                        <div className="lg:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Product *
-                          </label>
-                          {loadingProducts ? (
-                            <div className="flex items-center justify-center h-10 border rounded-lg">
-                              <LoadingSpinner size="sm" />
-                            </div>
-                          ) : (
-                            <select
-                              value={item.product_id}
-                              onChange={(e) =>
-                                updateItem(
-                                  item.id,
-                                  "product_id",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              required
-                            >
-                              <option value="">Select a product</option>
-                              {products.map((product) => (
-                                <option key={product.id} value={product.id}>
-                                  {product.name} - €{parseFloat(product.price_eur || 0).toFixed(2)}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                        </div>
-
-                        {/* Quantity */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Quantity *
-                          </label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={item.quantity}
-                            onChange={(e) =>
-                              updateItem(item.id, "quantity", e.target.value)
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            required
-                          />
-                        </div>
-
-                        {/* Item Total */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Total
-                          </label>
-                          <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
-                            <div className="text-sm text-gray-900">
-                              €{itemTotal.eur.toFixed(2)}
-                            </div>
+              <Card>
+                <CardHeader>
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Store className="w-5 h-5 text-blue-600" />
+                    اختيار المتجر
+                  </h2>
+                </CardHeader>
+                <CardBody>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        المتجر <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={formData.store_id}
+                        onChange={(e) => handleStoreChange(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      >
+                        <option value="">اختر المتجر</option>
+                        {stores.map((store) => (
+                          <option key={store.id} value={store.id}>
+                            {store.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {selectedStore && (
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="font-medium text-gray-900 mb-2">تفاصيل المتجر</h4>
+                        <div className="space-y-1 text-sm text-gray-600">
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-4 h-4" />
+                            <span>{selectedStore.phone || 'غير محدد'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4" />
+                            <span>{selectedStore.address || 'غير محدد'}</span>
                           </div>
                         </div>
                       </div>
+                    )}
+                  </div>
+                </CardBody>
+              </Card>
 
-                      {/* Product Info */}
-                      {product && (
-                        <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-blue-700">
-                              <strong>{product.name}</strong> (
-                              {product.unit || "piece"})
-                            </span>
-                            <span className="text-blue-600">
-                              Stock:{" "}
-                              {product.stock_quantity !== null
-                                ? product.stock_quantity
-                                : "Unlimited"}
-                            </span>
+              {/* Order Details */}
+              <Card>
+                <CardHeader>
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-green-600" />
+                    تفاصيل الطلب
+                  </h2>
+                </CardHeader>
+                <CardBody>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        تاريخ التسليم
+                      </label>
+                      <EnhancedInput
+                        type="date"
+                        value={formData.delivery_date}
+                        onChange={(e) => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))}
+                        icon={<Calendar className="w-4 h-4" />}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        الأولوية
+                      </label>
+                      <select
+                        value={formData.priority}
+                        onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="low">منخفضة</option>
+                        <option value="normal">عادية</option>
+                        <option value="high">عالية</option>
+                        <option value="urgent">عاجلة</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        حالة الدفع
+                      </label>
+                      <select
+                        value={formData.payment_status}
+                        onChange={(e) => setFormData(prev => ({ ...prev, payment_status: e.target.value }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="pending">معلق</option>
+                        <option value="paid">مدفوع</option>
+                        <option value="partial">دفع جزئي</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        طريقة الدفع
+                      </label>
+                      <select
+                        value={formData.payment_method}
+                        onChange={(e) => setFormData(prev => ({ ...prev, payment_method: e.target.value }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="">اختر طريقة الدفع</option>
+                        <option value="cash">نقداً</option>
+                        <option value="credit">آجل</option>
+                        <option value="bank_transfer">تحويل بنكي</option>
+                        <option value="check">شيك</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      ملاحظات
+                    </label>
+                    <textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows="3"
+                      placeholder="أضف أي ملاحظات عامة للطلب..."
+                    />
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <AlertTriangle className="w-4 h-4 inline mr-1 text-orange-500" />
+                      تعليمات خاصة للتسليم
+                    </label>
+                    <textarea
+                      value={formData.special_instructions}
+                      onChange={(e) => setFormData(prev => ({ ...prev, special_instructions: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows="2"
+                      placeholder="تعليمات خاصة للموزع (مواعيد محددة، متطلبات خاصة، إلخ)..."
+                    />
+                  </div>
+                </CardBody>
+              </Card>
+
+              {/* Distributor Assignment */}
+              <Card>
+                <CardHeader>
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Truck className="w-5 h-5 text-purple-600" />
+                    تعيين الموزع
+                  </h2>
+                </CardHeader>
+                <CardBody>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      الموزع المختص
+                    </label>
+                    <select
+                      value={formData.distributor_id}
+                      onChange={(e) => setFormData(prev => ({ ...prev, distributor_id: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">اختر الموزع (اختياري)</option>
+                      {distributors.map((distributor) => (
+                        <option key={distributor.id} value={distributor.id}>
+                          {distributor.name} - {distributor.phone}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      يمكن تعيين الموزع لاحقاً من خلال إدارة الطلبات
+                    </p>
+                  </div>
+                </CardBody>
+              </Card>
+
+              {/* Order Items */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <Package className="w-5 h-5 text-orange-600" />
+                      منتجات الطلب
+                    </h2>
+                    <EnhancedButton
+                      type="button"
+                      onClick={addItem}
+                      variant="primary"
+                      size="sm"
+                      icon={<Plus className="w-4 h-4" />}
+                    >
+                      إضافة منتج
+                    </EnhancedButton>
+                  </div>
+                </CardHeader>
+                <CardBody>
+                  {formData.items.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Package className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                      <p>لم يتم إضافة أي منتجات بعد</p>
+                      <p className="text-sm">انقر على "إضافة منتج" لبدء إنشاء الطلب</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {formData.items.map((item, index) => {
+                        const product = getProduct(item.product_id);
+                        const itemTotal = calculateItemTotal(item);
+                        
+                        return (
+                          <motion.div
+                            key={item.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-gray-50 border border-gray-200 rounded-lg p-4"
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-medium text-gray-900">
+                                منتج #{index + 1}
+                              </h4>
+                              <EnhancedButton
+                                type="button"
+                                onClick={() => removeItem(item.id)}
+                                variant="danger"
+                                size="sm"
+                                icon={<Trash2 className="w-4 h-4" />}
+                              >
+                                حذف
+                              </EnhancedButton>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  المنتج <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                  value={item.product_id}
+                                  onChange={(e) => updateItem(item.id, "product_id", e.target.value)}
+                                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  required
+                                >
+                                  <option value="">اختر المنتج</option>
+                                  {products.map((product) => (
+                                    <option key={product.id} value={product.id}>
+                                      {product.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  الكمية <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={item.quantity}
+                                  onChange={(e) => updateItem(item.id, "quantity", e.target.value)}
+                                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  required
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  المجموع
+                                </label>
+                                <div className="p-2 bg-white border border-gray-300 rounded-md">
+                                  {product && (
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-2">
+                                        <Euro className="w-4 h-4 text-green-600" />
+                                        <span className="font-medium">
+                                          €{itemTotal.eur.toFixed(2)}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <DollarSign className="w-4 h-4 text-blue-600" />
+                                        <span className="text-sm text-gray-600">
+                                          {itemTotal.syp.toLocaleString()} ل.س
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mt-3">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                ملاحظات المنتج
+                              </label>
+                              <input
+                                type="text"
+                                value={item.notes}
+                                onChange={(e) => updateItem(item.id, "notes", e.target.value)}
+                                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="ملاحظات خاصة بهذا المنتج..."
+                              />
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardBody>
+              </Card>
+            </div>
+
+            {/* Order Summary Sidebar */}
+            <div className="lg:col-span-1">
+              <div className="sticky top-8">
+                <Card>
+                  <CardHeader>
+                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <Calculator className="w-5 h-5 text-indigo-600" />
+                      ملخص الطلب
+                    </h2>
+                  </CardHeader>
+                  <CardBody>
+                    <div className="space-y-4">
+                      {/* Store Info */}
+                      {selectedStore && (
+                        <div className="pb-4 border-b border-gray-200">
+                          <h4 className="font-medium text-gray-900 mb-2">المتجر المختار</h4>
+                          <div className="bg-blue-50 p-3 rounded-lg">
+                            <p className="font-medium text-blue-900">{selectedStore.name}</p>
+                            <p className="text-sm text-blue-700 mt-1">{selectedStore.phone}</p>
                           </div>
                         </div>
                       )}
 
-                      {/* Item Notes */}
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Item Notes
-                        </label>
-                        <input
-                          type="text"
-                          value={item.notes}
-                          onChange={(e) =>
-                            updateItem(item.id, "notes", e.target.value)
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Special instructions for this item..."
-                        />
+                      {/* Order Summary */}
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">عدد المنتجات:</span>
+                          <span className="font-medium">{formData.items.length}</span>
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">إجمالي الكمية:</span>
+                          <span className="font-medium">
+                            {formData.items.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0)}
+                          </span>
+                        </div>
+
+                        <div className="pt-3 border-t border-gray-200">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-gray-900 font-medium">المجموع الكلي:</span>
+                          </div>
+                          
+                          <div className="bg-green-50 p-3 rounded-lg">
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-2">
+                                <Euro className="w-4 h-4 text-green-600" />
+                                <span className="text-sm text-green-700">يورو</span>
+                              </div>
+                              <span className="text-lg font-bold text-green-900">
+                                €{orderTotal.eur.toFixed(2)}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <DollarSign className="w-4 h-4 text-blue-600" />
+                                <span className="text-sm text-blue-700">ليرة سورية</span>
+                              </div>
+                              <span className="text-sm font-medium text-blue-900">
+                                {orderTotal.syp.toLocaleString()} ل.س
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Order Status */}
+                        <div className="pt-3 border-t border-gray-200">
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">الأولوية:</span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                formData.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                                formData.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                                formData.priority === 'normal' ? 'bg-blue-100 text-blue-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {formData.priority === 'urgent' && 'عاجلة'}
+                                {formData.priority === 'high' && 'عالية'}
+                                {formData.priority === 'normal' && 'عادية'}
+                                {formData.priority === 'low' && 'منخفضة'}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">حالة الدفع:</span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                formData.payment_status === 'paid' ? 'bg-green-100 text-green-800' :
+                                formData.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {formData.payment_status === 'paid' && 'مدفوع'}
+                                {formData.payment_status === 'partial' && 'جزئي'}
+                                {formData.payment_status === 'pending' && 'معلق'}
+                              </span>
+                            </div>
+
+                            {formData.delivery_date && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600">تاريخ التسليم:</span>
+                                <span className="text-sm font-medium flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  {new Date(formData.delivery_date).toLocaleDateString('ar-SA')}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  );
-                })}
+                  </CardBody>
+                </Card>
+
+                {/* Action Buttons */}
+                <div className="mt-6 space-y-3">
+                  <EnhancedButton
+                    type="submit"
+                    form="orderForm"
+                    loading={loading}
+                    variant="primary"
+                    size="lg"
+                    icon={<Save className="w-4 h-4" />}
+                    className="w-full"
+                  >
+                    حفظ الطلب
+                  </EnhancedButton>
+                  
+                  <EnhancedButton
+                    type="button"
+                    onClick={() => navigate("/orders")}
+                    variant="outline"
+                    size="lg"
+                    className="w-full"
+                  >
+                    إلغاء
+                  </EnhancedButton>
+                </div>
               </div>
-            )}
+            </div>
           </div>
-        </Card>
-
-        {/* Order Summary */}
-        {formData.items.length > 0 && (
-          <Card>
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">
-                Order Summary
-              </h2>
-            </div>
-            <div className="p-6">
-              <div className="flex items-center justify-between text-lg font-semibold">
-                <span className="text-gray-900">Total Amount:</span>
-                <span className="text-blue-600">
-                  €{orderTotal.eur.toFixed(2)}
-                </span>
-              </div>
-              <div className="mt-2 text-sm text-gray-500">
-                {formData.items.length} item
-                {formData.items.length !== 1 ? "s" : ""} in this order
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Form Actions */}
-        <div className="flex justify-end space-x-4">
-          <button
-            type="button"
-            onClick={() => navigate("/orders")}
-            className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            disabled={loading}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading || formData.items.length === 0}
-            className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-          >
-            {loading ? (
-              <>
-                <LoadingSpinner size="sm" className="mr-2" />
-                Creating Order...
-              </>
-            ) : (
-              <>
-                <ShoppingCartIcon className="h-4 w-4 mr-2" />
-                Create Order
-              </>
-            )}
-          </button>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 };
