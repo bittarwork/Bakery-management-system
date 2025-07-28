@@ -1,0 +1,25 @@
+{
+  "name": "product-management-test-fixes",
+  "version": "1.0.0",
+  "description": "Test suite for product management system fixes",
+  "type": "module",
+  "main": "test-product-fixes.js",
+  "scripts": {
+    "test": "node test-product-fixes.js",
+    "test:local": "API_URL=http://localhost:3000/api node test-product-fixes.js",
+    "test:production": "API_URL=https://bakery-management-system-production.up.railway.app/api node test-product-fixes.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "form-data": "^4.0.0"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "testing",
+    "product-management",
+    "bakery",
+    "fixes"
+  ],
+  "author": "Bakery Management System",
+  "license": "MIT"
+} 

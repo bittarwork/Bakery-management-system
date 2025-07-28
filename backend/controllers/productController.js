@@ -275,24 +275,24 @@ export const createProduct = async (req, res) => {
             return parsed; // Valid positive number
         };
 
-        // Prepare clean product data
+        // Prepare clean product data with safe null handling
         const productData = {
             name: name?.trim(),
             description: description?.trim() || null,
             category: category || 'other',
             unit: unit || 'piece',
             price_eur: Math.max(parseNumber(price_eur, 0.01), 0.01), // Required field with minimum 0.01
-            price_syp: parsePositiveNumberFinal(price_syp), // Minimal valid value for empty fields
-            cost_eur: parseNumber(cost_eur, null), // Can be 0 or null
-            cost_syp: parseNumber(cost_syp, null), // Can be 0 or null
-            stock_quantity: parseInteger(stock_quantity, null), // Can be 0 or null
-            minimum_stock: parseInteger(minimum_stock, null), // Can be 0 or null
+            price_syp: parseNumber(price_syp, null), // Optional - send null if not provided
+            cost_eur: parseNumber(cost_eur, null), // Optional - send null if not provided
+            cost_syp: parseNumber(cost_syp, null), // Optional - send null if not provided
+            stock_quantity: parseInteger(stock_quantity, null), // Optional - send null if not provided
+            minimum_stock: parseInteger(minimum_stock, null), // Optional - send null if not provided
             barcode: barcode?.trim() || null,
             is_featured: Boolean(is_featured),
             status: ['active', 'inactive', 'discontinued'].includes(status) ? status : 'active',
             image_url: image_url?.trim() || null,
-            weight_grams: parsePositiveIntegerFinal(weight_grams), // Minimal valid value for empty fields
-            shelf_life_days: parsePositiveIntegerFinal(shelf_life_days), // Minimal valid value for empty fields
+            weight_grams: parseNumber(weight_grams, null), // Optional - send null if not provided
+            shelf_life_days: parseInteger(shelf_life_days, null), // Optional - send null if not provided
             storage_conditions: storage_conditions?.trim() || null,
             created_by: req.userId || 1,
             created_by_name: created_by_name?.trim() || 'System',
@@ -302,23 +302,93 @@ export const createProduct = async (req, res) => {
             total_revenue_syp: 0.00
         };
 
-        // Handle JSON fields properly
+        // Handle JSON fields with proper validation and structure
         if (supplier_info) {
-            productData.supplier_info = typeof supplier_info === 'string'
-                ? { description: supplier_info.trim() }
-                : supplier_info;
+            try {
+                if (typeof supplier_info === 'string') {
+                    // If it's a string, try to parse as JSON first
+                    try {
+                        productData.supplier_info = JSON.parse(supplier_info);
+                    } catch (parseErr) {
+                        // If not JSON, treat as description
+                        productData.supplier_info = { 
+                            name: supplier_info.trim(),
+                            contact: "",
+                            notes: ""
+                        };
+                    }
+                } else if (typeof supplier_info === 'object' && supplier_info !== null) {
+                    // Ensure object has proper structure
+                    productData.supplier_info = {
+                        name: supplier_info.name || supplier_info.description || "",
+                        contact: supplier_info.contact || "",
+                        notes: supplier_info.notes || ""
+                    };
+                }
+            } catch (err) {
+                console.log('[PRODUCTS] Error processing supplier_info:', err);
+                productData.supplier_info = null;
+            }
         }
 
         if (nutritional_info) {
-            productData.nutritional_info = typeof nutritional_info === 'string'
-                ? { description: nutritional_info.trim() }
-                : nutritional_info;
+            try {
+                if (typeof nutritional_info === 'string') {
+                    // If it's a string, try to parse as JSON first
+                    try {
+                        productData.nutritional_info = JSON.parse(nutritional_info);
+                    } catch (parseErr) {
+                        // If not JSON, treat as description
+                        productData.nutritional_info = { 
+                            description: nutritional_info.trim(),
+                            calories: null,
+                            protein: null,
+                            carbs: null,
+                            fat: null
+                        };
+                    }
+                } else if (typeof nutritional_info === 'object' && nutritional_info !== null) {
+                    // Ensure object has proper structure
+                    productData.nutritional_info = {
+                        description: nutritional_info.description || "",
+                        calories: nutritional_info.calories || null,
+                        protein: nutritional_info.protein || null,
+                        carbs: nutritional_info.carbs || null,
+                        fat: nutritional_info.fat || null
+                    };
+                }
+            } catch (err) {
+                console.log('[PRODUCTS] Error processing nutritional_info:', err);
+                productData.nutritional_info = null;
+            }
         }
 
         if (allergen_info) {
-            productData.allergen_info = typeof allergen_info === 'string'
-                ? { description: allergen_info.trim() }
-                : allergen_info;
+            try {
+                if (typeof allergen_info === 'string') {
+                    // If it's a string, try to parse as JSON first
+                    try {
+                        productData.allergen_info = JSON.parse(allergen_info);
+                    } catch (parseErr) {
+                        // If not JSON, treat as description
+                        productData.allergen_info = { 
+                            description: allergen_info.trim(),
+                            contains: [],
+                            may_contain: []
+                        };
+                    }
+                } else if (typeof allergen_info === 'object' && allergen_info !== null) {
+                    // Ensure object has proper structure
+                    productData.allergen_info = {
+                        description: allergen_info.description || "",
+                        contains: Array.isArray(allergen_info.contains) ? allergen_info.contains : [],
+                        may_contain: Array.isArray(allergen_info.may_contain) ? allergen_info.may_contain : []
+                    };
+                }
+            } catch (err) {
+                console.log('[PRODUCTS] Error processing allergen_info:', err);
+                productData.allergen_info = null;
+            }
         }
 
         if (dimensions) {
@@ -334,12 +404,30 @@ export const createProduct = async (req, res) => {
             productData.production_date = new Date(production_date);
         }
 
+        // Log final product data for debugging
         console.log('[PRODUCTS] Final product data before creation:', JSON.stringify(productData, null, 2));
+
+        // Validate required fields before creation
+        if (!productData.name || productData.name.trim() === '') {
+            return res.status(400).json({
+                success: false,
+                message: 'Product name is required'
+            });
+        }
+
+        if (!productData.price_eur || productData.price_eur <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Valid price in EUR is required (must be greater than 0)'
+            });
+        }
 
         // Create the product
         const product = await Product.create(productData);
 
-        console.log('[PRODUCTS] Product created successfully:', product.id);
+        console.log('[PRODUCTS] Product created successfully with ID:', product.id);
+        console.log('[PRODUCTS] Product name:', product.name);
+        console.log('[PRODUCTS] Product category:', product.category);
 
         res.status(201).json({
             success: true,
@@ -348,36 +436,63 @@ export const createProduct = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('[PRODUCTS] Failed to create product:', error);
+        console.error('[PRODUCTS] Failed to create product:', error.message);
         console.error('[PRODUCTS] Full error stack:', error.stack);
 
-        // Handle specific Sequelize errors
+        // Handle specific Sequelize errors with better messages
         if (error.name === 'SequelizeValidationError') {
+            const validationErrors = error.errors.map(err => ({
+                field: err.path,
+                message: err.message,
+                value: err.value
+            }));
+
+            console.log('[PRODUCTS] Validation errors:', validationErrors);
+
             return res.status(400).json({
                 success: false,
-                message: 'Validation error occurred',
-                errors: error.errors.map(err => ({
-                    field: err.path,
-                    message: err.message,
-                    value: err.value
-                }))
+                message: 'Validation failed - please check your input data',
+                errors: validationErrors
             });
         }
 
         if (error.name === 'SequelizeUniqueConstraintError') {
+            const field = error.errors[0]?.path || 'field';
+            const value = error.errors[0]?.value;
+            
+            console.log('[PRODUCTS] Unique constraint error on field:', field, 'value:', value);
+            
             return res.status(400).json({
                 success: false,
-                message: 'Duplicate entry error',
-                field: error.errors[0]?.path,
-                value: error.errors[0]?.value
+                message: `A product with this ${field === 'name' ? 'name' : field === 'barcode' ? 'barcode' : field} already exists`,
+                field: field,
+                value: value
             });
         }
 
+        // Handle database connection errors
+        if (error.name === 'SequelizeConnectionError') {
+            console.error('[PRODUCTS] Database connection error');
+            return res.status(503).json({
+                success: false,
+                message: 'Database connection error - please try again later'
+            });
+        }
+
+        // Handle timeout errors
+        if (error.name === 'SequelizeTimeoutError') {
+            console.error('[PRODUCTS] Database timeout error');
+            return res.status(503).json({
+                success: false,
+                message: 'Request timeout - please try again'
+            });
+        }
+
+        // Generic error response
         res.status(500).json({
             success: false,
             message: 'Failed to create product',
-            error: error.message,
-            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
         });
     }
 };
@@ -1330,6 +1445,15 @@ export const uploadProductImage = async (req, res) => {
 
         const { id } = req.params;
 
+        // Validate product ID
+        if (!id || isNaN(parseInt(id))) {
+            console.log('[UPLOAD] Invalid product ID:', id);
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid product ID provided'
+            });
+        }
+
         // Check if product exists
         const product = await Product.findByPk(id);
         if (!product) {
@@ -1351,41 +1475,92 @@ export const uploadProductImage = async (req, res) => {
 
         console.log('[UPLOAD] File received:', req.file.filename, 'Size:', req.file.size);
 
-        // Generate image URL with proper protocol (HTTPS in production)
+        // Validate file type again (extra security)
+        if (!req.file.mimetype.startsWith('image/')) {
+            console.log('[UPLOAD] Invalid file type:', req.file.mimetype);
+            // Delete uploaded file
+            try {
+                fs.unlinkSync(req.file.path);
+            } catch (deleteErr) {
+                console.log('[UPLOAD] Error deleting invalid file:', deleteErr);
+            }
+            return res.status(400).json({
+                success: false,
+                message: 'Only image files are allowed'
+            });
+        }
+
+        // Generate secure image URL with proper protocol
         const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
-        const baseUrl = protocol + '://' + req.get('host');
+        const host = req.get('host') || process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost:3000';
+        const baseUrl = `${protocol}://${host}`;
         const imageUrl = `${baseUrl}/uploads/${req.file.filename}`;
 
         console.log('[UPLOAD] Generated image URL:', imageUrl);
 
-        // Delete old image if exists
+        // Delete old image if exists (with better error handling)
         if (product.image_url) {
-            const oldImagePath = product.image_url.replace(`${baseUrl}/uploads/`, '');
-            const fullPath = path.join(__dirname, '../storage/uploads', oldImagePath);
-
-            fs.unlink(fullPath, (err) => {
-                if (err) console.log('Error deleting old image:', err);
-            });
+            try {
+                // Extract filename from old URL
+                const oldImageUrl = product.image_url;
+                const oldFilename = oldImageUrl.substring(oldImageUrl.lastIndexOf('/') + 1);
+                const fullPath = path.join(__dirname, '../storage/uploads', oldFilename);
+                
+                console.log('[UPLOAD] Attempting to delete old image:', fullPath);
+                
+                if (fs.existsSync(fullPath)) {
+                    fs.unlinkSync(fullPath);
+                    console.log('[UPLOAD] Old image deleted successfully');
+                } else {
+                    console.log('[UPLOAD] Old image file not found:', fullPath);
+                }
+            } catch (deleteErr) {
+                console.log('[UPLOAD] Warning: Could not delete old image:', deleteErr.message);
+                // Don't fail the upload if old image deletion fails
+            }
         }
 
-        // Update product with new image URL
-        await product.update({ image_url: imageUrl });
+        // Update product with new image URL and log the update
+        const updateResult = await product.update({ 
+            image_url: imageUrl,
+            updated_at: new Date()
+        });
 
+        console.log('[UPLOAD] Product updated with new image URL');
+        console.log('[UPLOAD] Update result:', updateResult.image_url);
+
+        // Return success response with detailed information
         res.json({
             success: true,
             data: {
+                id: product.id,
                 image_url: imageUrl,
-                filename: req.file.filename
+                filename: req.file.filename,
+                size: req.file.size,
+                mimetype: req.file.mimetype,
+                uploaded_at: new Date().toISOString()
             },
-            message: 'تم رفع الصورة بنجاح'
+            message: 'Image uploaded successfully'
         });
 
     } catch (error) {
-        console.error('[PRODUCTS] Image upload failed:', error.message);
+        console.error('[UPLOAD] Image upload failed:', error.message);
+        console.error('[UPLOAD] Error stack:', error.stack);
+        
+        // Clean up uploaded file if database update failed
+        if (req.file && req.file.path) {
+            try {
+                fs.unlinkSync(req.file.path);
+                console.log('[UPLOAD] Cleaned up failed upload file');
+            } catch (cleanupErr) {
+                console.log('[UPLOAD] Warning: Could not clean up failed upload file:', cleanupErr.message);
+            }
+        }
+
         res.status(500).json({
             success: false,
-            message: 'خطأ في رفع الصورة',
-            error: error.message
+            message: 'Failed to upload image',
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
         });
     }
 };

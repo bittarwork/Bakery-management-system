@@ -270,7 +270,7 @@ const CreateProductPage = () => {
     if (
       formData.stock_quantity &&
       formData.stock_quantity !== "" &&
-      parseInt(formData.stock_quantity) < 0
+      (isNaN(parseInt(formData.stock_quantity)) || parseInt(formData.stock_quantity) < 0)
     ) {
       newErrors.stock_quantity = "Stock quantity cannot be negative";
     }

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   Edit3,
@@ -21,67 +21,71 @@ import {
   FileText,
   BarChart3,
   TrendingUp,
-  TrendingDown
-} from 'lucide-react';
-import { toast } from 'react-hot-toast';
-import vehicleService from '../../services/vehicleService';
-import { Card, CardHeader, CardBody } from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import BackButton from '../../components/ui/BackButton';
+  TrendingDown,
+} from "lucide-react";
+import { toast } from "react-hot-toast";
+import vehicleService from "../../services/vehicleService";
+import { Card, CardHeader, CardBody } from "../../components/ui/Card";
+import Button from "../../components/ui/Button";
+import LoadingSpinner from "../../components/ui/LoadingSpinner";
+import BackButton from "../../components/ui/BackButton";
 
 const VehicleDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+
   // State management
   const [vehicle, setVehicle] = useState(null);
   const [expenses, setExpenses] = useState([]);
   const [statistics, setStatistics] = useState({});
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  
+
   // Tabs
-  const [activeTab, setActiveTab] = useState('details');
-  
+  const [activeTab, setActiveTab] = useState("details");
+
   // Load data
   useEffect(() => {
-    console.log('Vehicle ID from params:', id);
-    if (id && id !== 'undefined') {
+    console.log("Vehicle ID from params:", id);
+    if (id && id !== "undefined") {
       loadVehicleDetails();
     } else {
-      console.error('Invalid vehicle ID:', id);
+      console.error("Invalid vehicle ID:", id);
       setLoading(false);
-      toast.error('معرف المركبة غير صحيح');
-      navigate('/vehicles');
+      toast.error("معرف المركبة غير صحيح");
+      navigate("/vehicles");
     }
   }, [id]);
 
   const loadVehicleDetails = async () => {
-    if (!id || id === 'undefined' || id === 'null') {
-      console.error('Cannot load vehicle details: Invalid ID -', id);
-      toast.error('معرف المركبة غير صحيح');
-      navigate('/vehicles');
+    if (!id || id === "undefined" || id === "null") {
+      console.error("Cannot load vehicle details: Invalid ID -", id);
+      toast.error("معرف المركبة غير صحيح");
+      navigate("/vehicles");
       return;
     }
 
     try {
       setLoading(true);
-      console.log('Loading vehicle details for ID:', id);
-      
-      const [vehicleResponse, expensesResponse, statsResponse] = await Promise.all([
-        vehicleService.getVehicleById(id),
-        vehicleService.getVehicleExpenses(id),
-        vehicleService.getVehicleStatistics(id)
-      ]);
+      console.log("Loading vehicle details for ID:", id);
+
+      const [vehicleResponse, expensesResponse, statsResponse] =
+        await Promise.all([
+          vehicleService.getVehicleById(id),
+          vehicleService.getVehicleExpenses(id),
+          vehicleService.getVehicleStatistics(id),
+        ]);
 
       if (vehicleResponse.success) {
         setVehicle(vehicleResponse.data.vehicle);
-        console.log('Vehicle loaded successfully:', vehicleResponse.data.vehicle);
+        console.log(
+          "Vehicle loaded successfully:",
+          vehicleResponse.data.vehicle
+        );
       } else {
-        console.error('Failed to load vehicle:', vehicleResponse);
-        toast.error('خطأ في تحميل بيانات المركبة');
-        navigate('/vehicles');
+        console.error("Failed to load vehicle:", vehicleResponse);
+        toast.error("خطأ في تحميل بيانات المركبة");
+        navigate("/vehicles");
         return;
       }
 
@@ -92,11 +96,10 @@ const VehicleDetailsPage = () => {
       if (statsResponse.success) {
         setStatistics(statsResponse.data || {});
       }
-      
     } catch (error) {
-      console.error('Error loading vehicle details:', error);
-      toast.error('خطأ في تحميل البيانات');
-      navigate('/vehicles');
+      console.error("Error loading vehicle details:", error);
+      toast.error("خطأ في تحميل البيانات");
+      navigate("/vehicles");
     } finally {
       setLoading(false);
     }
@@ -104,59 +107,63 @@ const VehicleDetailsPage = () => {
 
   // Handle actions
   const handleEdit = () => {
-    if (!id || id === 'undefined') {
-      toast.error('معرف المركبة غير صحيح');
+    if (!id || id === "undefined") {
+      toast.error("معرف المركبة غير صحيح");
       return;
     }
     navigate(`/vehicles/edit/${id}`);
   };
 
   const handleDelete = async () => {
-    if (!id || id === 'undefined') {
-      toast.error('معرف المركبة غير صحيح');
+    if (!id || id === "undefined") {
+      toast.error("معرف المركبة غير صحيح");
       return;
     }
 
-    if (!window.confirm('هل أنت متأكد من حذف هذه المركبة؟ سيتم حذف جميع البيانات المرتبطة بها.')) {
+    if (
+      !window.confirm(
+        "هل أنت متأكد من حذف هذه المركبة؟ سيتم حذف جميع البيانات المرتبطة بها."
+      )
+    ) {
       return;
     }
 
     try {
       setActionLoading(true);
       const response = await vehicleService.deleteVehicle(id);
-      
+
       if (response.success) {
-        toast.success('تم حذف المركبة بنجاح');
-        navigate('/vehicles');
+        toast.success("تم حذف المركبة بنجاح");
+        navigate("/vehicles");
       } else {
-        toast.error(response.error || 'خطأ في حذف المركبة');
+        toast.error(response.error || "خطأ في حذف المركبة");
       }
     } catch (error) {
-      toast.error('خطأ في حذف المركبة');
-      console.error('Delete error:', error);
+      toast.error("خطأ في حذف المركبة");
+      console.error("Delete error:", error);
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleExportVehicleData = async () => {
-    if (!id || id === 'undefined') {
-      toast.error('معرف المركبة غير صحيح');
+    if (!id || id === "undefined") {
+      toast.error("معرف المركبة غير صحيح");
       return;
     }
 
     try {
       setActionLoading(true);
       const response = await vehicleService.exportVehicleData(id);
-      
+
       if (response.success) {
-        toast.success('تم تصدير البيانات بنجاح');
+        toast.success("تم تصدير البيانات بنجاح");
       } else {
-        toast.error('خطأ في تصدير البيانات');
+        toast.error("خطأ في تصدير البيانات");
       }
     } catch (error) {
-      console.error('Export error:', error);
-      toast.error('خطأ في تصدير البيانات');
+      console.error("Export error:", error);
+      toast.error("خطأ في تصدير البيانات");
     } finally {
       setActionLoading(false);
     }
@@ -164,36 +171,56 @@ const VehicleDetailsPage = () => {
 
   const getStatusInfo = (status) => {
     const statusMap = {
-      active: { label: 'نشطة', color: 'text-green-600', bgColor: 'bg-green-100', icon: CheckCircle },
-      maintenance: { label: 'صيانة', color: 'text-yellow-600', bgColor: 'bg-yellow-100', icon: Settings },
-      inactive: { label: 'غير نشطة', color: 'text-gray-600', bgColor: 'bg-gray-100', icon: XCircle },
-      retired: { label: 'متقاعدة', color: 'text-red-600', bgColor: 'bg-red-100', icon: XCircle }
+      active: {
+        label: "نشطة",
+        color: "text-green-600",
+        bgColor: "bg-green-100",
+        icon: CheckCircle,
+      },
+      maintenance: {
+        label: "صيانة",
+        color: "text-yellow-600",
+        bgColor: "bg-yellow-100",
+        icon: Settings,
+      },
+      inactive: {
+        label: "غير نشطة",
+        color: "text-gray-600",
+        bgColor: "bg-gray-100",
+        icon: XCircle,
+      },
+      retired: {
+        label: "متقاعدة",
+        color: "text-red-600",
+        bgColor: "bg-red-100",
+        icon: XCircle,
+      },
     };
     return statusMap[status] || statusMap.inactive;
   };
 
   const getVehicleTypeIcon = (type) => {
     const typeMap = {
-      car: '🚗',
-      van: '🚐',
-      truck: '🚛',
-      motorcycle: '🏍️'
+      car: "🚗",
+      van: "🚐",
+      truck: "🚛",
+      motorcycle: "🏍️",
     };
-    return typeMap[type] || '🚗';
+    return typeMap[type] || "🚗";
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('ar-SY', {
-      style: 'currency',
-      currency: 'EUR'
+    return new Intl.NumberFormat("ar-SY", {
+      style: "currency",
+      currency: "EUR",
     }).format(amount || 0);
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('ar-SY', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return new Date(dateString).toLocaleDateString("ar-SY", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
@@ -231,32 +258,40 @@ const VehicleDetailsPage = () => {
           <BackButton to="/vehicles" />
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-              <span className="text-4xl mr-3">{getVehicleTypeIcon(vehicle.vehicle_type)}</span>
+              <span className="text-4xl mr-3">
+                {getVehicleTypeIcon(vehicle.vehicle_type)}
+              </span>
               {vehicle.vehicle_model}
             </h1>
             <p className="text-gray-600 mt-1">
               {vehicle.vehicle_plate} • {vehicle.vehicle_year}
             </p>
           </div>
-          <div className={`px-4 py-2 rounded-full ${statusInfo.bgColor} ${statusInfo.color} flex items-center space-x-2`}>
+          <div
+            className={`px-4 py-2 rounded-full ${statusInfo.bgColor} ${statusInfo.color} flex items-center space-x-2`}
+          >
             <StatusIcon className="w-4 h-4" />
             <span className="font-semibold">{statusInfo.label}</span>
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-3 mt-4 sm:mt-0">
           <Button
             onClick={() => loadVehicleDetails()}
             variant="secondary"
             disabled={loading}
-            icon={<RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />}
+            icon={
+              <RefreshCw
+                className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+              />
+            }
           >
             تحديث
           </Button>
           <Button
             onClick={handleExportVehicleData}
             variant="secondary"
-            disabled={actionLoading}
+            disabled={actionLoading || !vehicle}
             icon={<Download className="w-4 h-4" />}
           >
             تصدير البيانات
@@ -264,19 +299,30 @@ const VehicleDetailsPage = () => {
           <Button
             onClick={handleEdit}
             variant="primary"
+            disabled={!vehicle}
             icon={<Edit3 className="w-4 h-4" />}
           >
             تعديل
           </Button>
-          {!vehicle.assigned_distributor_id && (
-            <Button
-              onClick={handleDelete}
-              variant="danger"
-              disabled={actionLoading}
-              icon={<Trash2 className="w-4 h-4" />}
-            >
-              حذف
-            </Button>
+          <Button
+            onClick={handleDelete}
+            variant="danger"
+            disabled={
+              actionLoading || !vehicle || vehicle.assigned_distributor_id
+            }
+            icon={<Trash2 className="w-4 h-4" />}
+            title={
+              vehicle && vehicle.assigned_distributor_id
+                ? "لا يمكن حذف المركبة المُعيّنة لموزع"
+                : ""
+            }
+          >
+            حذف
+          </Button>
+          {vehicle && vehicle.assigned_distributor_id && (
+            <p className="text-xs text-gray-500 mt-1">
+              * لا يمكن حذف المركبة المُعيّنة لموزع
+            </p>
           )}
         </div>
       </motion.div>
@@ -291,7 +337,9 @@ const VehicleDetailsPage = () => {
           <CardBody>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-600 text-sm font-medium">المسافة المقطوعة</p>
+                <p className="text-blue-600 text-sm font-medium">
+                  المسافة المقطوعة
+                </p>
                 <p className="text-2xl font-bold text-blue-900">
                   {(vehicle.current_km || 0).toLocaleString()} كم
                 </p>
@@ -305,7 +353,9 @@ const VehicleDetailsPage = () => {
           <CardBody>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-600 text-sm font-medium">إجمالي النفقات</p>
+                <p className="text-green-600 text-sm font-medium">
+                  إجمالي النفقات
+                </p>
                 <p className="text-2xl font-bold text-green-900">
                   {formatCurrency(statistics.totalExpenses)}
                 </p>
@@ -319,7 +369,9 @@ const VehicleDetailsPage = () => {
           <CardBody>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-600 text-sm font-medium">متوسط استهلاك الوقود</p>
+                <p className="text-purple-600 text-sm font-medium">
+                  متوسط استهلاك الوقود
+                </p>
                 <p className="text-2xl font-bold text-purple-900">
                   {vehicle.fuel_consumption || 0} ل/100كم
                 </p>
@@ -333,7 +385,9 @@ const VehicleDetailsPage = () => {
           <CardBody>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-orange-600 text-sm font-medium">عدد الرحلات</p>
+                <p className="text-orange-600 text-sm font-medium">
+                  عدد الرحلات
+                </p>
                 <p className="text-2xl font-bold text-orange-900">
                   {statistics.totalTrips || 0}
                 </p>
@@ -348,10 +402,10 @@ const VehicleDetailsPage = () => {
       <div className="border-b border-gray-200">
         <nav className="flex space-x-8">
           {[
-            { id: 'details', label: 'التفاصيل', icon: FileText },
-            { id: 'expenses', label: 'النفقات', icon: DollarSign },
-            { id: 'maintenance', label: 'الصيانة', icon: Settings },
-            { id: 'history', label: 'السجل', icon: Clock }
+            { id: "details", label: "التفاصيل", icon: FileText },
+            { id: "expenses", label: "النفقات", icon: DollarSign },
+            { id: "maintenance", label: "الصيانة", icon: Settings },
+            { id: "history", label: "السجل", icon: Clock },
           ].map((tab) => {
             const Icon = tab.icon;
             return (
@@ -360,8 +414,8 @@ const VehicleDetailsPage = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
                   activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -379,7 +433,7 @@ const VehicleDetailsPage = () => {
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.3 }}
       >
-        {activeTab === 'details' && (
+        {activeTab === "details" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Basic Information */}
             <Card>
@@ -389,49 +443,75 @@ const VehicleDetailsPage = () => {
               <CardBody className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-600">نوع المركبة</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      نوع المركبة
+                    </label>
                     <p className="text-gray-900">{vehicle.vehicle_type}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">الموديل</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      الموديل
+                    </label>
                     <p className="text-gray-900">{vehicle.vehicle_model}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">رقم اللوحة</label>
-                    <p className="text-gray-900 font-bold">{vehicle.vehicle_plate}</p>
+                    <label className="text-sm font-medium text-gray-600">
+                      رقم اللوحة
+                    </label>
+                    <p className="text-gray-900 font-bold">
+                      {vehicle.vehicle_plate}
+                    </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">سنة الصنع</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      سنة الصنع
+                    </label>
                     <p className="text-gray-900">{vehicle.vehicle_year}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">نوع الوقود</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      نوع الوقود
+                    </label>
                     <p className="text-gray-900">{vehicle.fuel_type}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">ناقل الحركة</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      ناقل الحركة
+                    </label>
                     <p className="text-gray-900">
-                      {vehicle.transmission_type === 'manual' ? 'يدوي' : 'أوتوماتيك'}
+                      {vehicle.transmission_type === "manual"
+                        ? "يدوي"
+                        : "أوتوماتيك"}
                     </p>
                   </div>
                   {vehicle.engine_capacity && (
                     <div>
-                      <label className="text-sm font-medium text-gray-600">سعة المحرك</label>
+                      <label className="text-sm font-medium text-gray-600">
+                        سعة المحرك
+                      </label>
                       <p className="text-gray-900">{vehicle.engine_capacity}</p>
                     </div>
                   )}
                   {vehicle.carrying_capacity && (
                     <div>
-                      <label className="text-sm font-medium text-gray-600">الحمولة</label>
-                      <p className="text-gray-900">{vehicle.carrying_capacity} كغ</p>
+                      <label className="text-sm font-medium text-gray-600">
+                        الحمولة
+                      </label>
+                      <p className="text-gray-900">
+                        {vehicle.carrying_capacity} كغ
+                      </p>
                     </div>
                   )}
                 </div>
-                
+
                 {vehicle.notes && (
                   <div>
-                    <label className="text-sm font-medium text-gray-600">ملاحظات</label>
-                    <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{vehicle.notes}</p>
+                    <label className="text-sm font-medium text-gray-600">
+                      ملاحظات
+                    </label>
+                    <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
+                      {vehicle.notes}
+                    </p>
                   </div>
                 )}
               </CardBody>
@@ -452,14 +532,20 @@ const VehicleDetailsPage = () => {
                       <h4 className="font-semibold text-gray-900">
                         {vehicle.assignedDistributor.full_name}
                       </h4>
-                      <p className="text-gray-600">{vehicle.assignedDistributor.phone}</p>
-                      <p className="text-gray-600">{vehicle.assignedDistributor.email}</p>
+                      <p className="text-gray-600">
+                        {vehicle.assignedDistributor.phone}
+                      </p>
+                      <p className="text-gray-600">
+                        {vehicle.assignedDistributor.email}
+                      </p>
                     </div>
                   </div>
                 ) : (
                   <div className="text-center py-8">
                     <User className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500">لم يتم تعيين موزع لهذه المركبة</p>
+                    <p className="text-gray-500">
+                      لم يتم تعيين موزع لهذه المركبة
+                    </p>
                   </div>
                 )}
               </CardBody>
@@ -473,56 +559,64 @@ const VehicleDetailsPage = () => {
               <CardBody className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-600">آخر صيانة</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      آخر صيانة
+                    </label>
                     <p className="text-gray-900">
-                      {vehicle.last_maintenance_date 
+                      {vehicle.last_maintenance_date
                         ? formatDate(vehicle.last_maintenance_date)
-                        : 'لا توجد بيانات'
-                      }
+                        : "لا توجد بيانات"}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">العداد عند آخر صيانة</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      العداد عند آخر صيانة
+                    </label>
                     <p className="text-gray-900">
-                      {vehicle.last_maintenance_km 
+                      {vehicle.last_maintenance_km
                         ? `${vehicle.last_maintenance_km.toLocaleString()} كم`
-                        : 'لا توجد بيانات'
-                      }
+                        : "لا توجد بيانات"}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">الصيانة القادمة</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      الصيانة القادمة
+                    </label>
                     <p className="text-gray-900">
-                      {vehicle.next_maintenance_km 
+                      {vehicle.next_maintenance_km
                         ? `${vehicle.next_maintenance_km.toLocaleString()} كم`
-                        : 'لا توجد بيانات'
-                      }
+                        : "لا توجد بيانات"}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">فترة الصيانة</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      فترة الصيانة
+                    </label>
                     <p className="text-gray-900">
-                      {vehicle.maintenance_interval_km 
+                      {vehicle.maintenance_interval_km
                         ? `كل ${vehicle.maintenance_interval_km.toLocaleString()} كم`
-                        : 'لا توجد بيانات'
-                      }
+                        : "لا توجد بيانات"}
                     </p>
                   </div>
                 </div>
-                
+
                 {/* Maintenance Alert */}
-                {vehicle.current_km && vehicle.next_maintenance_km && 
-                 vehicle.current_km >= vehicle.next_maintenance_km && (
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                    <div className="flex items-center space-x-2">
-                      <AlertTriangle className="w-5 h-5 text-amber-600" />
-                      <span className="font-semibold text-amber-800">تحذير: صيانة مستحقة!</span>
+                {vehicle.current_km &&
+                  vehicle.next_maintenance_km &&
+                  vehicle.current_km >= vehicle.next_maintenance_km && (
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <AlertTriangle className="w-5 h-5 text-amber-600" />
+                        <span className="font-semibold text-amber-800">
+                          تحذير: صيانة مستحقة!
+                        </span>
+                      </div>
+                      <p className="text-amber-700 text-sm mt-1">
+                        تحتاج هذه المركبة إلى صيانة. العداد الحالي:{" "}
+                        {vehicle.current_km.toLocaleString()} كم
+                      </p>
                     </div>
-                    <p className="text-amber-700 text-sm mt-1">
-                      تحتاج هذه المركبة إلى صيانة. العداد الحالي: {vehicle.current_km.toLocaleString()} كم
-                    </p>
-                  </div>
-                )}
+                  )}
               </CardBody>
             </Card>
 
@@ -534,34 +628,39 @@ const VehicleDetailsPage = () => {
               <CardBody className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-600">تاريخ التسجيل</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      تاريخ التسجيل
+                    </label>
                     <p className="text-gray-900">
-                      {vehicle.registration_date 
+                      {vehicle.registration_date
                         ? formatDate(vehicle.registration_date)
-                        : 'لا توجد بيانات'
-                      }
+                        : "لا توجد بيانات"}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">تاريخ انتهاء التسجيل</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      تاريخ انتهاء التسجيل
+                    </label>
                     <p className="text-gray-900">
-                      {vehicle.registration_expiry_date 
+                      {vehicle.registration_expiry_date
                         ? formatDate(vehicle.registration_expiry_date)
-                        : 'لا توجد بيانات'
-                      }
+                        : "لا توجد بيانات"}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">تاريخ انتهاء التأمين</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      تاريخ انتهاء التأمين
+                    </label>
                     <p className="text-gray-900">
-                      {vehicle.insurance_expiry_date 
+                      {vehicle.insurance_expiry_date
                         ? formatDate(vehicle.insurance_expiry_date)
-                        : 'لا توجد بيانات'
-                      }
+                        : "لا توجد بيانات"}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-600">تاريخ الإضافة</label>
+                    <label className="text-sm font-medium text-gray-600">
+                      تاريخ الإضافة
+                    </label>
                     <p className="text-gray-900">
                       {formatDate(vehicle.created_at)}
                     </p>
@@ -572,13 +671,16 @@ const VehicleDetailsPage = () => {
           </div>
         )}
 
-        {activeTab === 'expenses' && (
+        {activeTab === "expenses" && (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">سجل النفقات</h3>
                 <div className="text-sm text-gray-600">
-                  إجمالي النفقات: <span className="font-bold">{formatCurrency(statistics.totalExpenses)}</span>
+                  إجمالي النفقات:{" "}
+                  <span className="font-bold">
+                    {formatCurrency(statistics.totalExpenses)}
+                  </span>
                 </div>
               </div>
             </CardHeader>
@@ -586,18 +688,27 @@ const VehicleDetailsPage = () => {
               {expenses.length > 0 ? (
                 <div className="space-y-4">
                   {expenses.map((expense, index) => (
-                    <div key={index} className="border-b border-gray-100 pb-4 last:border-b-0">
+                    <div
+                      key={index}
+                      className="border-b border-gray-100 pb-4 last:border-b-0"
+                    >
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="font-medium">{expense.description || 'نفقة'}</h4>
+                          <h4 className="font-medium">
+                            {expense.description || "نفقة"}
+                          </h4>
                           <p className="text-sm text-gray-600">
                             {formatDate(expense.date)} • {expense.type}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-lg">{formatCurrency(expense.amount)}</p>
+                          <p className="font-bold text-lg">
+                            {formatCurrency(expense.amount)}
+                          </p>
                           {expense.km && (
-                            <p className="text-sm text-gray-600">{expense.km.toLocaleString()} كم</p>
+                            <p className="text-sm text-gray-600">
+                              {expense.km.toLocaleString()} كم
+                            </p>
                           )}
                         </div>
                       </div>
@@ -614,7 +725,7 @@ const VehicleDetailsPage = () => {
           </Card>
         )}
 
-        {activeTab === 'maintenance' && (
+        {activeTab === "maintenance" && (
           <Card>
             <CardHeader>
               <h3 className="text-lg font-semibold">سجل الصيانة</h3>
@@ -628,7 +739,7 @@ const VehicleDetailsPage = () => {
           </Card>
         )}
 
-        {activeTab === 'history' && (
+        {activeTab === "history" && (
           <Card>
             <CardHeader>
               <h3 className="text-lg font-semibold">سجل الأنشطة</h3>
@@ -646,4 +757,4 @@ const VehicleDetailsPage = () => {
   );
 };
 
-export default VehicleDetailsPage; 
+export default VehicleDetailsPage;
