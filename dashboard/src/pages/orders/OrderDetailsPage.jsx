@@ -46,7 +46,8 @@ const OrderDetailsPage = () => {
       setOrder(orderData);
     } catch (error) {
       console.error("Error loading order:", error);
-      toast.error("Error loading order");
+      const errorMessage = error.response?.data?.message || error.message || "Error loading order";
+      toast.error(errorMessage);
       navigate("/orders");
     } finally {
       setLoading(false);

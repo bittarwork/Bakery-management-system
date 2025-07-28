@@ -19,10 +19,10 @@ import BackButton from "../../components/ui/BackButton";
 const CreateOrderPage = () => {
   const navigate = useNavigate();
 
-  // Form state
+  // Form state - Currency always EUR
   const [formData, setFormData] = useState({
     store_id: "",
-    currency: "EUR",
+    currency: "EUR", // Always EUR
     delivery_date: "",
     notes: "",
     items: [],
@@ -103,7 +103,7 @@ const CreateOrderPage = () => {
     }));
   };
 
-  // Get product details
+  // Get product by ID
   const getProduct = (productId) => {
     return products.find((product) => product.id === parseInt(productId));
   };
@@ -115,8 +115,8 @@ const CreateOrderPage = () => {
 
     const quantity = parseInt(item.quantity) || 0;
     return {
-      eur: (product.price_eur || 0) * quantity,
-      syp: (product.price_syp || 0) * quantity,
+      eur: (parseFloat(product.price_eur) || 0) * quantity,
+      syp: (parseFloat(product.price_syp) || 0) * quantity,
     };
   };
 
@@ -163,10 +163,10 @@ const CreateOrderPage = () => {
     try {
       setLoading(true);
 
-      // Prepare order data for API
+      // Prepare order data for API - No distributor assignment
       const orderData = {
         store_id: parseInt(formData.store_id),
-        currency: formData.currency,
+        currency: "EUR", // Always EUR
         delivery_date: formData.delivery_date || null,
         notes: formData.notes,
         items: formData.items.map((item) => ({
@@ -179,7 +179,7 @@ const CreateOrderPage = () => {
       const response = await orderService.createOrder(orderData);
 
       toast.success("Order created successfully");
-      navigate(`/orders/${response.id}`);
+      navigate(`/orders/${response.data?.id || response.id}`);
     } catch (error) {
       console.error("Error creating order:", error);
       const errorMessage =
@@ -242,34 +242,22 @@ const CreateOrderPage = () => {
                     <option value="">Select a store</option>
                     {stores.map((store) => (
                       <option key={store.id} value={store.id}>
-                        {store.name} - {store.location}
+                        {store.name} - {store.owner_name}
                       </option>
                     ))}
                   </select>
                 )}
               </div>
 
-              {/* Currency */}
+              {/* Currency - Fixed to EUR */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Currency *
                 </label>
-                <select
-                  value={formData.currency}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      currency: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  {orderService.getCurrencyOptions().map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
+                  <CurrencyEuroIcon className="h-5 w-5 text-gray-400 mr-2" />
+                  <span className="text-gray-900">Euro (€) - Fixed</span>
+                </div>
               </div>
 
               {/* Delivery Date */}
@@ -395,16 +383,7 @@ const CreateOrderPage = () => {
                               <option value="">Select a product</option>
                               {products.map((product) => (
                                 <option key={product.id} value={product.id}>
-                                  {product.name} -{" "}
-                                  {orderService.formatAmount(
-                                    product.price_eur,
-                                    "EUR"
-                                  )}{" "}
-                                  /{" "}
-                                  {orderService.formatAmount(
-                                    product.price_syp,
-                                    "SYP"
-                                  )}
+                                  {product.name} - €{parseFloat(product.price_eur || 0).toFixed(2)}
                                 </option>
                               ))}
                             </select>
@@ -435,15 +414,7 @@ const CreateOrderPage = () => {
                           </label>
                           <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
                             <div className="text-sm text-gray-900">
-                              {formData.currency === "EUR"
-                                ? orderService.formatAmount(
-                                    itemTotal.eur,
-                                    "EUR"
-                                  )
-                                : orderService.formatAmount(
-                                    itemTotal.syp,
-                                    "SYP"
-                                  )}
+                              €{itemTotal.eur.toFixed(2)}
                             </div>
                           </div>
                         </div>
@@ -502,9 +473,7 @@ const CreateOrderPage = () => {
               <div className="flex items-center justify-between text-lg font-semibold">
                 <span className="text-gray-900">Total Amount:</span>
                 <span className="text-blue-600">
-                  {formData.currency === "EUR"
-                    ? orderService.formatAmount(orderTotal.eur, "EUR")
-                    : orderService.formatAmount(orderTotal.syp, "SYP")}
+                  €{orderTotal.eur.toFixed(2)}
                 </span>
               </div>
               <div className="mt-2 text-sm text-gray-500">

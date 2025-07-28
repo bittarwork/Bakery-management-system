@@ -135,7 +135,7 @@ class VehicleService {
             console.error('Error fetching distributor vehicles:', error);
             return { success: false, error: error.message };
         }
-    }
+    },
 
     // Get vehicle statistics
     async getVehicleStatistics() {
@@ -146,7 +146,7 @@ class VehicleService {
             console.error('Error fetching vehicle statistics:', error);
             return { success: false, error: error.message };
         }
-    }
+    },
 
     // Update vehicle status
     async updateVehicleStatus(id, status) {
@@ -157,7 +157,7 @@ class VehicleService {
             console.error('Error updating vehicle status:', error);
             return { success: false, error: error.message };
         }
-    }
+    },
 
     // Record vehicle expense (using existing distribution API)
     async recordVehicleExpense(expenseData) {
@@ -341,7 +341,7 @@ class VehicleService {
     }
 
     // Get vehicle-specific statistics
-    async getVehicleStatistics(vehicleId) {
+    async getVehicleStatisticsById(vehicleId) {
         try {
             if (!vehicleId) {
                 console.error('Vehicle ID is required for getting specific vehicle statistics');
