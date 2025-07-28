@@ -77,10 +77,16 @@ const ProductDetailsPage = () => {
 
   // Load product data
   useEffect(() => {
-    if (id) {
+    if (id && !isNaN(id) && id !== 'new' && id !== 'create') {
       loadProductData();
+    } else if (id === 'new' || id === 'create') {
+      // Redirect to create page if someone tries to access /products/new or /products/create
+      navigate('/products/create', { replace: true });
+    } else if (id && isNaN(id)) {
+      setError("Invalid product ID");
+      setIsLoading(false);
     }
-  }, [id]);
+  }, [id, navigate]);
 
   const loadProductData = async () => {
     try {
@@ -1057,7 +1063,7 @@ const ProductDetailsPage = () => {
 
                     <EnhancedButton
                       onClick={() => {
-                        window.open(`/products/new?duplicate=${id}`, "_blank");
+                        window.open(`/products/create?duplicate=${id}`, "_blank");
                       }}
                       variant="outline"
                       className="w-full justify-start"

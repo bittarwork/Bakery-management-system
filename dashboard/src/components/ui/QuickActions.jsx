@@ -35,7 +35,7 @@ const QuickActions = () => {
     },
     {
       name: "منتج جديد",
-      path: "/products/new",
+      path: "/products/create",
       icon: Plus,
       description: "إضافة منتج جديد",
       color: "text-orange-600 bg-orange-50",
@@ -88,7 +88,7 @@ const QuickActions = () => {
               className="fixed inset-0 z-10"
               onClick={() => setIsOpen(false)}
             />
-            
+
             {/* Dropdown */}
             <motion.div
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -106,7 +106,7 @@ const QuickActions = () => {
                   اختصارات للمهام الأكثر استخداماً
                 </p>
               </div>
-              
+
               <div className="p-2">
                 {filteredActions.map((action, index) => {
                   const Icon = action.icon;
@@ -117,7 +117,9 @@ const QuickActions = () => {
                       onClick={() => setIsOpen(false)}
                       className="group flex items-center p-3 rounded-lg hover:bg-gray-50 transition-all duration-200 smooth-transition"
                     >
-                      <div className={`p-2 rounded-lg ${action.color} group-hover:scale-110 transition-transform duration-200`}>
+                      <div
+                        className={`p-2 rounded-lg ${action.color} group-hover:scale-110 transition-transform duration-200`}
+                      >
                         <Icon className="h-4 w-4" />
                       </div>
                       <div className="mr-3 flex-1">
@@ -135,7 +137,7 @@ const QuickActions = () => {
                   );
                 })}
               </div>
-              
+
               <div className="p-3 border-t border-gray-100 bg-gray-50">
                 <div className="flex items-center justify-between text-xs text-gray-500">
                   <span>اختصارات لوحة المفاتيح:</span>
@@ -152,4 +154,4 @@ const QuickActions = () => {
   );
 };
 
-export default QuickActions; 
+export default QuickActions;

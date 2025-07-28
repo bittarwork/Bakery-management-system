@@ -14,7 +14,7 @@ const Breadcrumb = () => {
     "/stores": "المتاجر",
     "/stores/new": "متجر جديد",
     "/products": "المنتجات",
-    "/products/new": "منتج جديد",
+    "/products/create": "منتج جديد",
     "/users": "المستخدمين",
     "/users/new": "مستخدم جديد",
     "/distribution": "التوزيع",

@@ -1,5 +1,5 @@
-import React, { useState, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useRef, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import {
@@ -38,6 +38,7 @@ import { productService } from "../../services/productService";
 
 const CreateProductPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const fileInputRef = useRef(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -72,6 +73,36 @@ const CreateProductPage = () => {
     allergen_info: "",
   });
   const [errors, setErrors] = useState({});
+
+  // Handle duplicate product functionality
+  useEffect(() => {
+    const duplicateId = searchParams.get("duplicate");
+    if (duplicateId) {
+      loadProductForDuplication(duplicateId);
+    }
+  }, [searchParams]);
+
+  const loadProductForDuplication = async (productId) => {
+    try {
+      const response = await productService.getProduct(productId);
+      if (response.success) {
+        const originalProduct = response.data;
+        // Copy product data but remove ID and add "Copy" to name
+        setFormData({
+          ...originalProduct,
+          id: undefined, // Remove ID for new product
+          name: `${originalProduct.name} (Copy)`,
+          stock_quantity: "0", // Reset stock for new product
+          created_at: undefined,
+          updated_at: undefined,
+        });
+        toast.success("Product data loaded for duplication");
+      }
+    } catch (error) {
+      console.error("Error loading product for duplication:", error);
+      toast.error("Failed to load product for duplication");
+    }
+  };
 
   // Categories with icons and colors
   const categories = [

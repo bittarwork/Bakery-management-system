@@ -510,7 +510,7 @@ const ProductsListPage = () => {
               </EnhancedButton>
 
               <EnhancedButton
-                onClick={() => navigate("/products/new")}
+                onClick={() => navigate("/products/create")}
                 variant="primary"
                 icon={<Plus className="w-4 h-4" />}
               >
@@ -780,7 +780,7 @@ const ProductsListPage = () => {
                       </EnhancedButton>
                     )}
                     <EnhancedButton
-                      onClick={() => navigate("/products/new")}
+                      onClick={() => navigate("/products/create")}
                       variant="primary"
                       icon={<Plus className="w-4 h-4" />}
                     >

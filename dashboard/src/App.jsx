@@ -48,6 +48,10 @@ import CreateUserPage from "./pages/users/CreateUserPage";
 import EditUserPage from "./pages/users/EditUserPage";
 import UserProfilePage from "./pages/users/UserProfilePage";
 
+// Pages - Vehicles
+import VehicleManagementPage from "./pages/vehicles/VehicleManagementPage";
+import VehicleExpensesPage from "./pages/vehicles/VehicleExpensesPage";
+
 // Pages - Reports
 import ReportsOverviewPage from "./pages/reports/ReportsOverviewPage";
 
@@ -562,27 +566,6 @@ const App = () => {
             />
 
             <Route
-              path="/products/:id"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <motion.div
-                      variants={pageVariants}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      transition={pageTransition}
-                    >
-                      <Suspense fallback={<LoadingSpinner />}>
-                        <ProductDetailsPage />
-                      </Suspense>
-                    </motion.div>
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
               path="/products/create"
               element={
                 <ProtectedRoute>
@@ -596,6 +579,27 @@ const App = () => {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <CreateProductPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/products/:id"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <ProductDetailsPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>
@@ -723,6 +727,49 @@ const App = () => {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <UserProfilePage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Vehicles Routes */}
+            <Route
+              path="/vehicles"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <VehicleManagementPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/vehicles/expenses"
+              element={
+                <ProtectedRoute allowedRoles={["distributor", "admin", "manager"]}>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <VehicleExpensesPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>

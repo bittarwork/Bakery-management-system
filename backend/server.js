@@ -34,6 +34,9 @@ import { updateSessionActivity, checkSessionExpiry, detectDevice } from './middl
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// Enable trust proxy for Railway and other hosting platforms
+app.set('trust proxy', true);
+
 // Rate limiting
 const limiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minute
