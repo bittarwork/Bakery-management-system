@@ -3,7 +3,6 @@ import sequelize from '../config/database.js';
 // Enhanced Models
 import EnhancedUser from './EnhancedUser.js';
 import EnhancedStore from './EnhancedStore.js';
-import EnhancedDistributionTrip from './EnhancedDistributionTrip.js';
 import EnhancedStoreVisit from './EnhancedStoreVisit.js';
 import EnhancedPayment from './EnhancedPayment.js';
 
@@ -27,8 +26,7 @@ const defineEnhancedAssociations = () => {
     EnhancedUser.hasMany(EnhancedStore, { foreignKey: 'created_by', as: 'createdStores' });
     EnhancedUser.hasMany(EnhancedStore, { foreignKey: 'updated_by', as: 'updatedStores' });
 
-    // User can be a distributor
-    EnhancedUser.hasMany(EnhancedDistributionTrip, { foreignKey: 'distributor_id', as: 'distributorTrips' });
+    // User can be a distributor (removed EnhancedDistributionTrip references)
 
     // User can create/verify payments
     EnhancedUser.hasMany(EnhancedPayment, { foreignKey: 'created_by', as: 'createdPayments' });
@@ -49,22 +47,10 @@ const defineEnhancedAssociations = () => {
     EnhancedStore.hasMany(EnhancedPayment, { foreignKey: 'store_id', as: 'payments' });
 
     // ===============================
-    // Enhanced Distribution Trip Associations
-    // ===============================
-
-    // Trip belongs to distributor
-    EnhancedDistributionTrip.belongsTo(EnhancedUser, { foreignKey: 'distributor_id', as: 'distributor' });
-    EnhancedDistributionTrip.belongsTo(EnhancedUser, { foreignKey: 'created_by', as: 'creator' });
-
-    // Trip has many visits
-    EnhancedDistributionTrip.hasMany(EnhancedStoreVisit, { foreignKey: 'trip_id', as: 'visits' });
-
-    // ===============================
     // Enhanced Store Visit Associations
     // ===============================
 
-    // Visit belongs to trip and store
-    EnhancedStoreVisit.belongsTo(EnhancedDistributionTrip, { foreignKey: 'trip_id', as: 'trip' });
+    // Visit belongs to store (removed trip associations)
     EnhancedStoreVisit.belongsTo(EnhancedStore, { foreignKey: 'store_id', as: 'store' });
 
     // Visit can have payment
@@ -151,7 +137,6 @@ const initializeEnhancedModels = async () => {
             // Enhanced Models
             EnhancedUser,
             EnhancedStore,
-            EnhancedDistributionTrip,
             EnhancedStoreVisit,
             EnhancedPayment,
             // Original Models
@@ -177,7 +162,6 @@ const getModelStatistics = async () => {
             enhanced_models: {
                 users: await EnhancedUser.count(),
                 stores: await EnhancedStore.count(),
-                trips: await EnhancedDistributionTrip.count(),
                 visits: await EnhancedStoreVisit.count(),
                 payments: await EnhancedPayment.count()
             },
@@ -227,7 +211,6 @@ export {
     // Enhanced Models
     EnhancedUser,
     EnhancedStore,
-    EnhancedDistributionTrip,
     EnhancedStoreVisit,
     EnhancedPayment,
     // Original Models
@@ -250,7 +233,6 @@ export default {
     // Enhanced Models
     EnhancedUser,
     EnhancedStore,
-    EnhancedDistributionTrip,
     EnhancedStoreVisit,
     EnhancedPayment,
     // Original Models

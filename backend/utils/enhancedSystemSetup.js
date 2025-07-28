@@ -48,7 +48,6 @@ const getSequelizeConnection = async () => {
 // Import Enhanced Models
 import EnhancedUser from '../models/EnhancedUser.js';
 import EnhancedStore from '../models/EnhancedStore.js';
-import EnhancedDistributionTrip from '../models/EnhancedDistributionTrip.js';
 import EnhancedStoreVisit from '../models/EnhancedStoreVisit.js';
 import EnhancedPayment from '../models/EnhancedPayment.js';
 
@@ -179,7 +178,6 @@ export const healthCheck = async () => {
         const requiredTables = [
             'enhanced_users',
             'enhanced_stores',
-            'enhanced_distribution_trips',
             'enhanced_store_visits',
             'enhanced_payments'
         ];

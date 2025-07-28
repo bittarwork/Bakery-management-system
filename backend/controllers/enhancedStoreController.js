@@ -176,10 +176,7 @@ export const getStoreById = async (req, res) => {
         const recentVisits = await EnhancedStoreVisit.findAll({
             where: { store_id: id },
             limit: 10,
-            order: [['arrival_time', 'DESC']],
-            include: [
-                { model: EnhancedDistributionTrip, as: 'trip', include: [{ model: EnhancedUser, as: 'distributor' }] }
-            ]
+            order: [['arrival_time', 'DESC']]
         });
 
         const recentPayments = await EnhancedPayment.findAll({
@@ -511,10 +508,7 @@ export const getStoreOwnerDashboard = async (req, res) => {
         const recentVisits = await EnhancedStoreVisit.findAll({
             where: { store_id },
             limit: 10,
-            order: [['arrival_time', 'DESC']],
-            include: [
-                { model: EnhancedDistributionTrip, as: 'trip', include: [{ model: EnhancedUser, as: 'distributor' }] }
-            ]
+            order: [['arrival_time', 'DESC']]
         });
 
         // المدفوعات الأخيرة
@@ -531,10 +525,7 @@ export const getStoreOwnerDashboard = async (req, res) => {
                 status: 'planned',
                 planned_arrival_time: { [Op.gte]: new Date() }
             },
-            order: [['planned_arrival_time', 'ASC']],
-            include: [
-                { model: EnhancedDistributionTrip, as: 'trip', include: [{ model: EnhancedUser, as: 'distributor' }] }
-            ]
+            order: [['planned_arrival_time', 'ASC']]
         });
 
         res.json({

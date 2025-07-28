@@ -354,11 +354,90 @@ const App = () => {
               }
             />
 
-            {/* Order Routes */}
-            <Route path="/orders" element={<OrdersPage />} />
-            <Route path="/orders/create" element={<CreateOrderPage />} />
-            <Route path="/orders/:id" element={<OrderDetailsPage />} />
-            <Route path="/orders/:id/edit" element={<EditOrderPage />} />
+                         {/* Order Routes */}
+             <Route
+               path="/orders"
+               element={
+                 <ProtectedRoute>
+                   <DashboardLayout>
+                     <motion.div
+                       variants={pageVariants}
+                       initial="initial"
+                       animate="animate"
+                       exit="exit"
+                       transition={pageTransition}
+                     >
+                       <Suspense fallback={<LoadingSpinner />}>
+                         <OrdersPage />
+                       </Suspense>
+                     </motion.div>
+                   </DashboardLayout>
+                 </ProtectedRoute>
+               }
+             />
+
+             <Route
+               path="/orders/create"
+               element={
+                 <ProtectedRoute>
+                   <DashboardLayout>
+                     <motion.div
+                       variants={pageVariants}
+                       initial="initial"
+                       animate="animate"
+                       exit="exit"
+                       transition={pageTransition}
+                     >
+                       <Suspense fallback={<LoadingSpinner />}>
+                         <CreateOrderPage />
+                       </Suspense>
+                     </motion.div>
+                   </DashboardLayout>
+                 </ProtectedRoute>
+               }
+             />
+
+             <Route
+               path="/orders/:id"
+               element={
+                 <ProtectedRoute>
+                   <DashboardLayout>
+                     <motion.div
+                       variants={pageVariants}
+                       initial="initial"
+                       animate="animate"
+                       exit="exit"
+                       transition={pageTransition}
+                     >
+                       <Suspense fallback={<LoadingSpinner />}>
+                         <OrderDetailsPage />
+                       </Suspense>
+                     </motion.div>
+                   </DashboardLayout>
+                 </ProtectedRoute>
+               }
+             />
+
+             <Route
+               path="/orders/:id/edit"
+               element={
+                 <ProtectedRoute>
+                   <DashboardLayout>
+                     <motion.div
+                       variants={pageVariants}
+                       initial="initial"
+                       animate="animate"
+                       exit="exit"
+                       transition={pageTransition}
+                     >
+                       <Suspense fallback={<LoadingSpinner />}>
+                         <EditOrderPage />
+                       </Suspense>
+                     </motion.div>
+                   </DashboardLayout>
+                 </ProtectedRoute>
+               }
+             />
 
             {/* Stores Routes */}
             <Route
