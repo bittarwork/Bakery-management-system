@@ -80,30 +80,9 @@ app.use(helmet({
     }
 }));
 
-// Simplified CORS configuration with restricted origins
+// CORS configuration with proper headers
 app.use(cors({
-    origin: function (origin, callback) {
-        // Only allow these specific origins
-        const allowedOrigins = [
-            'http://localhost:3000',
-            'http://localhost:3001',
-            'https://www.al-bittar.com',
-            'https://bakery-management-system-production.up.railway.app'
-        ];
-
-        // Allow requests without origin (mobile apps, Postman)
-        if (!origin) {
-            return callback(null, true);
-        }
-
-        // Check if origin is allowed
-        if (allowedOrigins.includes(origin)) {
-            return callback(null, true);
-        }
-
-        // Reject all other origins
-        return callback(new Error('Not allowed by CORS'));
-    },
+    origin: true, // Allow all origins for now
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: [
@@ -130,6 +109,15 @@ app.options('*', (req, res) => {
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Max-Age', '86400');
     res.status(200).end();
+});
+
+// Add CORS headers to all responses
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, X-Request-Time');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    next();
 });
 
 app.use(limiter);

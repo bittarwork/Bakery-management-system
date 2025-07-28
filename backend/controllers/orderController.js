@@ -687,9 +687,9 @@ export const updateOrderStatus = async (req, res) => {
         }
 
         // Check permissions
-        const canUpdate = req.user.role === 'admin' || 
-                         req.user.role === 'manager' || 
-                         (req.user.role === 'distributor' && order.assigned_distributor_id === req.user.id);
+        const canUpdate = req.user.role === 'admin' ||
+            req.user.role === 'manager' ||
+            (req.user.role === 'distributor' && order.assigned_distributor_id === req.user.id);
 
         if (!canUpdate) {
             return res.status(403).json({
@@ -750,9 +750,9 @@ export const updatePaymentStatus = async (req, res) => {
         }
 
         // Check permissions - only admin, manager, or assigned distributor can update payment status
-        const canUpdate = req.user.role === 'admin' || 
-                         req.user.role === 'manager' || 
-                         (req.user.role === 'distributor' && order.assigned_distributor_id === req.user.id);
+        const canUpdate = req.user.role === 'admin' ||
+            req.user.role === 'manager' ||
+            (req.user.role === 'distributor' && order.assigned_distributor_id === req.user.id);
 
         if (!canUpdate) {
             return res.status(403).json({

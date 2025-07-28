@@ -141,6 +141,45 @@ const DashboardHomePage = () => {
             stats.revenue?.today || stats.sales?.today || 0;
         }
 
+        // استخراج البيانات من sales_metrics إذا كانت متوفرة
+        if (stats.sales_metrics) {
+          newData.totalRevenue =
+            stats.sales_metrics.total_revenue || newData.totalRevenue;
+          newData.todayRevenue =
+            stats.sales_metrics.today_revenue || newData.todayRevenue;
+        }
+
+        // استخراج البيانات من distribution_metrics إذا كانت متوفرة
+        if (stats.distribution_metrics) {
+          newData.totalVehicles =
+            stats.distribution_metrics.total_vehicles || newData.totalVehicles;
+          newData.availableVehicles =
+            stats.distribution_metrics.available_vehicles ||
+            newData.availableVehicles;
+          newData.busyVehicles =
+            stats.distribution_metrics.busy_vehicles || newData.busyVehicles;
+        }
+
+        // استخراج البيانات من inventory_metrics إذا كانت متوفرة
+        if (stats.inventory_metrics) {
+          newData.totalProducts =
+            stats.inventory_metrics.total_products || newData.totalProducts;
+          newData.lowStockProducts =
+            stats.inventory_metrics.low_stock_products ||
+            newData.lowStockProducts;
+          newData.outOfStockProducts =
+            stats.inventory_metrics.out_of_stock_products ||
+            newData.outOfStockProducts;
+        }
+
+        // استخراج البيانات من user_metrics إذا كانت متوفرة
+        if (stats.user_metrics) {
+          newData.totalUsers =
+            stats.user_metrics.total_users || newData.totalUsers;
+          newData.activeUsers =
+            stats.user_metrics.active_users || newData.activeUsers;
+        }
+
         hasAnyData = hasAnyData || Object.keys(stats).length > 0;
       } else {
         console.log(
@@ -152,7 +191,8 @@ const DashboardHomePage = () => {
       // بيانات الطلبات
       if (ordersData.status === "fulfilled" && ordersData.value?.success) {
         console.log("✅ بيانات الطلبات:", ordersData.value.data);
-        const orders = ordersData.value.data || [];
+        const orders =
+          ordersData.value.data?.orders || ordersData.value.data || [];
         if (Array.isArray(orders)) {
           newData.recentOrders = orders.slice(0, 5);
           newData.totalOrders = newData.totalOrders || orders.length; // استخدم البيانات إذا لم تكن متوفرة من الإحصائيات
@@ -183,7 +223,7 @@ const DashboardHomePage = () => {
       // بيانات المستخدمين
       if (usersData.status === "fulfilled" && usersData.value?.success) {
         console.log("✅ بيانات المستخدمين:", usersData.value.data);
-        const users = usersData.value.data || [];
+        const users = usersData.value.data?.users || usersData.value.data || [];
         if (Array.isArray(users)) {
           newData.totalUsers = users.length;
           newData.activeUsers = users.filter(
@@ -201,7 +241,8 @@ const DashboardHomePage = () => {
       // بيانات المنتجات
       if (productsData.status === "fulfilled" && productsData.value?.success) {
         console.log("✅ بيانات المنتجات:", productsData.value.data);
-        const products = productsData.value.data || [];
+        const products =
+          productsData.value.data?.products || productsData.value.data || [];
         if (Array.isArray(products)) {
           newData.topProducts = products.slice(0, 5);
           newData.totalProducts = products.length;
@@ -223,7 +264,8 @@ const DashboardHomePage = () => {
       // بيانات المتاجر
       if (storesData.status === "fulfilled" && storesData.value?.success) {
         console.log("✅ بيانات المتاجر:", storesData.value.data);
-        const stores = storesData.value.data || [];
+        const stores =
+          storesData.value.data?.stores || storesData.value.data || [];
         if (Array.isArray(stores)) {
           newData.topStores = stores.slice(0, 5);
           newData.totalStores = stores.length;
@@ -245,7 +287,8 @@ const DashboardHomePage = () => {
       // بيانات المركبات
       if (vehiclesData.status === "fulfilled" && vehiclesData.value?.success) {
         console.log("✅ بيانات المركبات:", vehiclesData.value.data);
-        const vehicles = vehiclesData.value.data || [];
+        const vehicles =
+          vehiclesData.value.data?.vehicles || vehiclesData.value.data || [];
         if (Array.isArray(vehicles)) {
           newData.totalVehicles = vehicles.length;
           newData.availableVehicles = vehicles.filter(
@@ -269,17 +312,19 @@ const DashboardHomePage = () => {
         setError(null);
       } else {
         console.log("⚠️ لم يتم العثور على أي بيانات من الخادم");
-        setError(
-          "لا توجد بيانات متاحة في النظام حالياً. قم بإضافة بعض البيانات لعرضها هنا."
-        );
+        // لا نعرض خطأ إذا لم تكن هناك بيانات، فقط نترك البيانات فارغة
+        setError(null);
       }
 
       setLastUpdated(new Date());
     } catch (error) {
       console.error("❌ خطأ في جلب البيانات:", error);
-      setError(
-        "حدث خطأ في تحميل البيانات من الخادم. يرجى التحقق من الاتصال والمحاولة مرة أخرى."
-      );
+      // لا نعرض خطأ إذا كان هناك بيانات جزئية
+      if (!hasAnyData) {
+        setError(
+          "حدث خطأ في تحميل البيانات من الخادم. يرجى التحقق من الاتصال والمحاولة مرة أخرى."
+        );
+      }
     } finally {
       setIsLoading(false);
     }

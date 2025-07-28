@@ -1,55 +1,124 @@
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
   Mail,
   Phone,
-  Calendar,
-  Shield,
-  Edit,
+  MapPin,
+  Camera,
   Save,
-  X,
+  Lock,
   Eye,
   EyeOff,
+  Shield,
+  Bell,
+  Globe,
+  Paintbrush,
+  Download,
+  Upload,
+  Trash2,
   CheckCircle,
-  XCircle,
   AlertCircle,
   Crown,
   Briefcase,
   Truck,
   ShoppingCart,
-  Calculator,
-  UserCheck,
-  UserX,
-  Lock,
   Settings,
-  Key,
-  Fingerprint,
+  Edit,
+  Star,
+  TrendingUp,
+  Calendar,
+  DollarSign,
+  Award,
+  Users,
+  Clock,
+  Target,
+  Activity,
+  MapPinIcon,
+  Smartphone,
+  Home,
+  BadgeCheck,
+  Zap,
+  BarChart3,
+  Package,
+  Timer,
+  MessageSquare,
+  Heart,
+  Sparkles,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
-import EnhancedButton from "../../components/ui/EnhancedButton";
-import LoadingSpinner from "../../components/ui/LoadingSpinner";
+import Button from "../../components/ui/Button";
+import Input from "../../components/ui/Input";
 import { useAuthStore } from "../../stores/authStore";
-import userService from "../../services/userService";
+import { authService } from "../../services/authService";
+import { toast } from "react-hot-toast";
 
 const UserProfilePage = () => {
   const { user, updateUser } = useAuthStore();
-  const [isLoading, setIsLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  
-  // Form state
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+  const fileInputRef = useRef(null);
+
+  const [profile, setProfile] = useState({
+    username: "",
     email: "",
+    full_name: "",
     phone: "",
+    address: "",
+    role: "",
+    status: "",
+    hired_date: "",
+    salary: "",
+    license_number: "",
+    bio: "",
+    avatar: null,
+    emergency_contact: {
+      name: "",
+      phone: "",
+      relationship: "",
+    },
+    vehicle_info: {
+      make: "",
+      model: "",
+      year: "",
+      plate_number: "",
+      capacity: "",
+    },
+  });
+
+  const [security, setSecurity] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
+    twoFactorEnabled: false,
+    sessionTimeout: 30,
   });
+
+  const [notifications, setNotifications] = useState({
+    emailNotifications: true,
+    pushNotifications: true,
+    orderUpdates: true,
+    paymentReminders: true,
+    systemAlerts: true,
+    marketingEmails: false,
+  });
+
+  const [performance, setPerformance] = useState({
+    totalOrders: 0,
+    successfulDeliveries: 0,
+    rating: 0,
+    currentWorkload: 0,
+    todayDeliveries: 0,
+    monthlyEarnings: 0,
+  });
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -136,9 +205,9 @@ const UserProfilePage = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -183,7 +252,7 @@ const UserProfilePage = () => {
         updateUser(response.data);
         setIsEditing(false);
         // Clear password fields
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           currentPassword: "",
           newPassword: "",
@@ -236,9 +305,7 @@ const UserProfilePage = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             الملف الشخصي
           </h1>
-          <p className="text-gray-600">
-            عرض وتعديل معلوماتك الشخصية
-          </p>
+          <p className="text-gray-600">عرض وتعديل معلوماتك الشخصية</p>
         </div>
 
         {/* Success/Error Messages */}
@@ -342,7 +409,7 @@ const UserProfilePage = () => {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
-                    
+
                     {/* Password Change Section */}
                     <div className="border-t pt-4 mt-4">
                       <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
@@ -367,7 +434,11 @@ const UserProfilePage = () => {
                               onClick={() => setShowPassword(!showPassword)}
                               className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                             >
-                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              {showPassword ? (
+                                <EyeOff className="w-4 h-4" />
+                              ) : (
+                                <Eye className="w-4 h-4" />
+                              )}
                             </button>
                           </div>
                         </div>
@@ -429,13 +500,17 @@ const UserProfilePage = () => {
                         <label className="block text-sm font-medium text-gray-500 mb-1">
                           الاسم الأول
                         </label>
-                        <p className="text-gray-900">{user.firstName || "غير محدد"}</p>
+                        <p className="text-gray-900">
+                          {user.firstName || "غير محدد"}
+                        </p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-500 mb-1">
                           الاسم الأخير
                         </label>
-                        <p className="text-gray-900">{user.lastName || "غير محدد"}</p>
+                        <p className="text-gray-900">
+                          {user.lastName || "غير محدد"}
+                        </p>
                       </div>
                     </div>
                     <div>
@@ -481,12 +556,14 @@ const UserProfilePage = () => {
                     </label>
                     <p className="text-gray-900 font-medium">{user.username}</p>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">
                       الدور
                     </label>
-                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${roleConfig.color}`}>
+                    <div
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${roleConfig.color}`}
+                    >
                       {roleConfig.icon}
                       <span className="mr-1">{roleConfig.label}</span>
                     </div>
@@ -496,7 +573,9 @@ const UserProfilePage = () => {
                     <label className="block text-sm font-medium text-gray-500 mb-1">
                       الحالة
                     </label>
-                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${statusConfig.color}`}>
+                    <div
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${statusConfig.color}`}
+                    >
                       {statusConfig.icon}
                       <span className="mr-1">{statusConfig.label}</span>
                     </div>
@@ -531,4 +610,4 @@ const UserProfilePage = () => {
   );
 };
 
-export default UserProfilePage; 
+export default UserProfilePage;
