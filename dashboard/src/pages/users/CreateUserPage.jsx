@@ -216,6 +216,25 @@ const CreateUserPage = () => {
         confirmPassword: undefined,
       };
 
+      // Clean up license_number based on role
+      if (formData.role !== "distributor") {
+        // Remove license_number for non-distributor roles
+        delete submitData.license_number;
+      } else if (
+        !submitData.license_number ||
+        submitData.license_number.trim() === ""
+      ) {
+        // For distributors, ensure license_number is not empty
+        setErrors({ license_number: "رقم الرخصة مطلوب لموظفي التوزيع" });
+        setIsLoading(false);
+        return;
+      }
+
+      // Clean up vehicle_id for non-distributors
+      if (formData.role !== "distributor") {
+        delete submitData.vehicle_id;
+      }
+
       const response = await userService.createUser(submitData);
 
       if (response.success) {

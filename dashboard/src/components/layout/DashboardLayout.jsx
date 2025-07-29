@@ -145,6 +145,14 @@ const DashboardLayout = ({ children }) => {
           roles: ["admin", "manager"],
           badge: null,
         },
+        {
+          name: "جداول التوزيع اليومي",
+          path: "/distribution-schedule",
+          icon: Clock,
+          description: "إدارة جداول التوزيع اليومي ومتابعة الزيارات",
+          roles: ["admin", "manager"],
+          badge: null,
+        },
       ],
     },
     {

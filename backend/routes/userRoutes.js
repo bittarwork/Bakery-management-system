@@ -61,16 +61,29 @@ const createUserValidation = [
     body('role')
         .isIn(['admin', 'manager', 'distributor', 'cashier', 'accountant'])
         .withMessage('Invalid role'),
-        
+
     body('salary')
         .optional()
         .isNumeric()
         .withMessage('Salary must be a number'),
-        
+
     body('license_number')
-        .optional()
-        .isLength({ min: 5, max: 50 })
-        .withMessage('License number must be between 5 and 50 characters')
+        .custom((value, { req }) => {
+            // If the role is distributor, license_number is required
+            if (req.body.role === 'distributor') {
+                if (!value || value.trim() === '') {
+                    throw new Error('License number is required for distributors');
+                }
+                if (value.length < 5 || value.length > 50) {
+                    throw new Error('License number must be between 5 and 50 characters');
+                }
+            }
+            // For other roles, license_number should be empty or null
+            else if (value && value.trim() !== '') {
+                throw new Error('License number is only allowed for distributors');
+            }
+            return true;
+        })
 ];
 
 const updateUserValidation = [
@@ -120,7 +133,7 @@ const passwordUpdateValidation = [
         .withMessage('New password is required')
         .isLength({ min: 6 })
         .withMessage('New password must be at least 6 characters long'),
-    
+
     body('current_password')
         .optional()
         .notEmpty()
@@ -132,17 +145,17 @@ const distributorStatusValidation = [
         .optional()
         .isIn(['available', 'busy', 'offline', 'break'])
         .withMessage('Invalid work status'),
-        
+
     body('location')
         .optional()
         .isObject()
         .withMessage('Location must be an object'),
-        
+
     body('location.latitude')
         .optional()
         .isFloat({ min: -90, max: 90 })
         .withMessage('Invalid latitude'),
-        
+
     body('location.longitude')
         .optional()
         .isFloat({ min: -180, max: 180 })

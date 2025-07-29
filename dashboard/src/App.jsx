@@ -48,6 +48,9 @@ import AddVehiclePage from "./pages/vehicles/AddVehiclePage";
 import EditVehiclePage from "./pages/vehicles/EditVehiclePage";
 import VehicleExpensesPage from "./pages/vehicles/VehicleExpensesPage";
 
+// Pages - Scheduling
+import DailyDistributionSchedulePage from "./pages/scheduling/DailyDistributionSchedulePage";
+
 // Pages - Reports
 import ReportsOverviewPage from "./pages/reports/ReportsOverviewPage";
 
@@ -751,6 +754,28 @@ const App = () => {
                     >
                       <Suspense fallback={<LoadingSpinner />}>
                         <VehicleExpensesPage />
+                      </Suspense>
+                    </motion.div>
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Scheduling Routes */}
+            <Route
+              path="/distribution-schedule"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                  <DashboardLayout>
+                    <motion.div
+                      variants={pageVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={pageTransition}
+                    >
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <DailyDistributionSchedulePage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>
