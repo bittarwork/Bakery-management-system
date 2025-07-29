@@ -148,43 +148,12 @@ const DashboardLayout = ({ children }) => {
       ],
     },
     {
-      id: "distribution",
-      title: "التوزيع والتسليم",
-      color: "orange",
-      expandable: true,
-      icon: Truck,
-      roles: ["admin", "manager"],
-      items: [
-        {
-          name: "لوحة التوزيع",
-          path: "/distribution/manager",
-          icon: Activity,
-          description: "متابعة حالة التسليم",
-          badge: null,
-        },
-        {
-          name: "العمليات اليومية",
-          path: "/distribution/daily-operations",
-          icon: Coffee,
-          description: "مهام اليوم والجدولة",
-          badge: null,
-        },
-        {
-          name: "تتبع المواقع",
-          path: "/distribution/live-tracking",
-          icon: Navigation,
-          description: "مواقع سيارات التوزيع الحالية",
-          badge: "مباشر",
-        },
-      ],
-    },
-    {
       id: "reports",
-      title: "التقارير والتحليل",
+      title: "التقارير والإحصائيات",
       color: "purple",
       expandable: true,
       icon: BarChart3,
-      roles: ["admin", "manager"],
+      roles: ["admin", "manager", "accountant"],
       items: [
         {
           name: "التقارير المفصلة",

@@ -16,17 +16,11 @@ import LoginPage from "./pages/auth/LoginPage";
 import DashboardHomePage from "./pages/dashboard/DashboardHomePage";
 import AnalyticsPage from "./pages/dashboard/AnalyticsPage";
 
-// Pages - Distribution
-import DistributionManagerDashboard from "./pages/distribution/DistributionManagerDashboard";
-import DailyOperationsPage from "./pages/distribution/DailyOperationsPage";
-import LiveTrackingPage from "./pages/distribution/LiveTrackingPage";
-import DistributorDetails from "./pages/distribution/DistributorDetails";
-
 // Pages - Orders
-import CreateOrderPage from './pages/orders/CreateOrderPage';
-import OrdersPage from './pages/orders/OrdersPage';
-import OrderDetailsPage from './pages/orders/OrderDetailsPage';
-import EditOrderPage from './pages/orders/EditOrderPage';
+import CreateOrderPage from "./pages/orders/CreateOrderPage";
+import OrdersPage from "./pages/orders/OrdersPage";
+import OrderDetailsPage from "./pages/orders/OrderDetailsPage";
+import EditOrderPage from "./pages/orders/EditOrderPage";
 
 // Pages - Stores
 import StoresListPage from "./pages/stores/StoresListPage";
@@ -198,29 +192,29 @@ const App = () => {
           containerClassName=""
           containerStyle={{}}
           toastOptions={{
-            className: '',
+            className: "",
             duration: 4000,
             style: {
-              background: '#363636',
-              color: '#fff',
-              direction: 'rtl',
-              fontSize: '14px',
-              borderRadius: '8px',
-              padding: '12px 16px'
+              background: "#363636",
+              color: "#fff",
+              direction: "rtl",
+              fontSize: "14px",
+              borderRadius: "8px",
+              padding: "12px 16px",
             },
             success: {
               style: {
-                background: '#10B981',
+                background: "#10B981",
               },
             },
             error: {
               style: {
-                background: '#EF4444',
+                background: "#EF4444",
               },
             },
           }}
         />
-        
+
         {/* Network Status Indicator */}
         {!isOnline && (
           <div className="fixed top-0 left-0 right-0 bg-red-500 text-white text-center py-2 z-50">
@@ -295,16 +289,11 @@ const App = () => {
               }
             />
 
-            {/* Distribution Routes */}
+            {/* Order Routes */}
             <Route
-              path="/distribution"
-              element={<Navigate to="/distribution/manager" replace />}
-            />
-
-            <Route
-              path="/distribution/manager"
+              path="/orders"
               element={
-                <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                <ProtectedRoute>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}
@@ -314,7 +303,7 @@ const App = () => {
                       transition={pageTransition}
                     >
                       <Suspense fallback={<LoadingSpinner />}>
-                        <DistributionManagerDashboard />
+                        <OrdersPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>
@@ -323,9 +312,9 @@ const App = () => {
             />
 
             <Route
-              path="/distribution/daily-operations"
+              path="/orders/create"
               element={
-                <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                <ProtectedRoute>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}
@@ -335,7 +324,7 @@ const App = () => {
                       transition={pageTransition}
                     >
                       <Suspense fallback={<LoadingSpinner />}>
-                        <DailyOperationsPage />
+                        <CreateOrderPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>
@@ -344,9 +333,9 @@ const App = () => {
             />
 
             <Route
-              path="/distribution/live-tracking"
+              path="/orders/:id"
               element={
-                <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                <ProtectedRoute>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}
@@ -356,7 +345,7 @@ const App = () => {
                       transition={pageTransition}
                     >
                       <Suspense fallback={<LoadingSpinner />}>
-                        <LiveTrackingPage />
+                        <OrderDetailsPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>
@@ -365,9 +354,9 @@ const App = () => {
             />
 
             <Route
-              path="/distribution/distributor/:id"
+              path="/orders/:id/edit"
               element={
-                <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                <ProtectedRoute>
                   <DashboardLayout>
                     <motion.div
                       variants={pageVariants}
@@ -377,98 +366,13 @@ const App = () => {
                       transition={pageTransition}
                     >
                       <Suspense fallback={<LoadingSpinner />}>
-                        <DistributorDetails />
+                        <EditOrderPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>
                 </ProtectedRoute>
               }
             />
-
-                         {/* Order Routes */}
-             <Route
-               path="/orders"
-               element={
-                 <ProtectedRoute>
-                   <DashboardLayout>
-                     <motion.div
-                       variants={pageVariants}
-                       initial="initial"
-                       animate="animate"
-                       exit="exit"
-                       transition={pageTransition}
-                     >
-                       <Suspense fallback={<LoadingSpinner />}>
-                         <OrdersPage />
-                       </Suspense>
-                     </motion.div>
-                   </DashboardLayout>
-                 </ProtectedRoute>
-               }
-             />
-
-             <Route
-               path="/orders/create"
-               element={
-                 <ProtectedRoute>
-                   <DashboardLayout>
-                     <motion.div
-                       variants={pageVariants}
-                       initial="initial"
-                       animate="animate"
-                       exit="exit"
-                       transition={pageTransition}
-                     >
-                       <Suspense fallback={<LoadingSpinner />}>
-                         <CreateOrderPage />
-                       </Suspense>
-                     </motion.div>
-                   </DashboardLayout>
-                 </ProtectedRoute>
-               }
-             />
-
-             <Route
-               path="/orders/:id"
-               element={
-                 <ProtectedRoute>
-                   <DashboardLayout>
-                     <motion.div
-                       variants={pageVariants}
-                       initial="initial"
-                       animate="animate"
-                       exit="exit"
-                       transition={pageTransition}
-                     >
-                       <Suspense fallback={<LoadingSpinner />}>
-                         <OrderDetailsPage />
-                       </Suspense>
-                     </motion.div>
-                   </DashboardLayout>
-                 </ProtectedRoute>
-               }
-             />
-
-             <Route
-               path="/orders/:id/edit"
-               element={
-                 <ProtectedRoute>
-                   <DashboardLayout>
-                     <motion.div
-                       variants={pageVariants}
-                       initial="initial"
-                       animate="animate"
-                       exit="exit"
-                       transition={pageTransition}
-                     >
-                       <Suspense fallback={<LoadingSpinner />}>
-                         <EditOrderPage />
-                       </Suspense>
-                     </motion.div>
-                   </DashboardLayout>
-                 </ProtectedRoute>
-               }
-             />
 
             {/* Stores Routes */}
             <Route

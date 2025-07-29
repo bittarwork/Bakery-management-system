@@ -4,35 +4,40 @@ import { ChevronLeft, Home } from "lucide-react";
 
 const Breadcrumb = () => {
   const location = useLocation();
-  
-  // Define route mappings for better Arabic names
-  const routeNames = {
+
+  // Breadcrumb translation mapping
+  const breadcrumbTranslations = {
     "/dashboard": "الرئيسية",
-    "/analytics": "الإحصائيات",
+    "/analytics": "التحليلات",
     "/orders": "الطلبات",
-    "/orders/new": "طلب جديد",
+    "/orders/create": "إنشاء طلب",
     "/stores": "المتاجر",
-    "/stores/new": "متجر جديد",
+    "/stores/create": "إضافة متجر",
     "/products": "المنتجات",
-    "/products/create": "منتج جديد",
+    "/products/create": "إضافة منتج",
     "/users": "المستخدمين",
-    "/users/new": "مستخدم جديد",
-    "/distribution": "التوزيع",
-    "/distribution/manager": "لوحة التوزيع",
-    "/distribution/daily-operations": "العمليات اليومية",
-    "/distribution/live-tracking": "تتبع المواقع",
+    "/users/create": "إضافة مستخدم",
+    "/vehicles": "المركبات",
+    "/vehicles/add": "إضافة مركبة",
+    "/vehicles/edit": "تعديل المركبة",
     "/reports": "التقارير",
-    "/reports/quick": "تقرير سريع",
-    "/ai-chat": "المساعد الذكي",
+    "/reports/daily": "التقارير اليومية",
+    "/reports/monthly": "التقارير الشهرية",
+    "/reports/yearly": "التقارير السنوية",
     "/settings": "الإعدادات",
-    "/profile": "الملف الشخصي",
+    "/settings/profile": "الملف الشخصي",
+    "/settings/general": "الإعدادات العامة",
+    "/ai-chat": "المساعد الذكي",
+    "/pricing": "التسعير",
+    edit: "تعديل",
+    details: "التفاصيل",
   };
 
   // Get path segments
-  const pathnames = location.pathname.split('/').filter(x => x);
-  
+  const pathnames = location.pathname.split("/").filter((x) => x);
+
   // Don't show breadcrumb on dashboard home
-  if (location.pathname === '/dashboard') {
+  if (location.pathname === "/dashboard") {
     return null;
   }
 
@@ -42,19 +47,19 @@ const Breadcrumb = () => {
         name: "الرئيسية",
         path: "/dashboard",
         icon: Home,
-      }
+      },
     ];
 
-    let currentPath = '';
+    let currentPath = "";
     pathnames.forEach((segment, index) => {
       currentPath += `/${segment}`;
-      
+
       // Skip 'dashboard' segment as it's already included as home
-      if (segment === 'dashboard') return;
-      
-      const name = routeNames[currentPath] || segment;
+      if (segment === "dashboard") return;
+
+      const name = breadcrumbTranslations[currentPath] || segment;
       const isLast = index === pathnames.length - 1;
-      
+
       breadcrumbs.push({
         name,
         path: currentPath,
@@ -74,12 +79,10 @@ const Breadcrumb = () => {
           {index > 0 && (
             <ChevronLeft className="h-4 w-4 mx-2 text-gray-400 rotate-180" />
           )}
-          
+
           {breadcrumb.isLast ? (
             <span className="font-medium text-gray-900 flex items-center">
-              {breadcrumb.icon && (
-                <breadcrumb.icon className="h-4 w-4 ml-2" />
-              )}
+              {breadcrumb.icon && <breadcrumb.icon className="h-4 w-4 ml-2" />}
               {breadcrumb.name}
             </span>
           ) : (
@@ -87,9 +90,7 @@ const Breadcrumb = () => {
               to={breadcrumb.path}
               className="hover:text-blue-600 transition-colors flex items-center hover:underline"
             >
-              {breadcrumb.icon && (
-                <breadcrumb.icon className="h-4 w-4 ml-2" />
-              )}
+              {breadcrumb.icon && <breadcrumb.icon className="h-4 w-4 ml-2" />}
               {breadcrumb.name}
             </Link>
           )}
@@ -99,4 +100,4 @@ const Breadcrumb = () => {
   );
 };
 
-export default Breadcrumb; 
+export default Breadcrumb;

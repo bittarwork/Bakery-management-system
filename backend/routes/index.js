@@ -20,19 +20,12 @@ import refundRoutes from './refundRoutes.js';
 
 // Import Phase 6 enhanced order management routes
 import enhancedPricingRoutes from './enhancedPricingRoutes.js';
-import distributorRoutes from './distributorRoutes.js';
-import tempDeliveryRoutes from './tempDeliveryRoutes.js';
-import distributionTripsRoutes from './distributionTrips.js';
 
 import systemRoutes from './systemRoutes.js';
-import enhancedDistributorRoutes from './enhancedDistributorRoutes.js';
 
 // Import AI Chat routes
 import aiChatRoutes from './aiChatRoutes.js';
 import conversationRoutes from './conversationRoutes.js';
-
-// Import Mobile App routes
-import mobileDistributorRoutes from './mobileDistributorRoutes.js';
 
 const router = express.Router();
 
@@ -43,15 +36,11 @@ router.get('/', (req, res) => {
         message: 'نظام إدارة المخبزة - API الشامل',
         version: '2.0.0',
         features: [
-            'إدارة شاملة للتوزيع',
             'نظام دفعات متقدم',
             'تتبع المخزون الذكي',
             'تقارير تفصيلية',
-            'خرائط ومسارات ذكية',
-            'تتبع المواقع',
             'إدارة الهدايا',
-            'العملات المتعددة (EUR/SYP)',
-            'تطبيق موبايل للموزعين'
+            'العملات المتعددة (EUR/SYP)'
         ],
         endpoints: {
             auth: '/api/auth',
@@ -62,7 +51,6 @@ router.get('/', (req, res) => {
             reports: '/api/reports',
             users: '/api/users',
             vehicles: '/api/vehicles',
-            distribution: '/api/distribution',
             dashboard: '/api/dashboard',
             notifications: '/api/notifications',
             tax: '/api/tax',
@@ -70,7 +58,6 @@ router.get('/', (req, res) => {
             refunds: '/api/refunds',
             // Phase 6 Enhanced Order Management
             enhancedPricing: '/api/pricing',
-            distributors: '/api/distributors',
             // AI Chat System
             aiChat: '/api/ai-chat',
             // Advanced Analytics System
@@ -95,7 +82,6 @@ router.use('/users', userRoutes);
 router.use('/vehicles', vehicleRoutes);
 
 // Mount new comprehensive routes
-router.use('/distribution/trips', distributionTripsRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/notifications', notificationRoutes);
 
@@ -106,24 +92,15 @@ router.use('/refunds', refundRoutes);
 
 // Mount Phase 6 enhanced order management routes
 router.use('/pricing', enhancedPricingRoutes);
-router.use('/distributors', distributorRoutes);
-router.use('/delivery', tempDeliveryRoutes);
-
 
 // Mount system routes
 router.use('/system', systemRoutes);
-
-// Mount enhanced distributor routes
-router.use('/distributors', enhancedDistributorRoutes);
 
 // Mount AI Chat routes
 router.use('/ai-chat', aiChatRoutes);
 
 // Mount conversation management routes
 router.use('/conversations', conversationRoutes);
-
-// Mount Mobile App routes
-router.use('/mobile', mobileDistributorRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {
@@ -147,10 +124,8 @@ router.get('/status', async (req, res) => {
             database: 'connected',
             services: {
                 authentication: 'active',
-                distribution: 'active',
                 payments: 'active',
                 reports: 'active',
-                maps: 'active',
                 notifications: 'active',
                 aiChat: 'active',
                 analytics: 'active',

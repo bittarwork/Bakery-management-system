@@ -20,8 +20,6 @@ import {
   Calculator,
   AlertTriangle,
   CheckCircle,
-  Clock,
-  Info,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import orderService from "../../services/orderService.js";
@@ -412,10 +410,6 @@ const CreateOrderPage = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center gap-2 text-sm text-gray-500">
-                <Clock className="w-4 h-4" />
-                <span>التواريخ بالتقويم الميلادي</span>
-              </div>
               <EnhancedButton
                 type="submit"
                 form="orderForm"
@@ -517,36 +511,22 @@ const CreateOrderPage = () => {
                   </h2>
                 </CardHeader>
                 <CardBody>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        تاريخ التسليم المطلوب
-                      </label>
-                      <EnhancedInput
-                        type="date"
-                        value={formData.delivery_date}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            delivery_date: e.target.value,
-                          }))
-                        }
-                        icon={<Calendar className="w-4 h-4" />}
-                        className="bg-white"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-center">
-                      <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-                        <Info className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-                        <p className="text-sm text-blue-700 font-medium">
-                          العملة: يورو (EUR)
-                        </p>
-                        <p className="text-xs text-blue-600 mt-1">
-                          جميع الأسعار باليورو فقط
-                        </p>
-                      </div>
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      تاريخ التسليم المطلوب
+                    </label>
+                    <EnhancedInput
+                      type="date"
+                      value={formData.delivery_date}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          delivery_date: e.target.value,
+                        }))
+                      }
+                      icon={<Calendar className="w-4 h-4" />}
+                      className="bg-white"
+                    />
                   </div>
 
                   <div className="mt-6">
@@ -617,13 +597,6 @@ const CreateOrderPage = () => {
                         rows="2"
                         placeholder="تعليمات خاصة للموزع (مواعيد محددة، متطلبات خاصة، إلخ)..."
                       />
-                    </div>
-
-                    <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-600 flex items-center gap-1">
-                        <Info className="w-3 h-3" />
-                        يمكن تعيين أو تغيير الموزع لاحقاً من خلال إدارة الطلبات
-                      </p>
                     </div>
                   </div>
                 </CardBody>
@@ -955,16 +928,6 @@ const CreateOrderPage = () => {
                                 </span>
                               </div>
                             )}
-
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-600">
-                                العملة:
-                              </span>
-                              <span className="text-sm font-medium flex items-center gap-1">
-                                <Euro className="w-3 h-3" />
-                                يورو (EUR)
-                              </span>
-                            </div>
                           </div>
                         </div>
                       </div>
