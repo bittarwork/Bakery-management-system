@@ -39,6 +39,16 @@ const Order = sequelize.define('Order', {
         allowNull: false,
         defaultValue: 0.00
     },
+    discount_amount_eur: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.00
+    },
+    discount_amount_syp: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: false,
+        defaultValue: 0.00
+    },
     final_amount_eur: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
@@ -60,17 +70,42 @@ const Order = sequelize.define('Order', {
         defaultValue: 'draft'
     },
     payment_status: {
-        type: DataTypes.ENUM('pending', 'paid'),
+        type: DataTypes.ENUM('pending', 'partial', 'paid', 'overdue'),
         allowNull: false,
         defaultValue: 'pending'
+    },
+    priority: {
+        type: DataTypes.ENUM('low', 'normal', 'high', 'urgent'),
+        allowNull: false,
+        defaultValue: 'normal'
     },
     notes: {
         type: DataTypes.TEXT,
         allowNull: true
     },
+    special_instructions: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    delivery_address: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    customer_name: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    customer_phone: {
+        type: DataTypes.STRING(20),
+        allowNull: true
+    },
+    customer_email: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
     created_by: {
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: true
     },
     created_by_name: {
         type: DataTypes.STRING(100),
@@ -131,7 +166,7 @@ Order.prototype.updateStatus = async function (newStatus, transaction = null) {
 };
 
 Order.prototype.updatePaymentStatus = async function (newStatus, transaction = null) {
-    const validStatuses = ['pending', 'paid'];
+    const validStatuses = ['pending', 'partial', 'paid', 'overdue'];
     if (!validStatuses.includes(newStatus)) {
         throw new Error('Payment status is invalid');
     }
