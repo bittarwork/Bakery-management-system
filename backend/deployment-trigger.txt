@@ -1,3 +1,0 @@
-Deployment trigger for auto distribution schedules feature
-Timestamp: 2025-01-29
-Changes: Added getAutoDistributionSchedules endpoint
