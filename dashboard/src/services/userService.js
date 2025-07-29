@@ -45,9 +45,29 @@ class UserService {
             const response = await apiService.post('/users', userData);
             return response;
         } catch (error) {
+            console.log('User creation error:', error);
+
+            // Extract detailed error message from backend response
+            let errorMessage = 'خطأ في إنشاء الموظف';
+
+            if (error.response?.data) {
+                const { data } = error.response;
+
+                // Handle validation errors (status 400)
+                if (error.response.status === 400 && data.errors && Array.isArray(data.errors)) {
+                    // Extract validation error messages
+                    errorMessage = data.errors.map(err => err.msg || err.message).join(', ');
+                } else if (data.message) {
+                    // Handle other error messages
+                    errorMessage = data.message;
+                }
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
             return {
                 success: false,
-                message: error.message || 'خطأ في إنشاء الموظف'
+                message: errorMessage
             };
         }
     }
@@ -408,7 +428,7 @@ class UserService {
      */
     getDistributorPerformanceSummary(distributorData) {
         const performance = distributorData.performance_data || {};
-        
+
         return {
             current_workload: performance.current_workload || 0,
             performance_rating: performance.performance_rating || 0,
@@ -631,7 +651,7 @@ class UserService {
      */
     formatUserForContext(user, context = 'list') {
         const baseFormat = this.formatUserForDisplay(user);
-        
+
         switch (context) {
             case 'card':
                 return {
@@ -647,7 +667,7 @@ class UserService {
                         color: this.getStatusColor(user.status)
                     }
                 };
-            
+
             case 'detail':
                 return {
                     ...baseFormat,
@@ -656,7 +676,7 @@ class UserService {
                     lastActivity: this.formatLastActivity(user.last_login),
                     joinedDuration: this.getJoinedDuration(user.created_at)
                 };
-            
+
             default:
                 return baseFormat;
         }
@@ -693,15 +713,15 @@ class UserService {
      */
     formatLastActivity(lastLogin) {
         if (!lastLogin) return 'لم يسجل دخول مطلقاً';
-        
+
         const now = new Date();
         const loginDate = new Date(lastLogin);
         const diffInHours = Math.floor((now - loginDate) / (1000 * 60 * 60));
-        
+
         if (diffInHours < 1) return 'متصل الآن';
         if (diffInHours < 24) return `منذ ${diffInHours} ساعة`;
         if (diffInHours < 48) return 'البارحة';
-        
+
         const diffInDays = Math.floor(diffInHours / 24);
         return `منذ ${diffInDays} يوم`;
     }
@@ -715,7 +735,7 @@ class UserService {
         const now = new Date();
         const joinDate = new Date(createdAt);
         const diffInDays = Math.floor((now - joinDate) / (1000 * 60 * 60 * 24));
-        
+
         if (diffInDays < 30) return `${diffInDays} يوم`;
         if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} شهر`;
         return `${Math.floor(diffInDays / 365)} سنة`;

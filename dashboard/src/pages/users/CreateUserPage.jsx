@@ -79,11 +79,11 @@ const CreateUserPage = () => {
     try {
       setVehicleLoading(true);
       console.log("Loading vehicles...");
-      
-      const response = showAllVehicles 
+
+      const response = showAllVehicles
         ? await vehicleService.getAllVehiclesWithStatus()
         : await vehicleService.getAvailableVehicles();
-        
+
       console.log("Vehicle response:", response);
       if (response.success) {
         setAvailableVehicles(response.data || []);
@@ -103,7 +103,7 @@ const CreateUserPage = () => {
   // Toggle between available and all vehicles
   const toggleVehicleView = () => {
     setShowAllVehicles(!showAllVehicles);
-    setFormData(prev => ({ ...prev, vehicle_id: "" })); // Clear selection when switching
+    setFormData((prev) => ({ ...prev, vehicle_id: "" })); // Clear selection when switching
   };
 
   const handleChange = (e) => {
@@ -224,10 +224,16 @@ const CreateUserPage = () => {
           navigate("/users");
         }, 2000);
       } else {
+        // Clear previous errors and set the new error
         setErrors({ submit: response.message });
+        console.error("User creation failed:", response.message);
       }
     } catch (error) {
-      setErrors({ submit: "خطأ في إنشاء الموظف. يرجى المحاولة مرة أخرى." });
+      console.error("Unexpected error during user creation:", error);
+      setErrors({
+        submit:
+          "حدث خطأ غير متوقع. يرجى التحقق من البيانات المدخلة والمحاولة مرة أخرى.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -407,6 +413,8 @@ const CreateUserPage = () => {
                         onChange={handleChange}
                         error={errors.phone}
                         icon={<Phone className="w-4 h-4" />}
+                        placeholder="مثال: +963912345678 أو 0912345678"
+                        helperText="أدخل رقم الهاتف مع رمز البلد أو بدونه"
                       />
                     </div>
 
@@ -608,15 +616,19 @@ const CreateUserPage = () => {
                             onClick={toggleVehicleView}
                             className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                           >
-                            {showAllVehicles ? "عرض المتاح فقط" : "عرض جميع المركبات"}
+                            {showAllVehicles
+                              ? "عرض المتاح فقط"
+                              : "عرض جميع المركبات"}
                           </button>
                         </div>
-                        
+
                         {vehicleLoading ? (
                           <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50">
                             <div className="flex items-center justify-center">
                               <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                              <span className="text-sm text-gray-500">جاري تحميل المركبات...</span>
+                              <span className="text-sm text-gray-500">
+                                جاري تحميل المركبات...
+                              </span>
                             </div>
                           </div>
                         ) : (
@@ -628,19 +640,28 @@ const CreateUserPage = () => {
                           >
                             <option value="">اختر مركبة</option>
                             {availableVehicles.map((vehicle) => (
-                              <option 
-                                key={vehicle.id} 
+                              <option
+                                key={vehicle.id}
                                 value={vehicle.id}
-                                disabled={!vehicle.isAvailable && showAllVehicles}
-                                className={!vehicle.isAvailable && showAllVehicles ? "text-gray-400" : ""}
+                                disabled={
+                                  !vehicle.isAvailable && showAllVehicles
+                                }
+                                className={
+                                  !vehicle.isAvailable && showAllVehicles
+                                    ? "text-gray-400"
+                                    : ""
+                                }
                               >
-                                {vehicle.vehicle_plate} - {vehicle.vehicle_model} ({vehicle.vehicle_type})
-                                {showAllVehicles && vehicle.availabilityStatus && ` - ${vehicle.availabilityStatus}`}
+                                {vehicle.vehicle_plate} -{" "}
+                                {vehicle.vehicle_model} ({vehicle.vehicle_type})
+                                {showAllVehicles &&
+                                  vehicle.availabilityStatus &&
+                                  ` - ${vehicle.availabilityStatus}`}
                               </option>
                             ))}
                           </select>
                         )}
-                        
+
                         {availableVehicles.length === 0 && !vehicleLoading && (
                           <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                             <p className="text-sm text-yellow-700">
@@ -649,19 +670,32 @@ const CreateUserPage = () => {
                             </p>
                           </div>
                         )}
-                        
+
                         {availableVehicles.length > 0 && !vehicleLoading && (
                           <div className="mt-2 space-y-1">
                             <p className="text-sm text-gray-500">
-                              {showAllVehicles 
+                              {showAllVehicles
                                 ? `تم العثور على ${availableVehicles.length} مركبة (جميع المركبات)`
-                                : `تم العثور على ${availableVehicles.length} مركبة متاحة`
-                              }
+                                : `تم العثور على ${availableVehicles.length} مركبة متاحة`}
                             </p>
                             {showAllVehicles && (
                               <div className="flex gap-4 text-xs text-gray-400">
-                                <span>• المتاح: {availableVehicles.filter(v => v.isAvailable).length}</span>
-                                <span>• المخصص: {availableVehicles.filter(v => !v.isAvailable).length}</span>
+                                <span>
+                                  • المتاح:{" "}
+                                  {
+                                    availableVehicles.filter(
+                                      (v) => v.isAvailable
+                                    ).length
+                                  }
+                                </span>
+                                <span>
+                                  • المخصص:{" "}
+                                  {
+                                    availableVehicles.filter(
+                                      (v) => !v.isAvailable
+                                    ).length
+                                  }
+                                </span>
                               </div>
                             )}
                           </div>
