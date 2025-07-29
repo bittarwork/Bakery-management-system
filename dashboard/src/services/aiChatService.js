@@ -19,7 +19,7 @@ class AIChatService {
     async sendMessage(message, context = {}) {
         try {
             this.isTyping = true;
-            
+
             const response = await apiService.post(
                 `${this.baseUrl}/message`,
                 { message, context }
@@ -197,24 +197,24 @@ class AIChatService {
             this.activeChat.messages.push(historyItem);
             this.activeChat.lastUsedAt = new Date().toISOString();
             this.activeChat.messageCount = this.activeChat.messages.length;
-            
+
             // Update chatHistory for backward compatibility
             this.chatHistory = this.activeChat.messages;
-            
+
             // Keep only last 50 messages per chat to prevent memory issues
             const maxHistory = parseInt(import.meta.env.VITE_MAX_CHAT_HISTORY || '50');
             if (this.activeChat.messages.length > maxHistory) {
                 this.activeChat.messages = this.activeChat.messages.slice(-maxHistory);
                 this.chatHistory = this.activeChat.messages;
             }
-            
+
             this.saveChats();
         } else {
             // Legacy behavior - create new chat if none exists
             if (this.chats.length === 0) {
                 this.createNewChat();
             }
-            
+
             // Add to current chat
             if (this.activeChat) {
                 this.activeChat.messages.push(historyItem);
@@ -307,9 +307,9 @@ class AIChatService {
 
         const maxLength = parseInt(import.meta.env.VITE_MAX_MESSAGE_LENGTH || '1000');
         if (message.length > maxLength) {
-            return { 
-                valid: false, 
-                error: `الرسالة طويلة جداً. الحد الأقصى ${maxLength} حرف` 
+            return {
+                valid: false,
+                error: `الرسالة طويلة جداً. الحد الأقصى ${maxLength} حرف`
             };
         }
 
@@ -321,14 +321,14 @@ class AIChatService {
      */
     formatMessage(message) {
         if (!message) return '';
-        
+
         // Convert URLs to links
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         message = message.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
-        
+
         // Convert line breaks to <br>
         message = message.replace(/\n/g, '<br>');
-        
+
         return message;
     }
 
@@ -359,7 +359,7 @@ class AIChatService {
     createNewChat(title = null) {
         const now = new Date();
         const chatId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
+
         const newChat = {
             id: chatId,
             title: title || `دردشة جديدة - ${now.toLocaleDateString('ar')}`,
@@ -374,7 +374,7 @@ class AIChatService {
         this.chats.unshift(newChat);
         this.activeChat = newChat;
         this.saveChats();
-        
+
         return newChat;
     }
 
@@ -401,7 +401,7 @@ class AIChatService {
             this.activeChat = chat;
             chat.lastUsedAt = new Date().toISOString();
             this.saveChats();
-            
+
             // Update chatHistory for backward compatibility
             this.chatHistory = chat.messages;
             return chat;
@@ -417,13 +417,13 @@ class AIChatService {
         if (chatIndex !== -1) {
             const deletedChat = this.chats[chatIndex];
             this.chats.splice(chatIndex, 1);
-            
+
             // If deleted chat was active, select another one
             if (this.activeChat && this.activeChat.id === chatId) {
                 this.activeChat = this.chats.length > 0 ? this.chats[0] : null;
                 this.chatHistory = this.activeChat ? this.activeChat.messages : [];
             }
-            
+
             this.saveChats();
             return deletedChat;
         }
@@ -483,20 +483,20 @@ class AIChatService {
                     const data = JSON.parse(saved);
                     this.chats = data.chats || [];
                     const activeChatId = data.activeChatId;
-                    
+
                     if (activeChatId) {
                         this.activeChat = this.chats.find(c => c.id === activeChatId);
                     }
-                    
+
                     // If no active chat but chats exist, select the first one
                     if (!this.activeChat && this.chats.length > 0) {
                         this.activeChat = this.chats[0];
                     }
-                    
+
                     // Update chatHistory for backward compatibility
                     this.chatHistory = this.activeChat ? this.activeChat.messages : [];
                 }
-                
+
                 // Migrate old chat history if exists and no chats
                 if (this.chats.length === 0) {
                     this.migrateOldChatHistory();
@@ -547,12 +547,12 @@ class AIChatService {
                             archived: false,
                             starred: false
                         };
-                        
+
                         this.chats = [migrationChat];
                         this.activeChat = migrationChat;
                         this.chatHistory = messages;
                         this.saveChats();
-                        
+
                         // Remove old storage
                         localStorage.removeItem('aiChatHistory');
                     }
