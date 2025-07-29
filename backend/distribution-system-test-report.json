@@ -1,0 +1,121 @@
+{
+  "timestamp": "2025-07-29T03:58:47.966Z",
+  "summary": {
+    "total": 17,
+    "passed": 3,
+    "failed": 6,
+    "successRate": 18
+  },
+  "distribution": {
+    "total": 12,
+    "passed": 2,
+    "failed": 2,
+    "tests": [
+      {
+        "name": "GET /distribution/test",
+        "status": "PASSED",
+        "statusCode": 200,
+        "hasData": true
+      },
+      {
+        "name": "GET /distribution/schedules",
+        "status": "PASSED",
+        "statusCode": 200,
+        "hasData": true
+      },
+      {
+        "name": "GET /distribution/schedules/today",
+        "status": "AUTH_REQUIRED",
+        "statusCode": 401,
+        "note": "Authentication required as expected"
+      },
+      {
+        "name": "GET /distribution/schedules/auto",
+        "status": "AUTH_REQUIRED",
+        "statusCode": 401,
+        "note": "Authentication required as expected"
+      },
+      {
+        "name": "GET /distribution/schedules/statistics",
+        "status": "AUTH_REQUIRED",
+        "statusCode": 401,
+        "note": "Authentication required as expected"
+      },
+      {
+        "name": "GET /distribution/trips",
+        "status": "FAILED",
+        "error": "Request failed with status code 500",
+        "statusCode": 500
+      },
+      {
+        "name": "GET /distribution/trips/today/active",
+        "status": "AUTH_REQUIRED",
+        "statusCode": 401,
+        "note": "Authentication required as expected"
+      },
+      {
+        "name": "GET /distribution/trips/statistics",
+        "status": "FAILED",
+        "error": "Request failed with status code 500",
+        "statusCode": 500
+      },
+      {
+        "name": "GET /distribution/location/active",
+        "status": "AUTH_REQUIRED",
+        "statusCode": 401,
+        "note": "Authentication required as expected"
+      },
+      {
+        "name": "GET /distribution/performance",
+        "status": "AUTH_REQUIRED",
+        "statusCode": 401,
+        "note": "Authentication required as expected"
+      },
+      {
+        "name": "GET /distribution/notifications",
+        "status": "AUTH_REQUIRED",
+        "statusCode": 401,
+        "note": "Authentication required as expected"
+      },
+      {
+        "name": "GET /distribution/settings",
+        "status": "AUTH_REQUIRED",
+        "statusCode": 401,
+        "note": "Authentication required as expected"
+      }
+    ]
+  },
+  "models": {
+    "total": 5,
+    "passed": 1,
+    "failed": 4,
+    "tests": [
+      {
+        "name": "Check Users table",
+        "status": "FAILED",
+        "error": "Request failed with status code 401"
+      },
+      {
+        "name": "Check Stores table",
+        "status": "FAILED",
+        "error": "Request failed with status code 401"
+      },
+      {
+        "name": "Check Products table",
+        "status": "PASSED",
+        "hasData": true
+      },
+      {
+        "name": "Check Orders table",
+        "status": "FAILED",
+        "error": "Request failed with status code 401"
+      },
+      {
+        "name": "Check Vehicles table",
+        "status": "FAILED",
+        "error": "Request failed with status code 401"
+      }
+    ]
+  },
+  "systemHealth": true
+}

@@ -1,0 +1,136 @@
+{
+  "timestamp": "2025-07-29T04:21:19.360Z",
+  "testType": "LOCAL_COMPREHENSIVE_TEST",
+  "serverUrl": "http://localhost:5001/api",
+  "summary": {
+    "total": 18,
+    "passed": 13,
+    "failed": 5,
+    "successRate": 72
+  },
+  "distribution": {
+    "total": 12,
+    "passed": 8,
+    "failed": 4,
+    "tests": [
+      {
+        "name": "GET /distribution/test (Public)",
+        "status": "PASSED",
+        "statusCode": 200,
+        "hasData": true
+      },
+      {
+        "name": "GET /distribution/schedules",
+        "status": "PASSED",
+        "statusCode": 200,
+        "hasData": true
+      },
+      {
+        "name": "GET /distribution/schedules/today",
+        "status": "FAILED",
+        "error": "Request failed with status code 404",
+        "statusCode": 404
+      },
+      {
+        "name": "GET /distribution/schedules/auto",
+        "status": "FAILED",
+        "error": "Request failed with status code 404",
+        "statusCode": 404
+      },
+      {
+        "name": "GET /distribution/schedules/statistics",
+        "status": "FAILED",
+        "error": "Request failed with status code 404",
+        "statusCode": 404
+      },
+      {
+        "name": "GET /distribution/trips (FIXED)",
+        "status": "PASSED",
+        "statusCode": 200,
+        "hasData": true
+      },
+      {
+        "name": "GET /distribution/trips/today/active",
+        "status": "PASSED",
+        "statusCode": 200,
+        "hasData": true
+      },
+      {
+        "name": "GET /distribution/trips/statistics (FIXED)",
+        "status": "FAILED",
+        "error": "Request failed with status code 404",
+        "statusCode": 404
+      },
+      {
+        "name": "GET /distribution/location/active",
+        "status": "PASSED",
+        "statusCode": 200,
+        "hasData": true
+      },
+      {
+        "name": "GET /distribution/performance",
+        "status": "PASSED",
+        "statusCode": 200,
+        "hasData": true
+      },
+      {
+        "name": "GET /distribution/notifications",
+        "status": "PASSED",
+        "statusCode": 200,
+        "hasData": true
+      },
+      {
+        "name": "GET /distribution/settings",
+        "status": "PASSED",
+        "statusCode": 200,
+        "hasData": true
+      }
+    ]
+  },
+  "models": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0,
+    "tests": [
+      {
+        "name": "Check Users table",
+        "status": "PASSED",
+        "hasData": true
+      },
+      {
+        "name": "Check Stores table",
+        "status": "PASSED",
+        "hasData": true
+      },
+      {
+        "name": "Check Products table",
+        "status": "PASSED",
+        "hasData": true
+      },
+      {
+        "name": "Check Orders table",
+        "status": "PASSED",
+        "hasData": true
+      },
+      {
+        "name": "Check Vehicles table",
+        "status": "PASSED",
+        "hasData": true
+      }
+    ]
+  },
+  "crud": {
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "tests": [
+      {
+        "name": "Create Distribution Schedule",
+        "status": "FAILED",
+        "error": "Request failed with status code 404"
+      }
+    ]
+  },
+  "systemHealth": true,
+  "authenticated": true
+}
