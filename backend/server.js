@@ -25,6 +25,9 @@ import apiRoutes from './routes/index.js';
 import { initializeModels } from './models/index.js';
 import { initializeEnhancedSystem, healthCheck } from './utils/enhancedSystemSetup.js';
 
+// Import cron job service
+import cronJobService from './services/cronJobService.js';
+
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
@@ -207,6 +210,11 @@ const startServer = async () => {
 
         // Initialize enhanced system
         await initializeEnhancedSystem();
+
+        // Initialize cron job service for automatic distribution scheduling
+        if (process.env.NODE_ENV !== 'test') {
+            await cronJobService.initialize();
+        }
 
         app.listen(PORT, () => {
             if (process.env.NODE_ENV !== 'test') {

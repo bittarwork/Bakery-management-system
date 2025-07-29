@@ -31,6 +31,11 @@ import {
   Route,
   Timer,
   ClipboardList,
+  Navigation,
+  Zap,
+  Target,
+  Map,
+  Gauge,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
@@ -94,6 +99,20 @@ const DailyDistributionSchedulePage = () => {
   });
   const [viewMode, setViewMode] = useState("auto"); // 'auto' or 'manual'
 
+  // Cron job status state
+  const [cronJobStatus, setCronJobStatus] = useState({
+    isRunning: false,
+    lastExecution: null,
+    executionCount: 0,
+    nextExecution: null,
+  });
+  const [systemInfo, setSystemInfo] = useState({
+    environment: "development",
+    server_time: null,
+    timezone: null,
+  });
+  const [isTriggeringGeneration, setIsTriggeringGeneration] = useState(false);
+
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -120,6 +139,7 @@ const DailyDistributionSchedulePage = () => {
       loadSchedules();
     } else {
       loadAutoSchedules();
+      loadCronJobStatus(); // Load cron job status when in auto mode
     }
   }, [pagination.currentPage, filters, viewMode]);
 
@@ -130,6 +150,7 @@ const DailyDistributionSchedulePage = () => {
           loadAutoSchedules(),
           loadDistributors(),
           loadStores(),
+          loadCronJobStatus(),
         ]);
       } else {
         await Promise.all([
@@ -301,6 +322,41 @@ const DailyDistributionSchedulePage = () => {
       }
     } catch (error) {
       console.error("Error loading statistics:", error);
+    }
+  };
+
+  // Load cron job status
+  const loadCronJobStatus = async () => {
+    try {
+      const response = await distributionService.getCronJobStatus();
+      if (response && response.success) {
+        setCronJobStatus(response.data?.cron_job_status || {});
+        setSystemInfo(response.data?.system_info || {});
+      }
+    } catch (error) {
+      console.error("Error loading cron job status:", error);
+    }
+  };
+
+  // Handle manual schedule generation trigger
+  const handleTriggerGeneration = async () => {
+    try {
+      setIsTriggeringGeneration(true);
+
+      const response = await distributionService.triggerScheduleGeneration();
+      if (response && response.success) {
+        toast.success(
+          `Schedule generation completed! Processed ${response.data.distributorsProcessed} distributors`
+        );
+
+        // Reload data after successful generation
+        await Promise.all([loadAutoSchedules(), loadCronJobStatus()]);
+      }
+    } catch (error) {
+      console.error("Error triggering schedule generation:", error);
+      toast.error("Failed to trigger schedule generation");
+    } finally {
+      setIsTriggeringGeneration(false);
     }
   };
 
@@ -588,14 +644,22 @@ const DailyDistributionSchedulePage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">
-                  Total Schedules
+                  {viewMode === "auto"
+                    ? "Total Distributors"
+                    : "Total Schedules"}
                 </p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {statistics.totalSchedules}
+                  {viewMode === "auto"
+                    ? overallStats.total_distributors
+                    : statistics.totalSchedules}
                 </p>
               </div>
               <div className="p-2 bg-blue-100 rounded-lg">
-                <ClipboardList className="w-6 h-6 text-blue-600" />
+                {viewMode === "auto" ? (
+                  <Users className="w-6 h-6 text-blue-600" />
+                ) : (
+                  <ClipboardList className="w-6 h-6 text-blue-600" />
+                )}
               </div>
             </div>
           </CardBody>
@@ -605,13 +669,21 @@ const DailyDistributionSchedulePage = () => {
           <CardBody className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Scheduled</p>
+                <p className="text-sm font-medium text-gray-600">
+                  {viewMode === "auto" ? "Total Orders" : "Scheduled"}
+                </p>
                 <p className="text-2xl font-bold text-blue-900">
-                  {statistics.scheduledVisits}
+                  {viewMode === "auto"
+                    ? overallStats.total_orders
+                    : statistics.scheduledVisits}
                 </p>
               </div>
               <div className="p-2 bg-blue-100 rounded-lg">
-                <Clock className="w-6 h-6 text-blue-600" />
+                {viewMode === "auto" ? (
+                  <FileText className="w-6 h-6 text-blue-600" />
+                ) : (
+                  <Clock className="w-6 h-6 text-blue-600" />
+                )}
               </div>
             </div>
           </CardBody>
@@ -621,13 +693,21 @@ const DailyDistributionSchedulePage = () => {
           <CardBody className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">In Progress</p>
+                <p className="text-sm font-medium text-gray-600">
+                  {viewMode === "auto" ? "Total Stops" : "In Progress"}
+                </p>
                 <p className="text-2xl font-bold text-yellow-900">
-                  {statistics.inProgressVisits}
+                  {viewMode === "auto"
+                    ? overallStats.total_stores
+                    : statistics.inProgressVisits}
                 </p>
               </div>
               <div className="p-2 bg-yellow-100 rounded-lg">
-                <Play className="w-6 h-6 text-yellow-600" />
+                {viewMode === "auto" ? (
+                  <MapPin className="w-6 h-6 text-yellow-600" />
+                ) : (
+                  <Play className="w-6 h-6 text-yellow-600" />
+                )}
               </div>
             </div>
           </CardBody>
@@ -637,13 +717,23 @@ const DailyDistributionSchedulePage = () => {
           <CardBody className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Completed</p>
+                <p className="text-sm font-medium text-gray-600">
+                  {viewMode === "auto" ? "Est. Duration" : "Completed"}
+                </p>
                 <p className="text-2xl font-bold text-green-900">
-                  {statistics.completedVisits}
+                  {viewMode === "auto"
+                    ? `${Math.round(
+                        overallStats.total_estimated_duration / 60
+                      )}h ${overallStats.total_estimated_duration % 60}m`
+                    : statistics.completedVisits}
                 </p>
               </div>
               <div className="p-2 bg-green-100 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+                {viewMode === "auto" ? (
+                  <Timer className="w-6 h-6 text-green-600" />
+                ) : (
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                )}
               </div>
             </div>
           </CardBody>
@@ -653,18 +743,149 @@ const DailyDistributionSchedulePage = () => {
           <CardBody className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Cancelled</p>
-                <p className="text-2xl font-bold text-red-900">
-                  {statistics.cancelledVisits}
+                <p className="text-sm font-medium text-gray-600">
+                  {viewMode === "auto" ? "Auto Optimized" : "Cancelled"}
+                </p>
+                <p className="text-2xl font-bold text-purple-900">
+                  {viewMode === "auto"
+                    ? `${overallStats.distributors_with_orders}/${overallStats.total_distributors}`
+                    : statistics.cancelledVisits}
                 </p>
               </div>
-              <div className="p-2 bg-red-100 rounded-lg">
-                <XCircle className="w-6 h-6 text-red-600" />
+              <div className="p-2 bg-purple-100 rounded-lg">
+                {viewMode === "auto" ? (
+                  <Zap className="w-6 h-6 text-purple-600" />
+                ) : (
+                  <XCircle className="w-6 h-6 text-red-600" />
+                )}
               </div>
             </div>
           </CardBody>
         </Card>
       </div>
+
+      {/* System Status Card - Only show in auto mode */}
+      {viewMode === "auto" && (
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Gauge className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Automatic Scheduling System
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Status and controls for the hourly distribution schedule
+                    generation
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <EnhancedButton
+                  size="sm"
+                  variant="outline"
+                  onClick={loadCronJobStatus}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Refresh Status
+                </EnhancedButton>
+                <EnhancedButton
+                  size="sm"
+                  onClick={handleTriggerGeneration}
+                  disabled={isTriggeringGeneration || cronJobStatus.isRunning}
+                  className="flex items-center gap-2"
+                >
+                  {isTriggeringGeneration ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Zap className="w-4 h-4" />
+                  )}
+                  {isTriggeringGeneration ? "Generating..." : "Trigger Now"}
+                </EnhancedButton>
+              </div>
+            </div>
+          </CardHeader>
+          <CardBody className="pt-0">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-xs text-gray-500 mb-1">Status</div>
+                <div
+                  className={`text-sm font-medium flex items-center justify-center gap-1 ${
+                    cronJobStatus.isRunning
+                      ? "text-yellow-600"
+                      : "text-green-600"
+                  }`}
+                >
+                  {cronJobStatus.isRunning ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Running
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-3 h-3" />
+                      Ready
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-xs text-gray-500 mb-1">Executions</div>
+                <div className="text-sm font-medium text-gray-900">
+                  {cronJobStatus.executionCount || 0}
+                </div>
+              </div>
+
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-xs text-gray-500 mb-1">Last Run</div>
+                <div className="text-sm font-medium text-gray-900">
+                  {cronJobStatus.lastExecution
+                    ? new Date(cronJobStatus.lastExecution).toLocaleString(
+                        "en-GB",
+                        {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          day: "2-digit",
+                          month: "2-digit",
+                        }
+                      )
+                    : "Never"}
+                </div>
+              </div>
+
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-xs text-gray-500 mb-1">Next Run</div>
+                <div className="text-sm font-medium text-gray-900">
+                  {cronJobStatus.nextExecution
+                    ? new Date(cronJobStatus.nextExecution).toLocaleString(
+                        "en-GB",
+                        {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          day: "2-digit",
+                          month: "2-digit",
+                        }
+                      )
+                    : "N/A"}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 text-xs text-gray-500 text-center">
+              System runs every hour at minute 0 • Environment:{" "}
+              {systemInfo.environment} • Server Time:{" "}
+              {systemInfo.server_time
+                ? new Date(systemInfo.server_time).toLocaleString("en-GB")
+                : "N/A"}
+            </div>
+          </CardBody>
+        </Card>
+      )}
 
       {/* Filters */}
       <Card>
@@ -787,18 +1008,60 @@ const DailyDistributionSchedulePage = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm text-gray-500">
-                        Estimated Duration
-                      </div>
-                      <div className="text-lg font-semibold text-indigo-600">
-                        {Math.round(
-                          distributorSchedule.statistics
-                            .estimated_duration_minutes / 60
-                        )}
-                        h{" "}
+                      <div className="flex items-center gap-4">
                         {distributorSchedule.statistics
-                          .estimated_duration_minutes % 60}
-                        m
+                          .has_existing_schedule ? (
+                          <div className="text-center">
+                            <div className="text-xs text-blue-500">
+                              Existing Schedule
+                            </div>
+                            <div className="text-sm font-medium text-blue-600 flex items-center gap-1">
+                              <ClipboardList className="w-3 h-3" />
+                              Manual
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center">
+                            <div className="text-xs text-green-500">
+                              Auto Generated
+                            </div>
+                            <div className="text-sm font-medium text-green-600 flex items-center gap-1">
+                              <Zap className="w-3 h-3" />
+                              Optimized
+                            </div>
+                          </div>
+                        )}
+                        <div className="text-center">
+                          <div className="text-xs text-gray-500">
+                            Est. Duration
+                          </div>
+                          <div className="text-lg font-semibold text-indigo-600">
+                            {Math.round(
+                              distributorSchedule.statistics
+                                .estimated_duration_minutes / 60
+                            )}
+                            h{" "}
+                            {distributorSchedule.statistics
+                              .estimated_duration_minutes % 60}
+                            m
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs text-gray-500">
+                            Route Distance
+                          </div>
+                          <div className="text-sm font-medium text-gray-700 flex items-center gap-1">
+                            <Route className="w-3 h-3" />
+                            {distributorSchedule.schedule_items
+                              .reduce(
+                                (total, item) =>
+                                  total + (item.distance_from_previous || 0),
+                                0
+                              )
+                              .toFixed(1)}{" "}
+                            km
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -824,6 +1087,9 @@ const DailyDistributionSchedulePage = () => {
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Orders
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Distance
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Status
@@ -862,11 +1128,20 @@ const DailyDistributionSchedulePage = () => {
                                           {scheduleItem.visit_order}
                                         </span>
                                       </div>
-                                      {scheduleItem.is_auto_generated && (
-                                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                          Auto
-                                        </span>
-                                      )}
+                                      <div className="ml-2 flex flex-col">
+                                        {scheduleItem.is_auto_generated && (
+                                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                            <Zap className="w-3 h-3 mr-1" />
+                                            Auto Optimized
+                                          </span>
+                                        )}
+                                        {scheduleItem.visit_order === 1 && (
+                                          <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                            <Target className="w-3 h-3 mr-1" />
+                                            Starting Point
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap">
@@ -899,6 +1174,32 @@ const DailyDistributionSchedulePage = () => {
                                             )
                                             .toFixed(2)}
                                         </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <div className="flex items-center gap-2">
+                                      {scheduleItem.distance_from_previous ? (
+                                        <>
+                                          <Navigation className="w-4 h-4 text-gray-400" />
+                                          <div>
+                                            <div className="text-sm font-medium text-gray-900">
+                                              {parseFloat(
+                                                scheduleItem.distance_from_previous
+                                              ).toFixed(1)}{" "}
+                                              km
+                                            </div>
+                                            <div className="text-xs text-gray-500">
+                                              {scheduleItem.visit_order === 1
+                                                ? "From depot"
+                                                : "From previous"}
+                                            </div>
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <span className="text-gray-400">
+                                          N/A
+                                        </span>
                                       )}
                                     </div>
                                   </td>

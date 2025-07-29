@@ -173,7 +173,7 @@ export const distributionService = {
                 return response.data;
             } catch (mainError) {
                 console.warn('Main auto endpoint failed, trying fallback:', mainError.message);
-                
+
                 // Fallback to direct route
                 const fallbackResponse = await apiService.get(
                     `${DISTRIBUTION_API_BASE}/schedules/auto-direct`,
@@ -183,6 +183,45 @@ export const distributionService = {
             }
         } catch (error) {
             console.error('Error fetching auto distribution schedules:', error);
+            throw error;
+        }
+    },
+
+    // Get automatic distribution schedules for all distributors (DIRECT VERSION)
+    getAutoDistributionSchedulesDirect: async (scheduleDate = null) => {
+        try {
+            const params = {};
+            if (scheduleDate) params.schedule_date = scheduleDate;
+
+            const response = await apiService.get(
+                `${DISTRIBUTION_API_BASE}/schedules/auto-direct`,
+                { params }
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching auto distribution schedules (direct):', error);
+            throw error;
+        }
+    },
+
+    // Get cron job status
+    getCronJobStatus: async () => {
+        try {
+            const response = await apiService.get(`${DISTRIBUTION_API_BASE}/system/cron-status`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching cron job status:', error);
+            throw error;
+        }
+    },
+
+    // Manually trigger distribution schedule generation
+    triggerScheduleGeneration: async () => {
+        try {
+            const response = await apiService.post(`${DISTRIBUTION_API_BASE}/system/trigger-schedule-generation`);
+            return response.data;
+        } catch (error) {
+            console.error('Error triggering schedule generation:', error);
             throw error;
         }
     }

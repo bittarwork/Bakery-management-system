@@ -10,6 +10,9 @@ import * as distributionPerformanceController from '../controllers/distributionP
 import * as distributionNotificationController from '../controllers/distributionNotificationController.js';
 import * as distributionSettingsController from '../controllers/distributionSettingsController.js';
 
+// Import cron job service
+import cronJobService from '../services/cronJobService.js';
+
 const router = express.Router();
 
 // ==========================================
@@ -114,6 +117,79 @@ router.post('/schedules/:id/cancel', auth.protect, dailyDistributionScheduleCont
 
 // Delete distribution schedule (Admin only)
 router.delete('/schedules/:id', auth.protect, dailyDistributionScheduleController.deleteDistributionSchedule);
+
+// ==========================================
+// CRON JOB STATUS AND SYSTEM ROUTES
+// ==========================================
+
+// Get cron job status (Admin/Manager only)
+router.get('/system/cron-status', auth.protect, (req, res) => {
+    try {
+        // Check if user has admin or manager role
+        if (req.user.role !== 'admin' && req.user.role !== 'manager') {
+            return res.status(403).json({
+                success: false,
+                message: 'Access denied. Admin or Manager role required.'
+            });
+        }
+
+        const status = cronJobService.getJobStatus();
+
+        res.status(200).json({
+            success: true,
+            message: 'Cron job status retrieved successfully',
+            data: {
+                cron_job_status: status,
+                system_info: {
+                    environment: process.env.NODE_ENV || 'development',
+                    server_time: new Date().toISOString(),
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                }
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error retrieving cron job status',
+            error: error.message
+        });
+    }
+});
+
+// Manually trigger distribution schedule generation (Admin only)
+router.post('/system/trigger-schedule-generation', auth.protect, async (req, res) => {
+    try {
+        // Check if user has admin role
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Access denied. Admin role required.'
+            });
+        }
+
+        if (cronJobService.isRunning) {
+            return res.status(409).json({
+                success: false,
+                message: 'Schedule generation is already running. Please wait for it to complete.'
+            });
+        }
+
+        // Manually trigger the schedule generation
+        const results = await cronJobService.generateDailyDistributionSchedules();
+
+        res.status(200).json({
+            success: true,
+            message: 'Distribution schedule generation triggered successfully',
+            data: results
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error triggering schedule generation',
+            error: error.message
+        });
+    }
+});
 
 // ==========================================
 // LOCATION TRACKING ROUTES
