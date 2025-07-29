@@ -71,8 +71,25 @@ router.get('/schedules/distributor/:distributorId', auth.protect, dailyDistribut
 // Get schedule statistics
 router.get('/schedules/statistics', auth.protect, dailyDistributionScheduleController.getScheduleStatistics);
 
-// Get automatic distribution schedules for all distributors
+// Get automatic distribution schedules for all distributors - UPDATED VERSION
 router.get('/schedules/auto', auth.protect, dailyDistributionScheduleController.getAutoDistributionSchedules);
+
+// Temporary fallback route for testing - TO BE REMOVED  
+router.get('/schedules/auto-test', (req, res) => {
+    res.json({
+        success: true,
+        message: 'Auto distribution schedules endpoint is working',
+        data: {
+            distributors_schedules: [],
+            overall_statistics: {
+                total_distributors: 0,
+                total_orders: 0,
+                total_stores: 0
+            },
+            schedule_date: req.query.schedule_date || 'today'
+        }
+    });
+});
 
 // Generate daily schedule for distributor
 router.post('/schedules/generate', [
@@ -194,5 +211,20 @@ router.put('/settings/:key', [
     body('value').notEmpty().withMessage('Value is required'),
     body('description').optional().isString().trim()
 ], distributionSettingsController.updateSetting);
+
+// Test route for debugging - TO BE REMOVED
+router.get('/test', (req, res) => {
+    res.json({
+        success: true,
+        message: 'Distribution routes are working',
+        timestamp: new Date().toISOString(),
+        availableRoutes: [
+            'GET /schedules',
+            'GET /schedules/auto',
+            'GET /schedules/statistics',
+            'POST /schedules/generate'
+        ]
+    });
+});
 
 export default router;
