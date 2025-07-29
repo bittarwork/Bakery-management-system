@@ -208,7 +208,7 @@ export const getOrder = async (req, res) => {
         let distributor = null;
         if (order.assigned_distributor_id) {
             distributor = await User.findByPk(order.assigned_distributor_id, {
-                attributes: ['id', 'name', 'email', 'phone']
+                attributes: ['id', 'full_name', 'email', 'phone']
             });
         }
 
@@ -231,7 +231,7 @@ export const getOrder = async (req, res) => {
             assigned_distributor_id: order.assigned_distributor_id,
             distributor: distributor ? {
                 id: distributor.id,
-                name: distributor.name,
+                name: distributor.full_name,
                 email: distributor.email,
                 phone: distributor.phone
             } : null,
@@ -612,7 +612,14 @@ export const updateOrder = async (req, res) => {
 
     try {
         const orderId = parseInt(req.params.id);
-        const { items, notes, delivery_date } = req.body;
+        const { 
+            items, 
+            notes, 
+            delivery_date, 
+            status, 
+            payment_status, 
+            assigned_distributor_id 
+        } = req.body;
 
         const order = await Order.findByPk(orderId, {
             include: [{ model: OrderItem, as: 'items' }]
@@ -635,13 +642,15 @@ export const updateOrder = async (req, res) => {
             });
         }
 
-        // Can only update draft orders
-        if (!order.canEdit()) {
-            await transaction.rollback();
-            return res.status(400).json({
-                success: false,
-                message: 'Cannot update order after confirmation'
-            });
+        // Check if status update is allowed
+        if (status && status !== order.status) {
+            if (!isStatusUpdateAllowed(order.status, status)) {
+                await transaction.rollback();
+                return res.status(400).json({
+                    success: false,
+                    message: `Cannot change order status from ${order.status} to ${status}`
+                });
+            }
         }
 
         // Update order items if provided
@@ -712,6 +721,29 @@ export const updateOrder = async (req, res) => {
         const updateData = {};
         if (notes !== undefined) updateData.notes = notes;
         if (delivery_date !== undefined) updateData.delivery_date = delivery_date;
+        if (status !== undefined) updateData.status = status;
+        if (payment_status !== undefined) updateData.payment_status = payment_status;
+        if (assigned_distributor_id !== undefined) {
+            // Validate distributor if being assigned
+            if (assigned_distributor_id) {
+                const distributor = await User.findByPk(assigned_distributor_id);
+                if (!distributor || distributor.role !== 'distributor') {
+                    await transaction.rollback();
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Invalid distributor ID'
+                    });
+                }
+                if (distributor.status !== 'active') {
+                    await transaction.rollback();
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Distributor is not active'
+                    });
+                }
+            }
+            updateData.assigned_distributor_id = assigned_distributor_id;
+        }
 
         if (Object.keys(updateData).length > 0) {
             await order.update(updateData, { transaction });

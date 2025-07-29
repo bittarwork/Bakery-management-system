@@ -19,12 +19,16 @@ import {
   Globe,
   Calculator,
   Clock,
+  User,
+  Truck,
+  XCircle,
 } from "lucide-react";
 import Button from "../../components/ui/Button";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import orderService from "../../services/orderService";
 import productService from "../../services/productService";
 import storeService from "../../services/storeService";
+import userService from "../../services/userService";
 import { toast } from "react-hot-toast";
 
 const EditOrderPage = () => {
@@ -38,6 +42,7 @@ const EditOrderPage = () => {
   // Data
   const [stores, setStores] = useState([]);
   const [products, setProducts] = useState([]);
+  const [distributors, setDistributors] = useState([]);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -49,6 +54,7 @@ const EditOrderPage = () => {
     exchange_rate: 15000,
     status: "draft",
     payment_status: "pending",
+    assigned_distributor_id: null,
     items: [],
   });
 
@@ -73,7 +79,7 @@ const EditOrderPage = () => {
   const loadInitialData = async () => {
     try {
       setIsLoading(true);
-      await Promise.all([loadOrder(), loadStores(), loadProducts()]);
+      await Promise.all([loadOrder(), loadStores(), loadProducts(), loadDistributors()]);
     } catch (error) {
       console.error("Error loading initial data:", error);
       toast.error("خطأ في تحميل البيانات");
@@ -97,44 +103,23 @@ const EditOrderPage = () => {
           currency: "EUR", // Fixed to EUR only
           status: order.status || "draft",
           payment_status: order.payment_status || "pending",
+          assigned_distributor_id: order.assigned_distributor_id || null,
           items:
-            order.items?.map((item, index) => ({
-              id: item.id || `temp-${index}`,
+            order.items?.map((item) => ({
+              id: item.id,
               product_id: item.product_id,
-              product_name: item.product_name || "منتج غير محدد",
-              quantity: item.quantity || 1,
-              unit_price: item.unit_price || 0,
-              discount_amount: item.discount_amount || 0,
-              gift_quantity: item.gift_quantity || 0,
-              gift_reason: item.gift_reason || "",
+              quantity: item.quantity,
+              unit_price: item.unit_price_eur || 0,
+              discount_amount: 0,
+              gift_quantity: 0,
+              gift_reason: "",
               notes: item.notes || "",
-              total_price:
-                item.quantity * item.unit_price - (item.discount_amount || 0),
             })) || [],
         });
-      } else {
-        const errorMessage = response?.message || "الطلب غير موجود";
-        toast.error(errorMessage);
-        navigate("/orders");
       }
     } catch (error) {
       console.error("Error loading order:", error);
-      let errorMessage = "خطأ في تحميل بيانات الطلب";
-
-      if (error.response?.status === 404) {
-        errorMessage = "الطلب غير موجود";
-      } else if (error.response?.status === 403) {
-        errorMessage = "غير مصرح لك بتعديل هذا الطلب";
-      } else if (error.response?.status >= 500) {
-        errorMessage = "خطأ في الخادم - يرجى المحاولة مرة أخرى لاحقاً";
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      toast.error(errorMessage);
-      navigate("/orders");
+      toast.error("خطأ في تحميل بيانات الطلب");
     }
   };
 
@@ -142,77 +127,88 @@ const EditOrderPage = () => {
     try {
       const response = await storeService.getStores();
       if (response && response.success !== false) {
-        const storesData = response.data?.stores || response.data || [];
-        setStores(Array.isArray(storesData) ? storesData : []);
-      } else {
-        console.warn("Failed to load stores, using empty array");
-        setStores([]);
+        setStores(response.data || response);
       }
     } catch (error) {
       console.error("Error loading stores:", error);
-      setStores([]);
+      toast.error("خطأ في تحميل المتاجر");
     }
   };
 
   const loadProducts = async () => {
     try {
-      const response = await productService.getProducts({ limit: 100 });
+      const response = await productService.getProducts();
       if (response && response.success !== false) {
-        const productsData = response.data?.products || response.data || [];
-        setProducts(Array.isArray(productsData) ? productsData : []);
-      } else {
-        console.warn("Failed to load products, using empty array");
-        setProducts([]);
+        setProducts(response.data || response);
       }
     } catch (error) {
       console.error("Error loading products:", error);
-      setProducts([]);
+      toast.error("خطأ في تحميل المنتجات");
     }
   };
 
-  // Handle form changes
+  const loadDistributors = async () => {
+    try {
+      const response = await userService.getUsers({ role: 'distributor' });
+      if (response && response.success !== false) {
+        setDistributors(response.data || response);
+      }
+    } catch (error) {
+      console.error("Error loading distributors:", error);
+      toast.error("خطأ في تحميل الموزعين");
+    }
+  };
+
   const handleFormChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleCurrentItemChange = (field, value) => {
-    setCurrentItem((prev) => {
-      const updated = { ...prev, [field]: value };
+    setCurrentItem((prev) => ({ ...prev, [field]: value }));
 
-      // Auto-fill unit price when product is selected
-      if (field === "product_id" && value) {
-        const selectedProduct = products.find((p) => p.id === parseInt(value));
-        if (selectedProduct) {
-          updated.unit_price = selectedProduct.price_eur || 0;
-        }
+    // Auto-calculate unit price when product is selected
+    if (field === "product_id" && value) {
+      const selectedProduct = products.find((p) => p.id === parseInt(value));
+      if (selectedProduct) {
+        setCurrentItem((prev) => ({
+          ...prev,
+          unit_price: parseFloat(selectedProduct.price_eur || 0),
+        }));
       }
-
-      return updated;
-    });
+    }
   };
 
-  // Add item to order
   const addItemToOrder = () => {
-    if (!currentItem.product_id || currentItem.quantity <= 0) {
-      toast.error("يرجى اختيار منتج وكمية صحيحة");
+    if (!currentItem.product_id) {
+      toast.error("يرجى اختيار منتج");
+      return;
+    }
+
+    if (currentItem.quantity <= 0) {
+      toast.error("يجب أن تكون الكمية أكبر من صفر");
       return;
     }
 
     const selectedProduct = products.find(
       (p) => p.id === parseInt(currentItem.product_id)
     );
+
     if (!selectedProduct) {
-      toast.error("المنتج غير موجود");
+      toast.error("المنتج المحدد غير موجود");
       return;
     }
 
     const newItem = {
-      ...currentItem,
-      id: `temp-${Date.now()}`, // temporary ID for new items
+      id: `temp-${Date.now()}`,
+      product_id: currentItem.product_id,
+      quantity: parseInt(currentItem.quantity),
+      unit_price: parseFloat(currentItem.unit_price),
+      discount_amount: parseFloat(currentItem.discount_amount || 0),
+      gift_quantity: parseInt(currentItem.gift_quantity || 0),
+      gift_reason: currentItem.gift_reason,
+      notes: currentItem.notes,
       product_name: selectedProduct.name,
-      total_price:
-        currentItem.quantity * currentItem.unit_price -
-        currentItem.discount_amount,
+      product_unit: selectedProduct.unit,
     };
 
     setFormData((prev) => ({
@@ -234,41 +230,35 @@ const EditOrderPage = () => {
     toast.success("تم إضافة المنتج إلى الطلب");
   };
 
-  // Remove item from order
   const removeItemFromOrder = (index) => {
     setFormData((prev) => ({
       ...prev,
       items: prev.items.filter((_, i) => i !== index),
     }));
-    toast.success("تم حذف المنتج من الطلب");
+    toast.success("تم إزالة المنتج من الطلب");
   };
 
-  // Update existing item
   const updateItemQuantity = (index, newQuantity) => {
     if (newQuantity <= 0) {
-      removeItemFromOrder(index);
+      toast.error("يجب أن تكون الكمية أكبر من صفر");
       return;
     }
 
     setFormData((prev) => ({
       ...prev,
       items: prev.items.map((item, i) =>
-        i === index
-          ? {
-              ...item,
-              quantity: newQuantity,
-              total_price:
-                newQuantity * item.unit_price - (item.discount_amount || 0),
-            }
-          : item
+        i === index ? { ...item, quantity: parseInt(newQuantity) } : item
       ),
     }));
   };
 
-  // Calculate totals
   const calculateTotals = () => {
     const subtotal = formData.items.reduce(
-      (sum, item) => sum + (item.total_price || 0),
+      (sum, item) => sum + item.unit_price * item.quantity,
+      0
+    );
+    const totalDiscounts = formData.items.reduce(
+      (sum, item) => sum + (item.discount_amount || 0),
       0
     );
     const totalGifts = formData.items.reduce(
@@ -278,6 +268,8 @@ const EditOrderPage = () => {
 
     return {
       subtotal,
+      totalDiscounts,
+      total: subtotal - totalDiscounts,
       totalGifts,
       totalItems: formData.items.length,
     };
@@ -310,6 +302,7 @@ const EditOrderPage = () => {
         exchange_rate: formData.exchange_rate,
         status: formData.status,
         payment_status: formData.payment_status,
+        assigned_distributor_id: formData.assigned_distributor_id ? parseInt(formData.assigned_distributor_id) : null,
         items: formData.items.map((item) => ({
           id:
             typeof item.id === "string" && item.id.startsWith("temp-")
@@ -359,6 +352,42 @@ const EditOrderPage = () => {
     }
   };
 
+  // Handle distributor assignment
+  const handleAssignDistributor = async (distributorId) => {
+    try {
+      const response = await orderService.assignDistributor(orderId, distributorId);
+      if (response && response.success !== false) {
+        toast.success("تم تعيين الموزع بنجاح");
+        setFormData(prev => ({ ...prev, assigned_distributor_id: distributorId }));
+        // Reload order to get updated data
+        await loadOrder();
+      } else {
+        toast.error(response?.message || "خطأ في تعيين الموزع");
+      }
+    } catch (error) {
+      console.error("Error assigning distributor:", error);
+      toast.error("خطأ في تعيين الموزع");
+    }
+  };
+
+  // Handle distributor unassignment
+  const handleUnassignDistributor = async () => {
+    try {
+      const response = await orderService.unassignDistributor(orderId);
+      if (response && response.success !== false) {
+        toast.success("تم إلغاء تعيين الموزع بنجاح");
+        setFormData(prev => ({ ...prev, assigned_distributor_id: null }));
+        // Reload order to get updated data
+        await loadOrder();
+      } else {
+        toast.error(response?.message || "خطأ في إلغاء تعيين الموزع");
+      }
+    } catch (error) {
+      console.error("Error unassigning distributor:", error);
+      toast.error("خطأ في إلغاء تعيين الموزع");
+    }
+  };
+
   const totals = calculateTotals();
 
   if (isLoading) {
@@ -377,22 +406,20 @@ const EditOrderPage = () => {
               <div className="flex items-center space-x-4">
                 <button
                   onClick={() => navigate(`/orders/${orderId}`)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
                 >
-                  <ArrowLeft className="w-6 h-6" />
+                  <ArrowLeft className="w-5 h-5 mr-2" />
+                  العودة إلى تفاصيل الطلب
                 </button>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    تعديل الطلب
-                  </h1>
-                  <p className="text-gray-600 mt-1">تعديل تفاصيل الطلب</p>
-                </div>
+                <div className="h-6 w-px bg-gray-300" />
+                <h1 className="text-2xl font-bold text-gray-900">
+                  تعديل الطلب #{orderId}
+                </h1>
               </div>
               <div className="flex items-center space-x-3">
                 <Button
                   variant="outline"
                   onClick={() => navigate(`/orders/${orderId}`)}
-                  disabled={isSaving}
                 >
                   إلغاء
                 </Button>
@@ -537,6 +564,94 @@ const EditOrderPage = () => {
                       />
                     </div>
                   </div>
+                </div>
+              </motion.div>
+
+              {/* Distributor Management */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-white shadow rounded-lg"
+              >
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Truck className="w-5 h-5 text-purple-600" />
+                    إدارة الموزع
+                  </h2>
+                </div>
+                <div className="p-6">
+                  {formData.assigned_distributor_id ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                          <div>
+                            <h3 className="font-medium text-green-900">
+                              موزع مُعيّن
+                            </h3>
+                            <p className="text-sm text-green-700">
+                              {distributors.find(d => d.id === formData.assigned_distributor_id)?.full_name || 'غير محدد'}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleUnassignDistributor}
+                          className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          إلغاء التعيين
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <XCircle className="w-5 h-5 text-gray-500" />
+                          <div>
+                            <h3 className="font-medium text-gray-900">
+                              لا يوجد موزع مُعيّن
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              يمكنك تعيين موزع للطلب من القائمة أدناه
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          اختر موزع
+                        </label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {distributors.map((distributor) => (
+                            <button
+                              key={distributor.id}
+                              onClick={() => handleAssignDistributor(distributor.id)}
+                              className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <User className="w-4 h-4 text-gray-500" />
+                                <div className="text-left">
+                                  <p className="font-medium text-gray-900">{distributor.full_name}</p>
+                                  {distributor.phone && (
+                                    <p className="text-sm text-gray-600">{distributor.phone}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <Truck className="w-4 h-4 text-gray-400" />
+                            </button>
+                          ))}
+                        </div>
+                        {distributors.length === 0 && (
+                          <p className="text-sm text-gray-500 text-center py-4">
+                            لا يوجد موزعين متاحين
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </motion.div>
 
