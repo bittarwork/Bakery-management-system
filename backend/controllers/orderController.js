@@ -517,7 +517,11 @@ export const createOrder = async (req, res) => {
         console.error('📊 [ORDER CONTROLLER] Error details:', {
             name: error.name,
             message: error.message,
-            stack: error.stack
+            stack: error.stack,
+            code: error.code,
+            errno: error.errno,
+            sqlState: error.sqlState,
+            sqlMessage: error.sqlMessage
         });
 
         try {
@@ -531,6 +535,7 @@ export const createOrder = async (req, res) => {
 
         console.error('[ORDERS] Failed to create order:', error.message);
 
+        // Handle specific database errors
         if (error.name === 'SequelizeValidationError') {
             console.log('📝 [ORDER CONTROLLER] Sequelize validation error detected');
             return res.status(400).json({
@@ -538,8 +543,38 @@ export const createOrder = async (req, res) => {
                 message: 'Invalid data',
                 errors: error.errors.map(e => ({
                     field: e.path,
-                    message: e.message
+                    message: e.message,
+                    value: e.value
                 }))
+            });
+        }
+
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            console.log('🔒 [ORDER CONTROLLER] Unique constraint error detected');
+            return res.status(400).json({
+                success: false,
+                message: 'Duplicate entry error',
+                field: error.errors[0]?.path,
+                value: error.errors[0]?.value
+            });
+        }
+
+        if (error.name === 'SequelizeForeignKeyConstraintError') {
+            console.log('🔗 [ORDER CONTROLLER] Foreign key constraint error detected');
+            return res.status(400).json({
+                success: false,
+                message: 'Referenced record not found',
+                field: error.fields?.join(', '),
+                table: error.table
+            });
+        }
+
+        if (error.name === 'SequelizeDatabaseError') {
+            console.log('🗄️ [ORDER CONTROLLER] Database error detected');
+            return res.status(500).json({
+                success: false,
+                message: 'Database error occurred',
+                error: process.env.NODE_ENV === 'development' ? error.message : 'Internal database error'
             });
         }
 

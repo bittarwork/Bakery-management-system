@@ -85,8 +85,8 @@ const EditOrderPage = () => {
   const loadOrder = async () => {
     try {
       const response = await orderService.getOrder(orderId);
-      if (response.success) {
-        const order = response.data;
+      if (response && response.success !== false) {
+        const order = response.data || response;
         setFormData({
           store_id: order.store_id || "",
           order_date: order.order_date ? order.order_date.split("T")[0] : "",
@@ -113,12 +113,27 @@ const EditOrderPage = () => {
             })) || [],
         });
       } else {
-        toast.error(response.message || "الطلب غير موجود");
+        const errorMessage = response?.message || "الطلب غير موجود";
+        toast.error(errorMessage);
         navigate("/orders");
       }
     } catch (error) {
       console.error("Error loading order:", error);
-      toast.error("خطأ في تحميل بيانات الطلب");
+      let errorMessage = "خطأ في تحميل بيانات الطلب";
+
+      if (error.response?.status === 404) {
+        errorMessage = "الطلب غير موجود";
+      } else if (error.response?.status === 403) {
+        errorMessage = "غير مصرح لك بتعديل هذا الطلب";
+      } else if (error.response?.status >= 500) {
+        errorMessage = "خطأ في الخادم - يرجى المحاولة مرة أخرى لاحقاً";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(errorMessage);
       navigate("/orders");
     }
   };
@@ -126,24 +141,32 @@ const EditOrderPage = () => {
   const loadStores = async () => {
     try {
       const response = await storeService.getStores();
-      if (response.success) {
+      if (response && response.success !== false) {
         const storesData = response.data?.stores || response.data || [];
         setStores(Array.isArray(storesData) ? storesData : []);
+      } else {
+        console.warn("Failed to load stores, using empty array");
+        setStores([]);
       }
     } catch (error) {
       console.error("Error loading stores:", error);
+      setStores([]);
     }
   };
 
   const loadProducts = async () => {
     try {
       const response = await productService.getProducts({ limit: 100 });
-      if (response.success) {
+      if (response && response.success !== false) {
         const productsData = response.data?.products || response.data || [];
         setProducts(Array.isArray(productsData) ? productsData : []);
+      } else {
+        console.warn("Failed to load products, using empty array");
+        setProducts([]);
       }
     } catch (error) {
       console.error("Error loading products:", error);
+      setProducts([]);
     }
   };
 
@@ -304,15 +327,33 @@ const EditOrderPage = () => {
 
       const response = await orderService.updateOrder(orderId, orderData);
 
-      if (response.success) {
+      if (response && response.success !== false) {
         toast.success("تم تحديث الطلب بنجاح");
         navigate(`/orders/${orderId}`);
       } else {
-        toast.error(response.message || "خطأ في تحديث الطلب");
+        const errorMessage = response?.message || "خطأ في تحديث الطلب";
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error("Error updating order:", error);
-      toast.error("خطأ في تحديث الطلب");
+      let errorMessage = "خطأ في تحديث الطلب";
+
+      if (error.response?.status === 400) {
+        errorMessage =
+          "بيانات الطلب غير صحيحة - يرجى التحقق من المعلومات المدخلة";
+      } else if (error.response?.status === 403) {
+        errorMessage = "غير مصرح لك بتعديل هذا الطلب";
+      } else if (error.response?.status === 404) {
+        errorMessage = "الطلب غير موجود";
+      } else if (error.response?.status >= 500) {
+        errorMessage = "خطأ في الخادم - يرجى المحاولة مرة أخرى لاحقاً";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }

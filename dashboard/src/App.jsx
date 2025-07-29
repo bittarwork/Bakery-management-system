@@ -18,7 +18,7 @@ import AnalyticsPage from "./pages/dashboard/AnalyticsPage";
 
 // Pages - Orders
 import CreateOrderPage from "./pages/orders/CreateOrderPage";
-import OrdersPage from "./pages/orders/OrdersPage";
+import OrdersListPage from "./pages/orders/OrdersListPage";
 import OrderDetailsPage from "./pages/orders/OrderDetailsPage";
 import EditOrderPage from "./pages/orders/EditOrderPage";
 
@@ -303,7 +303,7 @@ const App = () => {
                       transition={pageTransition}
                     >
                       <Suspense fallback={<LoadingSpinner />}>
-                        <OrdersPage />
+                        <OrdersListPage />
                       </Suspense>
                     </motion.div>
                   </DashboardLayout>

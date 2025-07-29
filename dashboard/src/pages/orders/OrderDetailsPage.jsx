@@ -61,12 +61,31 @@ const OrderDetailsPage = () => {
     try {
       setLoading(true);
       const response = await orderService.getOrder(id);
-      const orderData = response.data || response;
-      setOrder(orderData);
+
+      if (response && response.success !== false) {
+        const orderData = response.data || response;
+        setOrder(orderData);
+      } else {
+        const errorMessage = response?.message || "خطأ في تحميل الطلب";
+        toast.error(errorMessage);
+        navigate("/orders");
+      }
     } catch (error) {
       console.error("Error loading order:", error);
-      const errorMessage =
-        error.response?.data?.message || error.message || "خطأ في تحميل الطلب";
+      let errorMessage = "خطأ في تحميل الطلب";
+
+      if (error.response?.status === 404) {
+        errorMessage = "الطلب غير موجود";
+      } else if (error.response?.status === 403) {
+        errorMessage = "غير مصرح لك بالوصول إلى هذا الطلب";
+      } else if (error.response?.status >= 500) {
+        errorMessage = "خطأ في الخادم - يرجى المحاولة مرة أخرى لاحقاً";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast.error(errorMessage);
       navigate("/orders");
     } finally {
@@ -80,10 +99,16 @@ const OrderDetailsPage = () => {
         role: "distributor",
         status: "active",
       });
-      const usersData = response.data || response;
-      setDistributors(usersData.users || usersData || []);
+      if (response && response.success !== false) {
+        const usersData = response.data || response;
+        setDistributors(usersData.users || usersData || []);
+      } else {
+        console.warn("Failed to load distributors, using empty array");
+        setDistributors([]);
+      }
     } catch (error) {
       console.error("Error loading distributors:", error);
+      setDistributors([]);
     }
   };
 
@@ -91,13 +116,34 @@ const OrderDetailsPage = () => {
   const handleStatusUpdate = async (newStatus) => {
     try {
       setUpdating(true);
-      await orderService.updateOrder(id, { status: newStatus });
-      toast.success("تم تحديث حالة الطلب بنجاح");
-      loadOrder();
+      const response = await orderService.updateOrder(id, {
+        status: newStatus,
+      });
+
+      if (response && response.success !== false) {
+        toast.success("تم تحديث حالة الطلب بنجاح");
+        loadOrder();
+      } else {
+        const errorMessage = response?.message || "خطأ في تحديث الحالة";
+        toast.error(errorMessage);
+      }
     } catch (error) {
       console.error("Error updating status:", error);
-      const errorMessage =
-        error.response?.data?.message || error.message || "خطأ في تحديث الحالة";
+      let errorMessage = "خطأ في تحديث الحالة";
+
+      if (error.response?.status === 400) {
+        errorMessage =
+          "لا يمكن تحديث حالة الطلب - قد يكون في حالة لا تسمح بالتحديث";
+      } else if (error.response?.status === 403) {
+        errorMessage = "غير مصرح لك بتحديث حالة هذا الطلب";
+      } else if (error.response?.status === 404) {
+        errorMessage = "الطلب غير موجود";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast.error(errorMessage);
     } finally {
       setUpdating(false);
@@ -107,15 +153,32 @@ const OrderDetailsPage = () => {
   const handlePaymentStatusUpdate = async (newPaymentStatus) => {
     try {
       setUpdating(true);
-      await orderService.updateOrder(id, { payment_status: newPaymentStatus });
-      toast.success("تم تحديث حالة الدفع بنجاح");
-      loadOrder();
+      const response = await orderService.updateOrder(id, {
+        payment_status: newPaymentStatus,
+      });
+
+      if (response && response.success !== false) {
+        toast.success("تم تحديث حالة الدفع بنجاح");
+        loadOrder();
+      } else {
+        const errorMessage = response?.message || "خطأ في تحديث حالة الدفع";
+        toast.error(errorMessage);
+      }
     } catch (error) {
       console.error("Error updating payment status:", error);
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "خطأ في تحديث حالة الدفع";
+      let errorMessage = "خطأ في تحديث حالة الدفع";
+
+      if (error.response?.status === 400) {
+        errorMessage =
+          "لا يمكن تحديث حالة الدفع - قد يكون في حالة لا تسمح بالتحديث";
+      } else if (error.response?.status === 403) {
+        errorMessage = "غير مصرح لك بتحديث حالة الدفع لهذا الطلب";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast.error(errorMessage);
     } finally {
       setUpdating(false);
@@ -126,17 +189,36 @@ const OrderDetailsPage = () => {
   const handleDistributorAssignment = async (distributorId) => {
     try {
       setUpdating(true);
-      await orderService.updateOrder(id, {
+      const response = await orderService.updateOrder(id, {
         distributor_id: distributorId || null,
       });
-      toast.success(
-        distributorId ? "تم تعيين الموزع بنجاح" : "تم إلغاء تعيين الموزع"
-      );
-      loadOrder();
+
+      if (response && response.success !== false) {
+        toast.success(
+          distributorId ? "تم تعيين الموزع بنجاح" : "تم إلغاء تعيين الموزع"
+        );
+        loadOrder();
+      } else {
+        const errorMessage = response?.message || "خطأ في تحديث الموزع";
+        toast.error(errorMessage);
+      }
     } catch (error) {
       console.error("Error updating distributor:", error);
-      const errorMessage =
-        error.response?.data?.message || error.message || "خطأ في تحديث الموزع";
+      let errorMessage = "خطأ في تحديث الموزع";
+
+      if (error.response?.status === 400) {
+        errorMessage =
+          "لا يمكن تعيين موزع لهذا الطلب - قد يكون في حالة لا تسمح بذلك";
+      } else if (error.response?.status === 403) {
+        errorMessage = "غير مصرح لك بتعيين موزع لهذا الطلب";
+      } else if (error.response?.status === 404) {
+        errorMessage = "الطلب أو الموزع غير موجود";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast.error(errorMessage);
     } finally {
       setUpdating(false);
@@ -146,13 +228,31 @@ const OrderDetailsPage = () => {
   // Handle order deletion
   const handleDeleteOrder = async () => {
     try {
-      await orderService.deleteOrder(id);
-      toast.success("تم حذف الطلب بنجاح");
-      navigate("/orders");
+      const response = await orderService.deleteOrder(id);
+
+      if (response && response.success !== false) {
+        toast.success("تم حذف الطلب بنجاح");
+        navigate("/orders");
+      } else {
+        const errorMessage = response?.message || "خطأ في حذف الطلب";
+        toast.error(errorMessage);
+      }
     } catch (error) {
       console.error("Error deleting order:", error);
-      const errorMessage =
-        error.response?.data?.message || error.message || "خطأ في حذف الطلب";
+      let errorMessage = "خطأ في حذف الطلب";
+
+      if (error.response?.status === 400) {
+        errorMessage = "لا يمكن حذف هذا الطلب - قد يكون في حالة لا تسمح بالحذف";
+      } else if (error.response?.status === 403) {
+        errorMessage = "غير مصرح لك بحذف هذا الطلب";
+      } else if (error.response?.status === 404) {
+        errorMessage = "الطلب غير موجود";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast.error(errorMessage);
     }
   };
