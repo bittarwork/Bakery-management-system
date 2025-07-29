@@ -9,6 +9,14 @@ import UserSession from './UserSession.js';
 import Payment from './Payment.js';
 import Notification from './Notification.js';
 
+// Distribution system models
+import DailyDistributionSchedule from './DailyDistributionSchedule.js';
+import DistributionTrip from './DistributionTrip.js';
+import LocationTracking from './LocationTracking.js';
+import DistributionNotification from './DistributionNotification.js';
+import DistributionSettings from './DistributionSettings.js';
+import DistributionPerformance from './DistributionPerformance.js';
+
 // Database connection factory
 let sequelize = null;
 
@@ -100,6 +108,19 @@ const defineAssociations = () => {
     Notification.belongsTo(Product, { foreignKey: 'related_product_id', as: 'relatedProduct' });
     Notification.belongsTo(Payment, { foreignKey: 'related_payment_id', as: 'relatedPayment' });
 
+    // Distribution system associations
+    DailyDistributionSchedule.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
+    DailyDistributionSchedule.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
+    
+    DistributionTrip.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
+    DistributionTrip.belongsTo(Vehicle, { foreignKey: 'vehicle_id', as: 'vehicle' });
+    
+    LocationTracking.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
+    
+    DistributionNotification.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
+    
+    DistributionPerformance.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
+
     if (process.env.NODE_ENV !== 'test') {
         console.log('✅ Simple model associations defined');
     }
@@ -130,7 +151,13 @@ const initializeModels = async () => {
             Vehicle,
             UserSession,
             Payment,
-            Notification
+            Notification,
+            DailyDistributionSchedule,
+            DistributionTrip,
+            LocationTracking,
+            DistributionNotification,
+            DistributionSettings,
+            DistributionPerformance
         };
     } catch (error) {
         console.error('❌ Error initializing models:', error);
@@ -149,6 +176,12 @@ export {
     UserSession,
     Payment,
     Notification,
+    DailyDistributionSchedule,
+    DistributionTrip,
+    LocationTracking,
+    DistributionNotification,
+    DistributionSettings,
+    DistributionPerformance,
     initializeModels
 };
 
@@ -163,5 +196,11 @@ export default {
     UserSession,
     Payment,
     Notification,
+    DailyDistributionSchedule,
+    DistributionTrip,
+    LocationTracking,
+    DistributionNotification,
+    DistributionSettings,
+    DistributionPerformance,
     initializeModels
 }; 

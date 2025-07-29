@@ -17,10 +17,10 @@ const router = express.Router();
 // ==========================================
 
 // Get all distribution trips
-router.get('/trips', auth.protect, distributionTripController.getDistributionTrips);
+router.get('/trips', distributionTripController.getDistributionTrips);
 
 // Get single distribution trip
-router.get('/trips/:id', auth.protect, distributionTripController.getDistributionTrip);
+router.get('/trips/:id', distributionTripController.getDistributionTrip);
 
 // Get today's active trips
 router.get('/trips/today/active', auth.protect, distributionTripController.getTodayActiveTrips);
@@ -57,7 +57,7 @@ router.delete('/trips/:id', auth.protect, distributionTripController.deleteDistr
 // ==========================================
 
 // Get distribution schedules
-router.get('/schedules', auth.protect, dailyDistributionScheduleController.getDistributionSchedules);
+router.get('/schedules', dailyDistributionScheduleController.getDistributionSchedules);
 
 // Get single distribution schedule
 router.get('/schedules/:id', auth.protect, dailyDistributionScheduleController.getDistributionSchedule);
@@ -69,7 +69,7 @@ router.get('/schedules/today', auth.protect, dailyDistributionScheduleController
 router.get('/schedules/distributor/:distributorId', auth.protect, dailyDistributionScheduleController.getDistributorSchedule);
 
 // Get schedule statistics
-router.get('/schedules/statistics', auth.protect, dailyDistributionScheduleController.getScheduleStatistics);
+router.get('/schedules/statistics', dailyDistributionScheduleController.getScheduleStatistics);
 
 // Generate daily schedule for distributor
 router.post('/schedules/generate', [
