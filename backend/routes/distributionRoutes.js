@@ -1,6 +1,6 @@
 import express from 'express';
 import { body, query, param } from 'express-validator';
-import auth from '../middleware/auth.js';
+import { protect } from '../middleware/auth.js';
 
 // Import all distribution controllers
 import * as distributionTripController from '../controllers/distributionTripController.js';
@@ -27,14 +27,14 @@ router.get('/trips', distributionTripController.getDistributionTrips);
 router.get('/trips/:id', distributionTripController.getDistributionTrip);
 
 // Get today's active trips
-router.get('/trips/today/active', auth.protect, distributionTripController.getTodayActiveTrips);
+router.get('/trips/today/active', protect, distributionTripController.getTodayActiveTrips);
 
 // Get trip statistics
-router.get('/trips/statistics', auth.protect, distributionTripController.getTripStatistics);
+router.get('/trips/statistics', protect, distributionTripController.getTripStatistics);
 
 // Create new distribution trip
 router.post('/trips', [
-    auth.protect,
+    protect,
     body('distributor_id').isInt().withMessage('Distributor ID must be an integer'),
     body('trip_date').isDate().withMessage('Trip date must be a valid date'),
     body('vehicle_id').optional().isInt().withMessage('Vehicle ID must be an integer'),
@@ -42,19 +42,19 @@ router.post('/trips', [
 ], distributionTripController.createDistributionTrip);
 
 // Update distribution trip
-router.put('/trips/:id', auth.protect, distributionTripController.updateDistributionTrip);
+router.put('/trips/:id', protect, distributionTripController.updateDistributionTrip);
 
 // Start distribution trip
-router.post('/trips/:id/start', auth.protect, distributionTripController.startDistributionTrip);
+router.post('/trips/:id/start', protect, distributionTripController.startDistributionTrip);
 
 // Complete distribution trip
-router.post('/trips/:id/complete', auth.protect, distributionTripController.completeDistributionTrip);
+router.post('/trips/:id/complete', protect, distributionTripController.completeDistributionTrip);
 
 // Cancel distribution trip
-router.post('/trips/:id/cancel', auth.protect, distributionTripController.cancelDistributionTrip);
+router.post('/trips/:id/cancel', protect, distributionTripController.cancelDistributionTrip);
 
 // Delete distribution trip (Admin only)
-router.delete('/trips/:id', auth.protect, distributionTripController.deleteDistributionTrip);
+router.delete('/trips/:id', protect, distributionTripController.deleteDistributionTrip);
 
 // ==========================================
 // DAILY DISTRIBUTION SCHEDULE ROUTES
@@ -64,19 +64,19 @@ router.delete('/trips/:id', auth.protect, distributionTripController.deleteDistr
 router.get('/schedules', dailyDistributionScheduleController.getDistributionSchedules);
 
 // Get single distribution schedule
-router.get('/schedules/:id', auth.protect, dailyDistributionScheduleController.getDistributionSchedule);
+router.get('/schedules/:id', protect, dailyDistributionScheduleController.getDistributionSchedule);
 
 // Get today's schedules for all distributors
-router.get('/schedules/today', auth.protect, dailyDistributionScheduleController.getTodaySchedules);
+router.get('/schedules/today', protect, dailyDistributionScheduleController.getTodaySchedules);
 
 // Get distributor's schedule for specific date
-router.get('/schedules/distributor/:distributorId', auth.protect, dailyDistributionScheduleController.getDistributorSchedule);
+router.get('/schedules/distributor/:distributorId', protect, dailyDistributionScheduleController.getDistributorSchedule);
 
 // Get schedule statistics
-router.get('/schedules/statistics', auth.protect, dailyDistributionScheduleController.getScheduleStatistics);
+router.get('/schedules/statistics', protect, dailyDistributionScheduleController.getScheduleStatistics);
 
 // Get automatic distribution schedules for all distributors - Main endpoint
-router.get('/schedules/auto', auth.protect, async (req, res) => {
+router.get('/schedules/auto', protect, async (req, res) => {
     try {
         systemLogger.info(`Auto schedules requested for date: ${req.query.schedule_date || 'today'}`);
         await dailyDistributionScheduleController.getAutoDistributionSchedules(req, res);
@@ -91,7 +91,7 @@ router.get('/schedules/auto', auth.protect, async (req, res) => {
 });
 
 // Direct auto distribution schedules endpoint - Alternative endpoint
-router.get('/schedules/auto-direct', auth.protect, async (req, res) => {
+router.get('/schedules/auto-direct', protect, async (req, res) => {
     try {
         systemLogger.info(`Auto schedules (direct) requested for date: ${req.query.schedule_date || 'today'}`);
         // Use the same controller function but mark it as direct access
@@ -127,7 +127,7 @@ router.get('/schedules/auto-test', (req, res) => {
 
 // Generate daily schedule for distributor
 router.post('/schedules/generate', [
-    auth.protect,
+    protect,
     body('distributor_id').isInt().withMessage('Distributor ID must be an integer'),
     body('schedule_date').isDate().withMessage('Schedule date must be a valid date'),
     body('stores_data').isArray().withMessage('Stores data must be an array'),
@@ -135,26 +135,26 @@ router.post('/schedules/generate', [
 ], dailyDistributionScheduleController.generateDistributionSchedule);
 
 // Update distribution schedule item
-router.put('/schedules/:id', auth.protect, dailyDistributionScheduleController.updateDistributionSchedule);
+router.put('/schedules/:id', protect, dailyDistributionScheduleController.updateDistributionSchedule);
 
 // Start store visit
-router.post('/schedules/:id/start', auth.protect, dailyDistributionScheduleController.startStoreVisit);
+router.post('/schedules/:id/start', protect, dailyDistributionScheduleController.startStoreVisit);
 
 // Complete store visit
-router.post('/schedules/:id/complete', auth.protect, dailyDistributionScheduleController.completeStoreVisit);
+router.post('/schedules/:id/complete', protect, dailyDistributionScheduleController.completeStoreVisit);
 
 // Cancel store visit
-router.post('/schedules/:id/cancel', auth.protect, dailyDistributionScheduleController.cancelStoreVisit);
+router.post('/schedules/:id/cancel', protect, dailyDistributionScheduleController.cancelStoreVisit);
 
 // Delete distribution schedule (Admin only)
-router.delete('/schedules/:id', auth.protect, dailyDistributionScheduleController.deleteDistributionSchedule);
+router.delete('/schedules/:id', protect, dailyDistributionScheduleController.deleteDistributionSchedule);
 
 // ==========================================
 // CRON JOB STATUS AND SYSTEM ROUTES
 // ==========================================
 
 // Get cron job status (Admin/Manager only)
-router.get('/system/cron-status', auth.protect, (req, res) => {
+router.get('/system/cron-status', protect, (req, res) => {
     try {
         // Check if user has admin or manager role
         if (req.user.role !== 'admin' && req.user.role !== 'manager') {
@@ -190,7 +190,7 @@ router.get('/system/cron-status', auth.protect, (req, res) => {
 });
 
 // Manually trigger distribution schedule generation (Admin only)
-router.post('/system/trigger-schedule-generation', auth.protect, async (req, res) => {
+router.post('/system/trigger-schedule-generation', protect, async (req, res) => {
     try {
         // Check if user has admin role
         if (req.user.role !== 'admin') {
@@ -233,7 +233,7 @@ router.post('/system/trigger-schedule-generation', auth.protect, async (req, res
 
 // Update distributor location (Distributor only)
 router.post('/location/update', [
-    auth.protect,
+    protect,
     body('latitude').isFloat({ min: -90, max: 90 }).withMessage('Latitude must be between -90 and 90'),
     body('longitude').isFloat({ min: -180, max: 180 }).withMessage('Longitude must be between -180 and 180'),
     body('accuracy').optional().isFloat({ min: 0 }).withMessage('Accuracy must be a positive number'),
@@ -246,50 +246,50 @@ router.post('/location/update', [
 ], locationTrackingController.updateLocation);
 
 // Get distributor's latest location
-router.get('/location/latest/:distributorId', auth.protect, locationTrackingController.getLatestLocation);
+router.get('/location/latest/:distributorId', protect, locationTrackingController.getLatestLocation);
 
 // Get all active distributors locations
-router.get('/location/active', auth.protect, locationTrackingController.getAllActiveLocations);
+router.get('/location/active', protect, locationTrackingController.getAllActiveLocations);
 
 // Get distributor's location history
-router.get('/location/history/:distributorId', auth.protect, locationTrackingController.getLocationHistory);
+router.get('/location/history/:distributorId', protect, locationTrackingController.getLocationHistory);
 
 // Get distributor's route for specific time period
-router.get('/location/route/:distributorId', auth.protect, locationTrackingController.getDistributorRoute);
+router.get('/location/route/:distributorId', protect, locationTrackingController.getDistributorRoute);
 
 // Get location statistics
-router.get('/location/statistics/:distributorId', auth.protect, locationTrackingController.getLocationStatistics);
+router.get('/location/statistics/:distributorId', protect, locationTrackingController.getLocationStatistics);
 
 // Get nearby distributors to a location
 router.get('/location/nearby', [
-    auth.protect,
+    protect,
     query('latitude').isFloat({ min: -90, max: 90 }).withMessage('Latitude must be between -90 and 90'),
     query('longitude').isFloat({ min: -180, max: 180 }).withMessage('Longitude must be between -180 and 180'),
     query('radius').optional().isFloat({ min: 0 }).withMessage('Radius must be a positive number')
 ], locationTrackingController.getNearbyDistributors);
 
 // Get location tracking summary
-router.get('/location/summary', auth.protect, locationTrackingController.getLocationTrackingSummary);
+router.get('/location/summary', protect, locationTrackingController.getLocationTrackingSummary);
 
 // Set distributor offline (Distributor only)
-router.post('/location/offline', auth.protect, locationTrackingController.setDistributorOffline);
+router.post('/location/offline', protect, locationTrackingController.setDistributorOffline);
 
 // Clean old location records (Admin only)
-router.delete('/location/cleanup', auth.protect, locationTrackingController.cleanupOldLocations);
+router.delete('/location/cleanup', protect, locationTrackingController.cleanupOldLocations);
 
 // ==========================================
 // PERFORMANCE ROUTES
 // ==========================================
 
 // Get performance metrics
-router.get('/performance', auth.protect, distributionPerformanceController.getPerformanceMetrics);
+router.get('/performance', protect, distributionPerformanceController.getPerformanceMetrics);
 
 // Get performance summary
-router.get('/performance/summary', auth.protect, distributionPerformanceController.getPerformanceSummary);
+router.get('/performance/summary', protect, distributionPerformanceController.getPerformanceSummary);
 
 // Calculate daily performance
 router.post('/performance/calculate', [
-    auth.protect,
+    protect,
     body('distributor_id').isInt().withMessage('Distributor ID must be an integer'),
     body('date').isDate().withMessage('Date must be a valid date')
 ], distributionPerformanceController.calculateDailyPerformance);
@@ -299,27 +299,27 @@ router.post('/performance/calculate', [
 // ==========================================
 
 // Get notifications
-router.get('/notifications', auth.protect, distributionNotificationController.getNotifications);
+router.get('/notifications', protect, distributionNotificationController.getNotifications);
 
 // Get unread count for distributor
-router.get('/notifications/unread-count/:distributorId', auth.protect, distributionNotificationController.getUnreadCount);
+router.get('/notifications/unread-count/:distributorId', protect, distributionNotificationController.getUnreadCount);
 
 // Mark notification as read
-router.put('/notifications/:id/read', auth.protect, distributionNotificationController.markAsRead);
+router.put('/notifications/:id/read', protect, distributionNotificationController.markAsRead);
 
 // ==========================================
 // SETTINGS ROUTES
 // ==========================================
 
 // Get all distribution settings (Admin only)
-router.get('/settings', auth.protect, distributionSettingsController.getSettings);
+router.get('/settings', protect, distributionSettingsController.getSettings);
 
 // Get specific setting
-router.get('/settings/:key', auth.protect, distributionSettingsController.getSetting);
+router.get('/settings/:key', protect, distributionSettingsController.getSetting);
 
 // Update setting (Admin only)
 router.put('/settings/:key', [
-    auth.protect,
+    protect,
     body('value').notEmpty().withMessage('Value is required'),
     body('description').optional().isString().trim()
 ], distributionSettingsController.updateSetting);
