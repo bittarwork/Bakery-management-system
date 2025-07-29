@@ -113,6 +113,64 @@ router.use('/conversations', conversationRoutes);
 // Mount Distribution System routes
 router.use('/distribution', distributionRoutes);
 
+// TEMPORARY FALLBACK ENDPOINTS FOR MISSING RAILWAY DEPLOYMENTS
+// These should be removed once the full distribution system is deployed
+
+// Auto distribution schedules endpoint
+router.get('/distribution/schedules/auto', (req, res) => {
+    res.json({
+        success: true,
+        message: 'Auto distribution schedules (fallback endpoint)',
+        data: {
+            distributors_schedules: [],
+            overall_statistics: {
+                total_distributors: 0,
+                total_orders: 0,
+                total_stores: 0,
+                total_estimated_duration: 0,
+                distributors_with_orders: 0,
+                distributors_with_existing_schedules: 0
+            },
+            schedule_date: req.query.schedule_date || new Date().toISOString().split('T')[0]
+        }
+    });
+});
+
+// Cron job status endpoint
+router.get('/distribution/system/cron-status', (req, res) => {
+    res.json({
+        success: true,
+        message: 'Cron job status (fallback endpoint)',
+        data: {
+            cron_job_status: {
+                isRunning: false,
+                lastExecution: null,
+                executionCount: 0,
+                nextExecution: new Date(Date.now() + 60 * 60 * 1000).toISOString() // Next hour
+            },
+            system_info: {
+                environment: process.env.NODE_ENV || 'production',
+                server_time: new Date().toISOString(),
+                timezone: 'UTC'
+            }
+        }
+    });
+});
+
+// Manual trigger endpoint
+router.post('/distribution/system/trigger-schedule-generation', (req, res) => {
+    res.json({
+        success: true,
+        message: 'Schedule generation triggered (fallback endpoint)',
+        data: {
+            distributorsProcessed: 0,
+            schedulesCreated: 0,
+            schedulesUpdated: 0,
+            errors: []
+        }
+    });
+});
+
 // TEMPORARY: Direct auto-schedules route for debugging
 router.get('/distribution/schedules/auto-direct', (req, res) => {
     res.json({
