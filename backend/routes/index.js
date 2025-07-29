@@ -27,6 +27,9 @@ import systemRoutes from './systemRoutes.js';
 import aiChatRoutes from './aiChatRoutes.js';
 import conversationRoutes from './conversationRoutes.js';
 
+// Import Distribution System routes
+import distributionRoutes from './distributionRoutes.js';
+
 const router = express.Router();
 
 // API Documentation endpoint
@@ -40,7 +43,10 @@ router.get('/', (req, res) => {
             'تتبع المخزون الذكي',
             'تقارير تفصيلية',
             'إدارة الهدايا',
-            'العملات المتعددة (EUR/SYP)'
+            'العملات المتعددة (EUR/SYP)',
+            'نظام التوزيع اليومي الذكي',
+            'تتبع الموقع المباشر',
+            'تحسين المسارات'
         ],
         endpoints: {
             auth: '/api/auth',
@@ -60,6 +66,8 @@ router.get('/', (req, res) => {
             enhancedPricing: '/api/pricing',
             // AI Chat System
             aiChat: '/api/ai-chat',
+            // Distribution System
+            distribution: '/api/distribution',
             // Advanced Analytics System
             analytics: '/api/analytics',
             predictions: '/api/predictions'
@@ -102,6 +110,9 @@ router.use('/ai-chat', aiChatRoutes);
 // Mount conversation management routes
 router.use('/conversations', conversationRoutes);
 
+// Mount Distribution System routes
+router.use('/distribution', distributionRoutes);
+
 // Health check endpoint
 router.get('/health', (req, res) => {
     res.json({
@@ -129,7 +140,8 @@ router.get('/status', async (req, res) => {
                 notifications: 'active',
                 aiChat: 'active',
                 analytics: 'active',
-                predictions: 'active'
+                predictions: 'active',
+                distribution: 'active'
             },
             timestamp: new Date().toISOString()
         });
