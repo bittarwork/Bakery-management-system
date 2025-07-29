@@ -2,12 +2,9 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
-  Plus,
   Calendar,
   Search,
   Eye,
-  Edit,
-  Trash2,
   RefreshCw,
   Clock,
   CheckCircle,
@@ -16,7 +13,6 @@ import {
   Euro,
   Truck,
   MapPin,
-  FileText,
   Building,
   Loader2,
   AlertCircle,
@@ -25,24 +21,28 @@ import {
   TrendingUp,
   Activity,
   Play,
-  Pause,
-  RotateCcw,
+  Zap,
   User,
   Route,
   Timer,
-  ClipboardList,
   Navigation,
-  Zap,
   Target,
-  Map,
   Gauge,
+  Package,
+  Phone,
+  Store,
+  ChevronRight,
+  RotateCcw,
+  Filter,
+  Download,
+  Bell,
+  Calendar as CalendarIcon,
+  MapPin as LocationIcon,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
 import EnhancedInput from "../../components/ui/EnhancedInput";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
-import { DeleteConfirmationModal } from "../../components/ui/Modal";
-import CreateScheduleModal from "../../components/scheduling/CreateScheduleModal";
 import distributionService from "../../services/distributionService";
 import userService from "../../services/userService";
 import storeService from "../../services/storeService";
@@ -52,11 +52,12 @@ const DailyDistributionSchedulePage = () => {
   const navigate = useNavigate();
 
   // State management
-  const [schedules, setSchedules] = useState([]);
+  const [autoSchedules, setAutoSchedules] = useState([]);
   const [distributors, setDistributors] = useState([]);
   const [stores, setStores] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isTriggeringGeneration, setIsTriggeringGeneration] = useState(false);
   const [error, setError] = useState("");
 
   // Filter states
@@ -66,29 +67,9 @@ const DailyDistributionSchedulePage = () => {
     store_id: "",
     visit_status: "",
     schedule_date: new Date().toISOString().split("T")[0], // Today's date
-    start_date: "",
-    end_date: "",
-  });
-
-  // Pagination
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    totalItems: 0,
-    itemsPerPage: 20,
   });
 
   // Statistics
-  const [statistics, setStatistics] = useState({
-    totalSchedules: 0,
-    scheduledVisits: 0,
-    inProgressVisits: 0,
-    completedVisits: 0,
-    cancelledVisits: 0,
-  });
-
-  // Auto distribution schedules state
-  const [autoSchedules, setAutoSchedules] = useState([]);
   const [overallStats, setOverallStats] = useState({
     total_distributors: 0,
     total_orders: 0,
@@ -97,7 +78,6 @@ const DailyDistributionSchedulePage = () => {
     distributors_with_orders: 0,
     distributors_with_existing_schedules: 0,
   });
-  const [viewMode, setViewMode] = useState("auto"); // 'auto' or 'manual'
 
   // Cron job status state
   const [cronJobStatus, setCronJobStatus] = useState({
@@ -106,28 +86,12 @@ const DailyDistributionSchedulePage = () => {
     executionCount: 0,
     nextExecution: null,
   });
+
   const [systemInfo, setSystemInfo] = useState({
     environment: "development",
     server_time: null,
     timezone: null,
   });
-  const [isTriggeringGeneration, setIsTriggeringGeneration] = useState(false);
-
-  // Modal states
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedSchedule, setSelectedSchedule] = useState(null);
-
-  // Delete modal
-  const [deleteModal, setDeleteModal] = useState({
-    isOpen: false,
-    scheduleId: null,
-    storeName: "",
-    isLoading: false,
-  });
-
-  // Action loading states
-  const [actionLoading, setActionLoading] = useState({});
 
   // Enhanced logger for this component
   const componentLogger = {
@@ -146,160 +110,93 @@ const DailyDistributionSchedulePage = () => {
     },
   };
 
-  // Load initial data
+  // Load initial data automatically
   useEffect(() => {
     loadInitialData();
   }, []);
 
+  // Auto-refresh when filters change
   useEffect(() => {
-    if (viewMode === "manual") {
-      loadSchedules();
-    } else {
+    if (!isLoading) {
       loadAutoSchedules();
-      loadCronJobStatus(); // Load cron job status when in auto mode
     }
-  }, [pagination.currentPage, filters, viewMode]);
+  }, [filters.schedule_date, filters.distributor_id, filters.visit_status]);
 
   const loadInitialData = async () => {
     try {
-      if (viewMode === "auto") {
-        await Promise.all([
-          loadAutoSchedules(),
-          loadDistributors(),
-          loadStores(),
-          loadCronJobStatus(),
-        ]);
-      } else {
-        await Promise.all([
-          loadSchedules(),
-          loadDistributors(),
-          loadStores(),
-          loadStatistics(),
-        ]);
-      }
+      setIsLoading(true);
+      await Promise.all([
+        loadAutoSchedules(),
+        loadDistributors(),
+        loadStores(),
+        loadCronJobStatus(),
+      ]);
     } catch (error) {
       console.error("Error loading initial data:", error);
       toast.error("Error loading initial data");
     }
   };
 
-  // Load schedules
-  const loadSchedules = async () => {
-    try {
-      setIsLoading(true);
-      setError("");
-
-      // Clean filters
-      const cleanFilters = Object.fromEntries(
-        Object.entries(filters).filter(
-          ([_, value]) => value && value.trim() !== ""
-        )
-      );
-
-      const params = {
-        page: pagination.currentPage,
-        limit: pagination.itemsPerPage,
-        ...cleanFilters,
-      };
-
-      componentLogger.info(
-        "Loading distribution schedules with params:",
-        params
-      );
-      const response = await distributionService.getDistributionSchedules(
-        params
-      );
-      componentLogger.info("Distribution schedules response:", response);
-
-      if (response && response.success) {
-        const schedulesData = response.data?.schedules || [];
-        setSchedules(schedulesData);
-
-        // Update pagination
-        if (response.data?.pagination) {
-          const paginationData = response.data.pagination;
-          setPagination((prev) => ({
-            ...prev,
-            currentPage: paginationData.current_page,
-            totalPages: paginationData.total_pages,
-            totalItems: paginationData.total_records,
-          }));
-        }
-
-        // Calculate statistics from loaded data
-        calculateStatistics(schedulesData);
-      }
-    } catch (error) {
-      console.error("Error loading schedules:", error);
-      setError("Failed to load distribution schedules");
-      toast.error("Failed to load distribution schedules");
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
   // Load auto distribution schedules
   const loadAutoSchedules = async () => {
     try {
-      setIsLoading(true);
       setError("");
 
       componentLogger.info(
         "Loading auto distribution schedules for date:",
         filters.schedule_date
       );
+
       const response = await distributionService.getAutoDistributionSchedules(
         filters.schedule_date
       );
+
       componentLogger.info("Auto distribution schedules response:", response);
 
       if (response && response.success) {
         const autoSchedulesData = response.data?.distributors_schedules || [];
         const overallStatsData = response.data?.overall_statistics || {};
 
-        setAutoSchedules(autoSchedulesData);
+        // Apply filters
+        let filteredSchedules = autoSchedulesData;
+
+        if (filters.distributor_id) {
+          filteredSchedules = filteredSchedules.filter(
+            (schedule) => schedule.distributor.id == filters.distributor_id
+          );
+        }
+
+        if (filters.visit_status) {
+          filteredSchedules = filteredSchedules
+            .map((schedule) => ({
+              ...schedule,
+              schedule_items: schedule.schedule_items.filter(
+                (item) => item.visit_status === filters.visit_status
+              ),
+            }))
+            .filter((schedule) => schedule.schedule_items.length > 0);
+        }
+
+        if (filters.search) {
+          const searchTerm = filters.search.toLowerCase();
+          filteredSchedules = filteredSchedules.filter(
+            (schedule) =>
+              schedule.distributor.full_name
+                .toLowerCase()
+                .includes(searchTerm) ||
+              schedule.schedule_items.some((item) =>
+                item.store?.name.toLowerCase().includes(searchTerm)
+              )
+          );
+        }
+
+        setAutoSchedules(filteredSchedules);
         setOverallStats(overallStatsData);
-
-        // Update statistics for display
-        let totalSchedules = 0;
-        let scheduledVisits = 0;
-        let inProgressVisits = 0;
-        let completedVisits = 0;
-        let cancelledVisits = 0;
-
-        autoSchedulesData.forEach((distributorSchedule) => {
-          distributorSchedule.schedule_items.forEach((item) => {
-            totalSchedules++;
-            switch (item.visit_status) {
-              case "scheduled":
-                scheduledVisits++;
-                break;
-              case "in_progress":
-                inProgressVisits++;
-                break;
-              case "completed":
-                completedVisits++;
-                break;
-              case "cancelled":
-                cancelledVisits++;
-                break;
-            }
-          });
-        });
-
-        setStatistics({
-          totalSchedules,
-          scheduledVisits,
-          inProgressVisits,
-          completedVisits,
-          cancelledVisits,
-        });
       }
     } catch (error) {
       console.error("Error loading auto schedules:", error);
-      setError("Failed to load auto distribution schedules");
-      toast.error("Failed to load auto distribution schedules");
+      setError("Failed to load distribution schedules");
+      toast.error("Failed to load distribution schedules");
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -311,7 +208,7 @@ const DailyDistributionSchedulePage = () => {
     try {
       const response = await userService.getUsers({
         role: "distributor",
-        status: "active",
+        limit: 100,
       });
       if (response && response.success) {
         setDistributors(response.data?.users || []);
@@ -324,7 +221,7 @@ const DailyDistributionSchedulePage = () => {
   // Load stores
   const loadStores = async () => {
     try {
-      const response = await storeService.getStores();
+      const response = await storeService.getStores({ limit: 100 });
       if (response && response.success) {
         setStores(response.data?.stores || []);
       }
@@ -333,24 +230,12 @@ const DailyDistributionSchedulePage = () => {
     }
   };
 
-  // Load statistics
-  const loadStatistics = async () => {
-    try {
-      const response = await distributionService.getScheduleStatistics();
-      if (response && response.success) {
-        setStatistics(response.data?.statistics || {});
-      }
-    } catch (error) {
-      console.error("Error loading statistics:", error);
-    }
-  };
-
   // Load cron job status
   const loadCronJobStatus = async () => {
     try {
       const response = await distributionService.getCronJobStatus();
       if (response && response.success) {
-        setCronJobStatus(response.data?.cron_job_status || {});
+        setCronJobStatus(response.data?.cron_status || {});
         setSystemInfo(response.data?.system_info || {});
       }
     } catch (error) {
@@ -358,56 +243,28 @@ const DailyDistributionSchedulePage = () => {
     }
   };
 
-  // Handle manual schedule generation trigger
-  const handleTriggerGeneration = async () => {
+  // Trigger manual generation
+  const triggerAutoGeneration = async () => {
     try {
       setIsTriggeringGeneration(true);
 
-      const response = await distributionService.triggerScheduleGeneration();
-      if (response && response.success) {
-        toast.success(
-          `Schedule generation completed! Processed ${response.data.distributorsProcessed} distributors`
-        );
+      const response = await distributionService.triggerAutoGeneration({
+        date: filters.schedule_date,
+      });
 
-        // Reload data after successful generation
-        await Promise.all([loadAutoSchedules(), loadCronJobStatus()]);
+      if (response && response.success) {
+        toast.success("Auto generation triggered successfully");
+        await loadAutoSchedules();
+        await loadCronJobStatus();
+      } else {
+        throw new Error(response?.message || "Failed to trigger generation");
       }
     } catch (error) {
-      console.error("Error triggering schedule generation:", error);
-      toast.error("Failed to trigger schedule generation");
+      console.error("Error triggering auto generation:", error);
+      toast.error(error.message || "Failed to trigger auto generation");
     } finally {
       setIsTriggeringGeneration(false);
     }
-  };
-
-  // Calculate statistics from schedules
-  const calculateStatistics = (schedulesData) => {
-    const stats = {
-      totalSchedules: schedulesData.length,
-      scheduledVisits: 0,
-      inProgressVisits: 0,
-      completedVisits: 0,
-      cancelledVisits: 0,
-    };
-
-    schedulesData.forEach((schedule) => {
-      switch (schedule.visit_status) {
-        case "scheduled":
-          stats.scheduledVisits++;
-          break;
-        case "in_progress":
-          stats.inProgressVisits++;
-          break;
-        case "completed":
-          stats.completedVisits++;
-          break;
-        case "cancelled":
-          stats.cancelledVisits++;
-          break;
-      }
-    });
-
-    setStatistics(stats);
   };
 
   // Handle filter changes
@@ -416,1162 +273,695 @@ const DailyDistributionSchedulePage = () => {
       ...prev,
       [key]: value,
     }));
-    setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
   // Handle refresh
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    loadInitialData();
+    await loadAutoSchedules();
+    await loadCronJobStatus();
   };
 
-  // Handle page change
-  const handlePageChange = (newPage) => {
-    setPagination((prev) => ({ ...prev, currentPage: newPage }));
+  // Get status info for visits
+  const getStatusInfo = (status) => {
+    const statusMap = {
+      scheduled: {
+        color: "bg-blue-100 text-blue-800",
+        icon: Clock,
+        text: "Scheduled",
+      },
+      in_progress: {
+        color: "bg-yellow-100 text-yellow-800",
+        icon: Timer,
+        text: "In Progress",
+      },
+      completed: {
+        color: "bg-green-100 text-green-800",
+        icon: CheckCircle,
+        text: "Completed",
+      },
+      cancelled: {
+        color: "bg-red-100 text-red-800",
+        icon: XCircle,
+        text: "Cancelled",
+      },
+    };
+    return statusMap[status] || statusMap.scheduled;
   };
 
-  // Handle schedule actions
-  const handleStartVisit = async (scheduleId) => {
-    try {
-      setActionLoading((prev) => ({ ...prev, [scheduleId]: "starting" }));
-
-      const response = await distributionService.startStoreVisit(scheduleId);
-      if (response && response.success) {
-        toast.success("Store visit started successfully");
-        loadSchedules(); // Refresh data
-      }
-    } catch (error) {
-      console.error("Error starting visit:", error);
-      toast.error("Failed to start store visit");
-    } finally {
-      setActionLoading((prev) => ({ ...prev, [scheduleId]: null }));
-    }
-  };
-
-  const handleCompleteVisit = async (scheduleId, notes = "") => {
-    try {
-      setActionLoading((prev) => ({ ...prev, [scheduleId]: "completing" }));
-
-      const response = await distributionService.completeStoreVisit(
-        scheduleId,
-        notes
-      );
-      if (response && response.success) {
-        toast.success("Store visit completed successfully");
-        loadSchedules(); // Refresh data
-      }
-    } catch (error) {
-      console.error("Error completing visit:", error);
-      toast.error("Failed to complete store visit");
-    } finally {
-      setActionLoading((prev) => ({ ...prev, [scheduleId]: null }));
-    }
-  };
-
-  const handleCancelVisit = async (scheduleId, reason = "") => {
-    try {
-      setActionLoading((prev) => ({ ...prev, [scheduleId]: "cancelling" }));
-
-      const response = await distributionService.cancelStoreVisit(
-        scheduleId,
-        reason
-      );
-      if (response && response.success) {
-        toast.success("Store visit cancelled successfully");
-        loadSchedules(); // Refresh data
-      }
-    } catch (error) {
-      console.error("Error cancelling visit:", error);
-      toast.error("Failed to cancel store visit");
-    } finally {
-      setActionLoading((prev) => ({ ...prev, [scheduleId]: null }));
-    }
-  };
-
-  // Handle delete
-  const handleDeleteClick = (schedule) => {
-    setDeleteModal({
-      isOpen: true,
-      scheduleId: schedule.id,
-      storeName: schedule.store?.name || "Unknown Store",
-      isLoading: false,
+  // Format date
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     });
-  };
-
-  const handleDeleteConfirm = async () => {
-    try {
-      setDeleteModal((prev) => ({ ...prev, isLoading: true }));
-
-      const response = await distributionService.deleteDistributionSchedule(
-        deleteModal.scheduleId
-      );
-      if (response && response.success) {
-        toast.success("Distribution schedule deleted successfully");
-        loadSchedules(); // Refresh data
-        setDeleteModal({
-          isOpen: false,
-          scheduleId: null,
-          storeName: "",
-          isLoading: false,
-        });
-      }
-    } catch (error) {
-      console.error("Error deleting schedule:", error);
-      toast.error("Failed to delete distribution schedule");
-      setDeleteModal((prev) => ({ ...prev, isLoading: false }));
-    }
-  };
-
-  // Handle create schedule
-  const handleCreateSchedule = async (scheduleData) => {
-    try {
-      const response = await distributionService.generateDistributionSchedule(
-        scheduleData
-      );
-      if (response && response.success) {
-        loadSchedules(); // Refresh the schedules list
-        return response;
-      }
-      throw new Error(response?.message || "Failed to generate schedule");
-    } catch (error) {
-      console.error("Error creating schedule:", error);
-      throw error;
-    }
   };
 
   // Format time
   const formatTime = (timeString) => {
     if (!timeString) return "N/A";
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString("en-US", {
+    return new Date(`1970-01-01T${timeString}`).toLocaleTimeString("en-GB", {
       hour: "2-digit",
       minute: "2-digit",
-      hour12: false,
     });
   };
 
-  // Format date
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-GB");
-  };
-
-  // Get status color and icon
-  const getStatusInfo = (status) => {
-    switch (status) {
-      case "scheduled":
-        return {
-          color: "text-blue-600 bg-blue-100",
-          icon: Clock,
-          text: "Scheduled",
-        };
-      case "in_progress":
-        return {
-          color: "text-yellow-600 bg-yellow-100",
-          icon: Play,
-          text: "In Progress",
-        };
-      case "completed":
-        return {
-          color: "text-green-600 bg-green-100",
-          icon: CheckCircle,
-          text: "Completed",
-        };
-      case "cancelled":
-        return {
-          color: "text-red-600 bg-red-100",
-          icon: XCircle,
-          text: "Cancelled",
-        };
-      default:
-        return {
-          color: "text-gray-600 bg-gray-100",
-          icon: AlertTriangle,
-          text: "Unknown",
-        };
-    }
-  };
-
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Daily Distribution Schedule
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Manage daily distribution schedules and track visit progress
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* View Mode Toggle */}
-          <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode("auto")}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewMode === "auto"
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              Auto Schedule
-            </button>
-            <button
-              onClick={() => setViewMode("manual")}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewMode === "manual"
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              Manual Schedule
-            </button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header Section with Gradient Background */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 p-8 mb-8 shadow-2xl"
+        >
+          <div className="absolute inset-0 bg-black/10"></div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-4xl font-bold text-white mb-2">
+                  Daily Distribution Schedule
+                </h1>
+                <p className="text-blue-100 text-lg">
+                  Manage and track distribution routes automatically
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  className="bg-white/20 backdrop-blur-sm rounded-xl p-4"
+                >
+                  <Calendar className="w-8 h-8 text-white" />
+                </motion.div>
+              </div>
+            </div>
           </div>
 
-          <EnhancedButton
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw
-              className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`}
-            />
-            Refresh
-          </EnhancedButton>
+          {/* Decorative elements */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24"></div>
+        </motion.div>
 
-          {viewMode === "manual" && (
-            <EnhancedButton
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Generate Schedule
-            </EnhancedButton>
-          )}
-        </div>
-      </div>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card>
-          <CardBody className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  {viewMode === "auto"
-                    ? "Total Distributors"
-                    : "Total Schedules"}
-                </p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {viewMode === "auto"
-                    ? overallStats.total_distributors
-                    : statistics.totalSchedules}
-                </p>
-              </div>
-              <div className="p-2 bg-blue-100 rounded-lg">
-                {viewMode === "auto" ? (
-                  <Users className="w-6 h-6 text-blue-600" />
-                ) : (
-                  <ClipboardList className="w-6 h-6 text-blue-600" />
-                )}
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardBody className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  {viewMode === "auto" ? "Total Orders" : "Scheduled"}
-                </p>
-                <p className="text-2xl font-bold text-blue-900">
-                  {viewMode === "auto"
-                    ? overallStats.total_orders
-                    : statistics.scheduledVisits}
-                </p>
-              </div>
-              <div className="p-2 bg-blue-100 rounded-lg">
-                {viewMode === "auto" ? (
-                  <FileText className="w-6 h-6 text-blue-600" />
-                ) : (
-                  <Clock className="w-6 h-6 text-blue-600" />
-                )}
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardBody className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  {viewMode === "auto" ? "Total Stops" : "In Progress"}
-                </p>
-                <p className="text-2xl font-bold text-yellow-900">
-                  {viewMode === "auto"
-                    ? overallStats.total_stores
-                    : statistics.inProgressVisits}
-                </p>
-              </div>
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                {viewMode === "auto" ? (
-                  <MapPin className="w-6 h-6 text-yellow-600" />
-                ) : (
-                  <Play className="w-6 h-6 text-yellow-600" />
-                )}
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardBody className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  {viewMode === "auto" ? "Est. Duration" : "Completed"}
-                </p>
-                <p className="text-2xl font-bold text-green-900">
-                  {viewMode === "auto"
-                    ? `${Math.round(
-                        overallStats.total_estimated_duration / 60
-                      )}h ${overallStats.total_estimated_duration % 60}m`
-                    : statistics.completedVisits}
-                </p>
-              </div>
-              <div className="p-2 bg-green-100 rounded-lg">
-                {viewMode === "auto" ? (
-                  <Timer className="w-6 h-6 text-green-600" />
-                ) : (
-                  <CheckCircle className="w-6 h-6 text-green-600" />
-                )}
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardBody className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  {viewMode === "auto" ? "Auto Optimized" : "Cancelled"}
-                </p>
-                <p className="text-2xl font-bold text-purple-900">
-                  {viewMode === "auto"
-                    ? `${overallStats.distributors_with_orders}/${overallStats.total_distributors}`
-                    : statistics.cancelledVisits}
-                </p>
-              </div>
-              <div className="p-2 bg-purple-100 rounded-lg">
-                {viewMode === "auto" ? (
-                  <Zap className="w-6 h-6 text-purple-600" />
-                ) : (
-                  <XCircle className="w-6 h-6 text-red-600" />
-                )}
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-      </div>
-
-      {/* System Status Card - Only show in auto mode */}
-      {viewMode === "auto" && (
-        <Card className="border-l-4 border-l-green-500">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Gauge className="w-6 h-6 text-green-600" />
-                </div>
+        {/* Quick Stats Cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+        >
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardBody className="p-6">
+              <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Automatic Scheduling System
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Status and controls for the hourly distribution schedule
-                    generation
+                  <p className="text-sm font-medium text-blue-600 mb-1">
+                    Active Distributors
+                  </p>
+                  <p className="text-3xl font-bold text-blue-900">
+                    {overallStats.distributors_with_orders || 0}
                   </p>
                 </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <EnhancedButton
-                  size="sm"
-                  variant="outline"
-                  onClick={loadCronJobStatus}
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Refresh Status
-                </EnhancedButton>
-                <EnhancedButton
-                  size="sm"
-                  onClick={handleTriggerGeneration}
-                  disabled={isTriggeringGeneration || cronJobStatus.isRunning}
-                  className="flex items-center gap-2"
-                >
-                  {isTriggeringGeneration ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Zap className="w-4 h-4" />
-                  )}
-                  {isTriggeringGeneration ? "Generating..." : "Trigger Now"}
-                </EnhancedButton>
-              </div>
-            </div>
-          </CardHeader>
-          <CardBody className="pt-0">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <div className="text-xs text-gray-500 mb-1">Status</div>
-                <div
-                  className={`text-sm font-medium flex items-center justify-center gap-1 ${
-                    cronJobStatus.isRunning
-                      ? "text-yellow-600"
-                      : "text-green-600"
-                  }`}
-                >
-                  {cronJobStatus.isRunning ? (
-                    <>
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      Running
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-3 h-3" />
-                      Ready
-                    </>
-                  )}
+                <div className="bg-blue-500 p-3 rounded-xl">
+                  <Users className="w-6 h-6 text-white" />
                 </div>
               </div>
+            </CardBody>
+          </Card>
 
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <div className="text-xs text-gray-500 mb-1">Executions</div>
-                <div className="text-sm font-medium text-gray-900">
-                  {cronJobStatus.executionCount || 0}
-                </div>
-              </div>
-
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <div className="text-xs text-gray-500 mb-1">Last Run</div>
-                <div className="text-sm font-medium text-gray-900">
-                  {cronJobStatus.lastExecution
-                    ? new Date(cronJobStatus.lastExecution).toLocaleString(
-                        "en-GB",
-                        {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          day: "2-digit",
-                          month: "2-digit",
-                        }
-                      )
-                    : "Never"}
-                </div>
-              </div>
-
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <div className="text-xs text-gray-500 mb-1">Next Run</div>
-                <div className="text-sm font-medium text-gray-900">
-                  {cronJobStatus.nextExecution
-                    ? new Date(cronJobStatus.nextExecution).toLocaleString(
-                        "en-GB",
-                        {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          day: "2-digit",
-                          month: "2-digit",
-                        }
-                      )
-                    : "N/A"}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 text-xs text-gray-500 text-center">
-              System runs every hour at minute 0 • Environment:{" "}
-              {systemInfo.environment} • Server Time:{" "}
-              {systemInfo.server_time
-                ? new Date(systemInfo.server_time).toLocaleString("en-GB")
-                : "N/A"}
-            </div>
-          </CardBody>
-        </Card>
-      )}
-
-      {/* Filters */}
-      <Card>
-        <CardHeader className="pb-3">
-          <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
-        </CardHeader>
-        <CardBody className="pt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Search
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <EnhancedInput
-                  type="text"
-                  placeholder="Search schedules..."
-                  value={filters.search}
-                  onChange={(e) => handleFilterChange("search", e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Schedule Date
-              </label>
-              <EnhancedInput
-                type="date"
-                value={filters.schedule_date}
-                onChange={(e) =>
-                  handleFilterChange("schedule_date", e.target.value)
-                }
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Distributor
-              </label>
-              <select
-                value={filters.distributor_id}
-                onChange={(e) =>
-                  handleFilterChange("distributor_id", e.target.value)
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              >
-                <option value="">All Distributors</option>
-                {distributors.map((distributor) => (
-                  <option key={distributor.id} value={distributor.id}>
-                    {distributor.full_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                value={filters.visit_status}
-                onChange={(e) =>
-                  handleFilterChange("visit_status", e.target.value)
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              >
-                <option value="">All Statuses</option>
-                <option value="scheduled">Scheduled</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-          </div>
-        </CardBody>
-      </Card>
-
-      {/* Schedules Display */}
-      {viewMode === "auto" ? (
-        // Auto Schedules Display - Show by Distributor
-        <div className="space-y-6">
-          {autoSchedules.length === 0 ? (
-            <Card>
-              <CardBody className="py-12">
-                <div className="text-center">
-                  <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    No distributors with schedules found
-                  </h3>
-                  <p className="text-gray-600 mb-6">
-                    No active distributors have orders assigned for{" "}
-                    {filters.schedule_date}.
+          <Card className="bg-gradient-to-br from-emerald-50 to-green-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardBody className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-emerald-600 mb-1">
+                    Total Orders
                   </p>
+                  <p className="text-3xl font-bold text-emerald-900">
+                    {overallStats.total_orders || 0}
+                  </p>
+                </div>
+                <div className="bg-emerald-500 p-3 rounded-xl">
+                  <Package className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-amber-50 to-yellow-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardBody className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-amber-600 mb-1">
+                    Total Stores
+                  </p>
+                  <p className="text-3xl font-bold text-amber-900">
+                    {overallStats.total_stores || 0}
+                  </p>
+                </div>
+                <div className="bg-amber-500 p-3 rounded-xl">
+                  <Store className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-50 to-violet-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardBody className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-purple-600 mb-1">
+                    Est. Duration
+                  </p>
+                  <p className="text-3xl font-bold text-purple-900">
+                    {Math.round(
+                      (overallStats.total_estimated_duration || 0) / 60
+                    )}
+                    h
+                  </p>
+                </div>
+                <div className="bg-purple-500 p-3 rounded-xl">
+                  <Clock className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </motion.div>
+
+        {/* Action Buttons & Cron Status */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mb-8"
+        >
+          <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+            <CardBody className="p-6">
+              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                  <EnhancedButton
+                    onClick={triggerAutoGeneration}
+                    disabled={isTriggeringGeneration}
+                    className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white border-0 shadow-lg"
+                  >
+                    {isTriggeringGeneration ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Zap className="w-4 h-4 mr-2" />
+                    )}
+                    Generate Routes
+                  </EnhancedButton>
+
+                  <EnhancedButton
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    variant="outline"
+                    className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                  >
+                    {isRefreshing ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                    )}
+                    Refresh
+                  </EnhancedButton>
+                </div>
+
+                {/* Cron Status */}
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        cronJobStatus.isRunning
+                          ? "bg-green-400 animate-pulse"
+                          : "bg-gray-300"
+                      }`}
+                    ></div>
+                    <span className="text-gray-600">
+                      Auto-generation:{" "}
+                      {cronJobStatus.isRunning ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                  {cronJobStatus.lastExecution && (
+                    <div className="text-gray-500">
+                      Last run:{" "}
+                      {new Date(cronJobStatus.lastExecution).toLocaleString(
+                        "en-GB"
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </motion.div>
+
+        {/* Filters */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mb-8"
+        >
+          <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <Filter className="w-5 h-5 text-indigo-600" />
+                <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+              </div>
+            </CardHeader>
+            <CardBody className="pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Search
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <EnhancedInput
+                      type="text"
+                      placeholder="Search distributors or stores..."
+                      value={filters.search}
+                      onChange={(e) =>
+                        handleFilterChange("search", e.target.value)
+                      }
+                      className="pl-10 border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Schedule Date
+                  </label>
+                  <div className="relative">
+                    <CalendarIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <EnhancedInput
+                      type="date"
+                      value={filters.schedule_date}
+                      onChange={(e) =>
+                        handleFilterChange("schedule_date", e.target.value)
+                      }
+                      className="pl-10 border-gray-200 focus:border-indigo-500 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Distributor
+                  </label>
+                  <select
+                    value={filters.distributor_id}
+                    onChange={(e) =>
+                      handleFilterChange("distributor_id", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                  >
+                    <option value="">All Distributors</option>
+                    {distributors.map((distributor) => (
+                      <option key={distributor.id} value={distributor.id}>
+                        {distributor.full_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={filters.visit_status}
+                    onChange={(e) =>
+                      handleFilterChange("visit_status", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="scheduled">Scheduled</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </motion.div>
+
+        {/* Loading State */}
+        {isLoading && (
+          <Card className="border-0 shadow-lg">
+            <CardBody className="py-16">
+              <div className="flex flex-col items-center justify-center">
+                <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mb-4" />
+                <p className="text-gray-600 text-lg">
+                  Loading distribution schedules...
+                </p>
+              </div>
+            </CardBody>
+          </Card>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mb-6"
+          >
+            <Card className="border-red-200 bg-red-50">
+              <CardBody className="p-6">
+                <div className="flex items-center">
+                  <AlertCircle className="w-6 h-6 text-red-500 mr-3" />
+                  <div>
+                    <h3 className="text-lg font-medium text-red-800">Error</h3>
+                    <p className="text-red-700">{error}</p>
+                  </div>
                 </div>
               </CardBody>
             </Card>
-          ) : (
-            autoSchedules.map((distributorSchedule) => (
-              <Card
-                key={distributorSchedule.distributor.id}
-                className="overflow-hidden"
+          </motion.div>
+        )}
+
+        {/* Distribution Schedules */}
+        {!isLoading && !error && (
+          <AnimatePresence>
+            {autoSchedules.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="text-center py-16"
               >
-                <CardHeader className="pb-3 bg-gradient-to-r from-indigo-50 to-blue-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
-                        <User className="h-6 w-6 text-indigo-600" />
+                <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+                  <CardBody className="p-12">
+                    <div className="max-w-md mx-auto">
+                      <div className="w-20 h-20 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Users className="w-10 h-10 text-indigo-600" />
                       </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {distributorSchedule.distributor.full_name}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          {distributorSchedule.distributor.phone} •{" "}
-                          {distributorSchedule.statistics.total_orders} orders •{" "}
-                          {distributorSchedule.statistics.total_stores} stops
-                        </p>
-                      </div>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                        No Distribution Schedules Found
+                      </h3>
+                      <p className="text-gray-600 mb-8 leading-relaxed">
+                        {filters.search ||
+                        filters.distributor_id ||
+                        filters.visit_status
+                          ? "No schedules match your current filters. Try adjusting your search criteria."
+                          : `No distribution schedules are available for ${formatDate(
+                              filters.schedule_date
+                            )}. Click "Generate Routes" to create new schedules automatically.`}
+                      </p>
+                      <EnhancedButton
+                        onClick={triggerAutoGeneration}
+                        disabled={isTriggeringGeneration}
+                        className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white border-0 shadow-lg"
+                      >
+                        {isTriggeringGeneration ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Zap className="w-4 h-4 mr-2" />
+                        )}
+                        Generate Routes Now
+                      </EnhancedButton>
                     </div>
-                    <div className="text-right">
-                      <div className="flex items-center gap-4">
-                        {distributorSchedule.statistics
-                          .has_existing_schedule ? (
-                          <div className="text-center">
-                            <div className="text-xs text-blue-500">
-                              Existing Schedule
+                  </CardBody>
+                </Card>
+              </motion.div>
+            ) : (
+              <div className="space-y-8">
+                {autoSchedules.map((distributorSchedule, index) => (
+                  <motion.div
+                    key={distributorSchedule.distributor.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <Card className="border-0 shadow-xl bg-white overflow-hidden hover:shadow-2xl transition-all duration-300">
+                      {/* Distributor Header */}
+                      <CardHeader className="pb-0">
+                        <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 -mx-6 -mt-6 px-6 pt-6 pb-6 mb-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-6">
+                              <div className="relative">
+                                <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                                  <User className="w-8 h-8 text-white" />
+                                </div>
+                                {distributorSchedule.statistics
+                                  .has_existing_schedule && (
+                                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-400 rounded-full flex items-center justify-center">
+                                    <CheckCircle className="w-4 h-4 text-white" />
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <h3 className="text-2xl font-bold text-white mb-1">
+                                  {distributorSchedule.distributor.full_name}
+                                </h3>
+                                <div className="flex items-center gap-4 text-white/80">
+                                  <div className="flex items-center gap-1">
+                                    <Phone className="w-4 h-4" />
+                                    <span>
+                                      {distributorSchedule.distributor.phone}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Package className="w-4 h-4" />
+                                    <span>
+                                      {
+                                        distributorSchedule.statistics
+                                          .total_orders
+                                      }{" "}
+                                      orders
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Store className="w-4 h-4" />
+                                    <span>
+                                      {
+                                        distributorSchedule.statistics
+                                          .total_stores
+                                      }{" "}
+                                      stops
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-sm font-medium text-blue-600 flex items-center gap-1">
-                              <ClipboardList className="w-3 h-3" />
-                              Manual
+                            <div className="flex items-center gap-6">
+                              <div className="text-center">
+                                <div className="text-white/70 text-sm mb-1">
+                                  Duration
+                                </div>
+                                <div className="text-2xl font-bold text-white">
+                                  {Math.floor(
+                                    distributorSchedule.statistics
+                                      .estimated_duration_minutes / 60
+                                  )}
+                                  h{" "}
+                                  {distributorSchedule.statistics
+                                    .estimated_duration_minutes % 60}
+                                  m
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-white/70 text-sm mb-1">
+                                  Distance
+                                </div>
+                                <div className="text-xl font-semibold text-white flex items-center gap-1">
+                                  <Route className="w-4 h-4" />
+                                  {distributorSchedule.schedule_items
+                                    .reduce(
+                                      (total, item) =>
+                                        total +
+                                        (item.distance_from_previous || 0),
+                                      0
+                                    )
+                                    .toFixed(1)}{" "}
+                                  km
+                                </div>
+                              </div>
                             </div>
+                          </div>
+                        </div>
+                      </CardHeader>
+
+                      {/* Schedule Items */}
+                      <CardBody className="pt-0">
+                        {distributorSchedule.schedule_items.length === 0 ? (
+                          <div className="text-center py-12">
+                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <Package className="w-8 h-8 text-gray-400" />
+                            </div>
+                            <p className="text-gray-600">No visits scheduled</p>
                           </div>
                         ) : (
-                          <div className="text-center">
-                            <div className="text-xs text-green-500">
-                              Auto Generated
-                            </div>
-                            <div className="text-sm font-medium text-green-600 flex items-center gap-1">
-                              <Zap className="w-3 h-3" />
-                              Optimized
-                            </div>
-                          </div>
-                        )}
-                        <div className="text-center">
-                          <div className="text-xs text-gray-500">
-                            Est. Duration
-                          </div>
-                          <div className="text-lg font-semibold text-indigo-600">
-                            {Math.round(
-                              distributorSchedule.statistics
-                                .estimated_duration_minutes / 60
-                            )}
-                            h{" "}
-                            {distributorSchedule.statistics
-                              .estimated_duration_minutes % 60}
-                            m
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-xs text-gray-500">
-                            Route Distance
-                          </div>
-                          <div className="text-sm font-medium text-gray-700 flex items-center gap-1">
-                            <Route className="w-3 h-3" />
-                            {distributorSchedule.schedule_items
-                              .reduce(
-                                (total, item) =>
-                                  total + (item.distance_from_previous || 0),
-                                0
-                              )
-                              .toFixed(1)}{" "}
-                            km
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardBody className="pt-0">
-                  {distributorSchedule.schedule_items.length === 0 ? (
-                    <div className="text-center py-8">
-                      <ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-600">
-                        No visits scheduled for this distributor
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Visit Order
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Store
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Orders
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Distance
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Status
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Duration
-                            </th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {distributorSchedule.schedule_items.map(
-                            (scheduleItem, index) => {
-                              const statusInfo = getStatusInfo(
-                                scheduleItem.visit_status
-                              );
-                              const StatusIcon = statusInfo.icon;
+                          <div className="grid gap-4">
+                            {distributorSchedule.schedule_items.map(
+                              (scheduleItem, itemIndex) => {
+                                const statusInfo = getStatusInfo(
+                                  scheduleItem.visit_status
+                                );
+                                const StatusIcon = statusInfo.icon;
 
-                              return (
-                                <motion.tr
-                                  key={scheduleItem.id}
-                                  initial={{ opacity: 0, y: 20 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{
-                                    duration: 0.3,
-                                    delay: index * 0.1,
-                                  }}
-                                  className="hover:bg-gray-50"
-                                >
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="flex items-center">
-                                      <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                                        <span className="text-sm font-medium text-indigo-600">
-                                          {scheduleItem.visit_order}
-                                        </span>
-                                      </div>
-                                      <div className="ml-2 flex flex-col">
-                                        {scheduleItem.is_auto_generated && (
-                                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                            <Zap className="w-3 h-3 mr-1" />
-                                            Auto Optimized
-                                          </span>
-                                        )}
-                                        {scheduleItem.visit_order === 1 && (
-                                          <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                            <Target className="w-3 h-3 mr-1" />
-                                            Starting Point
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="flex items-center">
-                                      <Building className="h-4 w-4 text-gray-400 mr-2" />
-                                      <div>
-                                        <div className="text-sm font-medium text-gray-900">
-                                          {scheduleItem.store?.name || "N/A"}
-                                        </div>
-                                        <div className="text-sm text-gray-500">
-                                          {scheduleItem.store?.address || "N/A"}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm text-gray-900">
-                                      {scheduleItem.orders?.length || 0} orders
-                                      {scheduleItem.orders?.length > 0 && (
-                                        <div className="text-xs text-gray-500 mt-1">
-                                          Total: €
-                                          {scheduleItem.orders
-                                            .reduce(
-                                              (sum, order) =>
-                                                sum +
-                                                parseFloat(
-                                                  order.total_amount_eur || 0
-                                                ),
-                                              0
-                                            )
-                                            .toFixed(2)}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    <div className="flex items-center gap-2">
-                                      {scheduleItem.distance_from_previous ? (
-                                        <>
-                                          <Navigation className="w-4 h-4 text-gray-400" />
-                                          <div>
-                                            <div className="text-sm font-medium text-gray-900">
-                                              {parseFloat(
-                                                scheduleItem.distance_from_previous
-                                              ).toFixed(1)}{" "}
-                                              km
+                                return (
+                                  <motion.div
+                                    key={scheduleItem.id}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: itemIndex * 0.05 }}
+                                    className="group relative"
+                                  >
+                                    <Card className="border border-gray-200 hover:border-indigo-300 hover:shadow-lg transition-all duration-300 bg-gradient-to-r from-white to-gray-50">
+                                      <CardBody className="p-6">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-6 flex-1">
+                                            {/* Visit Order */}
+                                            <div className="relative">
+                                              <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                                                <span className="text-lg font-bold text-white">
+                                                  {scheduleItem.visit_order}
+                                                </span>
+                                              </div>
+                                              {scheduleItem.visit_order ===
+                                                1 && (
+                                                <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                                  <Target className="w-3 h-3 text-white" />
+                                                </div>
+                                              )}
                                             </div>
-                                            <div className="text-xs text-gray-500">
-                                              {scheduleItem.visit_order === 1
-                                                ? "From depot"
-                                                : "From previous"}
+
+                                            {/* Store Info */}
+                                            <div className="flex-1">
+                                              <div className="flex items-center gap-2 mb-2">
+                                                <Building className="w-5 h-5 text-indigo-600" />
+                                                <h4 className="text-lg font-semibold text-gray-900">
+                                                  {scheduleItem.store?.name ||
+                                                    "N/A"}
+                                                </h4>
+                                                {scheduleItem.is_auto_generated && (
+                                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    <Zap className="w-3 h-3 mr-1" />
+                                                    Auto
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <div className="flex items-center gap-1 text-gray-600 mb-3">
+                                                <LocationIcon className="w-4 h-4" />
+                                                <span className="text-sm">
+                                                  {scheduleItem.store
+                                                    ?.address || "N/A"}
+                                                </span>
+                                              </div>
+
+                                              {/* Orders Summary */}
+                                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div className="bg-blue-50 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2">
+                                                    <Package className="w-4 h-4 text-blue-600" />
+                                                    <span className="text-sm font-medium text-blue-900">
+                                                      {scheduleItem.orders
+                                                        ?.length || 0}{" "}
+                                                      Orders
+                                                    </span>
+                                                  </div>
+                                                  {scheduleItem.orders?.length >
+                                                    0 && (
+                                                    <div className="text-xs text-blue-700 mt-1">
+                                                      Total: €
+                                                      {scheduleItem.orders
+                                                        .reduce(
+                                                          (sum, order) =>
+                                                            sum +
+                                                            parseFloat(
+                                                              order.total_amount_eur ||
+                                                                0
+                                                            ),
+                                                          0
+                                                        )
+                                                        .toFixed(2)}
+                                                    </div>
+                                                  )}
+                                                </div>
+
+                                                <div className="bg-purple-50 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2">
+                                                    <Navigation className="w-4 h-4 text-purple-600" />
+                                                    <span className="text-sm font-medium text-purple-900">
+                                                      {scheduleItem.distance_from_previous
+                                                        ? `${parseFloat(
+                                                            scheduleItem.distance_from_previous
+                                                          ).toFixed(1)} km`
+                                                        : "N/A"}
+                                                    </span>
+                                                  </div>
+                                                  <div className="text-xs text-purple-700 mt-1">
+                                                    {scheduleItem.visit_order ===
+                                                    1
+                                                      ? "From depot"
+                                                      : "From previous"}
+                                                  </div>
+                                                </div>
+
+                                                <div className="bg-amber-50 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2">
+                                                    <Timer className="w-4 h-4 text-amber-600" />
+                                                    <span className="text-sm font-medium text-amber-900">
+                                                      {scheduleItem.estimated_duration
+                                                        ? `${scheduleItem.estimated_duration} min`
+                                                        : "N/A"}
+                                                    </span>
+                                                  </div>
+                                                  <div className="text-xs text-amber-700 mt-1">
+                                                    Estimated time
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </div>
+
+                                            {/* Status & Actions */}
+                                            <div className="flex flex-col items-end gap-3">
+                                              <span
+                                                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusInfo.color}`}
+                                              >
+                                                <StatusIcon className="w-4 h-4 mr-1" />
+                                                {statusInfo.text}
+                                              </span>
+
+                                              <EnhancedButton
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => {
+                                                  // Handle view details
+                                                  console.log(
+                                                    "View details for:",
+                                                    scheduleItem
+                                                  );
+                                                }}
+                                                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                              >
+                                                <Eye className="w-4 h-4 mr-1" />
+                                                Details
+                                              </EnhancedButton>
                                             </div>
                                           </div>
-                                        </>
-                                      ) : (
-                                        <span className="text-gray-400">
-                                          N/A
-                                        </span>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <span
-                                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}
-                                    >
-                                      <StatusIcon className="w-3 h-3 mr-1" />
-                                      {statusInfo.text}
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {scheduleItem.estimated_duration
-                                      ? `${scheduleItem.estimated_duration} min`
-                                      : "N/A"}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <div className="flex items-center justify-end gap-2">
-                                      <EnhancedButton
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => {
-                                          setSelectedSchedule(scheduleItem);
-                                          setShowDetailsModal(true);
-                                        }}
-                                        className="flex items-center gap-1"
-                                      >
-                                        <Eye className="w-3 h-3" />
-                                        Details
-                                      </EnhancedButton>
-                                    </div>
-                                  </td>
-                                </motion.tr>
-                              );
-                            }
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </CardBody>
-              </Card>
-            ))
-          )}
-        </div>
-      ) : (
-        // Manual Schedules Table (Original)
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Distribution Schedules ({schedules.length})
-              </h3>
-            </div>
-          </CardHeader>
-          <CardBody className="pt-0">
-            {error && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-                <div className="flex items-center">
-                  <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-                  <span className="text-red-700">{error}</span>
-                </div>
+                                        </div>
+                                      </CardBody>
+                                    </Card>
+                                  </motion.div>
+                                );
+                              }
+                            )}
+                          </div>
+                        )}
+                      </CardBody>
+                    </Card>
+                  </motion.div>
+                ))}
               </div>
             )}
-
-            {schedules.length === 0 ? (
-              <div className="text-center py-12">
-                <ClipboardList className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No schedules found
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  {filters.search ||
-                  filters.distributor_id ||
-                  filters.visit_status
-                    ? "No schedules match your current filters."
-                    : "No distribution schedules have been created yet."}
-                </p>
-                <EnhancedButton onClick={() => setShowCreateModal(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Generate Schedule
-                </EnhancedButton>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date & Time
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Distributor
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Store
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Visit Order
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Duration
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {schedules.map((schedule) => {
-                      const statusInfo = getStatusInfo(schedule.visit_status);
-                      const StatusIcon = statusInfo.icon;
-
-                      return (
-                        <motion.tr
-                          key={schedule.id}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="hover:bg-gray-50"
-                        >
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex flex-col">
-                              <div className="text-sm font-medium text-gray-900">
-                                {formatDate(schedule.schedule_date)}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {formatTime(schedule.scheduled_start_time)} -{" "}
-                                {formatTime(schedule.scheduled_end_time)}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="flex-shrink-0 h-8 w-8">
-                                <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                                  <User className="h-4 w-4 text-indigo-600" />
-                                </div>
-                              </div>
-                              <div className="ml-3">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {schedule.distributor?.full_name || "N/A"}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {schedule.distributor?.phone || "N/A"}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <Building className="h-4 w-4 text-gray-400 mr-2" />
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">
-                                  {schedule.store?.name || "N/A"}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {schedule.store?.address || "N/A"}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900 font-medium">
-                              #{schedule.visit_order || "N/A"}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}
-                            >
-                              <StatusIcon className="w-3 h-3 mr-1" />
-                              {statusInfo.text}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {schedule.estimated_duration
-                              ? `${schedule.estimated_duration} min`
-                              : "N/A"}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="flex items-center justify-end gap-2">
-                              {/* Action buttons based on status */}
-                              {schedule.visit_status === "scheduled" && (
-                                <EnhancedButton
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleStartVisit(schedule.id)}
-                                  disabled={
-                                    actionLoading[schedule.id] === "starting"
-                                  }
-                                  className="flex items-center gap-1"
-                                >
-                                  {actionLoading[schedule.id] === "starting" ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <Play className="w-3 h-3" />
-                                  )}
-                                  Start
-                                </EnhancedButton>
-                              )}
-
-                              {schedule.visit_status === "in_progress" && (
-                                <>
-                                  <EnhancedButton
-                                    size="sm"
-                                    variant="success"
-                                    onClick={() =>
-                                      handleCompleteVisit(schedule.id)
-                                    }
-                                    disabled={
-                                      actionLoading[schedule.id] ===
-                                      "completing"
-                                    }
-                                    className="flex items-center gap-1"
-                                  >
-                                    {actionLoading[schedule.id] ===
-                                    "completing" ? (
-                                      <Loader2 className="w-3 h-3 animate-spin" />
-                                    ) : (
-                                      <CheckCircle className="w-3 h-3" />
-                                    )}
-                                    Complete
-                                  </EnhancedButton>
-                                  <EnhancedButton
-                                    size="sm"
-                                    variant="danger"
-                                    onClick={() =>
-                                      handleCancelVisit(
-                                        schedule.id,
-                                        "Cancelled by admin"
-                                      )
-                                    }
-                                    disabled={
-                                      actionLoading[schedule.id] ===
-                                      "cancelling"
-                                    }
-                                    className="flex items-center gap-1"
-                                  >
-                                    {actionLoading[schedule.id] ===
-                                    "cancelling" ? (
-                                      <Loader2 className="w-3 h-3 animate-spin" />
-                                    ) : (
-                                      <XCircle className="w-3 h-3" />
-                                    )}
-                                    Cancel
-                                  </EnhancedButton>
-                                </>
-                              )}
-
-                              {/* View details button */}
-                              <EnhancedButton
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedSchedule(schedule);
-                                  setShowDetailsModal(true);
-                                }}
-                                className="flex items-center gap-1"
-                              >
-                                <Eye className="w-3 h-3" />
-                                Details
-                              </EnhancedButton>
-
-                              {/* Delete button - only for scheduled visits */}
-                              {schedule.visit_status === "scheduled" && (
-                                <EnhancedButton
-                                  size="sm"
-                                  variant="danger"
-                                  onClick={() => handleDeleteClick(schedule)}
-                                  className="flex items-center gap-1 ml-2"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </EnhancedButton>
-                              )}
-                            </div>
-                          </td>
-                        </motion.tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Pagination */}
-            {pagination.totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-between">
-                <div className="text-sm text-gray-700">
-                  Showing{" "}
-                  {(pagination.currentPage - 1) * pagination.itemsPerPage + 1}{" "}
-                  to{" "}
-                  {Math.min(
-                    pagination.currentPage * pagination.itemsPerPage,
-                    pagination.totalItems
-                  )}{" "}
-                  of {pagination.totalItems} results
-                </div>
-                <div className="flex items-center gap-2">
-                  <EnhancedButton
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(pagination.currentPage - 1)}
-                    disabled={pagination.currentPage === 1}
-                  >
-                    Previous
-                  </EnhancedButton>
-                  <span className="text-sm text-gray-700">
-                    Page {pagination.currentPage} of {pagination.totalPages}
-                  </span>
-                  <EnhancedButton
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(pagination.currentPage + 1)}
-                    disabled={pagination.currentPage === pagination.totalPages}
-                  >
-                    Next
-                  </EnhancedButton>
-                </div>
-              </div>
-            )}
-          </CardBody>
-        </Card>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        isOpen={deleteModal.isOpen}
-        onClose={() =>
-          setDeleteModal({
-            isOpen: false,
-            scheduleId: null,
-            storeName: "",
-            isLoading: false,
-          })
-        }
-        onConfirm={handleDeleteConfirm}
-        isLoading={deleteModal.isLoading}
-        title="Delete Distribution Schedule"
-        message={`Are you sure you want to delete the distribution schedule for "${deleteModal.storeName}"? This action cannot be undone.`}
-      />
-
-      {/* Create Schedule Modal */}
-      <CreateScheduleModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onCreateSuccess={handleCreateSchedule}
-        distributors={distributors}
-        stores={stores}
-      />
+          </AnimatePresence>
+        )}
+      </div>
     </div>
   );
 };

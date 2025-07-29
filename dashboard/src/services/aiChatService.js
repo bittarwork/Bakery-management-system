@@ -53,7 +53,7 @@ class AIChatService {
     async getSuggestedQuestions() {
         try {
             const response = await apiService.get(
-                `${this.baseUrl}/suggested-questions`
+                `${this.baseUrl}/suggestions`
             );
 
             if (response.success) {
@@ -123,12 +123,12 @@ class AIChatService {
     }
 
     /**
-     * Clear AI cache (admin only)
+     * Clear AI cache (admin only) - Uses memory endpoint instead
      */
     async clearCache() {
         try {
-            const response = await apiService.delete(
-                `${this.baseUrl}/cache`
+            const response = await apiService.post(
+                `${this.baseUrl}/memory/clear`
             );
 
             if (response.success) {
@@ -145,12 +145,12 @@ class AIChatService {
     }
 
     /**
-     * Get cache statistics (admin only)
+     * Get cache statistics (admin only) - Uses memory endpoint instead
      */
     async getCacheStats() {
         try {
             const response = await apiService.get(
-                `${this.baseUrl}/cache/stats`
+                `${this.baseUrl}/memory`
             );
 
             if (response.success) {
