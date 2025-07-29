@@ -111,14 +111,14 @@ const defineAssociations = () => {
     // Distribution system associations
     DailyDistributionSchedule.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
     DailyDistributionSchedule.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
-    
+
     DistributionTrip.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
     DistributionTrip.belongsTo(Vehicle, { foreignKey: 'vehicle_id', as: 'vehicle' });
-    
+
     LocationTracking.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
-    
+
     DistributionNotification.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
-    
+
     DistributionPerformance.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
 
     if (process.env.NODE_ENV !== 'test') {
