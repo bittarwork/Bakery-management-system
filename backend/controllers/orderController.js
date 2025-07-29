@@ -406,12 +406,15 @@ export const createOrder = async (req, res) => {
             validatedItems.push({
                 product_id: item.product_id,
                 quantity,
+                unit_price: unitPriceEur,
                 unit_price_eur: unitPriceEur,
                 unit_price_syp: unitPriceSyp,
+                total_price: itemTotalEur,
                 total_price_eur: itemTotalEur,
                 total_price_syp: itemTotalSyp,
+                final_price_eur: itemTotalEur,
                 product_name: product.name,
-                product_unit: product.unit || 'piece',
+                unit: product.unit || 'piece',
                 notes: item.notes || null
             });
         }
