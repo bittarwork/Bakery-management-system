@@ -11,17 +11,15 @@ import {
   Store,
   User,
   Clock,
-  AlertTriangle,
   FileText,
-  CreditCard,
   Truck,
   Save,
   ArrowLeft,
   Building,
   Phone,
   MapPin,
-  DollarSign,
   Calculator,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import orderService from "../../services/orderService.js";
@@ -40,7 +38,7 @@ const CreateOrderPage = () => {
   const [formData, setFormData] = useState({
     store_id: "",
     distributor_id: "",
-    currency: "EUR", // Always EUR
+    currency: "EUR", // Always EUR only
     delivery_date: "",
     notes: "",
     special_instructions: "",
@@ -56,8 +54,9 @@ const CreateOrderPage = () => {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingDistributors, setLoadingDistributors] = useState(true);
 
-  // Selected store details for display
+  // Selected store and distributor details for display
   const [selectedStore, setSelectedStore] = useState(null);
+  const [selectedDistributor, setSelectedDistributor] = useState(null);
 
   // Fetch data on component mount
   useEffect(() => {
@@ -65,11 +64,7 @@ const CreateOrderPage = () => {
   }, []);
 
   const fetchInitialData = async () => {
-    await Promise.all([
-      fetchStores(),
-      fetchProducts(),
-      fetchDistributors()
-    ]);
+    await Promise.all([fetchStores(), fetchProducts(), fetchDistributors()]);
   };
 
   const fetchStores = async () => {
@@ -103,7 +98,10 @@ const CreateOrderPage = () => {
   const fetchDistributors = async () => {
     try {
       setLoadingDistributors(true);
-      const response = await userService.getUsers({ role: "distributor", status: "active" });
+      const response = await userService.getUsers({
+        role: "distributor",
+        status: "active",
+      });
       const usersData = response.data || response;
       setDistributors(usersData.users || usersData || []);
     } catch (error) {
@@ -116,9 +114,18 @@ const CreateOrderPage = () => {
 
   // Handle store selection
   const handleStoreChange = (storeId) => {
-    const store = stores.find(s => s.id === parseInt(storeId));
+    const store = stores.find((s) => s.id === parseInt(storeId));
     setSelectedStore(store);
-    setFormData(prev => ({ ...prev, store_id: storeId }));
+    setFormData((prev) => ({ ...prev, store_id: storeId }));
+  };
+
+  // Handle distributor selection
+  const handleDistributorChange = (distributorId) => {
+    const distributor = distributors.find(
+      (d) => d.id === parseInt(distributorId)
+    );
+    setSelectedDistributor(distributor);
+    setFormData((prev) => ({ ...prev, distributor_id: distributorId }));
   };
 
   // Add new item to order
@@ -158,30 +165,21 @@ const CreateOrderPage = () => {
     return products.find((product) => product.id === parseInt(productId));
   };
 
-  // Calculate item total
+  // Calculate item total (EUR only)
   const calculateItemTotal = (item) => {
     const product = getProduct(item.product_id);
-    if (!product) return { eur: 0, syp: 0 };
+    if (!product) return 0;
 
     const quantity = parseInt(item.quantity) || 0;
-    return {
-      eur: (parseFloat(product.price_eur) || 0) * quantity,
-      syp: (parseFloat(product.price_syp) || 0) * quantity,
-    };
+    return (parseFloat(product.price_eur) || 0) * quantity;
   };
 
-  // Calculate order total
+  // Calculate order total (EUR only)
   const calculateOrderTotal = () => {
-    let totalEur = 0;
-    let totalSyp = 0;
-
-    formData.items.forEach((item) => {
-      const itemTotal = calculateItemTotal(item);
-      totalEur += itemTotal.eur;
-      totalSyp += itemTotal.syp;
-    });
-
-    return { eur: totalEur, syp: totalSyp };
+    return formData.items.reduce(
+      (total, item) => total + calculateItemTotal(item),
+      0
+    );
   };
 
   // Handle form submission
@@ -202,50 +200,59 @@ const CreateOrderPage = () => {
     // Validate all items have products and quantities
     const invalidItems = formData.items.filter(
       (item) =>
-        !item.product_id || !item.quantity || parseInt(item.quantity) <= 0
+        !item.product_id || !item.quantity || parseInt(item.quantity) < 1
     );
 
     if (invalidItems.length > 0) {
-      toast.error("يرجى ملء جميع تفاصيل المنتجات بكميات صحيحة");
+      toast.error("يرجى التأكد من اختيار المنتجات وكمياتها");
       return;
     }
 
     try {
       setLoading(true);
 
-      // Prepare order data for API
+      // Prepare order data
       const orderData = {
         store_id: parseInt(formData.store_id),
-        distributor_id: formData.distributor_id ? parseInt(formData.distributor_id) : null,
+        distributor_id: formData.distributor_id
+          ? parseInt(formData.distributor_id)
+          : null,
         currency: "EUR",
         delivery_date: formData.delivery_date || null,
         notes: formData.notes,
         special_instructions: formData.special_instructions,
-        items: formData.items.map((item) => ({
-          product_id: parseInt(item.product_id),
-          quantity: parseInt(item.quantity),
-          notes: item.notes || null,
-        })),
+        items: formData.items.map((item) => {
+          const product = getProduct(item.product_id);
+          return {
+            product_id: parseInt(item.product_id),
+            quantity: parseInt(item.quantity),
+            unit_price: parseFloat(product.price_eur),
+            notes: item.notes,
+          };
+        }),
       };
 
+      console.log("Creating order with data:", orderData);
+
       const response = await orderService.createOrder(orderData);
-      
-      toast.success("تم إنشاء الطلب بنجاح");
-      navigate(`/orders/${response.data?.id || response.id}`);
+
+      if (response.success || response.data) {
+        toast.success("تم إنشاء الطلب بنجاح");
+        navigate("/orders");
+      } else {
+        toast.error(response.message || "خطأ في إنشاء الطلب");
+      }
     } catch (error) {
       console.error("Error creating order:", error);
       const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "خطأ في إنشاء الطلب";
+        error.response?.data?.message || error.message || "خطأ في إنشاء الطلب";
       toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const orderTotal = calculateOrderTotal();
-
+  // Loading state
   if (loadingStores || loadingProducts || loadingDistributors) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -253,6 +260,9 @@ const CreateOrderPage = () => {
       </div>
     );
   }
+
+  // Calculate order total for display
+  const orderTotal = calculateOrderTotal();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -317,29 +327,37 @@ const CreateOrderPage = () => {
                       <select
                         value={formData.store_id}
                         onChange={(e) => handleStoreChange(e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                         required
                       >
-                        <option value="">اختر المتجر</option>
+                        <option value="" className="text-gray-500">
+                          اختر المتجر
+                        </option>
                         {stores.map((store) => (
-                          <option key={store.id} value={store.id}>
+                          <option
+                            key={store.id}
+                            value={store.id}
+                            className="text-gray-900"
+                          >
                             {store.name}
                           </option>
                         ))}
                       </select>
                     </div>
-                    
+
                     {selectedStore && (
                       <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-900 mb-2">تفاصيل المتجر</h4>
+                        <h4 className="font-medium text-gray-900 mb-2">
+                          تفاصيل المتجر
+                        </h4>
                         <div className="space-y-1 text-sm text-gray-600">
                           <div className="flex items-center gap-2">
                             <Phone className="w-4 h-4" />
-                            <span>{selectedStore.phone || 'غير محدد'}</span>
+                            <span>{selectedStore.phone || "غير محدد"}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <MapPin className="w-4 h-4" />
-                            <span>{selectedStore.address || 'غير محدد'}</span>
+                            <span>{selectedStore.address || "غير محدد"}</span>
                           </div>
                         </div>
                       </div>
@@ -359,23 +377,33 @@ const CreateOrderPage = () => {
                 <CardBody>
                   <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      تاريخ التسليم
+                      تاريخ التسليم المطلوب
                     </label>
                     <EnhancedInput
                       type="date"
                       value={formData.delivery_date}
-                      onChange={(e) => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          delivery_date: e.target.value,
+                        }))
+                      }
                       icon={<Calendar className="w-4 h-4" />}
                     />
                   </div>
 
                   <div className="mt-6">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      ملاحظات
+                      ملاحظات عامة
                     </label>
                     <textarea
                       value={formData.notes}
-                      onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          notes: e.target.value,
+                        }))
+                      }
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       rows="3"
                       placeholder="أضف أي ملاحظات عامة للطلب..."
@@ -389,7 +417,12 @@ const CreateOrderPage = () => {
                     </label>
                     <textarea
                       value={formData.special_instructions}
-                      onChange={(e) => setFormData(prev => ({ ...prev, special_instructions: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          special_instructions: e.target.value,
+                        }))
+                      }
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       rows="2"
                       placeholder="تعليمات خاصة للموزع (مواعيد محددة، متطلبات خاصة، إلخ)..."
@@ -409,17 +442,24 @@ const CreateOrderPage = () => {
                 <CardBody>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      الموزع المختص
+                      الموزع المسؤول عن التوصيل
                     </label>
                     <select
                       value={formData.distributor_id}
-                      onChange={(e) => setFormData(prev => ({ ...prev, distributor_id: e.target.value }))}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      onChange={(e) => handleDistributorChange(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                     >
-                      <option value="">اختر الموزع (اختياري)</option>
+                      <option value="" className="text-gray-500">
+                        اختر الموزع (اختياري)
+                      </option>
                       {distributors.map((distributor) => (
-                        <option key={distributor.id} value={distributor.id}>
-                          {distributor.name}
+                        <option
+                          key={distributor.id}
+                          value={distributor.id}
+                          className="text-gray-900"
+                        >
+                          {distributor.name}{" "}
+                          {distributor.phone ? `- ${distributor.phone}` : ""}
                         </option>
                       ))}
                     </select>
@@ -454,14 +494,16 @@ const CreateOrderPage = () => {
                     <div className="text-center py-8 text-gray-500">
                       <Package className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                       <p>لم يتم إضافة أي منتجات بعد</p>
-                      <p className="text-sm">انقر على "إضافة منتج" لبدء إنشاء الطلب</p>
+                      <p className="text-sm">
+                        انقر على "إضافة منتج" لبدء إنشاء الطلب
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {formData.items.map((item, index) => {
                         const product = getProduct(item.product_id);
                         const itemTotal = calculateItemTotal(item);
-                        
+
                         return (
                           <motion.div
                             key={item.id}
@@ -483,7 +525,7 @@ const CreateOrderPage = () => {
                                 حذف
                               </EnhancedButton>
                             </div>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -491,14 +533,29 @@ const CreateOrderPage = () => {
                                 </label>
                                 <select
                                   value={item.product_id}
-                                  onChange={(e) => updateItem(item.id, "product_id", e.target.value)}
-                                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  onChange={(e) =>
+                                    updateItem(
+                                      item.id,
+                                      "product_id",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
                                   required
                                 >
-                                  <option value="">اختر المنتج</option>
+                                  <option value="" className="text-gray-500">
+                                    اختر المنتج
+                                  </option>
                                   {products.map((product) => (
-                                    <option key={product.id} value={product.id}>
-                                      {product.name}
+                                    <option
+                                      key={product.id}
+                                      value={product.id}
+                                      className="text-gray-900"
+                                    >
+                                      {product.name} - €
+                                      {parseFloat(
+                                        product.price_eur || 0
+                                      ).toFixed(2)}
                                     </option>
                                   ))}
                                 </select>
@@ -512,7 +569,13 @@ const CreateOrderPage = () => {
                                   type="number"
                                   min="1"
                                   value={item.quantity}
-                                  onChange={(e) => updateItem(item.id, "quantity", e.target.value)}
+                                  onChange={(e) =>
+                                    updateItem(
+                                      item.id,
+                                      "quantity",
+                                      e.target.value
+                                    )
+                                  }
                                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                   required
                                 />
@@ -520,37 +583,26 @@ const CreateOrderPage = () => {
 
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  المجموع
+                                  المجموع الجزئي
                                 </label>
-                                <div className="p-2 bg-white border border-gray-300 rounded-md">
-                                  {product && (
-                                    <div className="space-y-1">
-                                      <div className="flex items-center gap-2">
-                                        <Euro className="w-4 h-4 text-green-600" />
-                                        <span className="font-medium">
-                                          €{itemTotal.eur.toFixed(2)}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <DollarSign className="w-4 h-4 text-blue-600" />
-                                        <span className="text-sm text-gray-600">
-                                          {itemTotal.syp.toLocaleString()} ل.س
-                                        </span>
-                                      </div>
-                                    </div>
-                                  )}
+                                <div className="p-2 bg-green-50 border border-green-200 rounded-md">
+                                  <span className="text-green-800 font-medium">
+                                    €{itemTotal.toFixed(2)}
+                                  </span>
                                 </div>
                               </div>
                             </div>
 
                             <div className="mt-3">
                               <label className="block text-sm font-medium text-gray-700 mb-1">
-                                ملاحظات المنتج
+                                ملاحظات خاصة بالمنتج
                               </label>
                               <input
                                 type="text"
                                 value={item.notes}
-                                onChange={(e) => updateItem(item.id, "notes", e.target.value)}
+                                onChange={(e) =>
+                                  updateItem(item.id, "notes", e.target.value)
+                                }
                                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="ملاحظات خاصة بهذا المنتج..."
                               />
@@ -579,10 +631,47 @@ const CreateOrderPage = () => {
                       {/* Store Info */}
                       {selectedStore && (
                         <div className="pb-4 border-b border-gray-200">
-                          <h4 className="font-medium text-gray-900 mb-2">المتجر المختار</h4>
+                          <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                            <Building className="w-4 h-4 text-blue-600" />
+                            المتجر المختار
+                          </h4>
                           <div className="bg-blue-50 p-3 rounded-lg">
-                            <p className="font-medium text-blue-900">{selectedStore.name}</p>
-                            <p className="text-sm text-blue-700 mt-1">{selectedStore.phone}</p>
+                            <p className="font-medium text-blue-900">
+                              {selectedStore.name}
+                            </p>
+                            {selectedStore.phone && (
+                              <p className="text-sm text-blue-700 mt-1 flex items-center gap-1">
+                                <Phone className="w-3 h-3" />
+                                {selectedStore.phone}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Distributor Info */}
+                      {selectedDistributor && (
+                        <div className="pb-4 border-b border-gray-200">
+                          <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                            <User className="w-4 h-4 text-purple-600" />
+                            الموزع المختار
+                          </h4>
+                          <div className="bg-purple-50 p-3 rounded-lg">
+                            <p className="font-medium text-purple-900">
+                              {selectedDistributor.name}
+                            </p>
+                            {selectedDistributor.phone && (
+                              <p className="text-sm text-purple-700 mt-1 flex items-center gap-1">
+                                <Phone className="w-3 h-3" />
+                                {selectedDistributor.phone}
+                              </p>
+                            )}
+                            {selectedDistributor.email && (
+                              <p className="text-sm text-purple-700 mt-1 flex items-center gap-1">
+                                <span>@</span>
+                                {selectedDistributor.email}
+                              </p>
+                            )}
                           </div>
                         </div>
                       )}
@@ -591,58 +680,70 @@ const CreateOrderPage = () => {
                       <div className="space-y-3">
                         <div className="flex justify-between items-center">
                           <span className="text-gray-600">عدد المنتجات:</span>
-                          <span className="font-medium">{formData.items.length}</span>
+                          <span className="font-medium">
+                            {formData.items.length}
+                          </span>
                         </div>
-                        
+
                         <div className="flex justify-between items-center">
                           <span className="text-gray-600">إجمالي الكمية:</span>
                           <span className="font-medium">
-                            {formData.items.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0)}
+                            {formData.items.reduce(
+                              (sum, item) =>
+                                sum + (parseInt(item.quantity) || 0),
+                              0
+                            )}
                           </span>
                         </div>
 
                         <div className="pt-3 border-t border-gray-200">
                           <div className="flex justify-between items-center mb-2">
-                            <span className="text-gray-900 font-medium">المجموع الكلي:</span>
+                            <span className="text-gray-900 font-medium">
+                              المجموع الإجمالي:
+                            </span>
                           </div>
-                          
-                          <div className="bg-green-50 p-3 rounded-lg">
-                            <div className="flex items-center justify-between mb-1">
-                              <div className="flex items-center gap-2">
-                                <Euro className="w-4 h-4 text-green-600" />
-                                <span className="text-sm text-green-700">يورو</span>
-                              </div>
-                              <span className="text-lg font-bold text-green-900">
-                                €{orderTotal.eur.toFixed(2)}
-                              </span>
-                            </div>
-                            
+
+                          <div className="bg-green-50 p-4 rounded-lg">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <DollarSign className="w-4 h-4 text-blue-600" />
-                                <span className="text-sm text-blue-700">ليرة سورية</span>
+                                <Euro className="w-5 h-5 text-green-600" />
+                                <span className="text-lg font-medium text-green-700">
+                                  يورو
+                                </span>
                               </div>
-                              <span className="text-sm font-medium text-blue-900">
-                                {orderTotal.syp.toLocaleString()} ل.س
+                              <span className="text-2xl font-bold text-green-900">
+                                €{orderTotal.toFixed(2)}
                               </span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Order Status */}
+                        {/* Order Details */}
                         <div className="pt-3 border-t border-gray-200">
                           <div className="space-y-2">
-
-
                             {formData.delivery_date && (
                               <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600">تاريخ التسليم:</span>
+                                <span className="text-sm text-gray-600">
+                                  تاريخ التسليم:
+                                </span>
                                 <span className="text-sm font-medium flex items-center gap-1">
                                   <Calendar className="w-3 h-3" />
-                                  {new Date(formData.delivery_date).toLocaleDateString('ar-SA')}
+                                  {new Date(
+                                    formData.delivery_date
+                                  ).toLocaleDateString("en-GB")}
                                 </span>
                               </div>
                             )}
+
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">
+                                العملة:
+                              </span>
+                              <span className="text-sm font-medium flex items-center gap-1">
+                                <Euro className="w-3 h-3" />
+                                يورو (EUR)
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -663,7 +764,7 @@ const CreateOrderPage = () => {
                   >
                     حفظ الطلب
                   </EnhancedButton>
-                  
+
                   <EnhancedButton
                     type="button"
                     onClick={() => navigate("/orders")}

@@ -120,59 +120,291 @@ const UserProfilePage = () => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
 
+  // Load user data on component mount
   useEffect(() => {
     if (user) {
-      setFormData({
-        firstName: user.firstName || "",
-        lastName: user.lastName || "",
+      setProfile({
+        username: user.username || "",
         email: user.email || "",
+        full_name: user.full_name || "",
         phone: user.phone || "",
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
+        address: user.address || "",
+        role: user.role || "",
+        status: user.status || "",
+        hired_date: user.hired_date || "",
+        salary: user.salary || "",
+        license_number: user.license_number || "",
+        bio: user.bio || "",
+        avatar: user.avatar || null,
+        emergency_contact: user.emergency_contact || {
+          name: "",
+          phone: "",
+          relationship: "",
+        },
+        vehicle_info: user.vehicle_info || {
+          make: "",
+          model: "",
+          year: "",
+          plate_number: "",
+          capacity: "",
+        },
       });
+
+      // Set performance data for distributors
+      if (user.role === "distributor") {
+        setPerformance({
+          totalOrders: user.total_orders || 0,
+          successfulDeliveries: user.successful_deliveries || 0,
+          rating: user.performance_rating || 0,
+          currentWorkload: user.current_workload || 0,
+          todayDeliveries: user.today_deliveries || 0,
+          monthlyEarnings: user.monthly_earnings || 0,
+        });
+      }
     }
   }, [user]);
 
-  const getRoleConfig = (role) => {
-    switch (role) {
-      case "admin":
-        return {
-          color: "bg-purple-100 text-purple-800 border-purple-200",
-          icon: <Crown className="w-4 h-4" />,
-          label: "مدير النظام",
-        };
-      case "manager":
-        return {
-          color: "bg-blue-100 text-blue-800 border-blue-200",
-          icon: <Briefcase className="w-4 h-4" />,
-          label: "مدير",
-        };
-      case "distributor":
-        return {
-          color: "bg-orange-100 text-orange-800 border-orange-200",
-          icon: <Truck className="w-4 h-4" />,
-          label: "موزع",
-        };
-      case "cashier":
-        return {
-          color: "bg-green-100 text-green-800 border-green-200",
-          icon: <ShoppingCart className="w-4 h-4" />,
-          label: "كاشير",
-        };
-      case "accountant":
-        return {
-          color: "bg-indigo-100 text-indigo-800 border-indigo-200",
-          icon: <Calculator className="w-4 h-4" />,
-          label: "محاسب",
-        };
-      default:
-        return {
-          color: "bg-gray-100 text-gray-800 border-gray-200",
-          icon: <User className="w-4 h-4" />,
-          label: "مستخدم",
-        };
+  const roles = [
+    {
+      value: "admin",
+      label: "مدير النظام",
+      icon: Crown,
+      color: "purple",
+      description: "صلاحية كاملة على النظام",
+      gradient: "from-purple-500 to-indigo-500",
+    },
+    {
+      value: "manager",
+      label: "مدير فرع",
+      icon: Briefcase,
+      color: "blue",
+      description: "إدارة العمليات والفروع",
+      gradient: "from-blue-500 to-cyan-500",
+    },
+    {
+      value: "distributor",
+      label: "موزع",
+      icon: Truck,
+      color: "orange",
+      description: "توزيع وتسليم الطلبات",
+      gradient: "from-orange-500 to-red-500",
+    },
+    {
+      value: "cashier",
+      label: "كاشير",
+      icon: ShoppingCart,
+      color: "green",
+      description: "نقاط البيع وخدمة العملاء",
+      gradient: "from-green-500 to-emerald-500",
+    },
+    {
+      value: "accountant",
+      label: "محاسب",
+      icon: BarChart3,
+      color: "indigo",
+      description: "الإدارة المالية والتقارير",
+      gradient: "from-indigo-500 to-purple-500",
+    },
+  ];
+
+  const statusColors = {
+    active: { color: "green", label: "نشط", icon: CheckCircle },
+    inactive: { color: "gray", label: "غير نشط", icon: Clock },
+    suspended: { color: "red", label: "موقوف", icon: AlertCircle },
+    pending: { color: "yellow", label: "في الانتظار", icon: Timer },
+  };
+
+  const workStatusColors = {
+    available: { color: "green", label: "متاح", icon: CheckCircle },
+    busy: { color: "orange", label: "مشغول", icon: Clock },
+    offline: { color: "gray", label: "غير متصل", icon: AlertCircle },
+    break: { color: "blue", label: "استراحة", icon: Timer },
+  };
+
+  const handleAvatarChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        // 5MB limit
+        toast.error("حجم الملف يجب أن يكون أقل من 5 ميجابايت");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setAvatarPreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
     }
+  };
+
+  const handleAvatarUpload = async () => {
+    if (!avatarPreview) return;
+
+    setIsLoading(true);
+    try {
+      const file = fileInputRef.current.files[0];
+      const response = await authService.updateAvatar(file);
+
+      if (response.success) {
+        updateUser({ avatar: response.data.avatar });
+        setProfile((prev) => ({ ...prev, avatar: response.data.avatar }));
+        toast.success("تم تحديث الصورة الشخصية بنجاح");
+        setAvatarPreview(null);
+      } else {
+        throw new Error(response.message);
+      }
+    } catch (error) {
+      toast.error(error.message || "حدث خطأ في تحديث الصورة");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const validateProfileForm = () => {
+    const newErrors = {};
+
+    if (!profile.full_name.trim()) {
+      newErrors.full_name = "الاسم الكامل مطلوب";
+    }
+
+    if (!profile.email.trim()) {
+      newErrors.email = "البريد الإلكتروني مطلوب";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email)) {
+      newErrors.email = "يرجى إدخال بريد إلكتروني صحيح";
+    }
+
+    if (!profile.phone.trim()) {
+      newErrors.phone = "رقم الهاتف مطلوب";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validatePasswordForm = () => {
+    const newErrors = {};
+
+    if (!security.currentPassword) {
+      newErrors.currentPassword = "كلمة المرور الحالية مطلوبة";
+    }
+
+    if (!security.newPassword) {
+      newErrors.newPassword = "كلمة المرور الجديدة مطلوبة";
+    } else if (security.newPassword.length < 8) {
+      newErrors.newPassword = "كلمة المرور يجب أن تحتوي على 8 أحرف على الأقل";
+    }
+
+    if (!security.confirmPassword) {
+      newErrors.confirmPassword = "يرجى تأكيد كلمة المرور";
+    } else if (security.newPassword !== security.confirmPassword) {
+      newErrors.confirmPassword = "كلمتا المرور غير متطابقتان";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleProfileSave = async () => {
+    if (!validateProfileForm()) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await authService.updateProfile(profile);
+
+      if (response.success) {
+        updateUser(response.data);
+        setIsEditing(false);
+        toast.success("تم تحديث الملف الشخصي بنجاح");
+        setIsSuccess(true);
+        setTimeout(() => setIsSuccess(false), 3000);
+      } else {
+        throw new Error(response.message);
+      }
+    } catch (error) {
+      toast.error(error.message || "حدث خطأ في تحديث الملف الشخصي");
+      setErrors({ submit: error.message });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (!validatePasswordForm()) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await authService.changePassword({
+        currentPassword: security.currentPassword,
+        newPassword: security.newPassword,
+        confirmPassword: security.confirmPassword,
+      });
+
+      if (response.success) {
+        setIsChangingPassword(false);
+        setSecurity({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+          twoFactorEnabled: security.twoFactorEnabled,
+          sessionTimeout: security.sessionTimeout,
+        });
+        toast.success("تم تغيير كلمة المرور بنجاح");
+      } else {
+        throw new Error(response.message);
+      }
+    } catch (error) {
+      toast.error(error.message || "حدث خطأ في تغيير كلمة المرور");
+      setErrors({ submit: error.message });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleProfileChange = (field, value) => {
+    setProfile((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  const handleEmergencyContactChange = (field, value) => {
+    setProfile((prev) => ({
+      ...prev,
+      emergency_contact: { ...prev.emergency_contact, [field]: value },
+    }));
+  };
+
+  const handleVehicleInfoChange = (field, value) => {
+    setProfile((prev) => ({
+      ...prev,
+      vehicle_info: { ...prev.vehicle_info, [field]: value },
+    }));
+  };
+
+  const selectedRole = roles.find((role) => role.value === profile.role);
+  const RoleIcon = selectedRole?.icon || User;
+  const currentStatus = statusColors[profile.status] || statusColors.active;
+  const StatusIcon = currentStatus.icon;
+
+  const getInitials = (name) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("ar-SY", {
+      style: "currency",
+      currency: "SYP",
+    }).format(amount);
   };
 
   const getStatusConfig = (status) => {
@@ -199,413 +431,696 @@ const UserProfilePage = () => {
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return "غير محدد";
-    return new Date(dateString).toLocaleDateString("ar-SA");
+    if (!dateString) return "";
+    return new Date(dateString).toLocaleDateString("ar-SY");
   };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSave = async () => {
-    try {
-      setIsLoading(true);
-      setError("");
-      setSuccess("");
-
-      // Validate passwords if changing
-      if (formData.newPassword) {
-        if (!formData.currentPassword) {
-          setError("كلمة المرور الحالية مطلوبة");
-          return;
-        }
-        if (formData.newPassword !== formData.confirmPassword) {
-          setError("كلمة المرور الجديدة غير متطابقة");
-          return;
-        }
-        if (formData.newPassword.length < 6) {
-          setError("كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل");
-          return;
-        }
-      }
-
-      const updateData = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-      };
-
-      if (formData.newPassword) {
-        updateData.currentPassword = formData.currentPassword;
-        updateData.newPassword = formData.newPassword;
-      }
-
-      const response = await userService.updateProfile(updateData);
-
-      if (response.success) {
-        setSuccess("تم تحديث الملف الشخصي بنجاح");
-        updateUser(response.data);
-        setIsEditing(false);
-        // Clear password fields
-        setFormData((prev) => ({
-          ...prev,
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: "",
-        }));
-      } else {
-        setError(response.message);
-      }
-    } catch (error) {
-      setError("خطأ في تحديث الملف الشخصي");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setIsEditing(false);
-    setError("");
-    setSuccess("");
-    // Reset form data to original user data
-    if (user) {
-      setFormData({
-        firstName: user.firstName || "",
-        lastName: user.lastName || "",
-        email: user.email || "",
-        phone: user.phone || "",
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-    }
-  };
-
-  if (!user) {
-    return <LoadingSpinner />;
-  }
-
-  const roleConfig = getRoleConfig(user.role);
-  const statusConfig = getStatusConfig(user.status);
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            الملف الشخصي
-          </h1>
-          <p className="text-gray-600">عرض وتعديل معلوماتك الشخصية</p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header with Success Animation */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                الملف الشخصي
+              </h1>
+              <p className="text-gray-600 mt-2">
+                إدارة معلوماتك الشخصية وإعداداتك
+              </p>
+            </div>
 
-        {/* Success/Error Messages */}
-        {success && (
+            <AnimatePresence>
+              {isSuccess && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8, x: 50 }}
+                  animate={{ opacity: 1, scale: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.8, x: 50 }}
+                  className="flex items-center bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl px-6 py-3 shadow-lg"
+                >
+                  <CheckCircle className="w-5 h-5 mr-2" />
+                  <span className="font-medium">تم الحفظ بنجاح!</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+          {/* Left Sidebar - Profile Card */}
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center"
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+            className="xl:col-span-1"
           >
-            <CheckCircle className="w-5 h-5 mr-2" />
-            {success}
-          </motion.div>
-        )}
+            <Card className="relative overflow-hidden">
+              {/* Gradient Background */}
+              <div
+                className={`absolute inset-0 bg-gradient-to-br ${
+                  selectedRole?.gradient || "from-blue-500 to-purple-500"
+                } opacity-10`}
+              ></div>
 
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center"
-          >
-            <XCircle className="w-5 h-5 mr-2" />
-            {error}
-          </motion.div>
-        )}
+              <CardBody className="relative text-center p-8">
+                {/* Avatar Section */}
+                <div className="relative inline-block mb-6">
+                  <div className="relative">
+                    {avatarPreview ? (
+                      <img
+                        src={avatarPreview}
+                        alt="Preview"
+                        className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-xl"
+                      />
+                    ) : profile.avatar ? (
+                      <img
+                        src={profile.avatar}
+                        alt={profile.full_name}
+                        className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-xl"
+                      />
+                    ) : (
+                      <div
+                        className={`w-32 h-32 rounded-full border-4 border-white shadow-xl bg-gradient-to-br ${
+                          selectedRole?.gradient ||
+                          "from-blue-500 to-purple-500"
+                        } flex items-center justify-center`}
+                      >
+                        <span className="text-4xl font-bold text-white">
+                          {getInitials(profile.full_name || "User")}
+                        </span>
+                      </div>
+                    )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Profile Information */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <User className="w-6 h-6 text-gray-600 mr-2" />
-                    <h2 className="text-xl font-semibold text-gray-900">
-                      المعلومات الشخصية
-                    </h2>
-                  </div>
-                  {!isEditing && (
-                    <EnhancedButton
-                      onClick={() => setIsEditing(true)}
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center"
+                    {/* Camera Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute -bottom-2 -right-2 w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl transition-all duration-300"
                     >
-                      <Edit className="w-4 h-4 mr-1" />
-                      تعديل
-                    </EnhancedButton>
+                      <Camera className="w-5 h-5" />
+                    </motion.button>
+
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                    />
+                  </div>
+
+                  {/* Upload Button */}
+                  {avatarPreview && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-4 flex space-x-2 justify-center"
+                    >
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={handleAvatarUpload}
+                        loading={isLoading}
+                        icon={<Upload className="w-4 h-4" />}
+                      >
+                        رفع
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setAvatarPreview(null)}
+                        icon={<Trash2 className="w-4 h-4" />}
+                      >
+                        إلغاء
+                      </Button>
+                    </motion.div>
                   )}
                 </div>
-              </CardHeader>
-              <CardBody>
-                {isEditing ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          الاسم الأول
-                        </label>
-                        <input
-                          type="text"
-                          name="firstName"
-                          value={formData.firstName}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          الاسم الأخير
-                        </label>
-                        <input
-                          type="text"
-                          name="lastName"
-                          value={formData.lastName}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        البريد الإلكتروني
-                      </label>
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        رقم الهاتف
-                      </label>
-                      <input
-                        type="tel"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
 
-                    {/* Password Change Section */}
-                    <div className="border-t pt-4 mt-4">
-                      <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
-                        <Lock className="w-5 h-5 mr-2" />
-                        تغيير كلمة المرور
-                      </h3>
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            كلمة المرور الحالية
-                          </label>
-                          <div className="relative">
-                            <input
-                              type={showPassword ? "text" : "password"}
-                              name="currentPassword"
-                              value={formData.currentPassword}
-                              onChange={handleInputChange}
-                              className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowPassword(!showPassword)}
-                              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                            >
-                              {showPassword ? (
-                                <EyeOff className="w-4 h-4" />
-                              ) : (
-                                <Eye className="w-4 h-4" />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            كلمة المرور الجديدة
-                          </label>
-                          <input
-                            type="password"
-                            name="newPassword"
-                            value={formData.newPassword}
-                            onChange={handleInputChange}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            تأكيد كلمة المرور الجديدة
-                          </label>
-                          <input
-                            type="password"
-                            name="confirmPassword"
-                            value={formData.confirmPassword}
-                            onChange={handleInputChange}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </div>
-                      </div>
-                    </div>
+                {/* User Info */}
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  {profile.full_name || "المستخدم"}
+                </h2>
 
-                    {/* Action Buttons */}
-                    <div className="flex justify-end space-x-3 space-x-reverse pt-4">
-                      <EnhancedButton
-                        onClick={handleCancel}
-                        variant="outline"
-                        disabled={isLoading}
-                      >
-                        <X className="w-4 h-4 mr-1" />
-                        إلغاء
-                      </EnhancedButton>
-                      <EnhancedButton
-                        onClick={handleSave}
-                        disabled={isLoading}
-                        className="flex items-center"
-                      >
-                        {isLoading ? (
-                          <LoadingSpinner size="sm" />
-                        ) : (
-                          <Save className="w-4 h-4 mr-1" />
-                        )}
-                        حفظ التغييرات
-                      </EnhancedButton>
-                    </div>
+                {/* Role Badge */}
+                <div
+                  className={`inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r ${
+                    selectedRole?.gradient || "from-blue-500 to-purple-500"
+                  } text-white mb-4`}
+                >
+                  <RoleIcon className="w-4 h-4 mr-2" />
+                  <span className="font-medium">
+                    {selectedRole?.label || "غير محدد"}
+                  </span>
+                </div>
+
+                {/* Status */}
+                <div className="flex items-center justify-center mb-6">
+                  <div
+                    className={`flex items-center px-3 py-1 rounded-full bg-${currentStatus.color}-100 text-${currentStatus.color}-700`}
+                  >
+                    <StatusIcon className="w-4 h-4 mr-2" />
+                    <span className="text-sm font-medium">
+                      {currentStatus.label}
+                    </span>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500 mb-1">
-                          الاسم الأول
-                        </label>
-                        <p className="text-gray-900">
-                          {user.firstName || "غير محدد"}
-                        </p>
+                </div>
+
+                {/* Quick Stats for Distributors */}
+                {profile.role === "distributor" && (
+                  <div className="grid grid-cols-2 gap-4 mt-6">
+                    <div className="text-center p-3 bg-white/50 rounded-lg">
+                      <div className="flex items-center justify-center text-orange-500 mb-1">
+                        <Star className="w-5 h-5" />
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500 mb-1">
-                          الاسم الأخير
-                        </label>
-                        <p className="text-gray-900">
-                          {user.lastName || "غير محدد"}
-                        </p>
+                      <div className="text-lg font-bold text-gray-900">
+                        {performance.rating.toFixed(1)}
                       </div>
+                      <div className="text-sm text-gray-600">التقييم</div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500 mb-1">
-                        البريد الإلكتروني
-                      </label>
-                      <p className="text-gray-900 flex items-center">
-                        <Mail className="w-4 h-4 mr-2" />
-                        {user.email}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500 mb-1">
-                        رقم الهاتف
-                      </label>
-                      <p className="text-gray-900 flex items-center">
-                        <Phone className="w-4 h-4 mr-2" />
-                        {user.phone || "غير محدد"}
-                      </p>
+                    <div className="text-center p-3 bg-white/50 rounded-lg">
+                      <div className="flex items-center justify-center text-blue-500 mb-1">
+                        <Package className="w-5 h-5" />
+                      </div>
+                      <div className="text-lg font-bold text-gray-900">
+                        {performance.todayDeliveries}
+                      </div>
+                      <div className="text-sm text-gray-600">تسليم اليوم</div>
                     </div>
                   </div>
                 )}
-              </CardBody>
-            </Card>
-          </div>
 
-          {/* Account Information */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center">
-                  <Shield className="w-6 h-6 text-gray-600 mr-2" />
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    معلومات الحساب
-                  </h2>
-                </div>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">
-                      اسم المستخدم
-                    </label>
-                    <p className="text-gray-900 font-medium">{user.username}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">
-                      الدور
-                    </label>
-                    <div
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${roleConfig.color}`}
-                    >
-                      {roleConfig.icon}
-                      <span className="mr-1">{roleConfig.label}</span>
+                {/* Contact Info */}
+                <div className="mt-6 space-y-2 text-sm text-gray-600">
+                  {profile.email && (
+                    <div className="flex items-center justify-center">
+                      <Mail className="w-4 h-4 mr-2" />
+                      <span>{profile.email}</span>
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">
-                      الحالة
-                    </label>
-                    <div
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${statusConfig.color}`}
-                    >
-                      {statusConfig.icon}
-                      <span className="mr-1">{statusConfig.label}</span>
+                  )}
+                  {profile.phone && (
+                    <div className="flex items-center justify-center">
+                      <Phone className="w-4 h-4 mr-2" />
+                      <span>{profile.phone}</span>
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">
-                      تاريخ الإنشاء
-                    </label>
-                    <p className="text-gray-900 flex items-center">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      {formatDate(user.createdAt)}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">
-                      آخر تحديث
-                    </label>
-                    <p className="text-gray-900 flex items-center">
-                      <Settings className="w-4 h-4 mr-2" />
-                      {formatDate(user.updatedAt)}
-                    </p>
-                  </div>
+                  )}
+                  {profile.address && (
+                    <div className="flex items-center justify-center">
+                      <MapPin className="w-4 h-4 mr-2" />
+                      <span className="text-center">{profile.address}</span>
+                    </div>
+                  )}
                 </div>
               </CardBody>
             </Card>
+          </motion.div>
+
+          {/* Main Content */}
+          <div className="xl:col-span-3 space-y-8">
+            {/* Basic Information */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center mr-3">
+                        <User className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">
+                          المعلومات الأساسية
+                        </h3>
+                        <p className="text-gray-600 text-sm">
+                          معلوماتك الشخصية والمهنية
+                        </p>
+                      </div>
+                    </div>
+                    {!isEditing && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<Edit className="w-4 h-4" />}
+                        onClick={() => setIsEditing(true)}
+                      >
+                        تعديل
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+
+                <CardBody>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Username */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        اسم المستخدم
+                      </label>
+                      {isEditing ? (
+                        <Input
+                          type="text"
+                          value={profile.username}
+                          onChange={(e) =>
+                            handleProfileChange("username", e.target.value)
+                          }
+                          icon={<User className="w-4 h-4" />}
+                          error={errors.username}
+                        />
+                      ) : (
+                        <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                          <User className="w-4 h-4 text-gray-400 mr-3" />
+                          <span className="text-gray-900">
+                            {profile.username}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Full Name */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        الاسم الكامل *
+                      </label>
+                      {isEditing ? (
+                        <Input
+                          type="text"
+                          value={profile.full_name}
+                          onChange={(e) =>
+                            handleProfileChange("full_name", e.target.value)
+                          }
+                          icon={<User className="w-4 h-4" />}
+                          error={errors.full_name}
+                        />
+                      ) : (
+                        <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                          <User className="w-4 h-4 text-gray-400 mr-3" />
+                          <span className="text-gray-900">
+                            {profile.full_name}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        البريد الإلكتروني *
+                      </label>
+                      {isEditing ? (
+                        <Input
+                          type="email"
+                          value={profile.email}
+                          onChange={(e) =>
+                            handleProfileChange("email", e.target.value)
+                          }
+                          icon={<Mail className="w-4 h-4" />}
+                          error={errors.email}
+                        />
+                      ) : (
+                        <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                          <Mail className="w-4 h-4 text-gray-400 mr-3" />
+                          <span className="text-gray-900">{profile.email}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Phone */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        رقم الهاتف *
+                      </label>
+                      {isEditing ? (
+                        <Input
+                          type="tel"
+                          value={profile.phone}
+                          onChange={(e) =>
+                            handleProfileChange("phone", e.target.value)
+                          }
+                          icon={<Phone className="w-4 h-4" />}
+                          error={errors.phone}
+                        />
+                      ) : (
+                        <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                          <Phone className="w-4 h-4 text-gray-400 mr-3" />
+                          <span className="text-gray-900">{profile.phone}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Hired Date */}
+                    {profile.hired_date && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          تاريخ التوظيف
+                        </label>
+                        <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                          <Calendar className="w-4 h-4 text-gray-400 mr-3" />
+                          <span className="text-gray-900">
+                            {formatDate(profile.hired_date)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* License Number for Distributors */}
+                    {profile.role === "distributor" && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          رقم رخصة القيادة
+                        </label>
+                        {isEditing ? (
+                          <Input
+                            type="text"
+                            value={profile.license_number}
+                            onChange={(e) =>
+                              handleProfileChange(
+                                "license_number",
+                                e.target.value
+                              )
+                            }
+                            icon={<BadgeCheck className="w-4 h-4" />}
+                          />
+                        ) : (
+                          <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                            <BadgeCheck className="w-4 h-4 text-gray-400 mr-3" />
+                            <span className="text-gray-900">
+                              {profile.license_number || "غير محدد"}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Address */}
+                  <div className="mt-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      العنوان
+                    </label>
+                    {isEditing ? (
+                      <textarea
+                        value={profile.address}
+                        onChange={(e) =>
+                          handleProfileChange("address", e.target.value)
+                        }
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="أدخل عنوانك..."
+                      />
+                    ) : (
+                      <div className="flex items-start p-3 bg-gray-50 rounded-lg">
+                        <MapPin className="w-4 h-4 text-gray-400 mr-3 mt-1" />
+                        <span className="text-gray-900">
+                          {profile.address || "غير محدد"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {isEditing && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex justify-end space-x-3 mt-8 pt-6 border-t"
+                    >
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsEditing(false)}
+                        className="ml-3"
+                      >
+                        إلغاء
+                      </Button>
+                      <Button
+                        variant="primary"
+                        icon={<Save className="w-4 h-4" />}
+                        loading={isLoading}
+                        disabled={isLoading}
+                        onClick={handleProfileSave}
+                      >
+                        {isLoading ? "جاري الحفظ..." : "حفظ التغييرات"}
+                      </Button>
+                    </motion.div>
+                  )}
+                </CardBody>
+              </Card>
+            </motion.div>
+
+            {/* Security Settings */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-pink-500 rounded-lg flex items-center justify-center mr-3">
+                        <Shield className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">
+                          إعدادات الأمان
+                        </h3>
+                        <p className="text-gray-600 text-sm">
+                          إدارة كلمة المرور والأمان
+                        </p>
+                      </div>
+                    </div>
+                    {!isChangingPassword && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<Lock className="w-4 h-4" />}
+                        onClick={() => setIsChangingPassword(true)}
+                      >
+                        تغيير كلمة المرور
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+
+                <CardBody>
+                  <AnimatePresence>
+                    {isChangingPassword ? (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="space-y-6"
+                      >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              كلمة المرور الحالية *
+                            </label>
+                            <Input
+                              type={showCurrentPassword ? "text" : "password"}
+                              value={security.currentPassword}
+                              onChange={(e) =>
+                                setSecurity((prev) => ({
+                                  ...prev,
+                                  currentPassword: e.target.value,
+                                }))
+                              }
+                              icon={<Lock className="w-4 h-4" />}
+                              rightIcon={
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setShowCurrentPassword(!showCurrentPassword)
+                                  }
+                                  className="text-gray-400 hover:text-gray-600"
+                                >
+                                  {showCurrentPassword ? (
+                                    <EyeOff className="w-4 h-4" />
+                                  ) : (
+                                    <Eye className="w-4 h-4" />
+                                  )}
+                                </button>
+                              }
+                              error={errors.currentPassword}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              كلمة المرور الجديدة *
+                            </label>
+                            <Input
+                              type={showNewPassword ? "text" : "password"}
+                              value={security.newPassword}
+                              onChange={(e) =>
+                                setSecurity((prev) => ({
+                                  ...prev,
+                                  newPassword: e.target.value,
+                                }))
+                              }
+                              icon={<Lock className="w-4 h-4" />}
+                              rightIcon={
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setShowNewPassword(!showNewPassword)
+                                  }
+                                  className="text-gray-400 hover:text-gray-600"
+                                >
+                                  {showNewPassword ? (
+                                    <EyeOff className="w-4 h-4" />
+                                  ) : (
+                                    <Eye className="w-4 h-4" />
+                                  )}
+                                </button>
+                              }
+                              error={errors.newPassword}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            تأكيد كلمة المرور الجديدة *
+                          </label>
+                          <Input
+                            type={showConfirmPassword ? "text" : "password"}
+                            value={security.confirmPassword}
+                            onChange={(e) =>
+                              setSecurity((prev) => ({
+                                ...prev,
+                                confirmPassword: e.target.value,
+                              }))
+                            }
+                            icon={<Lock className="w-4 h-4" />}
+                            rightIcon={
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setShowConfirmPassword(!showConfirmPassword)
+                                }
+                                className="text-gray-400 hover:text-gray-600"
+                              >
+                                {showConfirmPassword ? (
+                                  <EyeOff className="w-4 h-4" />
+                                ) : (
+                                  <Eye className="w-4 h-4" />
+                                )}
+                              </button>
+                            }
+                            error={errors.confirmPassword}
+                          />
+                        </div>
+
+                        <div className="flex justify-end space-x-3 pt-6 border-t">
+                          <Button
+                            variant="outline"
+                            onClick={() => setIsChangingPassword(false)}
+                            className="ml-3"
+                          >
+                            إلغاء
+                          </Button>
+                          <Button
+                            variant="primary"
+                            icon={<Save className="w-4 h-4" />}
+                            loading={isLoading}
+                            disabled={isLoading}
+                            onClick={handlePasswordChange}
+                          >
+                            {isLoading
+                              ? "جاري التغيير..."
+                              : "تغيير كلمة المرور"}
+                          </Button>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                      >
+                        <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                              <Shield className="w-5 h-5 text-green-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-gray-900">
+                                المصادقة الثنائية
+                              </h4>
+                              <p className="text-sm text-gray-600">
+                                طبقة حماية إضافية
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              security.twoFactorEnabled
+                                ? "bg-green-600"
+                                : "bg-gray-200"
+                            }`}
+                            onClick={() =>
+                              setSecurity((prev) => ({
+                                ...prev,
+                                twoFactorEnabled: !prev.twoFactorEnabled,
+                              }))
+                            }
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                security.twoFactorEnabled
+                                  ? "translate-x-6"
+                                  : "translate-x-1"
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200">
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                              <Clock className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-gray-900">
+                                انتهاء الجلسة
+                              </h4>
+                              <p className="text-sm text-gray-600">
+                                خروج تلقائي بعد عدم النشاط
+                              </p>
+                            </div>
+                          </div>
+                          <select
+                            value={security.sessionTimeout}
+                            onChange={(e) =>
+                              setSecurity((prev) => ({
+                                ...prev,
+                                sessionTimeout: parseInt(e.target.value),
+                              }))
+                            }
+                            className="px-3 py-1 border border-gray-300 rounded-md text-sm bg-white"
+                          >
+                            <option value={15}>15 دقيقة</option>
+                            <option value={30}>30 دقيقة</option>
+                            <option value={60}>1 ساعة</option>
+                            <option value={120}>2 ساعة</option>
+                          </select>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </CardBody>
+              </Card>
+            </motion.div>
           </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 };

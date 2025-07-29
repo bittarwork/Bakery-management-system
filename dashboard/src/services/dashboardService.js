@@ -4,7 +4,7 @@
  * Phase 6 - Complete Order Management
  */
 
-import apiService from './apiService';
+import { apiClient } from './apiService.js';
 
 class DashboardService {
     /**
@@ -76,36 +76,319 @@ class DashboardService {
         };
     }
 
-    /**
-     * Get comprehensive dashboard statistics
-     */
-    async getDashboardStats(params = {}) {
-        const {
-            period = 'today',
-            dateFrom,
-            dateTo,
-            currency = 'EUR',
-            include_details = false
-        } = params;
-
-        // Try new advanced analytics API first, fallback to old API
+    // Get comprehensive dashboard statistics
+    async getDashboardStats() {
         try {
-            const queryParams = new URLSearchParams({ period });
-            return await apiService.get(`/analytics/dashboard-stats?${queryParams}`);
+            const [
+                ordersResponse,
+                productsResponse,
+                storesResponse,
+                usersResponse,
+                vehiclesResponse
+            ] = await Promise.allSettled([
+                this.getOrdersStats(),
+                this.getProductsStats(),
+                this.getStoresStats(),
+                this.getUsersStats(),
+                this.getVehiclesStats()
+            ]);
+
+            const stats = {
+                orders: ordersResponse.status === 'fulfilled' ? ordersResponse.value : null,
+                products: productsResponse.status === 'fulfilled' ? productsResponse.value : null,
+                stores: storesResponse.status === 'fulfilled' ? storesResponse.value : null,
+                users: usersResponse.status === 'fulfilled' ? usersResponse.value : null,
+                vehicles: vehiclesResponse.status === 'fulfilled' ? vehiclesResponse.value : null
+            };
+
+            return {
+                success: true,
+                data: stats
+            };
         } catch (error) {
-            console.warn('Advanced analytics API not available, using fallback:', error);
+            console.error('Error fetching dashboard stats:', error);
+            return {
+                success: false,
+                message: error.message || 'Failed to fetch dashboard statistics'
+            };
+        }
+    }
 
-            // Fallback to old API
-            const queryParams = new URLSearchParams({
-                period,
-                currency,
-                include_details: include_details.toString()
-            });
+    // Get orders statistics
+    async getOrdersStats() {
+        try {
+            const response = await apiClient.get('/orders?limit=100');
+            console.log('Orders API Response:', response);
+            
+            if (response.data && response.data.success) {
+                const orders = response.data.data.orders || [];
+                const totalOrders = response.data.data.pagination?.total || orders.length;
+                
+                // Count orders by status
+                const statusCounts = {
+                    draft: 0,
+                    confirmed: 0,
+                    in_progress: 0,
+                    delivered: 0,
+                    cancelled: 0
+                };
 
-            if (dateFrom) queryParams.append('date_from', dateFrom);
-            if (dateTo) queryParams.append('date_to', dateTo);
+                orders.forEach(order => {
+                    if (statusCounts.hasOwnProperty(order.status)) {
+                        statusCounts[order.status]++;
+                    }
+                });
 
-            return await apiService.get(`/dashboard/stats?${queryParams}`);
+                // Calculate total revenue from delivered orders
+                const deliveredOrders = orders.filter(order => order.status === 'delivered');
+                const totalRevenue = deliveredOrders.reduce((sum, order) => {
+                    return sum + (parseFloat(order.final_amount_eur) || 0);
+                }, 0);
+
+                return {
+                    totalOrders,
+                    pendingOrders: statusCounts.confirmed + statusCounts.in_progress,
+                    completedOrders: statusCounts.delivered,
+                    cancelledOrders: statusCounts.cancelled,
+                    totalRevenue,
+                    recentOrders: orders.slice(0, 5)
+                };
+            }
+
+            return {
+                totalOrders: 0,
+                pendingOrders: 0,
+                completedOrders: 0,
+                cancelledOrders: 0,
+                totalRevenue: 0,
+                recentOrders: []
+            };
+        } catch (error) {
+            console.error('Error fetching orders stats:', error);
+            return {
+                totalOrders: 0,
+                pendingOrders: 0,
+                completedOrders: 0,
+                cancelledOrders: 0,
+                totalRevenue: 0,
+                recentOrders: []
+            };
+        }
+    }
+
+    // Get products statistics
+    async getProductsStats() {
+        try {
+            const response = await apiClient.get('/products?limit=100');
+            console.log('Products API Response:', response);
+            
+            if (response.data && response.data.success) {
+                const products = response.data.data.products || [];
+                const totalProducts = response.data.data.pagination?.total || products.length;
+                
+                // Count active products
+                const activeProducts = products.filter(product => product.status === 'active').length;
+                
+                // Count featured products
+                const featuredProducts = products.filter(product => product.is_featured).length;
+
+                return {
+                    totalProducts,
+                    activeProducts,
+                    featuredProducts,
+                    recentProducts: products.slice(0, 5)
+                };
+            }
+
+            return {
+                totalProducts: 0,
+                activeProducts: 0,
+                featuredProducts: 0,
+                recentProducts: []
+            };
+        } catch (error) {
+            console.error('Error fetching products stats:', error);
+            return {
+                totalProducts: 0,
+                activeProducts: 0,
+                featuredProducts: 0,
+                recentProducts: []
+            };
+        }
+    }
+
+    // Get stores statistics
+    async getStoresStats() {
+        try {
+            const response = await apiClient.get('/stores?limit=100');
+            console.log('Stores API Response:', response);
+            
+            if (response.data && response.data.success) {
+                const stores = response.data.data.stores || [];
+                const totalStores = response.data.data.pagination?.total || stores.length;
+                
+                // Count active stores
+                const activeStores = stores.filter(store => store.status === 'active').length;
+
+                return {
+                    totalStores,
+                    activeStores,
+                    recentStores: stores.slice(0, 5)
+                };
+            }
+
+            return {
+                totalStores: 0,
+                activeStores: 0,
+                recentStores: []
+            };
+        } catch (error) {
+            console.error('Error fetching stores stats:', error);
+            return {
+                totalStores: 0,
+                activeStores: 0,
+                recentStores: []
+            };
+        }
+    }
+
+    // Get users statistics
+    async getUsersStats() {
+        try {
+            const response = await apiClient.get('/users?limit=100');
+            console.log('Users API Response:', response);
+            
+            if (response.data && response.data.success) {
+                const users = response.data.data.users || [];
+                const totalUsers = response.data.data.pagination?.total || users.length;
+                
+                // Count users by role
+                const roleCounts = {
+                    admin: 0,
+                    manager: 0,
+                    distributor: 0,
+                    assistant: 0
+                };
+
+                users.forEach(user => {
+                    if (roleCounts.hasOwnProperty(user.role)) {
+                        roleCounts[user.role]++;
+                    }
+                });
+
+                // Count active users
+                const activeUsers = users.filter(user => user.status === 'active').length;
+
+                return {
+                    totalUsers,
+                    activeUsers,
+                    roleCounts,
+                    recentUsers: users.slice(0, 5)
+                };
+            }
+
+            return {
+                totalUsers: 0,
+                activeUsers: 0,
+                roleCounts: {
+                    admin: 0,
+                    manager: 0,
+                    distributor: 0,
+                    assistant: 0
+                },
+                recentUsers: []
+            };
+        } catch (error) {
+            console.error('Error fetching users stats:', error);
+            return {
+                totalUsers: 0,
+                activeUsers: 0,
+                roleCounts: {
+                    admin: 0,
+                    manager: 0,
+                    distributor: 0,
+                    assistant: 0
+                },
+                recentUsers: []
+            };
+        }
+    }
+
+    // Get vehicles statistics
+    async getVehiclesStats() {
+        try {
+            const response = await apiClient.get('/vehicles?limit=100');
+            console.log('Vehicles API Response:', response);
+            
+            if (response.data && response.data.success) {
+                const vehicles = response.data.data.vehicles || [];
+                const totalVehicles = response.data.data.pagination?.total || vehicles.length;
+                
+                // Count active vehicles
+                const activeVehicles = vehicles.filter(vehicle => vehicle.status === 'active').length;
+
+                return {
+                    totalVehicles,
+                    activeVehicles,
+                    recentVehicles: vehicles.slice(0, 5)
+                };
+            }
+
+            return {
+                totalVehicles: 0,
+                activeVehicles: 0,
+                recentVehicles: []
+            };
+        } catch (error) {
+            console.error('Error fetching vehicles stats:', error);
+            return {
+                totalVehicles: 0,
+                activeVehicles: 0,
+                recentVehicles: []
+            };
+        }
+    }
+
+    // Get payments statistics
+    async getPaymentsStats() {
+        try {
+            const response = await apiClient.get('/payments?limit=1');
+
+            if (response.success) {
+                const payments = response.data.payments || [];
+                const totalPayments = response.data.total || 0;
+
+                // Calculate total revenue
+                const totalRevenue = payments.reduce((sum, payment) => {
+                    return sum + (payment.amount || 0);
+                }, 0);
+
+                // Count payments by status
+                const statusCounts = {
+                    pending: 0,
+                    partial: 0,
+                    paid: 0,
+                    overdue: 0
+                };
+
+                payments.forEach(payment => {
+                    if (statusCounts.hasOwnProperty(payment.status)) {
+                        statusCounts[payment.status]++;
+                    }
+                });
+
+                return {
+                    totalPayments,
+                    totalRevenue,
+                    statusCounts,
+                    recentPayments: payments.slice(0, 5)
+                };
+            }
+
+            return null;
+        } catch (error) {
+            console.error('Error fetching payments stats:', error);
+            return null;
         }
     }
 
@@ -640,6 +923,94 @@ class DashboardService {
     async updateUserPreferences(preferences) {
         return await apiService.put('/dashboard/preferences', preferences);
     }
+
+    // Get recent activities
+    async getRecentActivities() {
+        try {
+            const [ordersResponse, productsResponse, usersResponse] = await Promise.allSettled([
+                apiClient.get('/orders?limit=5&sortBy=created_at&sortOrder=DESC'),
+                apiClient.get('/products?limit=5&sortBy=created_at&sortOrder=DESC'),
+                apiClient.get('/users?limit=5&sortBy=created_at&sortOrder=DESC')
+            ]);
+
+            const activities = [];
+
+            // Process orders
+            if (ordersResponse.status === 'fulfilled' && ordersResponse.value.data?.success) {
+                const orders = ordersResponse.value.data.data.orders || [];
+                orders.forEach(order => {
+                    activities.push({
+                        id: `order-${order.id}`,
+                        type: 'order',
+                        message: `تم إنشاء طلب جديد #${order.order_number || order.id}`,
+                        time: this.formatTimeAgo(order.created_at),
+                        status: 'success',
+                        data: order
+                    });
+                });
+            }
+
+            // Process products
+            if (productsResponse.status === 'fulfilled' && productsResponse.value.data?.success) {
+                const products = productsResponse.value.data.data.products || [];
+                products.forEach(product => {
+                    activities.push({
+                        id: `product-${product.id}`,
+                        type: 'product',
+                        message: `تم إضافة منتج جديد: ${product.name}`,
+                        time: this.formatTimeAgo(product.created_at),
+                        status: 'info',
+                        data: product
+                    });
+                });
+            }
+
+            // Process users
+            if (usersResponse.status === 'fulfilled' && usersResponse.value.data?.success) {
+                const users = usersResponse.value.data.data.users || [];
+                users.forEach(user => {
+                    activities.push({
+                        id: `user-${user.id}`,
+                        type: 'user',
+                        message: `تم تسجيل مستخدم جديد: ${user.full_name || user.username}`,
+                        time: this.formatTimeAgo(user.created_at),
+                        status: 'info',
+                        data: user
+                    });
+                });
+            }
+
+            // Sort by time and return top 10
+            return activities
+                .sort((a, b) => new Date(b.data.created_at) - new Date(a.data.created_at))
+                .slice(0, 10);
+
+        } catch (error) {
+            console.error('Error fetching recent activities:', error);
+            return [];
+        }
+    }
+
+    // Helper method to format time ago
+    formatTimeAgo(dateString) {
+        if (!dateString) return 'غير محدد';
+        
+        const now = new Date();
+        const date = new Date(dateString);
+        const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+
+        if (diffInMinutes < 1) {
+            return 'الآن';
+        } else if (diffInMinutes < 60) {
+            return `${diffInMinutes} دقيقة`;
+        } else if (diffInMinutes < 1440) {
+            const hours = Math.floor(diffInMinutes / 60);
+            return `${hours} ساعة`;
+        } else {
+            const days = Math.floor(diffInMinutes / 1440);
+            return `${days} يوم`;
+        }
+    }
 }
 
-export default new DashboardService(); 
+export const dashboardService = new DashboardService(); 

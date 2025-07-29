@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { systemService } from '../services/systemService';
+import { dashboardService } from '../services/dashboardService';
 
 export const useSystemStore = create((set, get) => ({
     isInitialized: false,
@@ -10,6 +11,96 @@ export const useSystemStore = create((set, get) => ({
     systemStatus: {
         apiStatus: 'operational',
         lastSync: new Date().toISOString(),
+    },
+    systemStats: {
+        totalOrders: 0,
+        pendingOrders: 0,
+        completedOrders: 0,
+        totalRevenue: 0,
+        totalProducts: 0,
+        totalStores: 0,
+        totalUsers: 0,
+        activeDistributors: 0,
+        totalVehicles: 0,
+        activeVehicles: 0
+    },
+    recentActivities: [],
+
+    fetchSystemStats: async () => {
+        try {
+            set({ isLoading: true, error: null });
+
+            // Fetch real data from all systems
+            const [statsResponse, activitiesResponse] = await Promise.allSettled([
+                dashboardService.getDashboardStats(),
+                dashboardService.getRecentActivities()
+            ]);
+
+            let stats = {
+                totalOrders: 0,
+                pendingOrders: 0,
+                completedOrders: 0,
+                totalRevenue: 0,
+                totalProducts: 0,
+                totalStores: 0,
+                totalUsers: 0,
+                activeDistributors: 0,
+                totalVehicles: 0,
+                activeVehicles: 0
+            };
+
+            // Process orders stats
+            if (statsResponse.status === 'fulfilled' && statsResponse.value.success) {
+                const data = statsResponse.value.data;
+
+                if (data.orders) {
+                    stats.totalOrders = data.orders.totalOrders || 0;
+                    stats.pendingOrders = data.orders.pendingOrders || 0;
+                    stats.completedOrders = data.orders.completedOrders || 0;
+                    stats.totalRevenue = data.orders.totalRevenue || 0;
+                }
+
+                if (data.products) {
+                    stats.totalProducts = data.products.totalProducts || 0;
+                }
+
+                if (data.stores) {
+                    stats.totalStores = data.stores.totalStores || 0;
+                }
+
+                if (data.users) {
+                    stats.totalUsers = data.users.totalUsers || 0;
+                    stats.activeDistributors = data.users.roleCounts?.distributor || 0;
+                }
+
+                if (data.vehicles) {
+                    stats.totalVehicles = data.vehicles.totalVehicles || 0;
+                    stats.activeVehicles = data.vehicles.activeVehicles || 0;
+                }
+            }
+
+            // Process recent activities
+            let activities = [];
+            if (activitiesResponse.status === 'fulfilled') {
+                activities = activitiesResponse.value || [];
+            }
+
+            set({
+                systemStats: stats,
+                recentActivities: activities,
+                isLoading: false,
+                error: null
+            });
+
+            return { success: true, data: stats };
+        } catch (error) {
+            console.error('Error fetching system stats:', error);
+            set({
+                isLoading: false,
+                error: error.message || 'Failed to fetch system stats'
+            });
+            return { success: false, message: error.message };
+        }
     },
 
     initializeSystem: async () => {
