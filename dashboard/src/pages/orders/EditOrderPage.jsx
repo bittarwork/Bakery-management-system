@@ -132,11 +132,21 @@ const EditOrderPage = () => {
     try {
       const response = await storeService.getStores();
       if (response && response.success !== false) {
-        setStores(response.data || response);
+        const storesData = response.data || response;
+        console.log("Loaded stores:", storesData);
+        // Handle different response structures
+        const storesArray = Array.isArray(storesData)
+          ? storesData
+          : storesData.stores || storesData.data || [];
+        setStores(storesArray);
+      } else {
+        console.warn("Failed to load stores, using empty array");
+        setStores([]);
       }
     } catch (error) {
       console.error("Error loading stores:", error);
       toast.error("خطأ في تحميل المتاجر");
+      setStores([]);
     }
   };
 
@@ -144,11 +154,21 @@ const EditOrderPage = () => {
     try {
       const response = await productService.getProducts();
       if (response && response.success !== false) {
-        setProducts(response.data || response);
+        const productsData = response.data || response;
+        console.log("Loaded products:", productsData);
+        // Handle different response structures
+        const productsArray = Array.isArray(productsData)
+          ? productsData
+          : productsData.products || productsData.data || [];
+        setProducts(productsArray);
+      } else {
+        console.warn("Failed to load products, using empty array");
+        setProducts([]);
       }
     } catch (error) {
       console.error("Error loading products:", error);
       toast.error("خطأ في تحميل المنتجات");
+      setProducts([]);
     }
   };
 
@@ -158,9 +178,11 @@ const EditOrderPage = () => {
       if (response && response.success !== false) {
         const distributorsData = response.data || response;
         console.log("Loaded distributors:", distributorsData);
-        setDistributors(
-          Array.isArray(distributorsData) ? distributorsData : []
-        );
+        // Handle different response structures
+        const distributorsArray = Array.isArray(distributorsData)
+          ? distributorsData
+          : distributorsData.users || distributorsData.data || [];
+        setDistributors(distributorsArray);
       } else {
         console.warn("Failed to load distributors, using empty array");
         setDistributors([]);
@@ -503,11 +525,12 @@ const EditOrderPage = () => {
                         required
                       >
                         <option value="">اختر المتجر</option>
-                        {stores.map((store) => (
-                          <option key={store.id} value={store.id}>
-                            {store.name}
-                          </option>
-                        ))}
+                        {Array.isArray(stores) &&
+                          stores.map((store) => (
+                            <option key={store.id} value={store.id}>
+                              {store.name}
+                            </option>
+                          ))}
                       </select>
                     </div>
 
@@ -626,9 +649,12 @@ const EditOrderPage = () => {
                               موزع مُعيّن
                             </h3>
                             <p className="text-sm text-green-700">
-                              {distributors.find(
-                                (d) => d.id === formData.assigned_distributor_id
-                              )?.full_name || "غير محدد"}
+                              {(Array.isArray(distributors) &&
+                                distributors.find(
+                                  (d) =>
+                                    d.id === formData.assigned_distributor_id
+                                )?.full_name) ||
+                                "غير محدد"}
                             </p>
                             <p className="text-xs text-green-600 mt-1">
                               معرف الموزع:{" "}
@@ -666,37 +692,39 @@ const EditOrderPage = () => {
                           اختر موزع
                         </label>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {distributors.map((distributor) => (
-                            <button
-                              key={distributor.id}
-                              onClick={() =>
-                                handleAssignDistributor(distributor.id)
-                              }
-                              className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <User className="w-4 h-4 text-gray-500" />
-                                <div className="text-left">
-                                  <p className="font-medium text-gray-900">
-                                    {distributor.full_name}
-                                  </p>
-                                  {distributor.phone && (
-                                    <p className="text-sm text-gray-600">
-                                      {distributor.phone}
+                          {Array.isArray(distributors) &&
+                            distributors.map((distributor) => (
+                              <button
+                                key={distributor.id}
+                                onClick={() =>
+                                  handleAssignDistributor(distributor.id)
+                                }
+                                className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <User className="w-4 h-4 text-gray-500" />
+                                  <div className="text-left">
+                                    <p className="font-medium text-gray-900">
+                                      {distributor.full_name}
                                     </p>
-                                  )}
-                                  {distributor.email && (
-                                    <p className="text-xs text-gray-500">
-                                      {distributor.email}
-                                    </p>
-                                  )}
+                                    {distributor.phone && (
+                                      <p className="text-sm text-gray-600">
+                                        {distributor.phone}
+                                      </p>
+                                    )}
+                                    {distributor.email && (
+                                      <p className="text-xs text-gray-500">
+                                        {distributor.email}
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                              <Truck className="w-4 h-4 text-gray-400" />
-                            </button>
-                          ))}
+                                <Truck className="w-4 h-4 text-gray-400" />
+                              </button>
+                            ))}
                         </div>
-                        {distributors.length === 0 && (
+                        {(!Array.isArray(distributors) ||
+                          distributors.length === 0) && (
                           <div className="text-center py-8">
                             <User className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                             <p className="text-sm text-gray-500 mb-2">
@@ -726,7 +754,8 @@ const EditOrderPage = () => {
                       إضافة منتجات جديدة
                     </h2>
                     <div className="text-sm text-gray-500">
-                      منتجات متاحة: {products.length}
+                      منتجات متاحة:{" "}
+                      {Array.isArray(products) ? products.length : 0}
                     </div>
                   </div>
                 </div>
@@ -759,12 +788,13 @@ const EditOrderPage = () => {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="">-- اختر المنتج --</option>
-                        {products.map((product) => (
-                          <option key={product.id} value={product.id}>
-                            {product.name} - €
-                            {parseFloat(product.price_eur || 0).toFixed(2)}
-                          </option>
-                        ))}
+                        {Array.isArray(products) &&
+                          products.map((product) => (
+                            <option key={product.id} value={product.id}>
+                              {product.name} - €
+                              {parseFloat(product.price_eur || 0).toFixed(2)}
+                            </option>
+                          ))}
                       </select>
                     </div>
 
