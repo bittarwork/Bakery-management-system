@@ -283,8 +283,8 @@ export const createProduct = async (req, res) => {
             unit: unit || 'piece',
             price_eur: Math.max(parseNumber(price_eur, 0.01), 0.01), // Required field with minimum 0.01
             price_syp: parseNumber(price_syp, null), // Optional - send null if not provided
-            cost_eur: parseNumber(cost_eur, null), // Optional - send null if not provided
-            cost_syp: parseNumber(cost_syp, null), // Optional - send null if not provided
+            cost_eur: parseNumber(cost_eur, 0.00), // Use 0.00 instead of null to prevent database errors
+            cost_syp: parseNumber(cost_syp, 0.00), // Use 0.00 instead of null to prevent database errors
             stock_quantity: parseInteger(stock_quantity, null), // Optional - send null if not provided
             minimum_stock: parseInteger(minimum_stock, null), // Optional - send null if not provided
             barcode: barcode?.trim() || null,
@@ -311,7 +311,7 @@ export const createProduct = async (req, res) => {
                         productData.supplier_info = JSON.parse(supplier_info);
                     } catch (parseErr) {
                         // If not JSON, treat as description
-                        productData.supplier_info = { 
+                        productData.supplier_info = {
                             name: supplier_info.trim(),
                             contact: "",
                             notes: ""
@@ -339,7 +339,7 @@ export const createProduct = async (req, res) => {
                         productData.nutritional_info = JSON.parse(nutritional_info);
                     } catch (parseErr) {
                         // If not JSON, treat as description
-                        productData.nutritional_info = { 
+                        productData.nutritional_info = {
                             description: nutritional_info.trim(),
                             calories: null,
                             protein: null,
@@ -371,7 +371,7 @@ export const createProduct = async (req, res) => {
                         productData.allergen_info = JSON.parse(allergen_info);
                     } catch (parseErr) {
                         // If not JSON, treat as description
-                        productData.allergen_info = { 
+                        productData.allergen_info = {
                             description: allergen_info.trim(),
                             contains: [],
                             may_contain: []
@@ -459,9 +459,9 @@ export const createProduct = async (req, res) => {
         if (error.name === 'SequelizeUniqueConstraintError') {
             const field = error.errors[0]?.path || 'field';
             const value = error.errors[0]?.value;
-            
+
             console.log('[PRODUCTS] Unique constraint error on field:', field, 'value:', value);
-            
+
             return res.status(400).json({
                 success: false,
                 message: `A product with this ${field === 'name' ? 'name' : field === 'barcode' ? 'barcode' : field} already exists`,
@@ -630,8 +630,8 @@ export const updateProduct = async (req, res) => {
         if (unit !== undefined) updateData.unit = unit || 'piece';
         if (price_eur !== undefined) updateData.price_eur = Math.max(parseNumber(price_eur, 0.01), 0.01);
         if (price_syp !== undefined) updateData.price_syp = parsePositiveNumberFinal(price_syp);
-        if (cost_eur !== undefined) updateData.cost_eur = parseNumber(cost_eur, null);
-        if (cost_syp !== undefined) updateData.cost_syp = parseNumber(cost_syp, null);
+        if (cost_eur !== undefined) updateData.cost_eur = parseNumber(cost_eur, 0.00);
+        if (cost_syp !== undefined) updateData.cost_syp = parseNumber(cost_syp, 0.00);
         if (stock_quantity !== undefined) updateData.stock_quantity = parseInteger(stock_quantity, null);
         if (minimum_stock !== undefined) updateData.minimum_stock = parseInteger(minimum_stock, null);
         if (barcode !== undefined) updateData.barcode = barcode?.trim() || null;
@@ -1505,9 +1505,9 @@ export const uploadProductImage = async (req, res) => {
                 const oldImageUrl = product.image_url;
                 const oldFilename = oldImageUrl.substring(oldImageUrl.lastIndexOf('/') + 1);
                 const fullPath = path.join(__dirname, '../storage/uploads', oldFilename);
-                
+
                 console.log('[UPLOAD] Attempting to delete old image:', fullPath);
-                
+
                 if (fs.existsSync(fullPath)) {
                     fs.unlinkSync(fullPath);
                     console.log('[UPLOAD] Old image deleted successfully');
@@ -1521,7 +1521,7 @@ export const uploadProductImage = async (req, res) => {
         }
 
         // Update product with new image URL and log the update
-        const updateResult = await product.update({ 
+        const updateResult = await product.update({
             image_url: imageUrl,
             updated_at: new Date()
         });
@@ -1546,7 +1546,7 @@ export const uploadProductImage = async (req, res) => {
     } catch (error) {
         console.error('[UPLOAD] Image upload failed:', error.message);
         console.error('[UPLOAD] Error stack:', error.stack);
-        
+
         // Clean up uploaded file if database update failed
         if (req.file && req.file.path) {
             try {
