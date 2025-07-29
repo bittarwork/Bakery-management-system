@@ -757,3 +757,196 @@ export const deleteDistributionSchedule = async (req, res) => {
         });
     }
 };
+
+// @desc    Get automatic distribution schedules for all distributors with their orders
+// @route   GET /api/distribution/schedules/auto
+// @access  Private
+export const getAutoDistributionSchedules = async (req, res) => {
+    try {
+        const { schedule_date = new Date().toISOString().split('T')[0] } = req.query;
+
+        // Get all active distributors
+        const distributors = await User.findAll({
+            where: {
+                role: 'distributor',
+                status: 'active'
+            },
+            attributes: ['id', 'full_name', 'phone', 'email', 'working_status', 'is_online']
+        });
+
+        if (distributors.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: 'No active distributors found',
+                data: {
+                    distributors_schedules: [],
+                    total_distributors: 0,
+                    schedule_date
+                }
+            });
+        }
+
+        // Get distribution schedules for all distributors for the specified date
+        const distributorSchedules = await Promise.all(
+            distributors.map(async (distributor) => {
+                // Get existing schedule
+                let existingSchedule = await DailyDistributionSchedule.findAll({
+                    where: {
+                        distributor_id: distributor.id,
+                        schedule_date: schedule_date
+                    },
+                    include: [
+                        {
+                            model: Store,
+                            as: 'store',
+                            attributes: ['id', 'name', 'address', 'phone', 'gps_coordinates']
+                        }
+                    ],
+                    order: [['visit_order', 'ASC']]
+                });
+
+                // Get assigned orders for this distributor and date
+                const assignedOrders = await Order.findAll({
+                    where: {
+                        assigned_distributor_id: distributor.id,
+                        delivery_date: schedule_date,
+                        status: ['confirmed', 'in_progress']
+                    },
+                    attributes: [
+                        'id', 'order_number', 'store_id', 'store_name', 
+                        'total_amount_eur', 'total_amount_syp', 'status', 
+                        'priority', 'notes', 'special_instructions',
+                        'delivery_address', 'customer_name', 'customer_phone'
+                    ],
+                    order: [['priority', 'DESC'], ['created_at', 'ASC']]
+                });
+
+                // Get stores assigned to this distributor
+                const assignedStores = await Store.findAll({
+                    where: {
+                        assigned_distributor_id: distributor.id,
+                        status: 'active'
+                    },
+                    attributes: ['id', 'name', 'address', 'phone', 'gps_coordinates']
+                });
+
+                // Group orders by store
+                const ordersByStore = {};
+                assignedOrders.forEach(order => {
+                    if (!ordersByStore[order.store_id]) {
+                        ordersByStore[order.store_id] = [];
+                    }
+                    ordersByStore[order.store_id].push(order);
+                });
+
+                // If no existing schedule, create auto-schedule based on orders and assigned stores
+                let scheduleItems = [];
+                
+                if (existingSchedule.length === 0) {
+                    // Create automatic schedule
+                    let visitOrder = 1;
+                    
+                    // First, add stores that have orders
+                    for (const [storeId, storeOrders] of Object.entries(ordersByStore)) {
+                        const store = assignedStores.find(s => s.id == storeId) || 
+                                     await Store.findByPk(storeId, {
+                                         attributes: ['id', 'name', 'address', 'phone', 'gps_coordinates']
+                                     });
+                        
+                        if (store) {
+                            scheduleItems.push({
+                                id: `auto-${distributor.id}-${storeId}`,
+                                distributor_id: distributor.id,
+                                schedule_date: schedule_date,
+                                store_id: parseInt(storeId),
+                                visit_order: visitOrder++,
+                                visit_status: 'scheduled',
+                                estimated_duration: Math.max(15, storeOrders.length * 5), // Minimum 15 min, +5 min per order
+                                order_ids: storeOrders.map(o => o.id),
+                                orders: storeOrders,
+                                store: store,
+                                is_auto_generated: true
+                            });
+                        }
+                    }
+                    
+                    // Then add assigned stores without orders (if needed for regular visits)
+                    assignedStores.forEach(store => {
+                        if (!ordersByStore[store.id]) {
+                            scheduleItems.push({
+                                id: `auto-${distributor.id}-${store.id}`,
+                                distributor_id: distributor.id,
+                                schedule_date: schedule_date,
+                                store_id: store.id,
+                                visit_order: visitOrder++,
+                                visit_status: 'scheduled',
+                                estimated_duration: 15,
+                                order_ids: [],
+                                orders: [],
+                                store: store,
+                                is_auto_generated: true,
+                                is_regular_visit: true
+                            });
+                        }
+                    });
+                } else {
+                    // Use existing schedule and enrich with order data
+                    scheduleItems = existingSchedule.map(schedule => {
+                        const storeOrders = ordersByStore[schedule.store_id] || [];
+                        return {
+                            ...schedule.toJSON(),
+                            orders: storeOrders,
+                            is_auto_generated: false
+                        };
+                    });
+                }
+
+                // Calculate schedule statistics
+                const totalOrders = assignedOrders.length;
+                const totalStores = scheduleItems.length;
+                const estimatedDuration = scheduleItems.reduce((sum, item) => sum + (item.estimated_duration || 15), 0);
+                
+                return {
+                    distributor: distributor.toJSON(),
+                    schedule_items: scheduleItems,
+                    assigned_orders: assignedOrders,
+                    assigned_stores: assignedStores,
+                    statistics: {
+                        total_orders: totalOrders,
+                        total_stores: totalStores,
+                        estimated_duration_minutes: estimatedDuration,
+                        has_existing_schedule: existingSchedule.length > 0
+                    }
+                };
+            })
+        );
+
+        // Calculate overall statistics
+        const overallStats = {
+            total_distributors: distributors.length,
+            total_orders: distributorSchedules.reduce((sum, ds) => sum + ds.statistics.total_orders, 0),
+            total_stores: distributorSchedules.reduce((sum, ds) => sum + ds.statistics.total_stores, 0),
+            total_estimated_duration: distributorSchedules.reduce((sum, ds) => sum + ds.statistics.estimated_duration_minutes, 0),
+            distributors_with_orders: distributorSchedules.filter(ds => ds.statistics.total_orders > 0).length,
+            distributors_with_existing_schedules: distributorSchedules.filter(ds => ds.statistics.has_existing_schedule).length
+        };
+
+        res.status(200).json({
+            success: true,
+            message: 'Auto distribution schedules retrieved successfully',
+            data: {
+                distributors_schedules: distributorSchedules,
+                overall_statistics: overallStats,
+                schedule_date
+            }
+        });
+
+    } catch (error) {
+        logger.error('Error getting auto distribution schedules:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error retrieving auto distribution schedules',
+            error: error.message
+        });
+    }
+};

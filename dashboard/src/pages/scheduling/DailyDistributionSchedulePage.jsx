@@ -82,6 +82,18 @@ const DailyDistributionSchedulePage = () => {
     cancelledVisits: 0,
   });
 
+  // Auto distribution schedules state
+  const [autoSchedules, setAutoSchedules] = useState([]);
+  const [overallStats, setOverallStats] = useState({
+    total_distributors: 0,
+    total_orders: 0,
+    total_stores: 0,
+    total_estimated_duration: 0,
+    distributors_with_orders: 0,
+    distributors_with_existing_schedules: 0,
+  });
+  const [viewMode, setViewMode] = useState('auto'); // 'auto' or 'manual'
+
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -104,17 +116,29 @@ const DailyDistributionSchedulePage = () => {
   }, []);
 
   useEffect(() => {
-    loadSchedules();
-  }, [pagination.currentPage, filters]);
+    if (viewMode === 'manual') {
+      loadSchedules();
+    } else {
+      loadAutoSchedules();
+    }
+  }, [pagination.currentPage, filters, viewMode]);
 
   const loadInitialData = async () => {
     try {
-      await Promise.all([
-        loadSchedules(),
-        loadDistributors(),
-        loadStores(),
-        loadStatistics(),
-      ]);
+      if (viewMode === 'auto') {
+        await Promise.all([
+          loadAutoSchedules(),
+          loadDistributors(),
+          loadStores(),
+        ]);
+      } else {
+        await Promise.all([
+          loadSchedules(),
+          loadDistributors(),
+          loadStores(),
+          loadStatistics(),
+        ]);
+      }
     } catch (error) {
       console.error("Error loading initial data:", error);
       toast.error("Error loading initial data");
@@ -168,6 +192,62 @@ const DailyDistributionSchedulePage = () => {
       console.error("Error loading schedules:", error);
       setError("Failed to load distribution schedules");
       toast.error("Failed to load distribution schedules");
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  // Load auto distribution schedules
+  const loadAutoSchedules = async () => {
+    try {
+      setIsLoading(true);
+      setError("");
+
+      console.log("🔍 Loading auto distribution schedules for date:", filters.schedule_date);
+      const response = await distributionService.getAutoDistributionSchedules(
+        filters.schedule_date
+      );
+      console.log("📦 Auto distribution schedules response:", response);
+
+      if (response && response.success) {
+        const autoSchedulesData = response.data?.distributors_schedules || [];
+        const overallStatsData = response.data?.overall_statistics || {};
+        
+        setAutoSchedules(autoSchedulesData);
+        setOverallStats(overallStatsData);
+
+        // Update statistics for display
+        let totalSchedules = 0;
+        let scheduledVisits = 0;
+        let inProgressVisits = 0;
+        let completedVisits = 0;
+        let cancelledVisits = 0;
+
+        autoSchedulesData.forEach(distributorSchedule => {
+          distributorSchedule.schedule_items.forEach(item => {
+            totalSchedules++;
+            switch(item.visit_status) {
+              case 'scheduled': scheduledVisits++; break;
+              case 'in_progress': inProgressVisits++; break;
+              case 'completed': completedVisits++; break;
+              case 'cancelled': cancelledVisits++; break;
+            }
+          });
+        });
+
+        setStatistics({
+          totalSchedules,
+          scheduledVisits,
+          inProgressVisits,
+          completedVisits,
+          cancelledVisits,
+        });
+      }
+    } catch (error) {
+      console.error("Error loading auto schedules:", error);
+      setError("Failed to load auto distribution schedules");
+      toast.error("Failed to load auto distribution schedules");
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -441,6 +521,30 @@ const DailyDistributionSchedulePage = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('auto')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                viewMode === 'auto'
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Auto Schedule
+            </button>
+            <button
+              onClick={() => setViewMode('manual')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                viewMode === 'manual'
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Manual Schedule
+            </button>
+          </div>
+          
           <EnhancedButton
             variant="outline"
             size="sm"
@@ -453,13 +557,16 @@ const DailyDistributionSchedulePage = () => {
             />
             Refresh
           </EnhancedButton>
-          <EnhancedButton
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Generate Schedule
-          </EnhancedButton>
+          
+          {viewMode === 'manual' && (
+            <EnhancedButton
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Generate Schedule
+            </EnhancedButton>
+          )}
         </div>
       </div>
 
@@ -626,16 +733,183 @@ const DailyDistributionSchedulePage = () => {
         </CardBody>
       </Card>
 
-      {/* Schedules Table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Distribution Schedules ({schedules.length})
-            </h3>
-          </div>
-        </CardHeader>
-        <CardBody className="pt-0">
+      {/* Schedules Display */}
+      {viewMode === 'auto' ? (
+        // Auto Schedules Display - Show by Distributor
+        <div className="space-y-6">
+          {autoSchedules.length === 0 ? (
+            <Card>
+              <CardBody className="py-12">
+                <div className="text-center">
+                  <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No distributors with schedules found
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    No active distributors have orders assigned for {filters.schedule_date}.
+                  </p>
+                </div>
+              </CardBody>
+            </Card>
+          ) : (
+            autoSchedules.map((distributorSchedule) => (
+              <Card key={distributorSchedule.distributor.id} className="overflow-hidden">
+                <CardHeader className="pb-3 bg-gradient-to-r from-indigo-50 to-blue-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
+                        <User className="h-6 w-6 text-indigo-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {distributorSchedule.distributor.full_name}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          {distributorSchedule.distributor.phone} • {distributorSchedule.statistics.total_orders} orders • {distributorSchedule.statistics.total_stores} stops
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-gray-500">Estimated Duration</div>
+                      <div className="text-lg font-semibold text-indigo-600">
+                        {Math.round(distributorSchedule.statistics.estimated_duration_minutes / 60)}h {distributorSchedule.statistics.estimated_duration_minutes % 60}m
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardBody className="pt-0">
+                  {distributorSchedule.schedule_items.length === 0 ? (
+                    <div className="text-center py-8">
+                      <ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-600">No visits scheduled for this distributor</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Visit Order
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Store
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Orders
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Status
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Duration
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {distributorSchedule.schedule_items.map((scheduleItem, index) => {
+                            const statusInfo = getStatusInfo(scheduleItem.visit_status);
+                            const StatusIcon = statusInfo.icon;
+                            
+                            return (
+                              <motion.tr
+                                key={scheduleItem.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3, delay: index * 0.1 }}
+                                className="hover:bg-gray-50"
+                              >
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                                      <span className="text-sm font-medium text-indigo-600">
+                                        {scheduleItem.visit_order}
+                                      </span>
+                                    </div>
+                                    {scheduleItem.is_auto_generated && (
+                                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                        Auto
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <Building className="h-4 w-4 text-gray-400 mr-2" />
+                                    <div>
+                                      <div className="text-sm font-medium text-gray-900">
+                                        {scheduleItem.store?.name || "N/A"}
+                                      </div>
+                                      <div className="text-sm text-gray-500">
+                                        {scheduleItem.store?.address || "N/A"}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm text-gray-900">
+                                    {scheduleItem.orders?.length || 0} orders
+                                    {scheduleItem.orders?.length > 0 && (
+                                      <div className="text-xs text-gray-500 mt-1">
+                                        Total: €{scheduleItem.orders.reduce((sum, order) => sum + parseFloat(order.total_amount_eur || 0), 0).toFixed(2)}
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span
+                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}
+                                  >
+                                    <StatusIcon className="w-3 h-3 mr-1" />
+                                    {statusInfo.text}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {scheduleItem.estimated_duration
+                                    ? `${scheduleItem.estimated_duration} min`
+                                    : "N/A"}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <EnhancedButton
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setSelectedSchedule(scheduleItem);
+                                        setShowDetailsModal(true);
+                                      }}
+                                      className="flex items-center gap-1"
+                                    >
+                                      <Eye className="w-3 h-3" />
+                                      Details
+                                    </EnhancedButton>
+                                  </div>
+                                </td>
+                              </motion.tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardBody>
+              </Card>
+            ))
+          )}
+        </div>
+      ) : (
+        // Manual Schedules Table (Original)
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Distribution Schedules ({schedules.length})
+              </h3>
+            </div>
+          </CardHeader>
+          <CardBody className="pt-0">
           {error && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
               <div className="flex items-center">

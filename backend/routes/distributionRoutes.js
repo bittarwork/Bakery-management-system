@@ -71,6 +71,9 @@ router.get('/schedules/distributor/:distributorId', auth.protect, dailyDistribut
 // Get schedule statistics
 router.get('/schedules/statistics', auth.protect, dailyDistributionScheduleController.getScheduleStatistics);
 
+// Get automatic distribution schedules for all distributors
+router.get('/schedules/auto', auth.protect, dailyDistributionScheduleController.getAutoDistributionSchedules);
+
 // Generate daily schedule for distributor
 router.post('/schedules/generate', [
     auth.protect,
