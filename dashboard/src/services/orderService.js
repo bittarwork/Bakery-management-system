@@ -5,7 +5,7 @@ const orderService = {
   async getOrders(params = {}) {
     try {
       const queryParams = new URLSearchParams();
-      
+
       if (params.page) queryParams.append('page', params.page);
       if (params.limit) queryParams.append('limit', params.limit);
       if (params.search) queryParams.append('search', params.search);
@@ -18,7 +18,7 @@ const orderService = {
 
       const queryString = queryParams.toString();
       const endpoint = queryString ? `/orders?${queryString}` : '/orders';
-      
+
       const response = await apiService.get(endpoint);
       return response.data;
     } catch (error) {
@@ -41,10 +41,32 @@ const orderService = {
   // Create new order
   async createOrder(orderData) {
     try {
+      console.log("🚀 [orderService] Creating order with data:", JSON.stringify(orderData, null, 2));
+
+      // Validate data before sending
+      const validation = this.validateOrderData(orderData);
+      if (!validation.isValid) {
+        console.error("❌ [orderService] Client-side validation failed:", validation.errors);
+        throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
+      }
+
+      console.log("✅ [orderService] Client-side validation passed");
+
       const response = await apiService.post('/orders', orderData);
+
+      console.log("📦 [orderService] Raw API response:", response);
+
       return response.data;
     } catch (error) {
-      console.error('Error creating order:', error);
+      console.error("💥 [orderService] Error creating order:", error);
+
+      // Enhanced error logging
+      if (error.response) {
+        console.error("📄 [orderService] Response data:", error.response.data);
+        console.error("📊 [orderService] Response status:", error.response.status);
+        console.error("📋 [orderService] Response headers:", error.response.headers);
+      }
+
       throw error;
     }
   },
@@ -231,6 +253,57 @@ const orderService = {
     } else {
       return `£S${numAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
     }
+  },
+
+  // Client-side validation to catch issues before API call
+  validateOrderData(orderData) {
+    const errors = [];
+
+    // Validate store_id
+    if (!orderData.store_id) {
+      errors.push('store_id is required');
+    } else if (typeof orderData.store_id !== 'number' || orderData.store_id <= 0) {
+      errors.push('store_id must be a positive number');
+    }
+
+    // Validate items
+    if (!orderData.items || !Array.isArray(orderData.items)) {
+      errors.push('items must be an array');
+    } else if (orderData.items.length === 0) {
+      errors.push('at least one item is required');
+    } else {
+      orderData.items.forEach((item, index) => {
+        if (!item.product_id) {
+          errors.push(`items[${index}].product_id is required`);
+        } else if (typeof item.product_id !== 'number' || item.product_id <= 0) {
+          errors.push(`items[${index}].product_id must be a positive number`);
+        }
+
+        if (!item.quantity) {
+          errors.push(`items[${index}].quantity is required`);
+        } else if (typeof item.quantity !== 'number' || item.quantity <= 0) {
+          errors.push(`items[${index}].quantity must be a positive number`);
+        }
+      });
+    }
+
+    // Validate currency if provided
+    if (orderData.currency && !['EUR', 'SYP'].includes(orderData.currency)) {
+      errors.push('currency must be EUR or SYP');
+    }
+
+    // Validate delivery_date if provided
+    if (orderData.delivery_date && orderData.delivery_date !== null) {
+      const date = new Date(orderData.delivery_date);
+      if (isNaN(date.getTime())) {
+        errors.push('delivery_date must be a valid date');
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
   }
 };
 

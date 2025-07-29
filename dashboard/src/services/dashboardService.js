@@ -1,15 +1,128 @@
 /**
  * Dashboard Service
- * Handles dashboard data and analytics
- * Phase 6 - Complete Order Management
+ * Handles dashboard data and analytics with optimized caching
+ * Phase 6 - Complete Order Management - Performance Optimized
  */
 
 import { apiClient } from './apiService.js';
 
 class DashboardService {
+    constructor() {
+        // Cache system
+        this.cache = new Map();
+        this.cacheTimeouts = new Map();
+        this.pendingRequests = new Map();
+
+        // Cache TTL in milliseconds
+        this.CACHE_TTL = {
+            dashboard_stats: 5 * 60 * 1000, // 5 minutes
+            recent_activities: 2 * 60 * 1000, // 2 minutes
+            orders: 3 * 60 * 1000, // 3 minutes
+            products: 5 * 60 * 1000, // 5 minutes
+            stores: 10 * 60 * 1000, // 10 minutes
+            users: 5 * 60 * 1000, // 5 minutes
+            vehicles: 5 * 60 * 1000 // 5 minutes
+        };
+    }
+
     /**
- * Format currency value
- */
+     * Get cached data or fetch from API
+     */
+    async getCachedData(key, fetchFunction, ttl = 5 * 60 * 1000) {
+        const now = Date.now();
+        const cachedItem = this.cache.get(key);
+
+        // Return cached data if still valid
+        if (cachedItem && (now - cachedItem.timestamp) < ttl) {
+            console.log(`📋 Using cached data for ${key}`);
+            return cachedItem.data;
+        }
+
+        // Check if request is already pending
+        if (this.pendingRequests.has(key)) {
+            console.log(`⏳ Waiting for pending request: ${key}`);
+            return await this.pendingRequests.get(key);
+        }
+
+        // Create new request
+        const requestPromise = this.executeRequest(key, fetchFunction);
+        this.pendingRequests.set(key, requestPromise);
+
+        try {
+            const data = await requestPromise;
+
+            // Cache the result
+            this.cache.set(key, {
+                data,
+                timestamp: now
+            });
+
+            // Set cache cleanup timeout
+            this.setCacheTimeout(key, ttl);
+
+            return data;
+        } finally {
+            // Remove from pending requests
+            this.pendingRequests.delete(key);
+        }
+    }
+
+    /**
+     * Execute the actual request
+     */
+    async executeRequest(key, fetchFunction) {
+        try {
+            console.log(`🌐 Fetching fresh data for ${key}`);
+            return await fetchFunction();
+        } catch (error) {
+            console.error(`❌ Error fetching ${key}:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Set cache cleanup timeout
+     */
+    setCacheTimeout(key, ttl) {
+        // Clear existing timeout
+        if (this.cacheTimeouts.has(key)) {
+            clearTimeout(this.cacheTimeouts.get(key));
+        }
+
+        // Set new timeout
+        const timeoutId = setTimeout(() => {
+            this.cache.delete(key);
+            this.cacheTimeouts.delete(key);
+            console.log(`🧹 Cache expired for ${key}`);
+        }, ttl);
+
+        this.cacheTimeouts.set(key, timeoutId);
+    }
+
+    /**
+     * Clear specific cache key
+     */
+    clearCache(key) {
+        this.cache.delete(key);
+        if (this.cacheTimeouts.has(key)) {
+            clearTimeout(this.cacheTimeouts.get(key));
+            this.cacheTimeouts.delete(key);
+        }
+    }
+
+    /**
+     * Clear all cache
+     */
+    clearAllCache() {
+        this.cache.clear();
+        this.cacheTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+        this.cacheTimeouts.clear();
+        console.log('🧹 All cache cleared');
+    }
+
+    /**
+     * Format currency value
+     */
     formatCurrency(amount, currency = 'EUR') {
         if (amount === null || amount === undefined) {
             return '€0.00';
@@ -76,277 +189,383 @@ class DashboardService {
         };
     }
 
-    // Get comprehensive dashboard statistics
-    async getDashboardStats() {
-        try {
-            const [
-                ordersResponse,
-                productsResponse,
-                storesResponse,
-                usersResponse,
-                vehiclesResponse
-            ] = await Promise.allSettled([
-                this.getOrdersStats(),
-                this.getProductsStats(),
-                this.getStoresStats(),
-                this.getUsersStats(),
-                this.getVehiclesStats()
-            ]);
-
-            const stats = {
-                orders: ordersResponse.status === 'fulfilled' ? ordersResponse.value : null,
-                products: productsResponse.status === 'fulfilled' ? productsResponse.value : null,
-                stores: storesResponse.status === 'fulfilled' ? storesResponse.value : null,
-                users: usersResponse.status === 'fulfilled' ? usersResponse.value : null,
-                vehicles: vehiclesResponse.status === 'fulfilled' ? vehiclesResponse.value : null
-            };
-
-            return {
-                success: true,
-                data: stats
-            };
-        } catch (error) {
-            console.error('Error fetching dashboard stats:', error);
-            return {
-                success: false,
-                message: error.message || 'Failed to fetch dashboard statistics'
-            };
+    // Get comprehensive dashboard statistics - OPTIMIZED
+    async getDashboardStats(forceRefresh = false) {
+        if (forceRefresh) {
+            this.clearCache('dashboard_stats');
         }
+
+        return await this.getCachedData(
+            'dashboard_stats',
+            async () => {
+                try {
+                    // Use a single optimized API call instead of multiple separate calls
+                    const [
+                        ordersResponse,
+                        productsResponse,
+                        storesResponse,
+                        usersResponse,
+                        vehiclesResponse
+                    ] = await Promise.allSettled([
+                        this.fetchOrdersDataOptimized(),
+                        this.fetchProductsDataOptimized(),
+                        this.fetchStoresDataOptimized(),
+                        this.fetchUsersDataOptimized(),
+                        this.fetchVehiclesDataOptimized()
+                    ]);
+
+                    const stats = {
+                        orders: ordersResponse.status === 'fulfilled' ? ordersResponse.value : this.getDefaultOrdersStats(),
+                        products: productsResponse.status === 'fulfilled' ? productsResponse.value : this.getDefaultProductsStats(),
+                        stores: storesResponse.status === 'fulfilled' ? storesResponse.value : this.getDefaultStoresStats(),
+                        users: usersResponse.status === 'fulfilled' ? usersResponse.value : this.getDefaultUsersStats(),
+                        vehicles: vehiclesResponse.status === 'fulfilled' ? vehiclesResponse.value : this.getDefaultVehiclesStats()
+                    };
+
+                    return {
+                        success: true,
+                        data: stats
+                    };
+                } catch (error) {
+                    console.error('Error fetching dashboard stats:', error);
+                    return {
+                        success: false,
+                        message: error.message || 'Failed to fetch dashboard statistics'
+                    };
+                }
+            },
+            this.CACHE_TTL.dashboard_stats
+        );
     }
 
-    // Get orders statistics
+    // Optimized individual data fetchers
+    async fetchOrdersDataOptimized() {
+        return await this.getCachedData(
+            'orders_stats',
+            async () => {
+                const response = await apiClient.get('/orders?limit=100');
+                console.log('Orders API Response:', response);
+
+                if (response.data && response.data.success) {
+                    const orders = response.data.data.orders || [];
+                    const totalOrders = response.data.data.pagination?.total || orders.length;
+
+                    // Count orders by status
+                    const statusCounts = {
+                        draft: 0,
+                        confirmed: 0,
+                        in_progress: 0,
+                        delivered: 0,
+                        cancelled: 0
+                    };
+
+                    orders.forEach(order => {
+                        if (statusCounts.hasOwnProperty(order.status)) {
+                            statusCounts[order.status]++;
+                        }
+                    });
+
+                    // Calculate total revenue from delivered orders
+                    const deliveredOrders = orders.filter(order => order.status === 'delivered');
+                    const totalRevenue = deliveredOrders.reduce((sum, order) => {
+                        return sum + (parseFloat(order.final_amount_eur) || 0);
+                    }, 0);
+
+                    return {
+                        totalOrders,
+                        pendingOrders: statusCounts.confirmed + statusCounts.in_progress,
+                        completedOrders: statusCounts.delivered,
+                        cancelledOrders: statusCounts.cancelled,
+                        totalRevenue,
+                        recentOrders: orders.slice(0, 5)
+                    };
+                }
+
+                return this.getDefaultOrdersStats();
+            },
+            this.CACHE_TTL.orders
+        );
+    }
+
+    async fetchProductsDataOptimized() {
+        return await this.getCachedData(
+            'products_stats',
+            async () => {
+                const response = await apiClient.get('/products?limit=100');
+                console.log('Products API Response:', response);
+
+                if (response.data && response.data.success) {
+                    const products = response.data.data.products || [];
+                    const totalProducts = response.data.data.pagination?.total || products.length;
+
+                    // Count active products
+                    const activeProducts = products.filter(product => product.status === 'active').length;
+
+                    // Count featured products
+                    const featuredProducts = products.filter(product => product.is_featured).length;
+
+                    return {
+                        totalProducts,
+                        activeProducts,
+                        featuredProducts,
+                        recentProducts: products.slice(0, 5)
+                    };
+                }
+
+                return this.getDefaultProductsStats();
+            },
+            this.CACHE_TTL.products
+        );
+    }
+
+    async fetchStoresDataOptimized() {
+        return await this.getCachedData(
+            'stores_stats',
+            async () => {
+                const response = await apiClient.get('/stores?limit=100');
+                console.log('Stores API Response:', response);
+
+                if (response.data && response.data.success) {
+                    const stores = response.data.data.stores || [];
+                    const totalStores = response.data.data.pagination?.total || stores.length;
+
+                    // Count active stores
+                    const activeStores = stores.filter(store => store.status === 'active').length;
+
+                    return {
+                        totalStores,
+                        activeStores,
+                        recentStores: stores.slice(0, 5)
+                    };
+                }
+
+                return this.getDefaultStoresStats();
+            },
+            this.CACHE_TTL.stores
+        );
+    }
+
+    async fetchUsersDataOptimized() {
+        return await this.getCachedData(
+            'users_stats',
+            async () => {
+                const response = await apiClient.get('/users?limit=100');
+                console.log('Users API Response:', response);
+
+                if (response.data && response.data.success) {
+                    const users = response.data.data.users || [];
+                    const totalUsers = response.data.data.pagination?.total || users.length;
+
+                    // Count users by role
+                    const roleCounts = {
+                        admin: 0,
+                        manager: 0,
+                        distributor: 0,
+                        assistant: 0
+                    };
+
+                    users.forEach(user => {
+                        if (roleCounts.hasOwnProperty(user.role)) {
+                            roleCounts[user.role]++;
+                        }
+                    });
+
+                    // Count active users
+                    const activeUsers = users.filter(user => user.status === 'active').length;
+
+                    return {
+                        totalUsers,
+                        activeUsers,
+                        roleCounts,
+                        recentUsers: users.slice(0, 5)
+                    };
+                }
+
+                return this.getDefaultUsersStats();
+            },
+            this.CACHE_TTL.users
+        );
+    }
+
+    async fetchVehiclesDataOptimized() {
+        return await this.getCachedData(
+            'vehicles_stats',
+            async () => {
+                const response = await apiClient.get('/vehicles?limit=100');
+                console.log('Vehicles API Response:', response);
+
+                if (response.data && response.data.success) {
+                    const vehicles = response.data.data.vehicles || [];
+                    const totalVehicles = response.data.data.pagination?.total || vehicles.length;
+
+                    // Count active vehicles
+                    const activeVehicles = vehicles.filter(vehicle => vehicle.status === 'active').length;
+
+                    return {
+                        totalVehicles,
+                        activeVehicles,
+                        recentVehicles: vehicles.slice(0, 5)
+                    };
+                }
+
+                return this.getDefaultVehiclesStats();
+            },
+            this.CACHE_TTL.vehicles
+        );
+    }
+
+    // Default stats methods
+    getDefaultOrdersStats() {
+        return {
+            totalOrders: 0,
+            pendingOrders: 0,
+            completedOrders: 0,
+            cancelledOrders: 0,
+            totalRevenue: 0,
+            recentOrders: []
+        };
+    }
+
+    getDefaultProductsStats() {
+        return {
+            totalProducts: 0,
+            activeProducts: 0,
+            featuredProducts: 0,
+            recentProducts: []
+        };
+    }
+
+    getDefaultStoresStats() {
+        return {
+            totalStores: 0,
+            activeStores: 0,
+            recentStores: []
+        };
+    }
+
+    getDefaultUsersStats() {
+        return {
+            totalUsers: 0,
+            activeUsers: 0,
+            roleCounts: {
+                admin: 0,
+                manager: 0,
+                distributor: 0,
+                assistant: 0
+            },
+            recentUsers: []
+        };
+    }
+
+    getDefaultVehiclesStats() {
+        return {
+            totalVehicles: 0,
+            activeVehicles: 0,
+            recentVehicles: []
+        };
+    }
+
+    // Get recent activities - OPTIMIZED
+    async getRecentActivities(forceRefresh = false) {
+        if (forceRefresh) {
+            this.clearCache('recent_activities');
+        }
+
+        return await this.getCachedData(
+            'recent_activities',
+            async () => {
+                try {
+                    const [ordersResponse, productsResponse, usersResponse] = await Promise.allSettled([
+                        apiClient.get('/orders?limit=5&sortBy=created_at&sortOrder=DESC'),
+                        apiClient.get('/products?limit=5&sortBy=created_at&sortOrder=DESC'),
+                        apiClient.get('/users?limit=5&sortBy=created_at&sortOrder=DESC')
+                    ]);
+
+                    const activities = [];
+
+                    // Process orders
+                    if (ordersResponse.status === 'fulfilled' && ordersResponse.value.data?.success) {
+                        const orders = ordersResponse.value.data.data.orders || [];
+                        orders.forEach(order => {
+                            activities.push({
+                                id: `order-${order.id}`,
+                                type: 'order',
+                                message: `تم إنشاء طلب جديد #${order.order_number || order.id}`,
+                                time: this.formatTimeAgo(order.created_at),
+                                status: 'success',
+                                data: order
+                            });
+                        });
+                    }
+
+                    // Process products
+                    if (productsResponse.status === 'fulfilled' && productsResponse.value.data?.success) {
+                        const products = productsResponse.value.data.data.products || [];
+                        products.forEach(product => {
+                            activities.push({
+                                id: `product-${product.id}`,
+                                type: 'product',
+                                message: `تم إضافة منتج جديد: ${product.name}`,
+                                time: this.formatTimeAgo(product.created_at),
+                                status: 'info',
+                                data: product
+                            });
+                        });
+                    }
+
+                    // Process users
+                    if (usersResponse.status === 'fulfilled' && usersResponse.value.data?.success) {
+                        const users = usersResponse.value.data.data.users || [];
+                        users.forEach(user => {
+                            activities.push({
+                                id: `user-${user.id}`,
+                                type: 'user',
+                                message: `تم تسجيل مستخدم جديد: ${user.full_name || user.username}`,
+                                time: this.formatTimeAgo(user.created_at),
+                                status: 'info',
+                                data: user
+                            });
+                        });
+                    }
+
+                    // Sort by time and return top 10
+                    return activities
+                        .sort((a, b) => new Date(b.data.created_at) - new Date(a.data.created_at))
+                        .slice(0, 10);
+
+                } catch (error) {
+                    console.error('Error fetching recent activities:', error);
+                    return [];
+                }
+            },
+            this.CACHE_TTL.recent_activities
+        );
+    }
+
+    // Legacy methods for backward compatibility - now optimized
     async getOrdersStats() {
-        try {
-            const response = await apiClient.get('/orders?limit=100');
-            console.log('Orders API Response:', response);
-            
-            if (response.data && response.data.success) {
-                const orders = response.data.data.orders || [];
-                const totalOrders = response.data.data.pagination?.total || orders.length;
-                
-                // Count orders by status
-                const statusCounts = {
-                    draft: 0,
-                    confirmed: 0,
-                    in_progress: 0,
-                    delivered: 0,
-                    cancelled: 0
-                };
-
-                orders.forEach(order => {
-                    if (statusCounts.hasOwnProperty(order.status)) {
-                        statusCounts[order.status]++;
-                    }
-                });
-
-                // Calculate total revenue from delivered orders
-                const deliveredOrders = orders.filter(order => order.status === 'delivered');
-                const totalRevenue = deliveredOrders.reduce((sum, order) => {
-                    return sum + (parseFloat(order.final_amount_eur) || 0);
-                }, 0);
-
-                return {
-                    totalOrders,
-                    pendingOrders: statusCounts.confirmed + statusCounts.in_progress,
-                    completedOrders: statusCounts.delivered,
-                    cancelledOrders: statusCounts.cancelled,
-                    totalRevenue,
-                    recentOrders: orders.slice(0, 5)
-                };
-            }
-
-            return {
-                totalOrders: 0,
-                pendingOrders: 0,
-                completedOrders: 0,
-                cancelledOrders: 0,
-                totalRevenue: 0,
-                recentOrders: []
-            };
-        } catch (error) {
-            console.error('Error fetching orders stats:', error);
-            return {
-                totalOrders: 0,
-                pendingOrders: 0,
-                completedOrders: 0,
-                cancelledOrders: 0,
-                totalRevenue: 0,
-                recentOrders: []
-            };
-        }
+        const data = await this.fetchOrdersDataOptimized();
+        return data;
     }
 
-    // Get products statistics
     async getProductsStats() {
-        try {
-            const response = await apiClient.get('/products?limit=100');
-            console.log('Products API Response:', response);
-            
-            if (response.data && response.data.success) {
-                const products = response.data.data.products || [];
-                const totalProducts = response.data.data.pagination?.total || products.length;
-                
-                // Count active products
-                const activeProducts = products.filter(product => product.status === 'active').length;
-                
-                // Count featured products
-                const featuredProducts = products.filter(product => product.is_featured).length;
-
-                return {
-                    totalProducts,
-                    activeProducts,
-                    featuredProducts,
-                    recentProducts: products.slice(0, 5)
-                };
-            }
-
-            return {
-                totalProducts: 0,
-                activeProducts: 0,
-                featuredProducts: 0,
-                recentProducts: []
-            };
-        } catch (error) {
-            console.error('Error fetching products stats:', error);
-            return {
-                totalProducts: 0,
-                activeProducts: 0,
-                featuredProducts: 0,
-                recentProducts: []
-            };
-        }
+        const data = await this.fetchProductsDataOptimized();
+        return data;
     }
 
-    // Get stores statistics
     async getStoresStats() {
-        try {
-            const response = await apiClient.get('/stores?limit=100');
-            console.log('Stores API Response:', response);
-            
-            if (response.data && response.data.success) {
-                const stores = response.data.data.stores || [];
-                const totalStores = response.data.data.pagination?.total || stores.length;
-                
-                // Count active stores
-                const activeStores = stores.filter(store => store.status === 'active').length;
-
-                return {
-                    totalStores,
-                    activeStores,
-                    recentStores: stores.slice(0, 5)
-                };
-            }
-
-            return {
-                totalStores: 0,
-                activeStores: 0,
-                recentStores: []
-            };
-        } catch (error) {
-            console.error('Error fetching stores stats:', error);
-            return {
-                totalStores: 0,
-                activeStores: 0,
-                recentStores: []
-            };
-        }
+        const data = await this.fetchStoresDataOptimized();
+        return data;
     }
 
-    // Get users statistics
     async getUsersStats() {
-        try {
-            const response = await apiClient.get('/users?limit=100');
-            console.log('Users API Response:', response);
-            
-            if (response.data && response.data.success) {
-                const users = response.data.data.users || [];
-                const totalUsers = response.data.data.pagination?.total || users.length;
-                
-                // Count users by role
-                const roleCounts = {
-                    admin: 0,
-                    manager: 0,
-                    distributor: 0,
-                    assistant: 0
-                };
-
-                users.forEach(user => {
-                    if (roleCounts.hasOwnProperty(user.role)) {
-                        roleCounts[user.role]++;
-                    }
-                });
-
-                // Count active users
-                const activeUsers = users.filter(user => user.status === 'active').length;
-
-                return {
-                    totalUsers,
-                    activeUsers,
-                    roleCounts,
-                    recentUsers: users.slice(0, 5)
-                };
-            }
-
-            return {
-                totalUsers: 0,
-                activeUsers: 0,
-                roleCounts: {
-                    admin: 0,
-                    manager: 0,
-                    distributor: 0,
-                    assistant: 0
-                },
-                recentUsers: []
-            };
-        } catch (error) {
-            console.error('Error fetching users stats:', error);
-            return {
-                totalUsers: 0,
-                activeUsers: 0,
-                roleCounts: {
-                    admin: 0,
-                    manager: 0,
-                    distributor: 0,
-                    assistant: 0
-                },
-                recentUsers: []
-            };
-        }
+        const data = await this.fetchUsersDataOptimized();
+        return data;
     }
 
-    // Get vehicles statistics
     async getVehiclesStats() {
-        try {
-            const response = await apiClient.get('/vehicles?limit=100');
-            console.log('Vehicles API Response:', response);
-            
-            if (response.data && response.data.success) {
-                const vehicles = response.data.data.vehicles || [];
-                const totalVehicles = response.data.data.pagination?.total || vehicles.length;
-                
-                // Count active vehicles
-                const activeVehicles = vehicles.filter(vehicle => vehicle.status === 'active').length;
-
-                return {
-                    totalVehicles,
-                    activeVehicles,
-                    recentVehicles: vehicles.slice(0, 5)
-                };
-            }
-
-            return {
-                totalVehicles: 0,
-                activeVehicles: 0,
-                recentVehicles: []
-            };
-        } catch (error) {
-            console.error('Error fetching vehicles stats:', error);
-            return {
-                totalVehicles: 0,
-                activeVehicles: 0,
-                recentVehicles: []
-            };
-        }
+        const data = await this.fetchVehiclesDataOptimized();
+        return data;
     }
 
     // Get payments statistics
@@ -401,7 +620,7 @@ class DashboardService {
             queryParams.append('date', date);
         }
 
-        return await apiService.get(`/dashboard/overview?${queryParams}`);
+        return await apiClient.get(`/dashboard/overview?${queryParams}`);
     }
 
     /**
@@ -423,7 +642,7 @@ class DashboardService {
         if (date_from) queryParams.append('date_from', date_from);
         if (date_to) queryParams.append('date_to', date_to);
 
-        return await apiService.get(`/dashboard/sales?${queryParams}`);
+        return await apiClient.get(`/dashboard/sales?${queryParams}`);
     }
 
     /**
@@ -445,7 +664,7 @@ class DashboardService {
         if (date_to) queryParams.append('date_to', date_to);
         if (distributor_id) queryParams.append('distributor_id', distributor_id);
 
-        return await apiService.get(`/dashboard/distribution?${queryParams}`);
+        return await apiClient.get(`/dashboard/distribution?${queryParams}`);
     }
 
     /**
@@ -467,7 +686,7 @@ class DashboardService {
         if (date_to) queryParams.append('date_to', date_to);
         if (payment_method) queryParams.append('payment_method', payment_method);
 
-        return await apiService.get(`/dashboard/payments?${queryParams}`);
+        return await apiClient.get(`/dashboard/payments?${queryParams}`);
     }
 
     /**
@@ -486,14 +705,14 @@ class DashboardService {
             period
         });
 
-        return await apiService.get(`/dashboard/top-performers?${queryParams}`);
+        return await apiClient.get(`/dashboard/top-performers?${queryParams}`);
     }
 
     /**
      * Get system health
      */
     async getSystemHealth() {
-        return await apiService.get('/dashboard/health');
+        return await apiClient.get('/dashboard/health');
     }
 
     /**
@@ -512,7 +731,7 @@ class DashboardService {
             include_forecasts: include_forecasts.toString()
         });
 
-        return await apiService.get(`/dashboard/distribution/overview?${queryParams}`);
+        return await apiClient.get(`/dashboard/distribution/overview?${queryParams}`);
     }
 
     /**
@@ -531,7 +750,7 @@ class DashboardService {
             limit: limit.toString()
         });
 
-        return await apiService.get(`/dashboard/alerts?${queryParams}`);
+        return await apiClient.get(`/dashboard/alerts?${queryParams}`);
     }
 
     /**
@@ -553,7 +772,7 @@ class DashboardService {
 
         if (distributor_id) queryParams.append('distributor_id', distributor_id);
 
-        return await apiService.get(`/dashboard/trends?${queryParams}`);
+        return await apiClient.get(`/dashboard/trends?${queryParams}`);
     }
 
     /**
@@ -573,7 +792,7 @@ class DashboardService {
         if (date_from) queryParams.append('date_from', date_from);
         if (date_to) queryParams.append('date_to', date_to);
 
-        return await apiService.get(`/dashboard/geographic?${queryParams}`);
+        return await apiClient.get(`/dashboard/geographic?${queryParams}`);
     }
 
     /**
@@ -595,7 +814,7 @@ class DashboardService {
         if (date_to) queryParams.append('date_to', date_to);
         if (distributor_id) queryParams.append('distributor_id', distributor_id);
 
-        return await apiService.get(`/dashboard/satisfaction?${queryParams}`);
+        return await apiClient.get(`/dashboard/satisfaction?${queryParams}`);
     }
 
     /**
@@ -617,7 +836,7 @@ class DashboardService {
         if (date_from) queryParams.append('date_from', date_from);
         if (date_to) queryParams.append('date_to', date_to);
 
-        return await apiService.get(`/dashboard/efficiency?${queryParams}`);
+        return await apiClient.get(`/dashboard/efficiency?${queryParams}`);
     }
 
     /**
@@ -639,7 +858,7 @@ class DashboardService {
         if (date_from) queryParams.append('date_from', date_from);
         if (date_to) queryParams.append('date_to', date_to);
 
-        return await apiService.get(`/dashboard/costs?${queryParams}`);
+        return await apiClient.get(`/dashboard/costs?${queryParams}`);
     }
 
     /**
@@ -658,7 +877,7 @@ class DashboardService {
             include_forecasts: include_forecasts.toString()
         });
 
-        return await apiService.get(`/dashboard/inventory?${queryParams}`);
+        return await apiClient.get(`/dashboard/inventory?${queryParams}`);
     }
 
     /**
@@ -680,7 +899,7 @@ class DashboardService {
         if (date_from) queryParams.append('date_from', date_from);
         if (date_to) queryParams.append('date_to', date_to);
 
-        return await apiService.get(`/dashboard/weather?${queryParams}`);
+        return await apiClient.get(`/dashboard/weather?${queryParams}`);
     }
 
     /**
@@ -702,7 +921,7 @@ class DashboardService {
         if (time_slot) queryParams.append('time_slot', time_slot);
         if (day_of_week) queryParams.append('day_of_week', day_of_week);
 
-        return await apiService.get(`/dashboard/traffic?${queryParams}`);
+        return await apiClient.get(`/dashboard/traffic?${queryParams}`);
     }
 
     /**
@@ -724,7 +943,7 @@ class DashboardService {
         if (date_from) queryParams.append('date_from', date_from);
         if (date_to) queryParams.append('date_to', date_to);
 
-        return await apiService.get(`/dashboard/sustainability?${queryParams}`);
+        return await apiClient.get(`/dashboard/sustainability?${queryParams}`);
     }
 
     /**
@@ -746,7 +965,7 @@ class DashboardService {
         if (date_from) queryParams.append('date_from', date_from);
         if (date_to) queryParams.append('date_to', date_to);
 
-        return await apiService.get(`/dashboard/quality?${queryParams}`);
+        return await apiClient.get(`/dashboard/quality?${queryParams}`);
     }
 
     /**
@@ -765,7 +984,7 @@ class DashboardService {
             include_certifications: include_certifications.toString()
         });
 
-        return await apiService.get(`/dashboard/compliance?${queryParams}`);
+        return await apiClient.get(`/dashboard/compliance?${queryParams}`);
     }
 
     /**
@@ -787,7 +1006,7 @@ class DashboardService {
         if (date_from) queryParams.append('date_from', date_from);
         if (date_to) queryParams.append('date_to', date_to);
 
-        return await apiService.get(`/dashboard/training?${queryParams}`);
+        return await apiClient.get(`/dashboard/training?${queryParams}`);
     }
 
     /**
@@ -806,7 +1025,7 @@ class DashboardService {
             include_utilization: include_utilization.toString()
         });
 
-        return await apiService.get(`/dashboard/equipment?${queryParams}`);
+        return await apiClient.get(`/dashboard/equipment?${queryParams}`);
     }
 
     /**
@@ -828,7 +1047,7 @@ class DashboardService {
         if (date_from) queryParams.append('date_from', date_from);
         if (date_to) queryParams.append('date_to', date_to);
 
-        return await apiService.get(`/dashboard/communication?${queryParams}`);
+        return await apiClient.get(`/dashboard/communication?${queryParams}`);
     }
 
     /**
@@ -850,7 +1069,7 @@ class DashboardService {
         if (date_from) queryParams.append('date_from', date_from);
         if (date_to) queryParams.append('date_to', date_to);
 
-        return await apiService.get(`/dashboard/emergency?${queryParams}`);
+        return await apiClient.get(`/dashboard/emergency?${queryParams}`);
     }
 
     /**
@@ -869,7 +1088,7 @@ class DashboardService {
             include_performance: include_performance.toString()
         });
 
-        return await apiService.get(`/dashboard/backup?${queryParams}`);
+        return await apiClient.get(`/dashboard/backup?${queryParams}`);
     }
 
     /**
@@ -891,7 +1110,7 @@ class DashboardService {
         if (date_from) queryParams.append('date_from', date_from);
         if (date_to) queryParams.append('date_to', date_to);
 
-        return await apiService.get(`/dashboard/export?${queryParams}`, {
+        return await apiClient.get(`/dashboard/export?${queryParams}`, {
             responseType: 'blob'
         });
     }
@@ -900,101 +1119,34 @@ class DashboardService {
      * Get dashboard configuration
      */
     async getDashboardConfig() {
-        return await apiService.get('/dashboard/config');
+        return await apiClient.get('/dashboard/config');
     }
 
     /**
      * Update dashboard configuration
      */
     async updateDashboardConfig(config) {
-        return await apiService.put('/dashboard/config', config);
+        return await apiClient.put('/dashboard/config', config);
     }
 
     /**
      * Get user preferences
      */
     async getUserPreferences() {
-        return await apiService.get('/dashboard/preferences');
+        return await apiClient.get('/dashboard/preferences');
     }
 
     /**
      * Update user preferences
      */
     async updateUserPreferences(preferences) {
-        return await apiService.put('/dashboard/preferences', preferences);
-    }
-
-    // Get recent activities
-    async getRecentActivities() {
-        try {
-            const [ordersResponse, productsResponse, usersResponse] = await Promise.allSettled([
-                apiClient.get('/orders?limit=5&sortBy=created_at&sortOrder=DESC'),
-                apiClient.get('/products?limit=5&sortBy=created_at&sortOrder=DESC'),
-                apiClient.get('/users?limit=5&sortBy=created_at&sortOrder=DESC')
-            ]);
-
-            const activities = [];
-
-            // Process orders
-            if (ordersResponse.status === 'fulfilled' && ordersResponse.value.data?.success) {
-                const orders = ordersResponse.value.data.data.orders || [];
-                orders.forEach(order => {
-                    activities.push({
-                        id: `order-${order.id}`,
-                        type: 'order',
-                        message: `تم إنشاء طلب جديد #${order.order_number || order.id}`,
-                        time: this.formatTimeAgo(order.created_at),
-                        status: 'success',
-                        data: order
-                    });
-                });
-            }
-
-            // Process products
-            if (productsResponse.status === 'fulfilled' && productsResponse.value.data?.success) {
-                const products = productsResponse.value.data.data.products || [];
-                products.forEach(product => {
-                    activities.push({
-                        id: `product-${product.id}`,
-                        type: 'product',
-                        message: `تم إضافة منتج جديد: ${product.name}`,
-                        time: this.formatTimeAgo(product.created_at),
-                        status: 'info',
-                        data: product
-                    });
-                });
-            }
-
-            // Process users
-            if (usersResponse.status === 'fulfilled' && usersResponse.value.data?.success) {
-                const users = usersResponse.value.data.data.users || [];
-                users.forEach(user => {
-                    activities.push({
-                        id: `user-${user.id}`,
-                        type: 'user',
-                        message: `تم تسجيل مستخدم جديد: ${user.full_name || user.username}`,
-                        time: this.formatTimeAgo(user.created_at),
-                        status: 'info',
-                        data: user
-                    });
-                });
-            }
-
-            // Sort by time and return top 10
-            return activities
-                .sort((a, b) => new Date(b.data.created_at) - new Date(a.data.created_at))
-                .slice(0, 10);
-
-        } catch (error) {
-            console.error('Error fetching recent activities:', error);
-            return [];
-        }
+        return await apiClient.put('/dashboard/preferences', preferences);
     }
 
     // Helper method to format time ago
     formatTimeAgo(dateString) {
         if (!dateString) return 'غير محدد';
-        
+
         const now = new Date();
         const date = new Date(dateString);
         const diffInMinutes = Math.floor((now - date) / (1000 * 60));
