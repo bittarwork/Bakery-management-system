@@ -261,17 +261,34 @@ export const getOrder = async (req, res) => {
 // @route   POST /api/orders
 // @access  Private
 export const createOrder = async (req, res) => {
+    console.log('🚀 [ORDER CONTROLLER] Starting order creation...');
+    console.log('📦 [ORDER CONTROLLER] Request body:', JSON.stringify(req.body, null, 2));
+    console.log('👤 [ORDER CONTROLLER] User info:', {
+        id: req.user?.id,
+        username: req.user?.username,
+        role: req.user?.role
+    });
+
     const transaction = await sequelize.transaction({
         isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED,
         timeout: 30000
     });
 
     try {
+        console.log('✅ [ORDER CONTROLLER] Transaction started');
+
         // Create DTO and validate
+        console.log('🔍 [ORDER CONTROLLER] Creating DTO and validating...');
         const createOrderRequest = new CreateOrderRequest(req.body);
         const validation = createOrderRequest.validate();
 
+        console.log('📝 [ORDER CONTROLLER] Validation result:', {
+            isValid: validation.isValid,
+            errors: validation.errors
+        });
+
         if (!validation.isValid) {
+            console.log('❌ [ORDER CONTROLLER] Validation failed, rolling back transaction');
             await transaction.rollback();
             return res.status(400).json({
                 success: false,
@@ -282,9 +299,18 @@ export const createOrder = async (req, res) => {
 
         const { store_id, items, notes, delivery_date, currency = 'EUR' } = req.body;
 
+        console.log('🏪 [ORDER CONTROLLER] Looking for store with ID:', store_id);
+
         // Verify store exists
         const store = await Store.findByPk(store_id);
+        console.log('🏪 [ORDER CONTROLLER] Store found:', store ? {
+            id: store.id,
+            name: store.name,
+            status: store.status
+        } : 'NULL');
+
         if (!store) {
+            console.log('❌ [ORDER CONTROLLER] Store not found, rolling back transaction');
             await transaction.rollback();
             return res.status(404).json({
                 success: false,
@@ -292,18 +318,35 @@ export const createOrder = async (req, res) => {
             });
         }
 
+        console.log('🔢 [ORDER CONTROLLER] Generating order number...');
         // Generate order number
         const orderNumber = await Order.generateOrderNumber();
+        console.log('🔢 [ORDER CONTROLLER] Generated order number:', orderNumber);
 
         // Calculate totals
         let totalAmountEur = 0;
         let totalAmountSyp = 0;
 
+        console.log('📋 [ORDER CONTROLLER] Validating items and calculating totals...');
+        console.log('📋 [ORDER CONTROLLER] Items to process:', items.length);
+
         // Validate items and calculate totals
         const validatedItems = [];
-        for (const item of items) {
+        for (const [index, item] of items.entries()) {
+            console.log(`🛍️ [ORDER CONTROLLER] Processing item ${index + 1}:`, item);
+
             const product = await Product.findByPk(item.product_id);
+            console.log(`🛍️ [ORDER CONTROLLER] Product ${item.product_id} found:`, product ? {
+                id: product.id,
+                name: product.name,
+                status: product.status,
+                price_eur: product.price_eur,
+                price_syp: product.price_syp,
+                stock_quantity: product.stock_quantity
+            } : 'NULL');
+
             if (!product) {
+                console.log(`❌ [ORDER CONTROLLER] Product ${item.product_id} not found, rolling back transaction`);
                 await transaction.rollback();
                 return res.status(404).json({
                     success: false,
@@ -313,6 +356,7 @@ export const createOrder = async (req, res) => {
 
             // Check if product is active
             if (product.status === 'inactive') {
+                console.log(`❌ [ORDER CONTROLLER] Product ${product.name} is inactive, rolling back transaction`);
                 await transaction.rollback();
                 return res.status(400).json({
                     success: false,
@@ -321,7 +365,10 @@ export const createOrder = async (req, res) => {
             }
 
             const quantity = parseInt(item.quantity);
+            console.log(`📊 [ORDER CONTROLLER] Item ${index + 1} quantity:`, quantity);
+
             if (quantity <= 0) {
+                console.log(`❌ [ORDER CONTROLLER] Invalid quantity for product ${product.name}, rolling back transaction`);
                 await transaction.rollback();
                 return res.status(400).json({
                     success: false,
@@ -331,6 +378,7 @@ export const createOrder = async (req, res) => {
 
             // Check stock availability if stock tracking is enabled
             if (product.stock_quantity !== null && product.stock_quantity < quantity) {
+                console.log(`❌ [ORDER CONTROLLER] Insufficient stock for product ${product.name}: required ${quantity}, available ${product.stock_quantity}`);
                 await transaction.rollback();
                 return res.status(400).json({
                     success: false,
@@ -348,6 +396,13 @@ export const createOrder = async (req, res) => {
             totalAmountEur += itemTotalEur;
             totalAmountSyp += itemTotalSyp;
 
+            console.log(`💰 [ORDER CONTROLLER] Item ${index + 1} pricing:`, {
+                unitPriceEur,
+                unitPriceSyp,
+                itemTotalEur,
+                itemTotalSyp
+            });
+
             validatedItems.push({
                 product_id: item.product_id,
                 quantity,
@@ -361,6 +416,13 @@ export const createOrder = async (req, res) => {
             });
         }
 
+        console.log('💰 [ORDER CONTROLLER] Final totals:', {
+            totalAmountEur,
+            totalAmountSyp,
+            currency,
+            validatedItemsCount: validatedItems.length
+        });
+
         // Set final amounts based on currency
         let finalAmountEur = 0;
         let finalAmountSyp = 0;
@@ -370,6 +432,21 @@ export const createOrder = async (req, res) => {
         } else {
             finalAmountSyp = totalAmountSyp;
         }
+
+        console.log('🏗️ [ORDER CONTROLLER] Creating order with data:', {
+            order_number: orderNumber,
+            store_id,
+            store_name: store.name,
+            total_amount_eur: totalAmountEur,
+            total_amount_syp: totalAmountSyp,
+            final_amount_eur: finalAmountEur,
+            final_amount_syp: finalAmountSyp,
+            currency,
+            delivery_date: delivery_date || null,
+            notes,
+            created_by: req.user.id,
+            created_by_name: req.user.full_name || req.user.username
+        });
 
         // Create order
         const order = await Order.create({
@@ -389,17 +466,29 @@ export const createOrder = async (req, res) => {
             created_by_name: req.user.full_name || req.user.username
         }, { transaction });
 
+        console.log('✅ [ORDER CONTROLLER] Order created successfully:', {
+            id: order.id,
+            order_number: order.order_number
+        });
+
+        console.log('📦 [ORDER CONTROLLER] Creating order items...');
         // Add order items
-        for (const item of validatedItems) {
+        for (const [index, item] of validatedItems.entries()) {
+            console.log(`📦 [ORDER CONTROLLER] Creating order item ${index + 1}:`, item);
             await OrderItem.create({
                 order_id: order.id,
                 ...item
             }, { transaction });
         }
 
+        console.log('✅ [ORDER CONTROLLER] All order items created successfully');
+
+        console.log('💾 [ORDER CONTROLLER] Committing transaction...');
         // Commit transaction
         await transaction.commit();
+        console.log('✅ [ORDER CONTROLLER] Transaction committed successfully');
 
+        console.log('🔍 [ORDER CONTROLLER] Fetching complete order with relations...');
         // Fetch complete order with relations
         const completeOrder = await Order.findByPk(order.id, {
             include: [
@@ -413,8 +502,10 @@ export const createOrder = async (req, res) => {
             ]
         });
 
+        console.log('🎯 [ORDER CONTROLLER] Creating response...');
         const orderResponse = new OrderResponse(completeOrder, true, true, true);
 
+        console.log('🎉 [ORDER CONTROLLER] Order creation completed successfully!');
         res.status(201).json({
             success: true,
             data: orderResponse,
@@ -422,15 +513,26 @@ export const createOrder = async (req, res) => {
         });
 
     } catch (error) {
+        console.error('💥 [ORDER CONTROLLER] Error occurred during order creation:', error);
+        console.error('📊 [ORDER CONTROLLER] Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
+
         try {
+            console.log('🔄 [ORDER CONTROLLER] Rolling back transaction...');
             await transaction.rollback();
+            console.log('✅ [ORDER CONTROLLER] Transaction rolled back successfully');
         } catch (rollbackError) {
+            console.error('💥 [ORDER CONTROLLER] Error rolling back transaction:', rollbackError);
             logger.error('[ORDERS] Error rolling back transaction:', rollbackError);
         }
 
         console.error('[ORDERS] Failed to create order:', error.message);
 
         if (error.name === 'SequelizeValidationError') {
+            console.log('📝 [ORDER CONTROLLER] Sequelize validation error detected');
             return res.status(400).json({
                 success: false,
                 message: 'Invalid data',
@@ -441,6 +543,7 @@ export const createOrder = async (req, res) => {
             });
         }
 
+        console.log('🔥 [ORDER CONTROLLER] Returning 500 error response');
         res.status(500).json({
             success: false,
             message: 'Error creating order',
