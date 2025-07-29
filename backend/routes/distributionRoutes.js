@@ -12,6 +12,7 @@ import * as distributionSettingsController from '../controllers/distributionSett
 
 // Import cron job service
 import cronJobService from '../services/cronJobService.js';
+import { systemLogger } from '../middleware/logger.js';
 
 const router = express.Router();
 
@@ -74,11 +75,41 @@ router.get('/schedules/distributor/:distributorId', auth.protect, dailyDistribut
 // Get schedule statistics
 router.get('/schedules/statistics', auth.protect, dailyDistributionScheduleController.getScheduleStatistics);
 
-// Get automatic distribution schedules for all distributors - UPDATED VERSION
-router.get('/schedules/auto', auth.protect, dailyDistributionScheduleController.getAutoDistributionSchedules);
+// Get automatic distribution schedules for all distributors - Main endpoint
+router.get('/schedules/auto', auth.protect, async (req, res) => {
+    try {
+        systemLogger.info(`Auto schedules requested for date: ${req.query.schedule_date || 'today'}`);
+        await dailyDistributionScheduleController.getAutoDistributionSchedules(req, res);
+    } catch (error) {
+        systemLogger.error('Error in auto schedules endpoint:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error retrieving auto distribution schedules',
+            error: error.message
+        });
+    }
+});
 
-// Temporary fallback route for testing - TO BE REMOVED  
+// Direct auto distribution schedules endpoint - Alternative endpoint
+router.get('/schedules/auto-direct', auth.protect, async (req, res) => {
+    try {
+        systemLogger.info(`Auto schedules (direct) requested for date: ${req.query.schedule_date || 'today'}`);
+        // Use the same controller function but mark it as direct access
+        req.isDirect = true;
+        await dailyDistributionScheduleController.getAutoDistributionSchedules(req, res);
+    } catch (error) {
+        systemLogger.error('Error in auto schedules direct endpoint:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error retrieving auto distribution schedules (direct)',
+            error: error.message
+        });
+    }
+});
+
+// Test endpoint to verify routes are working
 router.get('/schedules/auto-test', (req, res) => {
+    systemLogger.info('Auto schedules test endpoint accessed');
     res.json({
         success: true,
         message: 'Auto distribution schedules endpoint is working',
@@ -134,6 +165,7 @@ router.get('/system/cron-status', auth.protect, (req, res) => {
         }
 
         const status = cronJobService.getJobStatus();
+        systemLogger.info(`Cron status requested by user ${req.user.id} (${req.user.role})`);
 
         res.status(200).json({
             success: true,
@@ -148,6 +180,7 @@ router.get('/system/cron-status', auth.protect, (req, res) => {
             }
         });
     } catch (error) {
+        systemLogger.error('Error retrieving cron job status:', error);
         res.status(500).json({
             success: false,
             message: 'Error retrieving cron job status',
@@ -174,6 +207,8 @@ router.post('/system/trigger-schedule-generation', auth.protect, async (req, res
             });
         }
 
+        systemLogger.info(`Manual schedule generation triggered by admin user ${req.user.id}`);
+
         // Manually trigger the schedule generation
         const results = await cronJobService.generateDailyDistributionSchedules();
 
@@ -183,6 +218,7 @@ router.post('/system/trigger-schedule-generation', auth.protect, async (req, res
             data: results
         });
     } catch (error) {
+        systemLogger.error('Error triggering schedule generation:', error);
         res.status(500).json({
             success: false,
             message: 'Error triggering schedule generation',
@@ -288,17 +324,20 @@ router.put('/settings/:key', [
     body('description').optional().isString().trim()
 ], distributionSettingsController.updateSetting);
 
-// Test route for debugging - TO BE REMOVED
-router.get('/test', (req, res) => {
+// Health check for distribution system
+router.get('/health', (req, res) => {
     res.json({
         success: true,
-        message: 'Distribution routes are working',
+        message: 'Distribution system is operational',
         timestamp: new Date().toISOString(),
         availableRoutes: [
             'GET /schedules',
             'GET /schedules/auto',
+            'GET /schedules/auto-direct',
             'GET /schedules/statistics',
-            'POST /schedules/generate'
+            'POST /schedules/generate',
+            'GET /system/cron-status',
+            'POST /system/trigger-schedule-generation'
         ]
     });
 });

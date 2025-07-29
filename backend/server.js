@@ -31,11 +31,17 @@ import cronJobService from './services/cronJobService.js';
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
-import { simpleLogger } from './middleware/logger.js';
+import { enhancedLogger, systemLogger } from './middleware/logger.js';
 import { updateSessionActivity, checkSessionExpiry, detectDevice } from './middleware/sessionMiddleware.js';
 
 const app = express();
 const PORT = process.env.PORT || 5001;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+// Enhanced startup logging
+systemLogger.startup('🍞 Bakery Management System API - Starting Server...');
+systemLogger.info(`Environment: ${NODE_ENV}`);
+systemLogger.info(`Port: ${PORT}`);
 
 // Enable trust proxy with secure configuration for Railway and other hosting platforms
 app.set('trust proxy', ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']);
@@ -60,7 +66,7 @@ const limiter = rateLimit({
     }
 });
 
-// Middleware
+// Security middleware
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
@@ -123,6 +129,7 @@ app.use((req, res, next) => {
     next();
 });
 
+// Basic middleware
 app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -151,9 +158,9 @@ app.use('/uploads', (req, res, next) => {
     lastModified: true
 }));
 
-// Simple request logging for essential requests only
-if (process.env.NODE_ENV === 'development') {
-    app.use(simpleLogger);
+// Enhanced request logging (only in development)
+if (NODE_ENV === 'development') {
+    app.use(enhancedLogger);
 }
 
 // Session middleware
@@ -202,31 +209,46 @@ app.get('/api/enhanced/health', async (req, res) => {
 app.use(notFound);
 app.use(errorHandler);
 
-// Start server
+// Optimized server startup
 const startServer = async () => {
     try {
+        systemLogger.startup('Initializing database models...');
         // Initialize original models and database
         await initializeModels();
+        systemLogger.success('Database models initialized');
 
+        systemLogger.startup('Initializing enhanced system...');
         // Initialize enhanced system
         await initializeEnhancedSystem();
+        systemLogger.success('Enhanced system initialized');
 
-        // Initialize cron job service for automatic distribution scheduling
-        if (process.env.NODE_ENV !== 'test') {
-            await cronJobService.initialize();
+        // Initialize cron job service for automatic distribution scheduling (only in non-test environment)
+        if (NODE_ENV !== 'test') {
+            systemLogger.startup('Initializing cron job service...');
+            try {
+                await cronJobService.initialize();
+                systemLogger.success('Cron job service initialized');
+            } catch (cronError) {
+                systemLogger.warning('Cron job service initialization failed, continuing without it');
+                systemLogger.error('Cron Error:', cronError);
+            }
         }
 
         app.listen(PORT, () => {
-            if (process.env.NODE_ENV !== 'test') {
-                console.log('🍞 Bakery Management System API');
-                console.log(`🚀 Server running on: http://localhost:${PORT}`);
-                console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-                console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-                console.log('✅ System ready');
+            if (NODE_ENV !== 'test') {
+                console.log('\n' + '='.repeat(60));
+                console.log('🍞 Bakery Management System API - Server Ready');
+                console.log('='.repeat(60));
+                systemLogger.success(`Server running on: http://localhost:${PORT}`);
+                systemLogger.info(`Health check: http://localhost:${PORT}/api/health`);
+                systemLogger.info(`Environment: ${NODE_ENV}`);
+                systemLogger.info(`Process ID: ${process.pid}`);
+                systemLogger.success('All systems operational - Ready to accept requests');
+                console.log('='.repeat(60) + '\n');
             }
         });
     } catch (error) {
-        console.error('❌ Failed to start server:', error);
+        systemLogger.error('Failed to start server:', error);
         process.exit(1);
     }
 };

@@ -1,253 +1,157 @@
-import { Sequelize } from 'sequelize';
-// Remove the incorrect import and we'll handle the migration differently
+import { User, Store, Product, Order } from '../models/index.js';
+import { systemLogger, dbLogger } from '../middleware/logger.js';
+import sequelize from '../config/database.js';
 
-// Database connection factory for enhanced system
-let sequelize = null;
-
-const getSequelizeConnection = async () => {
-    if (!sequelize) {
-        try {
-            const config = {
-                username: process.env.DB_USER || 'root',
-                password: process.env.DB_PASSWORD || '',
-                database: process.env.DB_NAME || 'bakery_db',
-                host: process.env.DB_HOST || 'localhost',
-                port: process.env.DB_PORT || 3306,
-                dialect: 'mysql',
-                logging: false,
-                pool: {
-                    max: 5,
-                    min: 0,
-                    acquire: 30000,
-                    idle: 10000
-                },
-                timezone: '+02:00',
-                define: {
-                    charset: 'utf8mb4',
-                    collate: 'utf8mb4_unicode_ci',
-                    timestamps: true,
-                    underscored: true,
-                    freezeTableName: true
-                }
-            };
-
-            sequelize = new Sequelize(
-                config.database,
-                config.username,
-                config.password,
-                config
-            );
-        } catch (error) {
-            console.error('Database connection failed:', error.message);
-            throw new Error('Database connection unavailable');
-        }
-    }
-    return sequelize;
-};
-
-// Import Enhanced Models
-import EnhancedUser from '../models/EnhancedUser.js';
-import EnhancedStore from '../models/EnhancedStore.js';
-import EnhancedStoreVisit from '../models/EnhancedStoreVisit.js';
-import EnhancedPayment from '../models/EnhancedPayment.js';
-
-// Import Original Models
-import User from '../models/User.js';
-import Store from '../models/Store.js';
-import Product from '../models/Product.js';
-import Order from '../models/Order.js';
-import OrderItem from '../models/OrderItem.js';
-import Payment from '../models/Payment.js';
-import Notification from '../models/Notification.js';
-import UserSession from '../models/UserSession.js';
-
-// Database Setup and Migration
-export const setupDatabase = async () => {
-    try {
-        // Check if database environment variables are set
-        if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_NAME) {
-            return false;
-        }
-
-        // Test database connection
-        const db = await getSequelizeConnection();
-        await db.authenticate();
-
-        // Fix order_items table issue - we'll handle this directly here
-        await fixOrderItemsTableDirectly(db);
-
-        return true;
-    } catch (error) {
-        console.error('Database setup error:', error.message);
-        return false;
-    }
-};
-
-// Direct implementation of order_items table fix
-const fixOrderItemsTableDirectly = async (sequelize) => {
-    try {
-        console.log('🔧 Fixing order_items table structure...');
-
-        // Check current table structure
-        const [columns] = await sequelize.query("SHOW COLUMNS FROM order_items");
-        const existingColumns = columns.map(col => col.Field);
-        console.log('📋 Existing columns:', existingColumns);
-
-        // Add missing columns
-        const migrations = [
-            {
-                name: 'unit_price_eur',
-                sql: "ALTER TABLE order_items ADD COLUMN unit_price_eur DECIMAL(10,2) NOT NULL DEFAULT 0.00"
-            },
-            {
-                name: 'unit_price_syp',
-                sql: "ALTER TABLE order_items ADD COLUMN unit_price_syp DECIMAL(15,2) NOT NULL DEFAULT 0.00"
-            },
-            {
-                name: 'total_price_eur',
-                sql: "ALTER TABLE order_items ADD COLUMN total_price_eur DECIMAL(10,2) NOT NULL DEFAULT 0.00"
-            }
-        ];
-
-        for (const migration of migrations) {
-            try {
-                if (existingColumns.includes(migration.name)) {
-                    console.log(`⚠️  Column ${migration.name} already exists, skipping...`);
-                    continue;
-                }
-
-                console.log(`🔄 Adding column: ${migration.name}`);
-                await sequelize.query(migration.sql);
-                console.log(`✅ Column ${migration.name} added successfully`);
-            } catch (error) {
-                console.error(`❌ Failed to add column ${migration.name}:`, error.message);
-            }
-        }
-
-        console.log('🎉 All migrations completed!');
-
-    } catch (error) {
-        console.error('❌ Error fixing table structure:', error);
-    }
-};
-
-// Enhanced System Setup
-export const setupEnhancedSystem = async () => {
-    try {
-        // Setup database first
-        const dbSetupSuccess = await setupDatabase();
-
-        if (!dbSetupSuccess) {
-            console.log('Warning: Database setup failed - system will run with limited functionality');
-        }
-
-        return true;
-    } catch (error) {
-        console.error('Enhanced system setup error:', error.message);
-        return false;
-    }
-};
-
-// Create additional supporting tables
-const createAdditionalTables = async () => {
-    try {
-        // Skip additional tables for now to focus on core functionality
-        return true;
-    } catch (error) {
-        console.error('Additional tables creation error:', error);
-        throw error;
-    }
-};
-
-// Insert default system settings
-export const insertDefaultSettings = async () => {
-    try {
-        // Skip default settings insertion for now
-        return true;
-    } catch (error) {
-        console.error('Default settings insertion error:', error);
-        throw error;
-    }
-};
-
-// Create sample data for testing
-export const createSampleData = async () => {
-    try {
-        // Skip sample data creation for now
-        return true;
-    } catch (error) {
-        console.error('Sample data creation error:', error);
-        throw error;
-    }
-};
-
-// Full system initialization
+/**
+ * Optimized enhanced system initialization
+ * Reduced operations for faster startup
+ */
 export const initializeEnhancedSystem = async () => {
     try {
-        // Step 1: Setup database and enhanced system
-        const enhancedSetupSuccess = await setupEnhancedSystem();
+        systemLogger.startup('Enhanced system initialization starting...');
 
-        // Step 2: Insert default settings (only if database is available)
-        if (enhancedSetupSuccess) {
-            await insertDefaultSettings();
+        // Test database connection first
+        await testDatabaseConnection();
+
+        // Only run essential checks during startup
+        if (process.env.NODE_ENV !== 'production') {
+            await performBasicHealthCheck();
         }
 
-        // Step 3: Create sample data (optional, only if database is available)
-        if (process.env.NODE_ENV === 'development' && enhancedSetupSuccess) {
-            await createSampleData();
-        }
+        systemLogger.success('Enhanced system initialization completed');
+        return { status: 'initialized', timestamp: new Date().toISOString() };
 
-        return true;
     } catch (error) {
-        console.error('Enhanced system initialization error:', error.message);
-        return false;
+        systemLogger.error('Enhanced system initialization failed:', error);
+        throw error;
     }
 };
 
-// Health check function
+/**
+ * Test database connection
+ */
+const testDatabaseConnection = async () => {
+    try {
+        await sequelize.authenticate();
+        dbLogger.info('Database connection verified');
+    } catch (error) {
+        dbLogger.error('Database connection failed', error);
+        throw new Error('Database connection failed');
+    }
+};
+
+/**
+ * Basic health check (only essential operations)
+ */
+const performBasicHealthCheck = async () => {
+    try {
+        // Quick count queries instead of full data fetches
+        const [userCount, storeCount, productCount] = await Promise.all([
+            User.count({ limit: 1 }),
+            Store.count({ limit: 1 }),
+            Product.count({ limit: 1 })
+        ]);
+
+        dbLogger.info(`System entities verified - Users: ${userCount}, Stores: ${storeCount}, Products: ${productCount}`);
+
+    } catch (error) {
+        systemLogger.warning('Basic health check failed, but system can continue', error);
+        // Don't throw error - system can still work
+    }
+};
+
+/**
+ * Comprehensive health check (for API endpoint)
+ */
 export const healthCheck = async () => {
     try {
-        // Check if database environment variables are set
-        if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_NAME) {
-            return {
-                status: 'warning',
-                message: 'Database not configured - system running in limited mode',
-                database_configured: false,
-                enhanced_tables: 0,
-                required_tables: 0
-            };
-        }
+        const startTime = Date.now();
 
-        const db = await getSequelizeConnection();
-        await db.authenticate();
+        // Database connectivity check
+        await sequelize.authenticate();
 
-        // Check if enhanced tables exist
-        const tables = await db.getQueryInterface().showAllTables();
-        const requiredTables = [
-            'enhanced_users',
-            'enhanced_stores',
-            'enhanced_store_visits',
-            'enhanced_payments'
-        ];
+        // Quick model availability check
+        const [users, stores, products, orders] = await Promise.allSettled([
+            User.count({ limit: 1 }),
+            Store.count({ limit: 1 }),
+            Product.count({ limit: 1 }),
+            Order.count({ limit: 1 })
+        ]);
 
-        const existingTables = requiredTables.filter(table => tables.includes(table));
+        const dbChecks = {
+            users: users.status === 'fulfilled',
+            stores: stores.status === 'fulfilled',
+            products: products.status === 'fulfilled',
+            orders: orders.status === 'fulfilled'
+        };
+
+        const allDbChecksPass = Object.values(dbChecks).every(check => check);
+        const responseTime = Date.now() - startTime;
 
         return {
-            status: 'healthy',
-            message: 'Enhanced system is working correctly',
-            database_configured: true,
-            tables_count: tables.length,
-            enhanced_tables: existingTables.length,
-            required_tables: requiredTables.length
+            status: allDbChecksPass ? 'healthy' : 'degraded',
+            timestamp: new Date().toISOString(),
+            response_time_ms: responseTime,
+            database: {
+                connected: true,
+                models: dbChecks
+            },
+            system: {
+                environment: process.env.NODE_ENV || 'development',
+                node_version: process.version,
+                uptime: process.uptime(),
+                memory_usage: process.memoryUsage()
+            }
         };
+
     } catch (error) {
         return {
-            status: 'warning',
-            message: 'Database connection failed - system running in limited mode',
-            database_configured: false,
+            status: 'unhealthy',
+            timestamp: new Date().toISOString(),
             error: error.message,
-            enhanced_tables: 0,
-            required_tables: 0
+            database: {
+                connected: false
+            }
         };
     }
+};
+
+/**
+ * System metrics (lightweight version)
+ */
+export const getSystemMetrics = () => {
+    return {
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        cpu: process.cpuUsage(),
+        environment: process.env.NODE_ENV || 'development',
+        node_version: process.version
+    };
+};
+
+/**
+ * Reset system state (for maintenance)
+ */
+export const resetSystem = async () => {
+    try {
+        systemLogger.info('System reset initiated');
+
+        // Clear any cached data or temporary states
+        // This is a placeholder for future reset operations
+
+        systemLogger.success('System reset completed');
+        return { status: 'reset', timestamp: new Date().toISOString() };
+
+    } catch (error) {
+        systemLogger.error('System reset failed:', error);
+        throw error;
+    }
+};
+
+export default {
+    initializeEnhancedSystem,
+    healthCheck,
+    getSystemMetrics,
+    resetSystem
 }; 

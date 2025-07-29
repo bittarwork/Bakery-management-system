@@ -129,6 +129,23 @@ const DailyDistributionSchedulePage = () => {
   // Action loading states
   const [actionLoading, setActionLoading] = useState({});
 
+  // Enhanced logger for this component
+  const componentLogger = {
+    info: (message, data) => {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`📅 [Distribution Schedule] ${message}`, data || "");
+      }
+    },
+    error: (message, error) => {
+      console.error(`❌ [Distribution Schedule] ${message}`, error);
+    },
+    warn: (message, data) => {
+      if (process.env.NODE_ENV === "development") {
+        console.warn(`⚠️  [Distribution Schedule] ${message}`, data || "");
+      }
+    },
+  };
+
   // Load initial data
   useEffect(() => {
     loadInitialData();
@@ -185,11 +202,14 @@ const DailyDistributionSchedulePage = () => {
         ...cleanFilters,
       };
 
-      console.log("🔍 Loading distribution schedules with params:", params);
+      componentLogger.info(
+        "Loading distribution schedules with params:",
+        params
+      );
       const response = await distributionService.getDistributionSchedules(
         params
       );
-      console.log("📦 Distribution schedules response:", response);
+      componentLogger.info("Distribution schedules response:", response);
 
       if (response && response.success) {
         const schedulesData = response.data?.schedules || [];
@@ -225,14 +245,14 @@ const DailyDistributionSchedulePage = () => {
       setIsLoading(true);
       setError("");
 
-      console.log(
-        "🔍 Loading auto distribution schedules for date:",
+      componentLogger.info(
+        "Loading auto distribution schedules for date:",
         filters.schedule_date
       );
       const response = await distributionService.getAutoDistributionSchedules(
         filters.schedule_date
       );
-      console.log("📦 Auto distribution schedules response:", response);
+      componentLogger.info("Auto distribution schedules response:", response);
 
       if (response && response.success) {
         const autoSchedulesData = response.data?.distributors_schedules || [];

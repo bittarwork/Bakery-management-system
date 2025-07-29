@@ -32,6 +32,40 @@ const createFallbackClient = () => {
     return null;
 };
 
+// Enhanced logging configuration
+const LOG_LEVELS = {
+    ERROR: 0,
+    WARN: 1,
+    INFO: 2,
+    DEBUG: 3
+};
+
+const CURRENT_LOG_LEVEL = process.env.NODE_ENV === 'production' ? LOG_LEVELS.ERROR : LOG_LEVELS.INFO;
+
+// Smart logger that respects log levels
+const smartLog = {
+    error: (message, data) => {
+        if (CURRENT_LOG_LEVEL >= LOG_LEVELS.ERROR) {
+            console.error(`❌ [API ERROR] ${message}`, data);
+        }
+    },
+    warn: (message, data) => {
+        if (CURRENT_LOG_LEVEL >= LOG_LEVELS.WARN) {
+            console.warn(`⚠️  [API WARN] ${message}`, data);
+        }
+    },
+    info: (message, data) => {
+        if (CURRENT_LOG_LEVEL >= LOG_LEVELS.INFO && !message.includes('/health')) {
+            console.log(`ℹ️  [API] ${message}`, data || '');
+        }
+    },
+    debug: (message, data) => {
+        if (CURRENT_LOG_LEVEL >= LOG_LEVELS.DEBUG) {
+            console.log(`🔍 [API DEBUG] ${message}`, data);
+        }
+    }
+};
+
 // Create axios instance
 const apiClient = axios.create({
     baseURL: API_CONFIG.baseURL,
@@ -58,155 +92,70 @@ const createOfflineClient = () => {
     return null;
 };
 
-// Request interceptor
+// Request interceptor - simplified logging
 apiClient.interceptors.request.use(
     (config) => {
-        // Add auth token
         const token = Cookies.get('auth_token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
 
-        // Add timestamp for cache busting (convert to string to avoid CORS issues)
-        config.headers['X-Request-Time'] = Date.now().toString();
+        // Only log important requests
+        if (config.url.includes('/auth') || config.url.includes('/orders') || config.method !== 'get') {
+            smartLog.info(`→ ${config.method?.toUpperCase()} /${config.url}`);
+        }
 
-        // Add request start time for performance tracking
-        config.metadata = { startTime: new Date() };
-
+        config.metadata = { startTime: Date.now() };
         return config;
     },
     (error) => {
+        smartLog.error('Request interceptor error:', error.message);
         return Promise.reject(error);
     }
 );
 
-// Response interceptor
+// Response interceptor - enhanced error handling and reduced logging
 apiClient.interceptors.response.use(
     (response) => {
-        // Calculate response time
-        const endTime = new Date();
-        const duration = endTime - response.config.metadata.startTime;
+        const { config } = response;
+        const duration = Date.now() - (config.metadata?.startTime || 0);
 
-        // Log performance metrics in development
-        if (process.env.NODE_ENV === 'development') {
-            console.log(`API ${response.config.method?.toUpperCase()} ${response.config.url} - ${duration}ms`);
-        }
+        // Only log important responses or slow requests
+        if (config.url.includes('/auth') || config.url.includes('/orders') || config.method !== 'get' || duration > 1000) {
+            const method = config.method?.toUpperCase();
+            const url = config.url;
+            const status = response.status;
 
-        // Check if response is HTML instead of JSON
-        if (response.headers['content-type']?.includes('text/html')) {
-            console.error('Received HTML response instead of JSON:', response.config.url);
-            throw new Error('Server returned HTML instead of JSON - Check API server status');
+            if (duration > 1000) {
+                smartLog.warn(`← ${method} /${url} - ${status} (${duration}ms) - Slow response!`);
+            } else {
+                smartLog.info(`← ${method} /${url} - ${status} (${duration}ms)`);
+            }
         }
 
         return response;
     },
-    async (error) => {
-        const originalRequest = error.config;
+    (error) => {
+        const { config, response } = error;
+        const duration = config?.metadata ? Date.now() - config.metadata.startTime : 0;
 
-        // Handle network errors
-        if (!error.response) {
-            console.error('Network Error Details:', {
-                message: error.message,
-                code: error.code,
-                config: {
-                    url: originalRequest?.url,
-                    method: originalRequest?.method,
-                    baseURL: originalRequest?.baseURL
-                }
-            });
-
-            let errorMessage = 'خطأ في الاتصال بالخادم';
-
-            if (error.code === 'ERR_NETWORK') {
-                errorMessage = 'لا يمكن الاتصال بالخادم. يرجى التحقق من اتصال الإنترنت';
-            } else if (error.code === 'ECONNABORTED') {
-                errorMessage = 'انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى';
-            } else if (error.code === 'ERR_INTERNET_DISCONNECTED') {
-                errorMessage = 'لا يوجد اتصال بالإنترنت';
+        if (response?.status === 401) {
+            smartLog.warn('Authentication failed - redirecting to login');
+            // Handle auth redirect without excessive logging
+            if (window.location.pathname !== '/login') {
+                Cookies.remove('auth_token');
+                Cookies.remove('user');
+                window.location.href = '/login';
             }
-
-            // Create a structured error response
-            const networkError = new Error(errorMessage);
-            networkError.code = error.code;
-            networkError.isNetworkError = true;
-            networkError.originalError = error;
-
-            return Promise.reject(networkError);
-        }
-
-        // Handle different error status codes
-        switch (error.response.status) {
-            case 401:
-                // Unauthorized - don't retry for auth endpoints to avoid infinite loops
-                if (originalRequest.url.includes('/auth/login') || originalRequest.url.includes('/auth/refresh')) {
-                    // For login/refresh failures, don't retry
-                    return Promise.reject(error);
-                }
-
-                // For other endpoints, try to refresh token
-                if (!originalRequest._retry) {
-                    originalRequest._retry = true;
-
-                    try {
-                        const response = await apiClient.post('/auth/refresh');
-                        const { token } = response.data.data;
-
-                        // Update token in cookies
-                        Cookies.set('auth_token', token, {
-                            expires: 7,
-                            secure: true,
-                            sameSite: 'strict'
-                        });
-
-                        // Retry original request
-                        originalRequest.headers.Authorization = `Bearer ${token}`;
-                        return apiClient(originalRequest);
-                    } catch (refreshError) {
-                        // Refresh failed, remove token but don't redirect automatically
-                        // Let the calling code handle the authentication state
-                        Cookies.remove('auth_token');
-                        console.log('Token refresh failed, user needs to login again');
-                        return Promise.reject(refreshError);
-                    }
-                }
-                break;
-
-            case 403:
-                toast.error('ليس لديك صلاحية للوصول إلى هذا المورد');
-                break;
-
-            case 404:
-                toast.error('المورد المطلوب غير موجود');
-                break;
-
-            case 422:
-                // Validation errors
-                const validationErrors = error.response.data.errors;
-                if (validationErrors) {
-                    Object.values(validationErrors).forEach(errorArray => {
-                        errorArray.forEach(errorMessage => {
-                            toast.error(errorMessage);
-                        });
-                    });
-                }
-                break;
-
-            case 429:
-                toast.error('محاولات كثيرة جداً. يرجى المحاولة مرة أخرى بعد قليل');
-                break;
-
-            case 500:
-                toast.error('خطأ في الخادم. يرجى المحاولة مرة أخرى لاحقاً');
-                break;
-
-            case 502:
-            case 503:
-            case 504:
-                toast.error('الخادم غير متاح حالياً. يرجى المحاولة مرة أخرى لاحقاً');
-                break;
-
-            default:
-                toast.error(error.response.data.message || 'حدث خطأ غير متوقع');
+        } else if (response?.status >= 500) {
+            smartLog.error(`Server Error: ${config?.method?.toUpperCase()} /${config?.url} - ${response.status} (${duration}ms)`, response.data);
+        } else if (response?.status >= 400) {
+            // Only log client errors for important endpoints
+            if (config?.url.includes('/auth') || config?.url.includes('/orders')) {
+                smartLog.warn(`Client Error: ${config?.method?.toUpperCase()} /${config?.url} - ${response.status}`, response.data?.message);
+            }
+        } else {
+            smartLog.error('Network or unknown error:', error.message);
         }
 
         return Promise.reject(error);
@@ -485,7 +434,7 @@ class ApiService {
     // Download file
     async downloadFile(url, filename) {
         try {
-            const response = await this.client.get(url, {
+            const response = await this.apiService.get(url, {
                 responseType: 'blob'
             });
 
@@ -508,7 +457,7 @@ class ApiService {
     // Export data
     async exportData(url, format = 'csv', filename = 'export') {
         try {
-            const response = await this.client.get(url, {
+            const response = await this.apiService.get(url, {
                 params: { format },
                 responseType: 'blob'
             });
@@ -575,7 +524,7 @@ class ApiService {
                     };
                 }
             }
-            
+
             return {
                 success: false,
                 message: 'Health check failed',
@@ -604,7 +553,7 @@ class ApiService {
                     };
                 }
             }
-            
+
             return {
                 success: false,
                 message: 'Failed to get API info',

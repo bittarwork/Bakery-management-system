@@ -2,6 +2,20 @@ import { create } from 'zustand';
 import { systemService } from '../services/systemService';
 import { dashboardService } from '../services/dashboardService';
 
+const systemLogger = {
+    info: (message, data) => {
+        if (process.env.NODE_ENV === 'development' && !window.systemStoreInitialized) {
+            console.log(`🏪 [System Store] ${message}`, data || '');
+        }
+    },
+    error: (message, error) => {
+        console.error(`❌ [System Store] ${message}`, error);
+    },
+    warn: (message, data) => {
+        console.warn(`⚠️  [System Store] ${message}`, data || '');
+    }
+};
+
 export const useSystemStore = create((set, get) => ({
     isInitialized: false,
     isLoading: false,
@@ -172,37 +186,20 @@ export const useSystemStore = create((set, get) => ({
         console.log('🗑️ System stats cache invalidated');
     },
 
-    initializeSystem: async () => {
-        try {
-            const state = get();
-
-            // Prevent multiple initializations
-            if (state.isInitialized) {
-                console.log('✅ System already initialized');
-                return;
-            }
-
-            set({ isLoading: true });
-
-            // TODO: Add system initialization logic
-            // For now, just simulate initialization
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            set({
-                isInitialized: true,
-                isLoading: false,
-                error: null,
-            });
-
-            console.log('🚀 System initialized successfully');
-        } catch (error) {
-            console.error('❌ System initialization failed:', error);
-            set({
-                isInitialized: true,
-                isLoading: false,
-                error: error.message,
-            });
+    // Initialize system with reduced logging
+    initializeSystem: () => {
+        if (!window.systemStoreInitialized) {
+            systemLogger.info('System store initialized with defaults');
+            window.systemStoreInitialized = true;
         }
+
+        set({
+            theme: localStorage.getItem('theme') || 'light',
+            language: localStorage.getItem('language') || 'en',
+            currency: localStorage.getItem('currency') || 'EUR',
+            dateFormat: localStorage.getItem('dateFormat') || 'DD/MM/YYYY',
+            isInitialized: true
+        });
     },
 
     loadSystemSettings: async () => {
