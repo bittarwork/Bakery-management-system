@@ -79,7 +79,12 @@ const EditOrderPage = () => {
   const loadInitialData = async () => {
     try {
       setIsLoading(true);
-      await Promise.all([loadOrder(), loadStores(), loadProducts(), loadDistributors()]);
+      await Promise.all([
+        loadOrder(),
+        loadStores(),
+        loadProducts(),
+        loadDistributors(),
+      ]);
     } catch (error) {
       console.error("Error loading initial data:", error);
       toast.error("خطأ في تحميل البيانات");
@@ -149,13 +154,21 @@ const EditOrderPage = () => {
 
   const loadDistributors = async () => {
     try {
-      const response = await userService.getUsers({ role: 'distributor' });
+      const response = await userService.getUsers({ role: "distributor" });
       if (response && response.success !== false) {
-        setDistributors(response.data || response);
+        const distributorsData = response.data || response;
+        console.log("Loaded distributors:", distributorsData);
+        setDistributors(
+          Array.isArray(distributorsData) ? distributorsData : []
+        );
+      } else {
+        console.warn("Failed to load distributors, using empty array");
+        setDistributors([]);
       }
     } catch (error) {
       console.error("Error loading distributors:", error);
       toast.error("خطأ في تحميل الموزعين");
+      setDistributors([]);
     }
   };
 
@@ -292,6 +305,12 @@ const EditOrderPage = () => {
     try {
       setIsSaving(true);
 
+      console.log("Submitting order update with data:", {
+        status: formData.status,
+        payment_status: formData.payment_status,
+        assigned_distributor_id: formData.assigned_distributor_id,
+      });
+
       // Prepare order data
       const orderData = {
         store_id: parseInt(formData.store_id),
@@ -302,7 +321,9 @@ const EditOrderPage = () => {
         exchange_rate: formData.exchange_rate,
         status: formData.status,
         payment_status: formData.payment_status,
-        assigned_distributor_id: formData.assigned_distributor_id ? parseInt(formData.assigned_distributor_id) : null,
+        assigned_distributor_id: formData.assigned_distributor_id
+          ? parseInt(formData.assigned_distributor_id)
+          : null,
         items: formData.items.map((item) => ({
           id:
             typeof item.id === "string" && item.id.startsWith("temp-")
@@ -355,10 +376,17 @@ const EditOrderPage = () => {
   // Handle distributor assignment
   const handleAssignDistributor = async (distributorId) => {
     try {
-      const response = await orderService.assignDistributor(orderId, distributorId);
+      console.log("Assigning distributor:", distributorId);
+      const response = await orderService.assignDistributor(
+        orderId,
+        distributorId
+      );
       if (response && response.success !== false) {
         toast.success("تم تعيين الموزع بنجاح");
-        setFormData(prev => ({ ...prev, assigned_distributor_id: distributorId }));
+        setFormData((prev) => ({
+          ...prev,
+          assigned_distributor_id: distributorId,
+        }));
         // Reload order to get updated data
         await loadOrder();
       } else {
@@ -373,10 +401,11 @@ const EditOrderPage = () => {
   // Handle distributor unassignment
   const handleUnassignDistributor = async () => {
     try {
+      console.log("Unassigning distributor from order:", orderId);
       const response = await orderService.unassignDistributor(orderId);
       if (response && response.success !== false) {
         toast.success("تم إلغاء تعيين الموزع بنجاح");
-        setFormData(prev => ({ ...prev, assigned_distributor_id: null }));
+        setFormData((prev) => ({ ...prev, assigned_distributor_id: null }));
         // Reload order to get updated data
         await loadOrder();
       } else {
@@ -528,6 +557,9 @@ const EditOrderPage = () => {
                         <option value="delivered">مُسلم</option>
                         <option value="cancelled">ملغي</option>
                       </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        الحالة الحالية: {formData.status}
+                      </p>
                     </div>
 
                     <div>
@@ -547,6 +579,9 @@ const EditOrderPage = () => {
                         <option value="failed">فاشل</option>
                         <option value="overdue">متأخر</option>
                       </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        حالة الدفع الحالية: {formData.payment_status}
+                      </p>
                     </div>
 
                     <div className="md:col-span-2">
@@ -591,7 +626,13 @@ const EditOrderPage = () => {
                               موزع مُعيّن
                             </h3>
                             <p className="text-sm text-green-700">
-                              {distributors.find(d => d.id === formData.assigned_distributor_id)?.full_name || 'غير محدد'}
+                              {distributors.find(
+                                (d) => d.id === formData.assigned_distributor_id
+                              )?.full_name || "غير محدد"}
+                            </p>
+                            <p className="text-xs text-green-600 mt-1">
+                              معرف الموزع:{" "}
+                              {formData.assigned_distributor_id || "غير محدد"}
                             </p>
                           </div>
                         </div>
@@ -619,7 +660,7 @@ const EditOrderPage = () => {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           اختر موزع
@@ -628,15 +669,26 @@ const EditOrderPage = () => {
                           {distributors.map((distributor) => (
                             <button
                               key={distributor.id}
-                              onClick={() => handleAssignDistributor(distributor.id)}
+                              onClick={() =>
+                                handleAssignDistributor(distributor.id)
+                              }
                               className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
                             >
                               <div className="flex items-center gap-3">
                                 <User className="w-4 h-4 text-gray-500" />
                                 <div className="text-left">
-                                  <p className="font-medium text-gray-900">{distributor.full_name}</p>
+                                  <p className="font-medium text-gray-900">
+                                    {distributor.full_name}
+                                  </p>
                                   {distributor.phone && (
-                                    <p className="text-sm text-gray-600">{distributor.phone}</p>
+                                    <p className="text-sm text-gray-600">
+                                      {distributor.phone}
+                                    </p>
+                                  )}
+                                  {distributor.email && (
+                                    <p className="text-xs text-gray-500">
+                                      {distributor.email}
+                                    </p>
                                   )}
                                 </div>
                               </div>
@@ -645,9 +697,15 @@ const EditOrderPage = () => {
                           ))}
                         </div>
                         {distributors.length === 0 && (
-                          <p className="text-sm text-gray-500 text-center py-4">
-                            لا يوجد موزعين متاحين
-                          </p>
+                          <div className="text-center py-8">
+                            <User className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                            <p className="text-sm text-gray-500 mb-2">
+                              لا يوجد موزعين متاحين
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              يجب إنشاء موزعين في النظام أولاً
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>

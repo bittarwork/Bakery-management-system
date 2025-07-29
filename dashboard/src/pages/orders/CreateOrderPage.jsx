@@ -348,6 +348,7 @@ const CreateOrderPage = () => {
       // Prepare order data
       const orderData = {
         ...formData,
+        distributor_id: distributorId || null, // Add distributor ID
         items: formData.items.map((item) => ({
           ...item,
         })),

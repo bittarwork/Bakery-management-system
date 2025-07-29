@@ -311,7 +311,7 @@ export const createOrder = async (req, res) => {
             });
         }
 
-        const { store_id, items, notes, delivery_date, currency = 'EUR' } = req.body;
+        const { store_id, items, notes, delivery_date, currency = 'EUR', distributor_id } = req.body;
 
         console.log('🏪 [ORDER CONTROLLER] Looking for store with ID:', store_id);
 
@@ -329,6 +329,47 @@ export const createOrder = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Store not found'
+            });
+        }
+
+        // Validate distributor if provided
+        let assignedDistributorId = null;
+        if (distributor_id) {
+            console.log('👤 [ORDER CONTROLLER] Validating distributor with ID:', distributor_id);
+            const distributor = await User.findByPk(distributor_id);
+
+            if (!distributor) {
+                console.log('❌ [ORDER CONTROLLER] Distributor not found, rolling back transaction');
+                await transaction.rollback();
+                return res.status(404).json({
+                    success: false,
+                    message: 'Distributor not found'
+                });
+            }
+
+            if (distributor.role !== 'distributor') {
+                console.log('❌ [ORDER CONTROLLER] User is not a distributor, rolling back transaction');
+                await transaction.rollback();
+                return res.status(400).json({
+                    success: false,
+                    message: 'Selected user is not a distributor'
+                });
+            }
+
+            if (distributor.status !== 'active') {
+                console.log('❌ [ORDER CONTROLLER] Distributor is not active, rolling back transaction');
+                await transaction.rollback();
+                return res.status(400).json({
+                    success: false,
+                    message: 'Selected distributor is not active'
+                });
+            }
+
+            assignedDistributorId = distributor_id;
+            console.log('✅ [ORDER CONTROLLER] Distributor validated:', {
+                id: distributor.id,
+                name: distributor.full_name || distributor.name,
+                status: distributor.status
             });
         }
 
@@ -400,6 +441,9 @@ export const createOrder = async (req, res) => {
                 });
             }
 
+            // Note: Stock will be deducted when order is confirmed, not when created as draft
+            console.log(`📦 [ORDER CONTROLLER] Stock check passed for product ${product.name}: available ${product.stock_quantity}, required ${quantity}`);
+
             // Calculate prices - simple pricing
             const unitPriceEur = parseFloat(product.price_eur) || 0;
             const unitPriceSyp = parseFloat(product.price_syp) || 0;
@@ -462,7 +506,8 @@ export const createOrder = async (req, res) => {
             delivery_date: delivery_date || null,
             notes,
             created_by: req.user.id,
-            created_by_name: req.user.full_name || req.user.username
+            created_by_name: req.user.full_name || req.user.username,
+            assigned_distributor_id: assignedDistributorId
         });
 
         // Create order
@@ -480,7 +525,8 @@ export const createOrder = async (req, res) => {
             delivery_date: delivery_date || null,
             notes,
             created_by: req.user.id,
-            created_by_name: req.user.full_name || req.user.username
+            created_by_name: req.user.full_name || req.user.username,
+            assigned_distributor_id: assignedDistributorId
         }, { transaction });
 
         console.log('✅ [ORDER CONTROLLER] Order created successfully:', {
@@ -612,13 +658,13 @@ export const updateOrder = async (req, res) => {
 
     try {
         const orderId = parseInt(req.params.id);
-        const { 
-            items, 
-            notes, 
-            delivery_date, 
-            status, 
-            payment_status, 
-            assigned_distributor_id 
+        const {
+            items,
+            notes,
+            delivery_date,
+            status,
+            payment_status,
+            assigned_distributor_id
         } = req.body;
 
         const order = await Order.findByPk(orderId, {
@@ -644,6 +690,7 @@ export const updateOrder = async (req, res) => {
 
         // Check if status update is allowed
         if (status && status !== order.status) {
+            console.log(`[ORDERS] Attempting status change from ${order.status} to ${status}`);
             if (!isStatusUpdateAllowed(order.status, status)) {
                 await transaction.rollback();
                 return res.status(400).json({
@@ -651,6 +698,7 @@ export const updateOrder = async (req, res) => {
                     message: `Cannot change order status from ${order.status} to ${status}`
                 });
             }
+            console.log(`[ORDERS] Status change allowed: ${order.status} -> ${status}`);
         }
 
         // Update order items if provided
@@ -820,6 +868,28 @@ export const deleteOrder = async (req, res) => {
             });
         }
 
+        // Get order items to restore stock
+        const orderItems = await OrderItem.findAll({
+            where: { order_id: orderId },
+            include: [{ model: Product, as: 'product' }]
+        });
+
+        // Restore stock for each item
+        for (const item of orderItems) {
+            if (item.product && item.product.stock_quantity !== null) {
+                const newStockQuantity = item.product.stock_quantity + item.quantity;
+                console.log(`📦 [ORDER CONTROLLER] Restoring stock for product ${item.product.name}: ${item.product.stock_quantity} + ${item.quantity} = ${newStockQuantity}`);
+
+                await Product.update(
+                    { stock_quantity: newStockQuantity },
+                    {
+                        where: { id: item.product.id },
+                        transaction
+                    }
+                );
+            }
+        }
+
         // Delete order items first
         await OrderItem.destroy({
             where: { order_id: orderId },
@@ -889,6 +959,50 @@ export const updateOrderStatus = async (req, res) => {
                 success: false,
                 message: `Cannot change order status from ${order.status} to ${status}`
             });
+        }
+
+        // If order is being cancelled, restore stock
+        if (status === ORDER_STATUS.CANCELLED && order.status !== ORDER_STATUS.CANCELLED) {
+            console.log('🔄 [ORDER CONTROLLER] Order being cancelled, restoring stock...');
+
+            const orderItems = await OrderItem.findAll({
+                where: { order_id: orderId },
+                include: [{ model: Product, as: 'product' }]
+            });
+
+            for (const item of orderItems) {
+                if (item.product && item.product.stock_quantity !== null) {
+                    const newStockQuantity = item.product.stock_quantity + item.quantity;
+                    console.log(`📦 [ORDER CONTROLLER] Restoring stock for product ${item.product.name}: ${item.product.stock_quantity} + ${item.quantity} = ${newStockQuantity}`);
+
+                    await Product.update(
+                        { stock_quantity: newStockQuantity },
+                        { where: { id: item.product.id } }
+                    );
+                }
+            }
+        }
+
+        // If order is being confirmed from draft, deduct stock (if not already deducted)
+        if (status === ORDER_STATUS.CONFIRMED && order.status === ORDER_STATUS.DRAFT) {
+            console.log('🔄 [ORDER CONTROLLER] Order being confirmed from draft, deducting stock...');
+
+            const orderItems = await OrderItem.findAll({
+                where: { order_id: orderId },
+                include: [{ model: Product, as: 'product' }]
+            });
+
+            for (const item of orderItems) {
+                if (item.product && item.product.stock_quantity !== null) {
+                    const newStockQuantity = item.product.stock_quantity - item.quantity;
+                    console.log(`📦 [ORDER CONTROLLER] Deducting stock for product ${item.product.name}: ${item.product.stock_quantity} - ${item.quantity} = ${newStockQuantity}`);
+
+                    await Product.update(
+                        { stock_quantity: newStockQuantity },
+                        { where: { id: item.product.id } }
+                    );
+                }
+            }
         }
 
         // Update order status

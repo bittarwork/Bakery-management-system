@@ -55,6 +55,13 @@ const OrderDetailsPage = () => {
 
       if (response && response.success !== false) {
         const orderData = response.data || response;
+        console.log("Loaded order data:", {
+          id: orderData.id,
+          status: orderData.status,
+          payment_status: orderData.payment_status,
+          assigned_distributor_id: orderData.assigned_distributor_id,
+          distributor: orderData.distributor,
+        });
         setOrder(orderData);
       } else {
         const errorMessage = response?.message || "خطأ في تحميل الطلب";
@@ -566,7 +573,7 @@ const OrderDetailsPage = () => {
                       <div className="flex-1">
                         <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                           <CheckCircle className="w-4 h-4 text-green-600" />
-                          {order.distributor.name}
+                          {order.distributor?.name || "غير محدد"}
                         </h3>
                         {order.distributor.phone && (
                           <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
