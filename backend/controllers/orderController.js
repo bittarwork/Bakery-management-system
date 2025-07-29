@@ -204,6 +204,14 @@ export const getOrder = async (req, res) => {
             include: [{ model: Product, as: 'product', attributes: ['id', 'name', 'unit'] }]
         });
 
+        // Get distributor information if assigned
+        let distributor = null;
+        if (order.assigned_distributor_id) {
+            distributor = await User.findByPk(order.assigned_distributor_id, {
+                attributes: ['id', 'name', 'email', 'phone']
+            });
+        }
+
         // Create simple response
         const orderData = {
             id: order.id,
@@ -221,6 +229,12 @@ export const getOrder = async (req, res) => {
             payment_status: order.payment_status,
             notes: order.notes,
             assigned_distributor_id: order.assigned_distributor_id,
+            distributor: distributor ? {
+                id: distributor.id,
+                name: distributor.name,
+                email: distributor.email,
+                phone: distributor.phone
+            } : null,
             created_by: order.created_by,
             created_at: order.created_at,
             updated_at: order.updated_at,

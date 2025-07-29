@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Edit,
-  Trash2,
   User,
   Store,
   Calendar,
@@ -25,18 +23,15 @@ import {
   AlertTriangle,
   Info,
   Activity,
-  Zap,
-  RefreshCw,
+  Printer,
   Copy,
-  Calculator,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import orderService from "../../services/orderService.js";
-import userService from "../../services/userService";
 import { Card, CardHeader, CardBody } from "../../components/ui/Card";
 import EnhancedButton from "../../components/ui/EnhancedButton";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
-import { DeleteConfirmationModal } from "../../components/ui/Modal";
 
 const OrderDetailsPage = () => {
   const { id } = useParams();
@@ -45,15 +40,11 @@ const OrderDetailsPage = () => {
   // State management
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [distributors, setDistributors] = useState([]);
-  const [updating, setUpdating] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Load order data
   useEffect(() => {
     if (id) {
       loadOrder();
-      loadDistributors();
     }
   }, [id]);
 
@@ -93,179 +84,25 @@ const OrderDetailsPage = () => {
     }
   };
 
-  const loadDistributors = async () => {
-    try {
-      const response = await userService.getUsers({
-        role: "distributor",
-        status: "active",
-      });
-      if (response && response.success !== false) {
-        const usersData = response.data || response;
-        setDistributors(usersData.users || usersData || []);
-      } else {
-        console.warn("Failed to load distributors, using empty array");
-        setDistributors([]);
-      }
-    } catch (error) {
-      console.error("Error loading distributors:", error);
-      setDistributors([]);
-    }
-  };
-
-  // Handle status updates
-  const handleStatusUpdate = async (newStatus) => {
-    try {
-      setUpdating(true);
-      const response = await orderService.updateOrder(id, {
-        status: newStatus,
-      });
-
-      if (response && response.success !== false) {
-        toast.success("تم تحديث حالة الطلب بنجاح");
-        loadOrder();
-      } else {
-        const errorMessage = response?.message || "خطأ في تحديث الحالة";
-        toast.error(errorMessage);
-      }
-    } catch (error) {
-      console.error("Error updating status:", error);
-      let errorMessage = "خطأ في تحديث الحالة";
-
-      if (error.response?.status === 400) {
-        errorMessage =
-          "لا يمكن تحديث حالة الطلب - قد يكون في حالة لا تسمح بالتحديث";
-      } else if (error.response?.status === 403) {
-        errorMessage = "غير مصرح لك بتحديث حالة هذا الطلب";
-      } else if (error.response?.status === 404) {
-        errorMessage = "الطلب غير موجود";
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      toast.error(errorMessage);
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handlePaymentStatusUpdate = async (newPaymentStatus) => {
-    try {
-      setUpdating(true);
-      const response = await orderService.updateOrder(id, {
-        payment_status: newPaymentStatus,
-      });
-
-      if (response && response.success !== false) {
-        toast.success("تم تحديث حالة الدفع بنجاح");
-        loadOrder();
-      } else {
-        const errorMessage = response?.message || "خطأ في تحديث حالة الدفع";
-        toast.error(errorMessage);
-      }
-    } catch (error) {
-      console.error("Error updating payment status:", error);
-      let errorMessage = "خطأ في تحديث حالة الدفع";
-
-      if (error.response?.status === 400) {
-        errorMessage =
-          "لا يمكن تحديث حالة الدفع - قد يكون في حالة لا تسمح بالتحديث";
-      } else if (error.response?.status === 403) {
-        errorMessage = "غير مصرح لك بتحديث حالة الدفع لهذا الطلب";
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      toast.error(errorMessage);
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  // Handle distributor assignment
-  const handleDistributorAssignment = async (distributorId) => {
-    try {
-      setUpdating(true);
-      const response = await orderService.updateOrder(id, {
-        distributor_id: distributorId || null,
-      });
-
-      if (response && response.success !== false) {
-        toast.success(
-          distributorId ? "تم تعيين الموزع بنجاح" : "تم إلغاء تعيين الموزع"
-        );
-        loadOrder();
-      } else {
-        const errorMessage = response?.message || "خطأ في تحديث الموزع";
-        toast.error(errorMessage);
-      }
-    } catch (error) {
-      console.error("Error updating distributor:", error);
-      let errorMessage = "خطأ في تحديث الموزع";
-
-      if (error.response?.status === 400) {
-        errorMessage =
-          "لا يمكن تعيين موزع لهذا الطلب - قد يكون في حالة لا تسمح بذلك";
-      } else if (error.response?.status === 403) {
-        errorMessage = "غير مصرح لك بتعيين موزع لهذا الطلب";
-      } else if (error.response?.status === 404) {
-        errorMessage = "الطلب أو الموزع غير موجود";
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      toast.error(errorMessage);
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  // Handle order deletion
-  const handleDeleteOrder = async () => {
-    try {
-      const response = await orderService.deleteOrder(id);
-
-      if (response && response.success !== false) {
-        toast.success("تم حذف الطلب بنجاح");
-        navigate("/orders");
-      } else {
-        const errorMessage = response?.message || "خطأ في حذف الطلب";
-        toast.error(errorMessage);
-      }
-    } catch (error) {
-      console.error("Error deleting order:", error);
-      let errorMessage = "خطأ في حذف الطلب";
-
-      if (error.response?.status === 400) {
-        errorMessage = "لا يمكن حذف هذا الطلب - قد يكون في حالة لا تسمح بالحذف";
-      } else if (error.response?.status === 403) {
-        errorMessage = "غير مصرح لك بحذف هذا الطلب";
-      } else if (error.response?.status === 404) {
-        errorMessage = "الطلب غير موجود";
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      toast.error(errorMessage);
-    }
-  };
-
   // Helper functions
   const formatDate = (dateString) => {
     if (!dateString) return "غير محدد";
-    return new Date(dateString).toLocaleDateString("ar-SA");
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   };
 
   const formatDateTime = (dateString) => {
     if (!dateString) return "غير محدد";
-    return new Date(dateString).toLocaleString("ar-SA");
+    return new Date(dateString).toLocaleString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const formatAmount = (amount, currency = "EUR") => {
@@ -359,24 +196,6 @@ const OrderDetailsPage = () => {
               >
                 طباعة
               </EnhancedButton>
-
-              <EnhancedButton
-                onClick={() => navigate(`/orders/${order.id}/edit`)}
-                variant="warning"
-                size="sm"
-                icon={<Edit className="w-4 h-4" />}
-              >
-                تعديل
-              </EnhancedButton>
-
-              <EnhancedButton
-                onClick={() => setShowDeleteModal(true)}
-                variant="danger"
-                size="sm"
-                icon={<Trash2 className="w-4 h-4" />}
-              >
-                حذف
-              </EnhancedButton>
             </div>
           </div>
         </div>
@@ -469,54 +288,64 @@ const OrderDetailsPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Quick Actions */}
+            {/* Order Information */}
             <Card>
               <CardHeader>
                 <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-blue-600" />
-                  إجراءات سريعة
+                  <Info className="w-5 h-5 text-blue-600" />
+                  معلومات الطلب
                 </h2>
               </CardHeader>
               <CardBody>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      حالة الطلب
-                    </label>
-                    <select
-                      value={order.status}
-                      onChange={(e) => handleStatusUpdate(e.target.value)}
-                      disabled={updating}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="draft">مسودة</option>
-                      <option value="pending">معلق</option>
-                      <option value="confirmed">مؤكد</option>
-                      <option value="processing">قيد المعالجة</option>
-                      <option value="ready">جاهز</option>
-                      <option value="delivered">مُسلّم</option>
-                      <option value="cancelled">ملغي</option>
-                    </select>
+                    <span className="text-sm text-gray-600">رقم الطلب:</span>
+                    <p className="text-sm font-medium text-gray-900 mt-1">
+                      #{order.order_number || order.id}
+                    </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      حالة الدفع
-                    </label>
-                    <select
-                      value={order.payment_status}
-                      onChange={(e) =>
-                        handlePaymentStatusUpdate(e.target.value)
-                      }
-                      disabled={updating}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="pending">معلق</option>
-                      <option value="paid">مدفوع</option>
-                      <option value="partial">جزئي</option>
-                      <option value="failed">فاشل</option>
-                      <option value="overdue">متأخر</option>
-                    </select>
+                    <span className="text-sm text-gray-600">المتجر:</span>
+                    <p className="text-sm font-medium text-gray-900 mt-1">
+                      {order.store_name || "غير محدد"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-sm text-gray-600">تاريخ الطلب:</span>
+                    <p className="text-sm font-medium text-gray-900 mt-1">
+                      {formatDate(order.order_date)}
+                    </p>
+                  </div>
+
+                  {order.delivery_date && (
+                    <div>
+                      <span className="text-sm text-gray-600">
+                        تاريخ التسليم:
+                      </span>
+                      <p className="text-sm font-medium text-gray-900 mt-1">
+                        {formatDate(order.delivery_date)}
+                      </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <span className="text-sm text-gray-600">العملة:</span>
+                    <p className="text-sm font-medium text-gray-900 mt-1">
+                      {order.currency === "EUR" ? "يورو" : "ليرة سورية"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-sm text-gray-600">
+                      المبلغ الإجمالي:
+                    </span>
+                    <p className="text-sm font-medium text-gray-900 mt-1">
+                      {formatAmount(
+                        order.final_amount_eur || order.total_amount_eur
+                      )}
+                    </p>
                   </div>
                 </div>
               </CardBody>
@@ -675,60 +504,6 @@ const OrderDetailsPage = () => {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Order Summary */}
-            <Card>
-              <CardHeader>
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <Info className="w-5 h-5 text-blue-600" />
-                  معلومات الطلب
-                </h2>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">رقم الطلب:</span>
-                    <span className="text-sm font-bold text-gray-900 flex items-center gap-1">
-                      <Hash className="w-3 h-3" />
-                      {order.order_number || order.id}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">العملة:</span>
-                    <span className="text-sm font-medium text-gray-900 flex items-center gap-1">
-                      <Euro className="w-3 h-3" />
-                      {order.currency}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">عدد المنتجات:</span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {orderStats.totalItems}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">
-                      إجمالي الكمية:
-                    </span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {orderStats.totalQuantity}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">أنشأ بواسطة:</span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {order.creator?.name ||
-                        order.created_by_name ||
-                        "غير محدد"}
-                    </span>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-
             {/* Store Information */}
             <Card>
               <CardHeader>
@@ -781,26 +556,28 @@ const OrderDetailsPage = () => {
               <CardHeader>
                 <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                   <Truck className="w-5 h-5 text-purple-600" />
-                  تعيين الموزع
+                  الموزع المعين
                 </h2>
               </CardHeader>
               <CardBody>
-                {order.distributor_id || order.assigned_distributor_id ? (
+                {order.distributor ? (
                   <div className="space-y-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                           <CheckCircle className="w-4 h-4 text-green-600" />
-                          {order.distributor?.name ||
-                            order.assignedDistributor?.name ||
-                            "موزع مختار"}
+                          {order.distributor.name}
                         </h3>
-                        {(order.distributor?.phone ||
-                          order.assignedDistributor?.phone) && (
+                        {order.distributor.phone && (
                           <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
                             <Phone className="w-3 h-3" />
-                            {order.distributor?.phone ||
-                              order.assignedDistributor?.phone}
+                            {order.distributor.phone}
+                          </p>
+                        )}
+                        {order.distributor.email && (
+                          <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                            <Mail className="w-3 h-3" />
+                            {order.distributor.email}
                           </p>
                         )}
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-2">
@@ -808,42 +585,12 @@ const OrderDetailsPage = () => {
                         </span>
                       </div>
                     </div>
-                    <EnhancedButton
-                      onClick={() => handleDistributorAssignment(null)}
-                      disabled={updating}
-                      variant="outline"
-                      size="sm"
-                      icon={<XCircle className="w-4 h-4" />}
-                      className="w-full"
-                    >
-                      إلغاء التعيين
-                    </EnhancedButton>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <div className="flex items-center text-gray-500">
                       <XCircle className="w-5 h-5 mr-2" />
                       <span className="text-sm">لم يتم تعيين موزع</span>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        اختر موزع:
-                      </label>
-                      <select
-                        onChange={(e) =>
-                          e.target.value &&
-                          handleDistributorAssignment(parseInt(e.target.value))
-                        }
-                        disabled={updating}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">اختر الموزع</option>
-                        {distributors.map((distributor) => (
-                          <option key={distributor.id} value={distributor.id}>
-                            {distributor.name}
-                          </option>
-                        ))}
-                      </select>
                     </div>
                   </div>
                 )}
@@ -860,25 +607,6 @@ const OrderDetailsPage = () => {
               </CardHeader>
               <CardBody>
                 <div className="space-y-3">
-                  <div>
-                    <span className="text-sm text-gray-600">تاريخ الطلب:</span>
-                    <p className="text-sm font-medium text-gray-900 mt-1">
-                      {formatDate(order.order_date)}
-                    </p>
-                  </div>
-
-                  {order.delivery_date && (
-                    <div>
-                      <span className="text-sm text-gray-600">
-                        تاريخ التسليم المطلوب:
-                      </span>
-                      <p className="text-sm font-medium text-gray-900 mt-1 flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-blue-600" />
-                        {formatDate(order.delivery_date)}
-                      </p>
-                    </div>
-                  )}
-
                   <div>
                     <span className="text-sm text-gray-600">
                       تاريخ الإنشاء:
@@ -944,15 +672,6 @@ const OrderDetailsPage = () => {
           </div>
         </div>
       </div>
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        onConfirm={handleDeleteOrder}
-        title="حذف الطلب"
-        message="هل أنت متأكد من أنك تريد حذف هذا الطلب؟ هذا الإجراء لا يمكن التراجع عنه."
-      />
     </div>
   );
 };

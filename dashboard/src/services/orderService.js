@@ -41,10 +41,21 @@ const orderService = {
   // Create new order
   async createOrder(orderData) {
     try {
-      console.log("🚀 [orderService] Creating order with data:", JSON.stringify(orderData, null, 2));
+      // Ensure numeric fields are properly converted
+      const processedData = {
+        ...orderData,
+        store_id: orderData.store_id ? parseInt(orderData.store_id) : null,
+        items: orderData.items.map(item => ({
+          ...item,
+          product_id: item.product_id ? parseInt(item.product_id) : null,
+          quantity: item.quantity ? parseInt(item.quantity) : null
+        }))
+      };
+
+      console.log("🚀 [orderService] Creating order with data:", JSON.stringify(processedData, null, 2));
 
       // Validate data before sending
-      const validation = this.validateOrderData(orderData);
+      const validation = this.validateOrderData(processedData);
       if (!validation.isValid) {
         console.error("❌ [orderService] Client-side validation failed:", validation.errors);
         throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
@@ -52,7 +63,7 @@ const orderService = {
 
       console.log("✅ [orderService] Client-side validation passed");
 
-      const response = await apiService.post('/orders', orderData);
+      const response = await apiService.post('/orders', processedData);
 
       console.log("📦 [orderService] Raw API response:", response);
 
@@ -260,10 +271,13 @@ const orderService = {
     const errors = [];
 
     // Validate store_id
-    if (!orderData.store_id) {
+    if (!orderData.store_id && orderData.store_id !== 0) {
       errors.push('store_id is required');
-    } else if (typeof orderData.store_id !== 'number' || orderData.store_id <= 0) {
-      errors.push('store_id must be a positive number');
+    } else {
+      const storeId = parseInt(orderData.store_id);
+      if (isNaN(storeId) || storeId <= 0) {
+        errors.push('store_id must be a positive number');
+      }
     }
 
     // Validate items
@@ -273,16 +287,22 @@ const orderService = {
       errors.push('at least one item is required');
     } else {
       orderData.items.forEach((item, index) => {
-        if (!item.product_id) {
+        if (!item.product_id && item.product_id !== 0) {
           errors.push(`items[${index}].product_id is required`);
-        } else if (typeof item.product_id !== 'number' || item.product_id <= 0) {
-          errors.push(`items[${index}].product_id must be a positive number`);
+        } else {
+          const productId = parseInt(item.product_id);
+          if (isNaN(productId) || productId <= 0) {
+            errors.push(`items[${index}].product_id must be a positive number`);
+          }
         }
 
-        if (!item.quantity) {
+        if (!item.quantity && item.quantity !== 0) {
           errors.push(`items[${index}].quantity is required`);
-        } else if (typeof item.quantity !== 'number' || item.quantity <= 0) {
-          errors.push(`items[${index}].quantity must be a positive number`);
+        } else {
+          const quantity = parseInt(item.quantity);
+          if (isNaN(quantity) || quantity <= 0) {
+            errors.push(`items[${index}].quantity must be a positive number`);
+          }
         }
       });
     }

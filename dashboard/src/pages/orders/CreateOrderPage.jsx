@@ -52,9 +52,11 @@ const CreateOrderPage = () => {
   const [loadingStores, setLoadingStores] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingDistributors, setLoadingDistributors] = useState(true);
-  const [lastError, setLastError] = useState(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const [showRetryButton, setShowRetryButton] = useState(false);
+
+  // Data states
+  const [stores, setStores] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [distributors, setDistributors] = useState([]);
 
   // Selected details for display
   const [selectedStore, setSelectedStore] = useState(null);
@@ -348,8 +350,6 @@ const CreateOrderPage = () => {
         ...formData,
         items: formData.items.map((item) => ({
           ...item,
-          product_id: parseInt(item.product_id),
-          quantity: parseInt(item.quantity),
         })),
       };
 
@@ -411,40 +411,11 @@ const CreateOrderPage = () => {
         errorMessage = "البيانات المدخلة غير صحيحة";
       } else if (errorMessage.includes("Quantity must be greater than zero")) {
         errorMessage = "يجب أن تكون الكمية أكبر من الصفر";
-      } else if (errorMessage.includes("Error creating order")) {
-        errorMessage =
-          "خطأ في إنشاء الطلب - يرجى المحاولة مرة أخرى أو التواصل مع الدعم الفني";
       }
 
-      // Show error with retry option for 500 errors
-      if (error.response?.status === 500) {
-        setLastError(error);
-        setShowRetryButton(true);
-        setRetryCount(prev => prev + 1);
-        
-        toast.error(
-          `${errorMessage}\n\nيمكنك المحاولة مرة أخرى أو التواصل مع الدعم الفني إذا استمرت المشكلة.`,
-          {
-            duration: 10000,
-            icon: "⚠️",
-          }
-        );
-      } else {
-        toast.error(errorMessage);
-      }
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Retry function for failed requests
-  const retryOrderCreation = () => {
-    if (retryCount < 3) {
-      setShowRetryButton(false);
-      setLastError(null);
-      handleSubmit(new Event('submit'));
-    } else {
-      toast.error('تم تجاوز الحد الأقصى للمحاولات. يرجى التواصل مع الدعم الفني.');
     }
   };
 
@@ -1254,55 +1225,6 @@ const CreateOrderPage = () => {
                     return null;
                   })()}
 
-                  {/* Retry Button for 500 Errors */}
-                  {showRetryButton && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-orange-50 border-l-4 border-orange-400 p-4 rounded-md mb-4"
-                    >
-                      <div className="flex items-start">
-                        <div className="flex-shrink-0">
-                          <AlertTriangle className="h-5 w-5 text-orange-400" />
-                        </div>
-                        <div className="ml-3 flex-1">
-                          <h3 className="text-sm font-medium text-orange-800">
-                            خطأ في الخادم - المحاولة {retryCount}/3
-                          </h3>
-                          <div className="mt-2 text-sm text-orange-700">
-                            <p>
-                              حدث خطأ أثناء إنشاء الطلب. يمكنك المحاولة مرة أخرى.
-                            </p>
-                          </div>
-                          <div className="mt-3">
-                            <EnhancedButton
-                              type="button"
-                              onClick={retryOrderCreation}
-                              variant="primary"
-                              size="sm"
-                              disabled={retryCount >= 3}
-                              className="mr-2"
-                            >
-                              إعادة المحاولة
-                            </EnhancedButton>
-                            <EnhancedButton
-                              type="button"
-                              onClick={() => {
-                                setShowRetryButton(false);
-                                setLastError(null);
-                                setRetryCount(0);
-                              }}
-                              variant="outline"
-                              size="sm"
-                            >
-                              إلغاء
-                            </EnhancedButton>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-
                   <EnhancedButton
                     type="submit"
                     form="orderForm"
@@ -1311,7 +1233,6 @@ const CreateOrderPage = () => {
                     size="lg"
                     icon={<Save className="w-4 h-4" />}
                     className="w-full"
-                    disabled={showRetryButton}
                   >
                     {loading ? "جاري الحفظ..." : "حفظ الطلب"}
                   </EnhancedButton>
