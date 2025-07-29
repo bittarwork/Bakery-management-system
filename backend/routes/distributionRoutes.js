@@ -69,7 +69,7 @@ router.get('/schedules/today', auth.protect, dailyDistributionScheduleController
 router.get('/schedules/distributor/:distributorId', auth.protect, dailyDistributionScheduleController.getDistributorSchedule);
 
 // Get schedule statistics
-router.get('/schedules/statistics', dailyDistributionScheduleController.getScheduleStatistics);
+router.get('/schedules/statistics', auth.protect, dailyDistributionScheduleController.getScheduleStatistics);
 
 // Generate daily schedule for distributor
 router.post('/schedules/generate', [
