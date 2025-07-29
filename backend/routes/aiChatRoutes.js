@@ -4,6 +4,9 @@ import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Public health endpoint (no auth required)
+router.get('/health', aiChatController.healthCheck);
+
 // Apply rate limiting to all AI chat routes
 router.use(aiChatRateLimit);
 
@@ -14,7 +17,6 @@ router.use(protect);
 router.post('/message', aiChatController.sendMessage);
 router.get('/config', aiChatController.getChatConfig);
 router.get('/suggestions', aiChatController.getSuggestedQuestions);
-router.get('/health', aiChatController.healthCheck);
 
 // Enhanced AI features
 router.get('/memory', aiChatController.getConversationMemory);
