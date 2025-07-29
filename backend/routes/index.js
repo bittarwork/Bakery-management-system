@@ -113,6 +113,26 @@ router.use('/conversations', conversationRoutes);
 // Mount Distribution System routes
 router.use('/distribution', distributionRoutes);
 
+// TEMPORARY: Direct auto-schedules route for debugging
+router.get('/distribution/schedules/auto-direct', (req, res) => {
+    res.json({
+        success: true,
+        message: 'Direct auto distribution schedules endpoint working',
+        data: {
+            distributors_schedules: [],
+            overall_statistics: {
+                total_distributors: 0,
+                total_orders: 0,
+                total_stores: 0,
+                total_estimated_duration: 0,
+                distributors_with_orders: 0,
+                distributors_with_existing_schedules: 0
+            },
+            schedule_date: req.query.schedule_date || new Date().toISOString().split('T')[0]
+        }
+    });
+});
+
 // Health check endpoint
 router.get('/health', (req, res) => {
     res.json({

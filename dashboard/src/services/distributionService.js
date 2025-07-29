@@ -164,11 +164,23 @@ export const distributionService = {
             const params = {};
             if (scheduleDate) params.schedule_date = scheduleDate;
 
-            const response = await apiService.get(
-                `${DISTRIBUTION_API_BASE}/schedules/auto`,
-                { params }
-            );
-            return response.data;
+            // Try the main endpoint first
+            try {
+                const response = await apiService.get(
+                    `${DISTRIBUTION_API_BASE}/schedules/auto`,
+                    { params }
+                );
+                return response.data;
+            } catch (mainError) {
+                console.warn('Main auto endpoint failed, trying fallback:', mainError.message);
+                
+                // Fallback to direct route
+                const fallbackResponse = await apiService.get(
+                    `${DISTRIBUTION_API_BASE}/schedules/auto-direct`,
+                    { params }
+                );
+                return fallbackResponse.data;
+            }
         } catch (error) {
             console.error('Error fetching auto distribution schedules:', error);
             throw error;
