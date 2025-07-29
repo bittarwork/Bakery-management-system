@@ -1,36 +1,31 @@
-console.log('Testing controller imports...');
+import fs from 'fs';
 
-async function testImports() {
-    try {
-        console.log('1. Testing distributionTripController...');
-        const trip = await import('./controllers/distributionTripController.js');
-        console.log('Trip exports:', Object.keys(trip));
+console.log('Testing imports...');
 
-        console.log('2. Testing dailyDistributionScheduleController...');
-        const schedule = await import('./controllers/dailyDistributionScheduleController.js');
-        console.log('Schedule exports:', Object.keys(schedule));
-
-        console.log('3. Testing locationTrackingController...');
-        const location = await import('./controllers/locationTrackingController.js');
-        console.log('Location exports:', Object.keys(location));
-
-        console.log('4. Testing distributionPerformanceController...');
-        const performance = await import('./controllers/distributionPerformanceController.js');
-        console.log('Performance exports:', Object.keys(performance));
-
-        console.log('5. Testing distributionNotificationController...');
-        const notification = await import('./controllers/distributionNotificationController.js');
-        console.log('Notification exports:', Object.keys(notification));
-
-        console.log('6. Testing distributionSettingsController...');
-        const settings = await import('./controllers/distributionSettingsController.js');
-        console.log('Settings exports:', Object.keys(settings));
-
-        console.log('All imports successful!');
-    } catch (error) {
-        console.error('Error during import:', error.message);
-        console.error('Stack:', error.stack);
-    }
+try {
+    console.log('1. Testing DailyDistributionSchedule model import...');
+    const model = await import('./models/DailyDistributionSchedule.js');
+    console.log('✅ Model imported successfully, has default export:', !!model.default);
+} catch (error) {
+    console.error('❌ Model import error:', error.message);
 }
 
-testImports();
+try {
+    console.log('2. Testing dailyDistributionScheduleController import...');
+    const controller = await import('./controllers/dailyDistributionScheduleController.js');
+    console.log('✅ Controller imported successfully');
+    console.log('Available functions:', Object.keys(controller));
+    console.log('Has getAutoDistributionSchedules:', !!controller.getAutoDistributionSchedules);
+} catch (error) {
+    console.error('❌ Controller import error:', error.message);
+}
+
+try {
+    console.log('3. Testing distribution routes import...');
+    const routes = await import('./routes/distributionRoutes.js');
+    console.log('✅ Routes imported successfully, has default export:', !!routes.default);
+} catch (error) {
+    console.error('❌ Routes import error:', error.message);
+}
+
+console.log('Import test completed.');
