@@ -22,7 +22,7 @@ class DistributionScheduleScreen extends StatelessWidget {
         print('DistributionScheduleScreen userId: ' + snapshot.data.toString());
         // يمكن استخدام userId أو vehicleId هنا حسب الحاجة
         return BlocProvider(
-          create: (_) => DistributionScheduleCubit(ApiService())..fetchSchedule(today),
+          create: (_) => DistributionScheduleCubit(ApiService())..fetchScheduleForUser(),
           child: BlocBuilder<DistributionScheduleCubit, DistributionScheduleState>(
             builder: (context, state) {
               if (state is DistributionScheduleLoading) {
@@ -31,7 +31,7 @@ class DistributionScheduleScreen extends StatelessWidget {
                 final stores = state.schedule.stores;
                 return RefreshIndicator(
                   onRefresh: () async {
-                    context.read<DistributionScheduleCubit>().fetchSchedule(today);
+                    context.read<DistributionScheduleCubit>().fetchScheduleForUser();
                   },
                   child: ListView.builder(
                     itemCount: stores.length,

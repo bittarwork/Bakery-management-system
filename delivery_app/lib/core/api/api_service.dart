@@ -25,14 +25,20 @@ class ApiService {
     );
   }
 
-  Future<DistributionSchedule> getDistributionSchedule(String date) async {
+  Future<DistributionSchedule> getDistributionScheduleForUser(int userId) async {
     final token = await LocalStorage.getToken();
-    final response = await _dio.get(
-      'https://bakery-management-system-production.up.railway.app/api/distribution/schedule/daily',
-      queryParameters: {'date': date},
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
-    );
-    return DistributionSchedule.fromJson(response.data);
+    print('ApiService: Fetching distribution schedule for userId: $userId');
+    try {
+      final response = await _dio.get(
+        'https://bakery-management-system-production.up.railway.app/api/distribution/schedules/distributor/$userId',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      print('ApiService: Distribution schedule response: ${response.statusCode}');
+      return DistributionSchedule.fromJson(response.data);
+    } catch (e) {
+      print('ApiService: Error fetching distribution schedule: $e');
+      rethrow;
+    }
   }
 
   Future<Delivery> getStoreDeliveryDetails(int storeId) async {
