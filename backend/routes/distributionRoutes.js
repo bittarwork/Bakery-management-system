@@ -124,6 +124,41 @@ router.get('/schedules/auto-test', (req, res) => {
     });
 });
 
+// Public test endpoint for distribution system
+router.get('/system/test-public', async (req, res) => {
+    try {
+        systemLogger.info('Public test endpoint accessed');
+
+        // Test database connection and get basic stats
+        const { User, Store, Order } = await import('../models/index.js');
+
+        const [userCount] = await User.findAndCountAll({ where: { role: 'distributor', status: 'active' } });
+        const [storeCount] = await Store.findAndCountAll({ where: { status: 'active' } });
+        const [orderCount] = await Order.findAndCountAll({ where: { status: ['confirmed', 'in_progress'] } });
+
+        res.json({
+            success: true,
+            message: 'Distribution system is operational',
+            data: {
+                database_status: 'connected',
+                active_distributors: userCount.count,
+                active_stores: storeCount.count,
+                pending_orders: orderCount.count,
+                timestamp: new Date().toISOString(),
+                server_status: 'running'
+            }
+        });
+
+    } catch (error) {
+        systemLogger.error('Error in public test endpoint:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error testing distribution system',
+            error: error.message
+        });
+    }
+});
+
 // Simple connection test
 router.get('/test-connection', (req, res) => {
     res.json({
