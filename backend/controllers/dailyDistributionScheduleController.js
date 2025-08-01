@@ -26,23 +26,23 @@ export const getDistributionSchedules = async (req, res) => {
 
         // Build where clause
         const whereClause = {};
-        
+
         if (distributor_id) {
             whereClause.distributor_id = distributor_id;
         }
-        
+
         if (schedule_date) {
             whereClause.schedule_date = schedule_date;
         }
-        
+
         if (store_id) {
             whereClause.store_id = store_id;
         }
-        
+
         if (visit_status) {
             whereClause.visit_status = visit_status;
         }
-        
+
         if (start_date && end_date) {
             whereClause.schedule_date = {
                 [Op.between]: [start_date, end_date]
@@ -66,8 +66,8 @@ export const getDistributionSchedules = async (req, res) => {
                 }
             ],
             order: [
-                ['schedule_date', 'DESC'], 
-                ['distributor_id', 'ASC'], 
+                ['schedule_date', 'DESC'],
+                ['distributor_id', 'ASC'],
                 ['visit_order', 'ASC']
             ],
             limit: parseInt(limit),
@@ -136,7 +136,7 @@ export const getDistributionSchedule = async (req, res) => {
         }
 
         // Get related orders
-        const relatedOrders = schedule.order_ids && schedule.order_ids.length > 0 
+        const relatedOrders = schedule.order_ids && schedule.order_ids.length > 0
             ? await Order.findAll({
                 where: {
                     id: { [Op.in]: schedule.order_ids }
@@ -174,32 +174,32 @@ export const getTodaySchedules = async (req, res) => {
         const { distributor_id } = req.query;
 
         const schedules = await DailyDistributionSchedule.getTodaySchedule(distributor_id);
-        
+
         // Group schedules by distributor
         const schedulesByDistributor = {};
-        
+
         for (const schedule of schedules) {
             if (!schedulesByDistributor[schedule.distributor_id]) {
                 // Get distributor info
                 const distributor = await User.findByPk(schedule.distributor_id, {
                     attributes: ['id', 'full_name', 'phone', 'working_status', 'is_online']
                 });
-                
+
                 // Get latest location
                 const latestLocation = await LocationTracking.getLatestLocation(schedule.distributor_id);
-                
+
                 schedulesByDistributor[schedule.distributor_id] = {
                     distributor,
                     latest_location: latestLocation,
                     schedules: []
                 };
             }
-            
+
             // Get store info
             const store = await Store.findByPk(schedule.store_id, {
                 attributes: ['id', 'name', 'address', 'gps_coordinates']
             });
-            
+
             schedulesByDistributor[schedule.distributor_id].schedules.push({
                 ...schedule.toJSON(),
                 store,
@@ -236,15 +236,15 @@ export const getDistributorSchedule = async (req, res) => {
         const { date } = req.query;
 
         const schedules = await DailyDistributionSchedule.getDistributorSchedule(
-            distributorId, 
+            distributorId,
             date
         );
-        
+
         // Get distributor info
         const distributor = await User.findByPk(distributorId, {
             attributes: ['id', 'full_name', 'phone', 'working_status', 'is_online']
         });
-        
+
         if (!distributor) {
             return res.status(404).json({
                 success: false,
@@ -258,8 +258,8 @@ export const getDistributorSchedule = async (req, res) => {
                 const store = await Store.findByPk(schedule.store_id, {
                     attributes: ['id', 'name', 'address', 'phone', 'gps_coordinates']
                 });
-                
-                const relatedOrders = schedule.order_ids && schedule.order_ids.length > 0 
+
+                const relatedOrders = schedule.order_ids && schedule.order_ids.length > 0
                     ? await Order.findAll({
                         where: { id: { [Op.in]: schedule.order_ids } },
                         attributes: ['id', 'order_number', 'total_amount_eur', 'status']
@@ -359,7 +359,7 @@ export const generateDistributionSchedule = async (req, res) => {
 
         // TODO: Implement route optimization using Google Maps API
         let optimizedStoresData = stores_data;
-        
+
         if (optimize_route) {
             // For now, we'll use the provided order
             // In the next phase, we'll implement Google Maps route optimization
@@ -428,7 +428,7 @@ export const updateDistributionSchedule = async (req, res) => {
         const updateData = req.body;
 
         const schedule = await DailyDistributionSchedule.findByPk(id);
-        
+
         if (!schedule) {
             return res.status(404).json({
                 success: false,
@@ -493,7 +493,7 @@ export const startStoreVisit = async (req, res) => {
         const { location } = req.body; // Optional arrival location
 
         const schedule = await DailyDistributionSchedule.findByPk(id);
-        
+
         if (!schedule) {
             return res.status(404).json({
                 success: false,
@@ -556,7 +556,7 @@ export const completeStoreVisit = async (req, res) => {
         const { notes, location } = req.body;
 
         const schedule = await DailyDistributionSchedule.findByPk(id);
-        
+
         if (!schedule) {
             return res.status(404).json({
                 success: false,
@@ -577,12 +577,12 @@ export const completeStoreVisit = async (req, res) => {
         // Update related orders status to delivered
         if (schedule.order_ids && schedule.order_ids.length > 0) {
             await Order.update(
-                { 
+                {
                     status: 'delivered',
                     actual_delivery_time: new Date()
                 },
-                { 
-                    where: { 
+                {
+                    where: {
                         id: { [Op.in]: schedule.order_ids }
                     }
                 }
@@ -612,7 +612,7 @@ export const completeStoreVisit = async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'Store visit completed successfully',
-            data: { 
+            data: {
                 schedule,
                 visit_duration: schedule.getVisitDuration()
             }
@@ -637,7 +637,7 @@ export const cancelStoreVisit = async (req, res) => {
         const { reason } = req.body;
 
         const schedule = await DailyDistributionSchedule.findByPk(id);
-        
+
         if (!schedule) {
             return res.status(404).json({
                 success: false,
@@ -659,8 +659,8 @@ export const cancelStoreVisit = async (req, res) => {
         if (schedule.order_ids && schedule.order_ids.length > 0) {
             await Order.update(
                 { status: 'cancelled' },
-                { 
-                    where: { 
+                {
+                    where: {
                         id: { [Op.in]: schedule.order_ids }
                     }
                 }
@@ -725,7 +725,7 @@ export const deleteDistributionSchedule = async (req, res) => {
         const { id } = req.params;
 
         const schedule = await DailyDistributionSchedule.findByPk(id);
-        
+
         if (!schedule) {
             return res.status(404).json({
                 success: false,
@@ -780,7 +780,14 @@ export const getAutoDistributionSchedules = async (req, res) => {
                 message: 'No active distributors found',
                 data: {
                     distributors_schedules: [],
-                    total_distributors: 0,
+                    overall_statistics: {
+                        total_distributors: 0,
+                        total_orders: 0,
+                        total_stores: 0,
+                        total_estimated_duration: 0,
+                        distributors_with_orders: 0,
+                        distributors_with_existing_schedules: 0
+                    },
                     schedule_date
                 }
             });
@@ -813,8 +820,8 @@ export const getAutoDistributionSchedules = async (req, res) => {
                         status: ['confirmed', 'in_progress']
                     },
                     attributes: [
-                        'id', 'order_number', 'store_id', 'store_name', 
-                        'total_amount_eur', 'total_amount_syp', 'status', 
+                        'id', 'order_number', 'store_id', 'store_name',
+                        'total_amount_eur', 'total_amount_syp', 'status',
                         'priority', 'notes', 'special_instructions',
                         'delivery_address', 'customer_name', 'customer_phone'
                     ],
@@ -841,18 +848,18 @@ export const getAutoDistributionSchedules = async (req, res) => {
 
                 // If no existing schedule, create auto-schedule based on orders and assigned stores
                 let scheduleItems = [];
-                
+
                 if (existingSchedule.length === 0) {
                     // Create automatic schedule
                     let visitOrder = 1;
-                    
+
                     // First, add stores that have orders
                     for (const [storeId, storeOrders] of Object.entries(ordersByStore)) {
-                        const store = assignedStores.find(s => s.id == storeId) || 
-                                     await Store.findByPk(storeId, {
-                                         attributes: ['id', 'name', 'address', 'phone', 'gps_coordinates']
-                                     });
-                        
+                        const store = assignedStores.find(s => s.id == storeId) ||
+                            await Store.findByPk(storeId, {
+                                attributes: ['id', 'name', 'address', 'phone', 'gps_coordinates']
+                            });
+
                         if (store) {
                             scheduleItems.push({
                                 id: `auto-${distributor.id}-${storeId}`,
@@ -869,7 +876,7 @@ export const getAutoDistributionSchedules = async (req, res) => {
                             });
                         }
                     }
-                    
+
                     // Then add assigned stores without orders (if needed for regular visits)
                     assignedStores.forEach(store => {
                         if (!ordersByStore[store.id]) {
@@ -905,7 +912,7 @@ export const getAutoDistributionSchedules = async (req, res) => {
                 const totalOrders = assignedOrders.length;
                 const totalStores = scheduleItems.length;
                 const estimatedDuration = scheduleItems.reduce((sum, item) => sum + (item.estimated_duration || 15), 0);
-                
+
                 return {
                     distributor: distributor.toJSON(),
                     schedule_items: scheduleItems,

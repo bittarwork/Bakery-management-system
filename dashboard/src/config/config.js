@@ -3,8 +3,8 @@ const config = {
     // Development vs Production API URLs  
     API_BASE_URL: import.meta.env.VITE_API_URL || 'https://bakery-management-system-production.up.railway.app/api',
 
-    // Local development URL updated to match server port
-    LOCAL_API_URL: 'http://localhost:8080/api',
+    // Local development URL - try both common ports
+    LOCAL_API_URL: 'http://localhost:5001/api',
 
     // Auto-detect local vs production
     IS_DEVELOPMENT: import.meta.env.DEV || window.location.hostname === 'localhost',
@@ -71,31 +71,21 @@ const config = {
 
 // Get the appropriate API URL based on environment
 export const getApiUrl = () => {
-    // Always use Railway API for production
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        console.log('Production environment detected, using Railway API');
-        return config.API_BASE_URL;
-    }
-
-    // For localhost, check if we should use local server
+    // Force local development if on localhost/127.0.0.1
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        // Check if we should force Railway API usage
-        if (window.location.search.includes('use-railway') && !config.USE_LOCAL_FALLBACK) {
-            console.log('Local development using Railway API (forced)');
+        // Check if user specifically wants to use Railway API
+        if (window.location.search.includes('use-railway')) {
+            console.log('🌐 Local development using Railway API (forced via URL parameter)');
             return config.API_BASE_URL;
         }
 
-        // Use local server when USE_LOCAL_FALLBACK is true
-        if (config.USE_LOCAL_FALLBACK) {
-            console.log('Local development detected, using local server');
-            return config.LOCAL_API_URL;
-        }
-
-        console.log('Local development using Railway API (fallback disabled)');
-        return config.API_BASE_URL;
+        // Default to local server for localhost
+        console.log('🏠 Local development detected, using local server at:', config.LOCAL_API_URL);
+        return config.LOCAL_API_URL;
     }
 
-    // Default fallback to Railway API  
+    // For all other hostnames, use Railway API
+    console.log('🌐 Production environment detected, using Railway API');
     return config.API_BASE_URL;
 };
 

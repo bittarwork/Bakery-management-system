@@ -224,6 +224,27 @@ export const distributionService = {
             console.error('Error triggering schedule generation:', error);
             throw error;
         }
+    },
+
+    // Test connection to distribution API
+    testConnection: async () => {
+        try {
+            const response = await apiService.get(`${DISTRIBUTION_API_BASE}/test-connection`);
+            return response.data;
+        } catch (error) {
+            console.error('Error testing distribution connection:', error);
+            throw error;
+        }
+    },
+
+    // Trigger automatic schedule generation (alias for triggerScheduleGeneration)
+    triggerAutoGeneration: async () => {
+        try {
+            return await distributionService.triggerScheduleGeneration();
+        } catch (error) {
+            console.error('Error triggering auto generation:', error);
+            throw error;
+        }
     }
 };
 

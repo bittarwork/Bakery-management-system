@@ -76,13 +76,9 @@ router.get('/schedules/distributor/:distributorId', protect, dailyDistributionSc
 router.get('/schedules/statistics', protect, dailyDistributionScheduleController.getScheduleStatistics);
 
 // Get automatic distribution schedules for all distributors - Main endpoint
-router.get('/schedules/auto', async (req, res) => {
+router.get('/schedules/auto', protect, async (req, res) => {
     try {
-        systemLogger.info(`Auto schedules requested for date: ${req.query.schedule_date || 'today'}`);
-
-        // Temporary bypass authentication for testing
-        req.user = { id: 1, role: 'admin' }; // Mock user for testing
-
+        systemLogger.info(`Auto schedules requested for date: ${req.query.schedule_date || 'today'} by user ${req.user?.id}`);
         await dailyDistributionScheduleController.getAutoDistributionSchedules(req, res);
     } catch (error) {
         systemLogger.error('Error in auto schedules endpoint:', error);
@@ -95,14 +91,10 @@ router.get('/schedules/auto', async (req, res) => {
 });
 
 // Direct auto distribution schedules endpoint - Alternative endpoint
-router.get('/schedules/auto-direct', async (req, res) => {
+router.get('/schedules/auto-direct', protect, async (req, res) => {
     try {
-        systemLogger.info(`Auto schedules (direct) requested for date: ${req.query.schedule_date || 'today'}`);
-
-        // Temporary bypass authentication for testing
-        req.user = { id: 1, role: 'admin' }; // Mock user for testing
+        systemLogger.info(`Auto schedules (direct) requested for date: ${req.query.schedule_date || 'today'} by user ${req.user?.id}`);
         req.isDirect = true;
-
         await dailyDistributionScheduleController.getAutoDistributionSchedules(req, res);
     } catch (error) {
         systemLogger.error('Error in auto schedules direct endpoint:', error);
@@ -114,7 +106,7 @@ router.get('/schedules/auto-direct', async (req, res) => {
     }
 });
 
-// Test endpoint to verify routes are working
+// Test endpoint to verify routes are working  
 router.get('/schedules/auto-test', (req, res) => {
     systemLogger.info('Auto schedules test endpoint accessed');
     res.json({
@@ -129,6 +121,17 @@ router.get('/schedules/auto-test', (req, res) => {
             },
             schedule_date: req.query.schedule_date || 'today'
         }
+    });
+});
+
+// Simple connection test
+router.get('/test-connection', (req, res) => {
+    res.json({
+        success: true,
+        message: 'Distribution API connection successful!',
+        timestamp: new Date().toISOString(),
+        server: 'localhost',
+        port: process.env.PORT || 5001
     });
 });
 
