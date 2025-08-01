@@ -64,6 +64,7 @@ import AIChatPage from "./pages/ai-chat/AIChatPage";
 // Components
 import LoadingSpinner from "./components/ui/LoadingSpinner";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
+import SessionProvider from "./providers/SessionProvider";
 
 // Page transition animations
 const pageVariants = {
@@ -186,9 +187,10 @@ const App = () => {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gray-50">
-        {/* Toast Notifications */}
-        <Toaster
+      <SessionProvider>
+        <div className="min-h-screen bg-gray-50">
+          {/* Toast Notifications */}
+          <Toaster
           position="top-right"
           reverseOrder={false}
           gutter={8}
@@ -906,7 +908,8 @@ const App = () => {
             />
           </Routes>
         </AnimatePresence>
-      </div>
+        </div>
+      </SessionProvider>
     </ErrorBoundary>
   );
 };

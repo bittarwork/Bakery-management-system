@@ -36,6 +36,7 @@ import {
 import { useAuthStore } from "../../stores/authStore";
 import Logo from "../ui/Logo";
 import Breadcrumb from "../ui/Breadcrumb";
+import SessionTimer from "../ui/SessionTimer";
 
 const DashboardLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -568,11 +569,18 @@ const DashboardLayout = ({ children }) => {
               </h2>
             </div>
 
-            {/* Clock */}
-            <div className="flex items-center space-x-3 space-x-reverse">
-              <div className="text-lg font-mono text-gray-700">
-                {formatTime(currentTime)}
+            {/* Clock and Session Timer */}
+            <div className="flex items-center space-x-6 space-x-reverse">
+              {/* Current Time */}
+              <div className="flex items-center space-x-2 space-x-reverse">
+                <Clock className="h-4 w-4 text-gray-500" />
+                <div className="text-lg font-mono text-gray-700">
+                  {formatTime(currentTime)}
+                </div>
               </div>
+              
+              {/* Session Timer */}
+              <SessionTimer className="border-r border-gray-200 pr-6" />
             </div>
 
             {/* Logout Button */}
