@@ -235,17 +235,33 @@ export const getDistributorSchedule = async (req, res) => {
         const { distributorId } = req.params;
         const { date } = req.query;
 
+        console.log('getDistributorSchedule called with:', { distributorId, date });
+        console.log('Request user:', req.user?.id, req.user?.role);
+
         const schedules = await DailyDistributionSchedule.getDistributorSchedule(
             distributorId,
             date
         );
 
+<<<<<<< HEAD
+=======
+        console.log('Found schedules count:', schedules.length);
+        
+>>>>>>> 37c3a32121a9a9d10905eb95534ff0a586af82ad
         // Get distributor info
+        console.log('Looking for distributor with ID:', distributorId);
         const distributor = await User.findByPk(distributorId, {
             attributes: ['id', 'full_name', 'phone', 'working_status', 'is_online']
         });
+<<<<<<< HEAD
 
+=======
+        
+        console.log('Distributor found:', distributor ? 'Yes' : 'No');
+        
+>>>>>>> 37c3a32121a9a9d10905eb95534ff0a586af82ad
         if (!distributor) {
+            console.log('Distributor not found, returning 404');
             return res.status(404).json({
                 success: false,
                 message: 'Distributor not found'
@@ -253,28 +269,42 @@ export const getDistributorSchedule = async (req, res) => {
         }
 
         // Enrich schedules with store info and calculations
+        console.log('Starting to enrich schedules...');
         const enrichedSchedules = await Promise.all(
-            schedules.map(async (schedule) => {
+            schedules.map(async (schedule, index) => {
+                console.log(`Processing schedule ${index + 1}/${schedules.length}, store_id: ${schedule.store_id}`);
+                
                 const store = await Store.findByPk(schedule.store_id, {
                     attributes: ['id', 'name', 'address', 'phone', 'gps_coordinates']
                 });
+<<<<<<< HEAD
 
                 const relatedOrders = schedule.order_ids && schedule.order_ids.length > 0
+=======
+                
+                console.log(`Store found for ID ${schedule.store_id}:`, store ? 'Yes' : 'No');
+                
+                const relatedOrders = schedule.order_ids && schedule.order_ids.length > 0 
+>>>>>>> 37c3a32121a9a9d10905eb95534ff0a586af82ad
                     ? await Order.findAll({
                         where: { id: { [Op.in]: schedule.order_ids } },
                         attributes: ['id', 'order_number', 'total_amount_eur', 'status']
                     })
                     : [];
 
+                console.log(`Related orders for schedule ${index + 1}:`, relatedOrders.length);
+
                 return {
                     ...schedule.toJSON(),
                     store,
                     related_orders: relatedOrders,
-                    delay_minutes: schedule.calculateDelay(),
-                    visit_duration: schedule.getVisitDuration()
+                    delay_minutes: schedule.calculateDelay ? schedule.calculateDelay() : 0,
+                    visit_duration: schedule.getVisitDuration ? schedule.getVisitDuration() : 0
                 };
             })
         );
+        
+        console.log('Enriched schedules completed, count:', enrichedSchedules.length);
 
         res.status(200).json({
             success: true,
@@ -287,11 +317,14 @@ export const getDistributorSchedule = async (req, res) => {
         });
 
     } catch (error) {
+        console.error('Error in getDistributorSchedule:', error);
+        console.error('Error stack:', error.stack);
         logger.error('Error getting distributor schedule:', error);
         res.status(500).json({
             success: false,
             message: 'Error retrieving distributor schedule',
-            error: error.message
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 };
