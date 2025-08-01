@@ -7,6 +7,19 @@ const DistributionTrip = sequelize.define('DistributionTrip', {
         primaryKey: true,
         autoIncrement: true
     },
+    trip_number: {
+        type: DataTypes.STRING(20),
+        allowNull: false,
+        unique: true,
+        comment: 'Unique trip number (auto-generated)',
+        defaultValue: () => {
+            const now = new Date();
+            const date = now.toISOString().split('T')[0].replace(/-/g, '');
+            const time = now.toTimeString().split(' ')[0].replace(/:/g, '');
+            const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+            return `TRIP-${date}-${time}-${random}`;
+        }
+    },
     distributor_id: {
         type: DataTypes.INTEGER,
         allowNull: false,

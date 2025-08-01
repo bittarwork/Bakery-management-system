@@ -286,7 +286,15 @@ class CronJobService {
             });
 
             if (!trip && (result.schedulesCreated > 0 || result.schedulesUpdated > 0)) {
+                // Generate unique trip number
+                const now = new Date();
+                const dateStr = date.replace(/-/g, '');
+                const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '');
+                const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+                const tripNumber = `TRIP-${dateStr}-${timeStr}-${random}`;
+                
                 trip = await DistributionTrip.create({
+                    trip_number: tripNumber,
                     distributor_id: distributorId,
                     trip_date: date,
                     trip_status: 'planned',

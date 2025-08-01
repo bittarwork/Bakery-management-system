@@ -869,7 +869,7 @@ export const getAutoDistributionSchedules = async (req, res) => {
                 // If no existing schedule, create auto-schedule based on orders and assigned stores
                 let scheduleItems = [];
 
-                if (existingSchedule.length === 0) {
+                if (existingSchedule.length === 0 && (assignedOrders.length > 0 || assignedStores.length > 0)) {
                     // Create automatic schedule
                     let visitOrder = 1;
 
