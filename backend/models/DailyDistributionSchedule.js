@@ -190,10 +190,20 @@ DailyDistributionSchedule.getDistributorSchedule = async function (distributorId
         whereClause.schedule_date = date;
     }
 
-    return await DailyDistributionSchedule.findAll({
-        where: whereClause,
-        order: [['schedule_date', 'DESC'], ['visit_order', 'ASC']]
-    });
+    console.log('DailyDistributionSchedule.getDistributorSchedule whereClause:', whereClause);
+
+    try {
+        const result = await DailyDistributionSchedule.findAll({
+            where: whereClause,
+            order: [['schedule_date', 'DESC'], ['visit_order', 'ASC']]
+        });
+        
+        console.log('DailyDistributionSchedule.getDistributorSchedule result count:', result.length);
+        return result;
+    } catch (error) {
+        console.error('Error in DailyDistributionSchedule.getDistributorSchedule:', error);
+        throw error;
+    }
 };
 
 DailyDistributionSchedule.getStoreSchedule = async function (storeId, date = null) {
