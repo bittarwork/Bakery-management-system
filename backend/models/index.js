@@ -112,14 +112,23 @@ const defineAssociations = () => {
     DailyDistributionSchedule.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
     DailyDistributionSchedule.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
 
+    // Reverse associations for distribution system
+    User.hasMany(DailyDistributionSchedule, { foreignKey: 'distributor_id', as: 'distributionSchedules' });
+    Store.hasMany(DailyDistributionSchedule, { foreignKey: 'store_id', as: 'distributionSchedules' });
+
     DistributionTrip.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
     DistributionTrip.belongsTo(Vehicle, { foreignKey: 'vehicle_id', as: 'vehicle' });
+    User.hasMany(DistributionTrip, { foreignKey: 'distributor_id', as: 'distributionTrips' });
+    Vehicle.hasMany(DistributionTrip, { foreignKey: 'vehicle_id', as: 'distributionTrips' });
 
     LocationTracking.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
+    User.hasMany(LocationTracking, { foreignKey: 'distributor_id', as: 'locationHistory' });
 
     DistributionNotification.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
+    User.hasMany(DistributionNotification, { foreignKey: 'distributor_id', as: 'distributionNotifications' });
 
     DistributionPerformance.belongsTo(User, { foreignKey: 'distributor_id', as: 'distributor' });
+    User.hasMany(DistributionPerformance, { foreignKey: 'distributor_id', as: 'performanceRecords' });
 
     if (process.env.NODE_ENV !== 'test') {
         console.log('✅ Simple model associations defined');
